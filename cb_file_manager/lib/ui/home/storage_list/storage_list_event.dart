@@ -1,6 +1,4 @@
-
 import 'package:equatable/equatable.dart';
-import 'package:simple_permissions/simple_permissions.dart';
 
 abstract class StorageListEvent extends Equatable {
   const StorageListEvent();
@@ -11,4 +9,8 @@ abstract class StorageListEvent extends Equatable {
 
 class StorageListInit extends StorageListEvent {
   const StorageListInit();
+}
+
+class LoadStorageLocations extends StorageListEvent {
+  const LoadStorageLocations();
 }

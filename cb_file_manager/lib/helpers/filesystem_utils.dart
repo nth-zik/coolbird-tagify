@@ -6,7 +6,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:path/path.dart' as pathlib;
-import 'package:package_info/package_info.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 
 // local files
@@ -18,8 +18,9 @@ enum Sorting { Type, Size, Date, Alpha, TypeDate, TypeSize }
 
 /// Return all **paths**
 Future<List<Directory>> getStorageList() async {
-  List<Directory> paths = await getExternalStorageDirectories();
-  List<Directory> filteredPaths = List<Directory>();
+  // Fix for null safety - handle nullable return value
+  List<Directory> paths = await getExternalStorageDirectories() ?? [];
+  List<Directory> filteredPaths = []; // Use list literal instead of constructor
   for (Directory dir in paths) {
     filteredPaths
         .add(await getExternalStorageWithoutDataDir(dir.absolute.path));
@@ -35,7 +36,7 @@ Future<Directory> getExternalStorageWithoutDataDir(
   print("storage_helper->getExternalStorageWithoutDataDir: " +
       packageInfo.packageName);
   String subPath =
-  pathlib.join("Android", "data", packageInfo.packageName, "files");
+      pathlib.join("Android", "data", packageInfo.packageName, "files");
   if (unfilteredPath.contains(subPath)) {
     String filteredPath = unfilteredPath.split(subPath).first;
     print("storage_helper->getExternalStorageWithoutDataDir: " + filteredPath);
@@ -47,25 +48,29 @@ Future<Directory> getExternalStorageWithoutDataDir(
 
 /// keepHidden: show files that start with .
 Future<List<FileSystemEntity>> getFoldersAndFiles(String path,
-    {changeCurrentPath: true,
-      Sorting sortedBy: Sorting.Type,
-      reverse: false,
-      recursive: false,
-      keepHidden: false}) async {
+    {changeCurrentPath = true,
+    Sorting sortedBy = Sorting.Type,
+    reverse = false,
+    recursive = false,
+    keepHidden = false}) async {
   Directory _path = Directory(path);
-  List<FileSystemEntity> _files;
+  List<FileSystemEntity> _files = [];
   try {
     _files = await _path.list(recursive: recursive).toList();
-    _files = _files.map((path) {
-      if (FileSystemEntity.isDirectorySync(path.path))
-        return Directory(
-          path.absolute.path,
-        );
-      else
-        return File(
-          path.absolute.path,
-        );
-    }).toList();
+
+    // Create a new list to avoid type issues
+    List<FileSystemEntity> _typedFiles = [];
+
+    for (var fsEntity in _files) {
+      String fsPath = fsEntity.path.toString();
+      if (FileSystemEntity.isDirectorySync(fsPath)) {
+        _typedFiles.add(Directory(fsEntity.absolute.path.toString()));
+      } else {
+        _typedFiles.add(File(fsEntity.absolute.path.toString()));
+      }
+    }
+
+    _files = _typedFiles;
 
     // Removing hidden files & folders from the list
     if (!keepHidden) {
@@ -83,13 +88,13 @@ Future<List<FileSystemEntity>> getFoldersAndFiles(String path,
 
 /// keepHidden: show files that start with .
 Stream<List<FileSystemEntity>> fileStream(String path,
-    {changeCurrentPath: true,
-      Sorting sortedBy: Sorting.Type,
-      reverse: false,
-      recursive: false,
-      keepHidden: false}) async* {
+    {changeCurrentPath = true,
+    Sorting sortedBy = Sorting.Type,
+    reverse = false,
+    recursive = false,
+    keepHidden = false}) async* {
   Directory _path = Directory(path);
-  List<FileSystemEntity> _files = List<FileSystemEntity>();
+  List<FileSystemEntity> _files = []; // Use list literal
   try {
     // Checking if the target directory contains files inside or not!
     // so that [StreamBuilder] won't emit the same old data if there are
@@ -99,20 +104,20 @@ Stream<List<FileSystemEntity>> fileStream(String path,
         yield* _path.list(recursive: recursive).transform(
             StreamTransformer.fromHandlers(
                 handleData: (FileSystemEntity data, sink) {
-                  debugPrint("filsytem_utils -> fileStream: $data");
-                  _files.add(data);
-                  sink.add(_files);
-                }));
+          debugPrint("filsytem_utils -> fileStream: $data");
+          _files.add(data);
+          sink.add(_files);
+        }));
       } else {
         yield* _path.list(recursive: recursive).transform(
             StreamTransformer.fromHandlers(
                 handleData: (FileSystemEntity data, sink) {
-                  debugPrint("filsytem_utils -> fileStream: $data");
-                  if (data.basename().startsWith('.')) {
-                    _files.add(data);
-                    sink.add(_files);
-                  }
-                }));
+          debugPrint("filsytem_utils -> fileStream: $data");
+          if (data.basename().startsWith('.')) {
+            _files.add(data);
+            sink.add(_files);
+          }
+        }));
       }
     } else {
       yield [];
@@ -129,14 +134,14 @@ Stream<List<FileSystemEntity>> fileStream(String path,
 /// [path]: start point
 ///
 /// [query]: regex or simple string
-Future<List<FileSystemEntity>> search(dynamic path, String query,
-    {bool matchCase: false, recursive: true, bool hidden: false}) async {
+Future<List<FileSystemEntity>> search(String path, String query,
+    {bool matchCase = false, recursive = true, bool hidden = false}) async {
   int start = DateTime.now().millisecondsSinceEpoch;
 
   List<FileSystemEntity> files = await getFoldersAndFiles(path,
       recursive: recursive, keepHidden: hidden)
     ..retainWhere(
-            (test) => test.basename().toLowerCase().contains(query.toLowerCase()));
+        (test) => test.basename().toLowerCase().contains(query.toLowerCase()));
 
   int end = DateTime.now().millisecondsSinceEpoch;
   print("Search time: ${end - start} ms");
@@ -148,13 +153,13 @@ Future<List<FileSystemEntity>> search(dynamic path, String query,
 ///
 /// `path`: start point
 /// `query`: regex or simple string
-Stream<List<FileSystemEntity>> searchStream(dynamic path, String query,
-    {bool matchCase: false, recursive: true, bool hidden: false}) async* {
+Stream<List<FileSystemEntity>> searchStream(String path, String query,
+    {bool matchCase = false, recursive = true, bool hidden = false}) async* {
   yield* fileStream(path, recursive: recursive)
       .transform(StreamTransformer.fromHandlers(handleData: (data, sink) {
     // Filtering
     data.retainWhere(
-            (test) => test.basename().toLowerCase().contains(query.toLowerCase()));
+        (test) => test.basename().toLowerCase().contains(query.toLowerCase()));
     sink.add(data);
   }));
 }
@@ -167,34 +172,30 @@ Future<int> getFreeSpace(String path) async {
 
 /// Create folder by path
 /// * i.e: `.createFolderByPath("/storage/emulated/0/", "folder name" )`
-/// 
+///
 /// Supply path alone to create by already combined path, or path + filename
 /// to be combined
-Future<Directory> createFolderByPath(String path, {String folderName}) async {
+Future<Directory> createFolderByPath(String path, {String? folderName}) async {
   print("filesystem_utils->createFolderByPath: $folderName @ $path");
   var _directory;
 
-  if (folderName != null) {
-    _directory = Directory(pathlib.join(path, folderName));
-  } else {
-    _directory = Directory(path);
-  }
+  _directory = Directory(pathlib.join(path, folderName ?? ''));
 
   try {
     if (!_directory.existsSync()) {
       _directory.create();
     } else {
-      FileSystemException("File already exists");
+      throw FileSystemException("File already exists");
     }
     return _directory;
   } catch (e) {
-    throw FileSystemException(e);
+    throw FileSystemException(e.toString());
   }
 }
 
 /// This function returns every [Directory] in th path
 List<Directory> splitPathToDirectories(String path) {
-  List<Directory> splittedPath = List();
+  List<Directory> splittedPath = []; // Use list literal
   Directory pathDir = Directory(path);
   splittedPath.add(pathDir);
   for (var item in pathlib.split(path)) {
@@ -205,19 +206,21 @@ List<Directory> splitPathToDirectories(String path) {
 }
 
 Future<List<FileSystemEntity>> sort(List<FileSystemEntity> elements, Sorting by,
-    {bool reverse: false}) async {
+    {bool reverse = false}) async {
   try {
     switch (by) {
       case Sorting.Type:
         if (!reverse)
           return elements
-            ..sort((f1, f2) => FileSystemEntity.isDirectorySync(f1.path) ==
-                FileSystemEntity.isDirectorySync(f2.path)
-                ? 0
-                : 1);
+            ..sort((f1, f2) {
+              bool isDir1 =
+                  FileSystemEntity.isDirectorySync(f1.path.toString());
+              bool isDir2 =
+                  FileSystemEntity.isDirectorySync(f2.path.toString());
+              return isDir1 == isDir2 ? 0 : (isDir1 ? -1 : 1);
+            });
         else
-          return (elements..sort()).reversed;
-        break;
+          return (elements..sort()).reversed.toList();
       default:
         return elements..sort();
     }
@@ -225,4 +228,120 @@ Future<List<FileSystemEntity>> sort(List<FileSystemEntity> elements, Sorting by,
     print(e);
     return [];
   }
+}
+
+/// Get all available drives on Windows systems
+/// Returns a list of directories representing each drive
+Future<List<Directory>> getAllWindowsDrives() async {
+  if (!Platform.isWindows) {
+    return [];
+  }
+
+  List<Directory> drives = [];
+
+  // Check all possible drive letters from A to Z
+  for (var i = 65; i <= 90; i++) {
+    String driveLetter = String.fromCharCode(i);
+    String drivePath = '$driveLetter:\\';
+
+    try {
+      Directory drive = Directory(drivePath);
+      if (await drive.exists()) {
+        drives.add(drive);
+        print('Found drive: $drivePath');
+      }
+    } catch (e) {
+      // Ignore drives that can't be accessed
+      print('Error accessing drive $drivePath: $e');
+    }
+  }
+
+  return drives;
+}
+
+/// Get all available storage locations across platforms
+/// On Windows: returns all available drives
+/// On Android: returns external storage directories
+/// On other platforms: returns the application documents directory
+Future<List<Directory>> getAllStorageLocations() async {
+  List<Directory> storageLocations = [];
+
+  try {
+    if (Platform.isWindows) {
+      // Get all Windows drives
+      storageLocations = await getAllWindowsDrives();
+    } else if (Platform.isAndroid) {
+      // Use existing Android storage detection
+      storageLocations = await getStorageList();
+    } else {
+      // For other platforms, fallback to application documents directory
+      Directory appDocDir = await getApplicationDocumentsDirectory();
+      storageLocations.add(appDocDir);
+    }
+  } catch (e) {
+    print('Error getting storage locations: $e');
+    // Fallback to app documents directory
+    try {
+      Directory appDocDir = await getApplicationDocumentsDirectory();
+      storageLocations.add(appDocDir);
+    } catch (e) {
+      print('Error getting application documents directory: $e');
+    }
+  }
+
+  return storageLocations;
+}
+
+/// Recursively get all videos in a directory and its subdirectories
+Future<List<File>> getAllVideos(String path, {bool recursive = true}) async {
+  List<FileSystemEntity> allFiles =
+      await getFoldersAndFiles(path, recursive: recursive);
+
+  // Filter for video files based on common video extensions
+  List<String> videoExtensions = [
+    '.mp4',
+    '.avi',
+    '.mov',
+    '.wmv',
+    '.flv',
+    '.mkv',
+    '.webm',
+    '.m4v',
+    '.mpg',
+    '.mpeg',
+    '.3gp'
+  ];
+
+  List<File> videoFiles = allFiles.whereType<File>().where((file) {
+    String extension = pathlib.extension(file.path).toLowerCase();
+    return videoExtensions.contains(extension);
+  }).toList();
+
+  return videoFiles;
+}
+
+/// Recursively get all images in a directory and its subdirectories
+Future<List<File>> getAllImages(String path, {bool recursive = true}) async {
+  List<FileSystemEntity> allFiles =
+      await getFoldersAndFiles(path, recursive: recursive);
+
+  // Filter for image files based on common image extensions
+  List<String> imageExtensions = [
+    '.jpg',
+    '.jpeg',
+    '.png',
+    '.gif',
+    '.bmp',
+    '.webp',
+    '.tiff',
+    '.ico',
+    '.heic'
+  ];
+
+  List<File> imageFiles = allFiles.whereType<File>().where((file) {
+    String extension = pathlib.extension(file.path).toLowerCase();
+    return imageExtensions.contains(extension);
+  }).toList();
+
+  return imageFiles;
 }
