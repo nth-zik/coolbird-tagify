@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'folder_list_state.dart'; // Import for ViewMode and SortOption enums
 
 abstract class FolderListEvent extends Equatable {
   const FolderListEvent();
@@ -58,6 +59,35 @@ class SearchByTag extends FolderListEvent {
   List<Object> get props => [tag];
 }
 
+class SearchByTagGlobally extends FolderListEvent {
+  final String tag;
+
+  const SearchByTagGlobally(this.tag);
+
+  @override
+  List<Object> get props => [tag];
+}
+
+class SearchByFileName extends FolderListEvent {
+  final String query;
+  final bool recursive;
+
+  const SearchByFileName(this.query, {this.recursive = false});
+
+  @override
+  List<Object> get props => [query, recursive];
+}
+
+class SearchMediaFiles extends FolderListEvent {
+  final MediaSearchType mediaType;
+  final bool recursive;
+
+  const SearchMediaFiles(this.mediaType, {this.recursive = false});
+
+  @override
+  List<Object> get props => [mediaType, recursive];
+}
+
 class LoadTagsFromFile extends FolderListEvent {
   final String filePath;
 
@@ -75,3 +105,33 @@ class LoadAllTags extends FolderListEvent {
   @override
   List<Object> get props => [directory];
 }
+
+class SetViewMode extends FolderListEvent {
+  final ViewMode viewMode;
+
+  const SetViewMode(this.viewMode);
+
+  @override
+  List<Object> get props => [viewMode];
+}
+
+class SetSortOption extends FolderListEvent {
+  final SortOption sortOption;
+
+  const SetSortOption(this.sortOption);
+
+  @override
+  List<Object> get props => [sortOption];
+}
+
+class SetGridZoom extends FolderListEvent {
+  final int zoomLevel;
+
+  const SetGridZoom(this.zoomLevel);
+
+  @override
+  List<Object> get props => [zoomLevel];
+}
+
+// Enum to represent media types for search
+enum MediaSearchType { images, videos, audio, all }

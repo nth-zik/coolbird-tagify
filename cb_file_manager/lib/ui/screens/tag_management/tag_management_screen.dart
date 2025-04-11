@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:cb_file_manager/helpers/tag_manager.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/file_details_screen.dart';
+import 'package:cb_file_manager/ui/utils/base_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as pathlib;
 
@@ -20,6 +21,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
   String? _selectedTag;
   late Future<List<FileSystemEntity>> _filesByTagFuture;
   bool _isSearching = false;
+  bool _isGlobalSearch = true; // Default to global search
 
   @override
   void initState() {
@@ -38,8 +40,13 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
     setState(() {
       _selectedTag = tag;
       _isSearching = true;
-      _filesByTagFuture =
-          TagManager.findFilesByTag(widget.startingDirectory, tag);
+      // Use global search if enabled, otherwise search in starting directory
+      if (_isGlobalSearch) {
+        _filesByTagFuture = TagManager.findFilesByTagGlobally(tag);
+      } else {
+        _filesByTagFuture =
+            TagManager.findFilesByTag(widget.startingDirectory, tag);
+      }
     });
   }
 
@@ -151,28 +158,70 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
     }
   }
 
+  Future<void> _showAboutDialog(BuildContext context) async {
+    showAboutDialog(
+      context: context,
+      applicationName: 'CoolBird File Manager',
+      applicationVersion: '1.0.0',
+      applicationIcon: const Icon(Icons.info_outline),
+      children: [
+        const Text(
+            'CoolBird File Manager helps you manage your files and tags efficiently.'),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-            _selectedTag != null ? 'Files with tag: $_selectedTag' : 'Tags'),
-        actions: [
-          if (_selectedTag != null)
-            IconButton(
-              icon: const Icon(Icons.delete),
-              onPressed: () =>
-                  _showDeleteTagConfirmation(context, _selectedTag!),
-              tooltip: 'Delete this tag from all files',
-            ),
+    return BaseScreen(
+      title: _selectedTag != null ? 'Files with tag: $_selectedTag' : 'Tags',
+      actions: [
+        if (_selectedTag != null)
           IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _refreshTags,
-            tooltip: 'Refresh tags',
+            icon: const Icon(Icons.delete),
+            onPressed: () => _showDeleteTagConfirmation(context, _selectedTag!),
+            tooltip: 'Delete this tag from all files',
+          ),
+        IconButton(
+          icon: const Icon(Icons.refresh),
+          onPressed: _refreshTags,
+          tooltip: 'Refresh tags',
+        ),
+      ],
+      body: Column(
+        children: [
+          // Global search toggle
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: SwitchListTile(
+              title: const Text('Global Search'),
+              subtitle: const Text('Search for tags across all directories'),
+              value: _isGlobalSearch,
+              onChanged: (value) {
+                setState(() {
+                  _isGlobalSearch = value;
+                  // If a tag is already selected, update the search results
+                  if (_selectedTag != null) {
+                    if (_isGlobalSearch) {
+                      _filesByTagFuture =
+                          TagManager.findFilesByTagGlobally(_selectedTag!);
+                    } else {
+                      _filesByTagFuture = TagManager.findFilesByTag(
+                          widget.startingDirectory, _selectedTag!);
+                    }
+                  }
+                });
+              },
+            ),
+          ),
+          // Content area
+          Expanded(
+            child: _selectedTag == null
+                ? _buildTagsList()
+                : _buildFilesByTagList(),
           ),
         ],
       ),
-      body: _selectedTag == null ? _buildTagsList() : _buildFilesByTagList(),
     );
   }
 

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'drawer.dart';
+import 'package:cb_file_manager/ui/utils/base_screen.dart';
+
+// Legacy code maintained for backward compatibility
+final GlobalKey<ScaffoldState> scaffoldKey = BaseScreen.scaffoldKey;
 
 class CBTemplate extends StatefulWidget {
   final Map<String, dynamic> config;
@@ -13,12 +16,14 @@ class CBTemplate extends StatefulWidget {
 class _CBTemplateState extends State<CBTemplate> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.config['appBarTitle']?.toString() ?? ''),
-      ),
+    return BaseScreen(
+      title: widget.config['appBarTitle']?.toString() ?? '',
       body: widget.config['body'] as Widget,
-      drawer: CBDrawer(context),
     );
   }
+}
+
+// Legacy function maintained for backward compatibility
+void openGlobalDrawer() {
+  BaseScreen.openDrawer();
 }

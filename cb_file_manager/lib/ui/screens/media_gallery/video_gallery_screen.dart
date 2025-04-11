@@ -5,6 +5,8 @@ import 'package:chewie/chewie.dart';
 import 'package:cb_file_manager/helpers/filesystem_utils.dart';
 import 'package:path/path.dart' as pathlib;
 import 'package:cb_file_manager/helpers/thumbnail_helper.dart';
+import 'package:cb_file_manager/helpers/user_preferences.dart';
+import 'package:cb_file_manager/ui/utils/base_screen.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/services.dart';
@@ -23,35 +25,93 @@ class VideoGalleryScreen extends StatefulWidget {
   _VideoGalleryScreenState createState() => _VideoGalleryScreenState();
 }
 
-class _VideoGalleryScreenState extends State<VideoGalleryScreen> {
+class _VideoGalleryScreenState extends State<VideoGalleryScreen>
+    with AutomaticKeepAliveClientMixin {
   late Future<List<File>> _videoFilesFuture;
+  late UserPreferences _preferences;
+  late double _thumbnailSize;
+  ScrollController _scrollController = ScrollController();
+  bool _isLoadingThumbnails = false;
+  bool _isMounted = false;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
+    _preferences = UserPreferences();
+    _loadPreferences();
     _loadVideos();
+    _isMounted = true;
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _isMounted = false;
+    super.dispose();
+  }
+
+  Future<void> _loadPreferences() async {
+    await _preferences.init();
+    if (_isMounted) {
+      setState(() {
+        _thumbnailSize = _preferences.getVideoGalleryThumbnailSize();
+      });
+    }
   }
 
   void _loadVideos() {
     _videoFilesFuture = getAllVideos(widget.path, recursive: widget.recursive);
+
+    _videoFilesFuture.then((videos) {
+      if (videos.isNotEmpty && _isMounted) {
+        setState(() {
+          _isLoadingThumbnails = true;
+        });
+
+        final videoPaths = videos.map((file) => file.path).toList();
+
+        ThumbnailTaskManager.preloadFirstBatch(videoPaths, count: 20).then((_) {
+          if (_isMounted) {
+            setState(() {
+              _isLoadingThumbnails = false;
+            });
+          }
+        });
+      }
+    });
+  }
+
+  double _calculateThumbnailSize(BuildContext context, int columns) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final availableWidth = screenWidth - 16 - ((columns - 1) * 8);
+    return availableWidth / columns;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Video Gallery: ${pathlib.basename(widget.path)}'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              setState(() {
-                _loadVideos();
-              });
-            },
-          ),
-        ],
-      ),
+    super.build(context);
+
+    return BaseScreen(
+      title: 'Video Gallery: ${pathlib.basename(widget.path)}',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.photo_size_select_large),
+          onPressed: () {
+            _showThumbnailSizeDialog();
+          },
+        ),
+        IconButton(
+          icon: const Icon(Icons.refresh),
+          onPressed: () {
+            setState(() {
+              _loadVideos();
+            });
+          },
+        ),
+      ],
       body: FutureBuilder<List<File>>(
         future: _videoFilesFuture,
         builder: (context, snapshot) {
@@ -98,107 +158,281 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen> {
             );
           }
 
-          return GridView.builder(
-            padding: const EdgeInsets.all(8.0),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-              childAspectRatio: 16 / 12, // Video thumbnail aspect ratio
-            ),
-            itemCount: videos.length,
-            itemBuilder: (context, index) {
-              final file = videos[index];
-              return VideoThumbnailItem(
-                file: file,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => VideoPlayerFullScreen(file: file),
-                    ),
+          final columns = _thumbnailSize.round();
+          final thumbnailSize = _calculateThumbnailSize(context, columns);
+
+          return Stack(
+            children: [
+              GridView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.all(8.0),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: columns,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                  childAspectRatio: 16 / 12,
+                ),
+                itemCount: videos.length,
+                itemBuilder: (context, index) {
+                  final file = videos[index];
+
+                  return OptimizedVideoThumbnailItem(
+                    file: file,
+                    width: thumbnailSize,
+                    height: thumbnailSize * 12 / 16,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              VideoPlayerFullScreen(file: file),
+                        ),
+                      );
+                    },
                   );
                 },
-              );
-            },
+              ),
+              if (_isLoadingThumbnails)
+                Positioned(
+                  bottom: 16,
+                  right: 16,
+                  child: Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Đang tải thumbnail',
+                          style: TextStyle(color: Colors.white, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
           );
         },
       ),
     );
   }
+
+  void _showThumbnailSizeDialog() {
+    double tempSize = _thumbnailSize;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Điều chỉnh kích thước thumbnail'),
+          content: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Số cột: ${tempSize.round()}'),
+                  Slider(
+                    value: tempSize,
+                    min: UserPreferences.minThumbnailSize,
+                    max: UserPreferences.maxThumbnailSize,
+                    divisions: (UserPreferences.maxThumbnailSize -
+                            UserPreferences.minThumbnailSize)
+                        .toInt(),
+                    label: tempSize.round().toString(),
+                    onChanged: (double value) {
+                      setState(() {
+                        tempSize = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _sizePreviewBox(2, tempSize),
+                      _sizePreviewBox(3, tempSize),
+                      _sizePreviewBox(4, tempSize),
+                      _sizePreviewBox(5, tempSize),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _sizePreviewBox(6, tempSize),
+                      _sizePreviewBox(7, tempSize),
+                      _sizePreviewBox(8, tempSize),
+                      _sizePreviewBox(10, tempSize),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Text('Lớn hơn', style: TextStyle(fontSize: 12)),
+                      const Spacer(),
+                      Text('Nhỏ hơn', style: TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Huỷ'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('Áp dụng'),
+              onPressed: () {
+                setState(() {
+                  _thumbnailSize = tempSize;
+                });
+                _preferences.setVideoGalleryThumbnailSize(tempSize);
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _sizePreviewBox(int size, double currentSize) {
+    return Column(
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          padding: EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: currentSize.round() == size ? Colors.blue : Colors.grey,
+              width: 2,
+            ),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: GridView.count(
+            crossAxisCount: size,
+            mainAxisSpacing: 1,
+            crossAxisSpacing: 1,
+            physics: NeverScrollableScrollPhysics(),
+            children: List.generate(
+              size * size,
+              (index) => Container(
+                color: Colors.grey[300],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '$size',
+          style: TextStyle(fontSize: 12),
+        ),
+      ],
+    );
+  }
+
+  void _showAboutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('About CoolBird File Manager'),
+          content: const Text(
+              'CoolBird File Manager is a powerful tool for managing your files and videos.'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Close'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
 
-class VideoThumbnailItem extends StatefulWidget {
+class OptimizedVideoThumbnailItem extends StatelessWidget {
   final File file;
   final VoidCallback onTap;
+  final double width;
+  final double height;
 
-  const VideoThumbnailItem({
+  const OptimizedVideoThumbnailItem({
     Key? key,
     required this.file,
     required this.onTap,
+    this.width = 120,
+    this.height = 90,
   }) : super(key: key);
 
   @override
-  _VideoThumbnailItemState createState() => _VideoThumbnailItemState();
-}
-
-class _VideoThumbnailItemState extends State<VideoThumbnailItem> {
-  bool _thumbnailLoaded = false;
-
-  void _onThumbnailGenerated(String? path) {
-    if (!_thumbnailLoaded && mounted) {
-      setState(() {
-        _thumbnailLoaded = true;
-      });
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final String ext = pathlib.extension(widget.file.path).toLowerCase();
+    final String ext = pathlib.extension(file.path).toLowerCase();
 
     return GestureDetector(
-      onTap: widget.onTap,
+      onTap: onTap,
       child: Card(
         clipBehavior: Clip.antiAlias,
         elevation: 2,
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Sử dụng ThumbnailHelper với video_thumbnail_imageview
             ThumbnailHelper.buildVideoThumbnail(
-              videoPath: widget.file.path,
-              onThumbnailGenerated: _onThumbnailGenerated,
+              videoPath: file.path,
+              width: width,
+              height: height,
+              isVisible: true,
+              onThumbnailGenerated: (_) {},
               fallbackBuilder: () => _buildFallbackThumbnail(ext),
             ),
-
-            // Play button overlay
             Center(
               child: Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(width > 100 ? 8 : 6),
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.5),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.play_arrow,
                   color: Colors.white,
-                  size: 32,
+                  size: width > 100 ? 32 : 24,
                 ),
               ),
             ),
-
-            // Video name at the bottom
             Positioned(
               bottom: 0,
               left: 0,
               right: 0,
               child: Container(
                 color: Colors.black.withOpacity(0.7),
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(width > 100 ? 8 : 4),
                 child: Text(
-                  pathlib.basename(widget.file.path),
-                  style: const TextStyle(color: Colors.white),
+                  pathlib.basename(file.path),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: width > 100 ? 12 : 10,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -222,14 +456,13 @@ class _VideoThumbnailItemState extends State<VideoThumbnailItem> {
       child: Center(
         child: Icon(
           _getVideoTypeIcon(ext),
-          size: 48,
+          size: width > 100 ? 48 : 32,
           color: Colors.white.withOpacity(0.7),
         ),
       ),
     );
   }
 
-  // Get video icon based on extension
   IconData _getVideoTypeIcon(String ext) {
     switch (ext) {
       case '.mp4':
@@ -247,7 +480,6 @@ class _VideoThumbnailItemState extends State<VideoThumbnailItem> {
     }
   }
 
-  // Get gradient colors based on video type
   List<Color> _getGradientColors(String ext) {
     switch (ext) {
       case '.mp4':
@@ -300,27 +532,22 @@ class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
 
       _videoPlayerController = VideoPlayerController.file(widget.file);
 
-      // Add error listener to catch initialization errors
       _videoPlayerController.addListener(_videoPlayerListener);
 
-      // Initialize the video player with a longer timeout
       await _videoPlayerController.initialize().timeout(
             const Duration(seconds: 30),
             onTimeout: () => throw TimeoutException(
                 'Video initialization timed out after 30 seconds'),
           );
 
-      // Check if video initialized successfully
       if (!_videoPlayerController.value.isInitialized) {
         throw Exception('Failed to initialize video player');
       }
 
-      // Create chewie controller with default options
       _chewieController = ChewieController(
         videoPlayerController: _videoPlayerController,
         autoPlay: true,
         looping: false,
-        // Don't set aspect ratio if we have a valid one from the video
         aspectRatio: _videoPlayerController.value.aspectRatio > 0
             ? _videoPlayerController.value.aspectRatio
             : 16 / 9,
@@ -379,7 +606,6 @@ class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
   }
 
   void _videoPlayerListener() {
-    // If we get an error during playback, update the UI
     if (_videoPlayerController.value.hasError && !_hasError) {
       setState(() {
         _hasError = true;
@@ -399,18 +625,15 @@ class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BaseScreen(
+      title: pathlib.basename(widget.file.path),
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: Text(pathlib.basename(widget.file.path)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.info_outline),
-            onPressed: () => _showVideoInfo(context),
-          ),
-        ],
-      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.info_outline),
+          onPressed: () => _showVideoInfo(context),
+        ),
+      ],
       body: SafeArea(
         child: _isLoading
             ? const Center(

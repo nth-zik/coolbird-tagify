@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:cb_file_manager/helpers/io_extensions.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
+import 'package:cb_file_manager/ui/utils/base_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as pathlib;
 
@@ -73,34 +74,22 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
         ['mp4', 'mov', 'avi', 'mkv', 'flv', 'wmv'].contains(extension);
     final bool isAudio =
         ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].contains(extension);
-    final bool isDocument = [
-      'pdf',
-      'doc',
-      'docx',
-      'txt',
-      'xls',
-      'xlsx',
-      'ppt',
-      'pptx'
-    ].contains(extension);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(pathlib.basename(widget.file.path)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: () {
-              // Share functionality would go here
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Share functionality not implemented yet'),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
+    return BaseScreen(
+      title: pathlib.basename(widget.file.path),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.share),
+          onPressed: () {
+            // Share functionality would go here
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Share functionality not implemented yet'),
+              ),
+            );
+          },
+        ),
+      ],
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

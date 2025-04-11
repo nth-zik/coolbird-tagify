@@ -1,0 +1,11 @@
+{
+  "files.associations": {
+    "*.embeddedhtml": "html",
+    "*.page-template": "vue",
+    "*.layout-template": "vue",
+    "*.vue": "vue",
+    "*.js": "javascript",
+    "*.xml": "xml",
+    "*.rh": "cpp"
+  }
+}

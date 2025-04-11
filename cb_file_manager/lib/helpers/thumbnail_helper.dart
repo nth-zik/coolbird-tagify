@@ -1,21 +1,283 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:async';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path_util;
 import 'package:ffmpeg_helper/ffmpeg_helper.dart';
 import 'package:path_provider/path_provider.dart';
 import 'ffmpeg_extensions.dart'; // Import the extensions
 
+/// Quản lý hàng đợi tạo thumbnail để tránh quá tải hệ thống
+class ThumbnailTaskManager {
+  static final ThumbnailTaskManager _instance =
+      ThumbnailTaskManager._internal();
+  factory ThumbnailTaskManager() => _instance;
+  ThumbnailTaskManager._internal();
+
+  // Hàng đợi các tác vụ tạo thumbnail
+  final List<_ThumbnailTask> _queue = [];
+
+  // Danh sách các tác vụ đang chạy
+  final List<_ThumbnailTask> _runningTasks = [];
+
+  // Số lượng tác vụ tối đa được phép chạy đồng thời
+  // Khi hiển thị nhiều cột (10), giảm xuống để tránh quá tải hệ thống
+  final int maxConcurrentTasks = 3;
+
+  // Cache cho thumbnail đã tải vào bộ nhớ để tránh đọc từ disk liên tục
+  static final Map<String, Uint8List> _memoryCache = {};
+
+  // Trạng thái của task manager
+  bool _isProcessing = false;
+
+  // Kích thước mặc định của thumbnail để giảm tải hệ thống
+  static const int thumbnailQuality = 70; // Giảm chất lượng ảnh
+  static const int maxThumbnailSize =
+      200; // Giới hạn kích thước thumbnail để giảm bộ nhớ
+
+  /// Thêm một tác vụ tạo thumbnail vào hàng đợi
+  void addTask({
+    required String videoPath,
+    required Function(String?) onComplete,
+    int priority = 0,
+  }) {
+    // Kiểm tra nếu đã có trong memory cache
+    if (_memoryCache.containsKey(videoPath)) {
+      // Trả về đường dẫn file để giữ tương thích với code hiện tại
+      final cachedPath = ThumbnailHelper._thumbnailCache[videoPath];
+      if (cachedPath != null) {
+        onComplete(cachedPath);
+        return;
+      }
+    }
+
+    // Kiểm tra nếu thumbnail đã có trong file cache
+    if (ThumbnailHelper._thumbnailCache.containsKey(videoPath)) {
+      final cachedPath = ThumbnailHelper._thumbnailCache[videoPath];
+      if (cachedPath != null && File(cachedPath).existsSync()) {
+        // Nếu đã có trong cache, trả về ngay lập tức
+        onComplete(cachedPath);
+
+        // Đọc vào memory cache để lần sau không cần đọc từ disk
+        _loadIntoMemoryCache(videoPath, cachedPath);
+        return;
+      } else {
+        // Xóa cache không hợp lệ
+        ThumbnailHelper._thumbnailCache.remove(videoPath);
+      }
+    }
+
+    // Kiểm tra xem tác vụ đã tồn tại trong queue hoặc đang chạy
+    bool taskExists = false;
+
+    for (var task in _queue) {
+      if (task.videoPath == videoPath) {
+        taskExists = true;
+        // Cập nhật callback để đảm bảo nó được gọi khi thumbnail hoàn thành
+        final existingCallbacks = task.onComplete;
+        task.onComplete = (String? path) {
+          existingCallbacks(path);
+          onComplete(path);
+        };
+        break;
+      }
+    }
+
+    for (var task in _runningTasks) {
+      if (task.videoPath == videoPath) {
+        taskExists = true;
+        // Cập nhật callback để đảm bảo nó được gọi khi thumbnail hoàn thành
+        final existingCallbacks = task.onComplete;
+        task.onComplete = (String? path) {
+          existingCallbacks(path);
+          onComplete(path);
+        };
+        break;
+      }
+    }
+
+    // Chỉ thêm tác vụ mới nếu nó chưa tồn tại
+    if (!taskExists) {
+      _queue.add(_ThumbnailTask(
+        videoPath: videoPath,
+        onComplete: onComplete,
+        priority: priority,
+      ));
+
+      // Sắp xếp lại hàng đợi theo độ ưu tiên (cao đến thấp)
+      _queue.sort((a, b) => b.priority.compareTo(a.priority));
+
+      // Bắt đầu xử lý hàng đợi nếu chưa chạy
+      if (!_isProcessing) {
+        _processQueue();
+      }
+    }
+  }
+
+  /// Xử lý hàng đợi và chạy các tác vụ thumbnail
+  Future<void> _processQueue() async {
+    if (_isProcessing) return;
+
+    _isProcessing = true;
+
+    while (_queue.isNotEmpty && _runningTasks.length < maxConcurrentTasks) {
+      // Lấy tác vụ tiếp theo từ hàng đợi
+      final task = _queue.removeAt(0);
+      _runningTasks.add(task);
+
+      // Chạy tác vụ trong một Future riêng biệt
+      unawaited(_generateThumbnail(task).then((_) {
+        _runningTasks.remove(task);
+        // Tiếp tục xử lý queue nếu còn tác vụ trong hàng đợi
+        if (_queue.isNotEmpty) {
+          _processQueue();
+        }
+      }));
+    }
+
+    _isProcessing = false;
+  }
+
+  /// Tạo thumbnail cho một video cụ thể
+  Future<void> _generateThumbnail(_ThumbnailTask task) async {
+    try {
+      final ffmpeg = FFMpegHelper();
+      if (!await ThumbnailHelper.ensureFFmpegInstalled()) {
+        task.onComplete(null);
+        return;
+      }
+
+      // Tạo đường dẫn cho thumbnail
+      final String uniqueId = task.videoPath.hashCode.toString();
+      final tempDir = await getTemporaryDirectory();
+      final thumbnailPath = '${tempDir.path}/thumb_${uniqueId}.jpg';
+
+      // Kiểm tra nếu thumbnail đã tồn tại thì không cần tạo lại
+      if (File(thumbnailPath).existsSync()) {
+        // Thêm vào cache và gọi callback
+        ThumbnailHelper._thumbnailCache[task.videoPath] = thumbnailPath;
+        _loadIntoMemoryCache(task.videoPath, thumbnailPath);
+        task.onComplete(thumbnailPath);
+        return;
+      }
+
+      // Tạo thumbnail mới với chất lượng thấp hơn để cải thiện hiệu suất
+      await ffmpeg.getThumbnailFileAsync(
+        videoPath: task.videoPath,
+        fromDuration: const Duration(seconds: 1), // Seek to 1 second
+        outputPath: thumbnailPath,
+        qualityPercentage:
+            thumbnailQuality, // Giảm chất lượng để tạo nhanh hơn và giảm kích thước
+        onComplete: (File? outputFile) {
+          if (outputFile != null && outputFile.existsSync()) {
+            // Thêm vào cache và gọi callback
+            ThumbnailHelper._thumbnailCache[task.videoPath] = outputFile.path;
+            _loadIntoMemoryCache(task.videoPath, outputFile.path);
+            task.onComplete(outputFile.path);
+          } else {
+            task.onComplete(null);
+          }
+        },
+      );
+    } catch (e) {
+      debugPrint('Error generating thumbnail: $e');
+      task.onComplete(null);
+    }
+  }
+
+  /// Load thumbnail từ file vào memory cache
+  Future<void> _loadIntoMemoryCache(String videoPath, String filePath) async {
+    try {
+      final file = File(filePath);
+      if (!file.existsSync()) return;
+
+      // Đọc file vào memory
+      final bytes = await file.readAsBytes();
+      _memoryCache[videoPath] = bytes;
+    } catch (e) {
+      debugPrint('Error loading thumbnail into memory cache: $e');
+    }
+  }
+
+  /// Lấy thumbnail từ memory cache nếu có
+  static Uint8List? getFromMemoryCache(String videoPath) {
+    return _memoryCache[videoPath];
+  }
+
+  /// Xóa hàng đợi
+  void clearQueue() {
+    _queue.clear();
+  }
+
+  /// Tiền tải thumbnail cho danh sách video đầu tiên
+  static Future<void> preloadFirstBatch(List<String> videoPaths,
+      {int count = 20}) async {
+    final manager = ThumbnailTaskManager();
+
+    // Chỉ preload số lượng giới hạn để tránh quá tải
+    final pathsToPreload = videoPaths.take(count).toList();
+
+    // Tạo completer để theo dõi khi nào tất cả thumbnail được tải
+    final completer = Completer<void>();
+    int remaining = pathsToPreload.length;
+
+    if (pathsToPreload.isEmpty) {
+      completer.complete();
+      return completer.future;
+    }
+
+    for (int i = 0; i < pathsToPreload.length; i++) {
+      final videoPath = pathsToPreload[i];
+
+      // Đặt độ ưu tiên giảm dần - những video đầu tiên có độ ưu tiên cao nhất
+      final priority = 1000 - i;
+
+      manager.addTask(
+          videoPath: videoPath,
+          priority: priority,
+          onComplete: (_) {
+            remaining--;
+            if (remaining <= 0) {
+              completer.complete();
+            }
+          });
+    }
+
+    // Chờ tối đa 5 giây
+    return completer.future.timeout(const Duration(seconds: 5), onTimeout: () {
+      // Nếu timeout, vẫn cho phép tiếp tục
+      if (!completer.isCompleted) {
+        completer.complete();
+      }
+    });
+  }
+}
+
+/// Lớp đại diện cho một tác vụ tạo thumbnail
+class _ThumbnailTask {
+  final String videoPath;
+  Function(String?) onComplete;
+  final int priority; // Độ ưu tiên, cao hơn = được xử lý trước
+
+  _ThumbnailTask({
+    required this.videoPath,
+    required this.onComplete,
+    this.priority = 0,
+  });
+}
+
 class ThumbnailHelper {
-  // Cache for storing generated thumbnails
+  // Cache để lưu trữ các thumbnail đã tạo
   static final Map<String, String> _thumbnailCache = {};
 
-  // Track FFmpeg installation status
+  // Trạng thái FFmpeg
   static bool _ffmpegInstalled = false;
   static ValueNotifier<FFMpegProgress?> downloadProgress = ValueNotifier(null);
 
-  /// Check if FFmpeg is installed or download/setup if needed
-  static Future<bool> ensureFFmpegInstalled(BuildContext context) async {
+  /// Kiểm tra nếu FFmpeg đã được cài đặt
+  static Future<bool> ensureFFmpegInstalled([BuildContext? context]) async {
     if (_ffmpegInstalled) return true;
 
     final ffmpeg = FFMpegHelper();
@@ -26,10 +288,14 @@ class ThumbnailHelper {
       return true;
     }
 
-    return await downloadFFmpeg(context, ffmpeg);
+    if (context != null) {
+      return await downloadFFmpeg(context, ffmpeg);
+    }
+
+    return false;
   }
 
-  /// Download and setup FFmpeg based on platform
+  /// Tải và cài đặt FFmpeg
   static Future<bool> downloadFFmpeg(
       BuildContext context, FFMpegHelper ffmpeg) async {
     bool success = false;
@@ -100,72 +366,67 @@ class ThumbnailHelper {
     return success;
   }
 
-  /// Show FFmpeg download progress dialog
-  static Future<void> showFFmpegDownloadDialog(BuildContext context) async {
-    await showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Downloading FFmpeg'),
-            content: ValueListenableBuilder<FFMpegProgress?>(
-                valueListenable: downloadProgress,
-                builder: (context, progress, _) {
-                  if (progress == null) {
-                    return const LinearProgressIndicator();
-                  }
-
-                  // Instead of accessing specific properties, display a simple progress indicator
-                  // This avoids errors with unknown property names
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('Downloading FFmpeg components...'),
-                      const SizedBox(height: 10),
-                      // Use indeterminate progress indicator since we can't reliably access the progress value
-                      const LinearProgressIndicator(),
-                      const SizedBox(height: 10),
-                      // Display any available progress information in a more descriptive way
-                      Text('Please wait while FFmpeg is being downloaded...'),
-                    ],
-                  );
-                }),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  // Optionally allow canceling the dialog
-                  Navigator.of(context).pop();
-                },
-                child: const Text('Cancel'),
-              ),
-            ],
-          );
-        });
-  }
-
+  /// Tạo widget hiển thị thumbnail của video
   static Widget buildVideoThumbnail({
     required String videoPath,
     required Function(String?) onThumbnailGenerated,
     required Widget Function() fallbackBuilder,
     double width = 300,
     double height = 300,
+    bool isVisible = true,
   }) {
-    // Check cache first
+    final Key videoKey = Key('thumbnail-${videoPath.hashCode}');
+
+    // Kiểm tra memory cache trước tiên
+    final memoryData = ThumbnailTaskManager.getFromMemoryCache(videoPath);
+    if (memoryData != null) {
+      return Image.memory(
+        memoryData,
+        key: videoKey,
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return fallbackBuilder();
+        },
+      );
+    }
+
+    // Kiểm tra file cache
     if (_thumbnailCache.containsKey(videoPath)) {
       final cachedPath = _thumbnailCache[videoPath];
       if (cachedPath != null && File(cachedPath).existsSync()) {
         onThumbnailGenerated(cachedPath);
         return Image.file(
           File(cachedPath),
+          key: videoKey,
           width: width,
           height: height,
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => fallbackBuilder(),
+          errorBuilder: (context, error, stackTrace) {
+            _thumbnailCache.remove(videoPath);
+            return fallbackBuilder();
+          },
+          // Giảm chất lượng giải mã ảnh để tải nhanh hơn
+          cacheWidth: ThumbnailTaskManager.maxThumbnailSize,
         );
+      } else {
+        _thumbnailCache.remove(videoPath);
       }
     }
 
-    return FFmpegThumbnailWidget(
+    if (!isVisible) {
+      return Container(
+        key: videoKey,
+        width: width,
+        height: height,
+        color: Colors.grey[200],
+        child: fallbackBuilder(),
+      );
+    }
+
+    return OptimizedLazyThumbnailWidget(
+      key: videoKey,
       videoPath: videoPath,
       width: width,
       height: height,
@@ -179,19 +440,20 @@ class ThumbnailHelper {
     );
   }
 
+  /// Xóa toàn bộ cache thumbnail
   static void clearCache() {
     _thumbnailCache.clear();
   }
 }
 
-class FFmpegThumbnailWidget extends StatefulWidget {
+class OptimizedLazyThumbnailWidget extends StatefulWidget {
   final String videoPath;
   final double width;
   final double height;
   final Function(String?) onThumbnailGenerated;
   final Widget Function() fallbackBuilder;
 
-  const FFmpegThumbnailWidget({
+  const OptimizedLazyThumbnailWidget({
     Key? key,
     required this.videoPath,
     required this.width,
@@ -201,320 +463,110 @@ class FFmpegThumbnailWidget extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _FFmpegThumbnailWidgetState createState() => _FFmpegThumbnailWidgetState();
+  _OptimizedLazyThumbnailWidgetState createState() =>
+      _OptimizedLazyThumbnailWidgetState();
 }
 
-class _FFmpegThumbnailWidgetState extends State<FFmpegThumbnailWidget> {
+class _OptimizedLazyThumbnailWidgetState
+    extends State<OptimizedLazyThumbnailWidget> {
   String? _thumbnailPath;
   bool _hasError = false;
-  bool _isGenerating = true;
-  String? _extension;
-  FFMpegHelper? _ffmpeg;
+  bool _isGenerating = false;
+  bool _requestedThumbnail = false;
 
   @override
   void initState() {
     super.initState();
-    _extension = path_util.extension(widget.videoPath).toLowerCase();
-    _initFFmpeg();
+    _requestThumbnail();
   }
 
-  Future<void> _initFFmpeg() async {
-    try {
-      // Check if FFmpeg is installed first
-      if (!await ThumbnailHelper.ensureFFmpegInstalled(context)) {
-        throw Exception('FFmpeg is not installed or setup failed');
-      }
+  void _requestThumbnail() {
+    if (_isGenerating || _requestedThumbnail) return;
 
-      _ffmpeg = FFMpegHelper();
-      await _generateThumbnail();
-    } catch (e) {
-      debugPrint('Error initializing FFmpeg: $e');
-      if (mounted) {
-        setState(() {
-          _hasError = true;
-          _isGenerating = false;
-        });
-        widget.onThumbnailGenerated(null);
-      }
-    }
-  }
+    setState(() {
+      _isGenerating = true;
+      _requestedThumbnail = true;
+    });
 
-  Future<void> _generateThumbnail() async {
-    try {
-      if (_ffmpeg == null) {
-        throw Exception('FFmpeg helper not initialized');
-      }
-
-      // Create output thumbnail path
-      final tempDir = await getTemporaryDirectory();
-      final thumbnailPath =
-          '${tempDir.path}/thumbnail_${DateTime.now().millisecondsSinceEpoch}.jpg';
-
-      // Use the new getThumbnailFileAsync method
-      await _ffmpeg!.getThumbnailFileAsync(
-        videoPath: widget.videoPath,
-        fromDuration: const Duration(seconds: 1), // Seek to 1 second
-        outputPath: thumbnailPath,
-        qualityPercentage: 90, // High quality (90%)
-        statisticsCallback: (Statistics statistics) {
-          // Optionally handle statistics
-          debugPrint('FFmpeg progress - bitrate: ${statistics.getBitrate()}');
-        },
-        onComplete: (File? outputFile) {
-          if (outputFile != null && outputFile.existsSync()) {
-            if (mounted) {
-              setState(() {
-                _thumbnailPath = outputFile.path;
-                _isGenerating = false;
-              });
-              widget.onThumbnailGenerated(outputFile.path);
-            }
-          } else {
-            throw Exception('FFmpeg failed to generate thumbnail');
-          }
-        },
-      );
-    } catch (e) {
-      debugPrint('Error generating thumbnail with FFmpeg: $e');
-      if (mounted) {
-        setState(() {
-          _hasError = true;
-          _isGenerating = false;
-        });
-        widget.onThumbnailGenerated(null);
-      }
-    }
+    ThumbnailTaskManager().addTask(
+      videoPath: widget.videoPath,
+      onComplete: (thumbnailPath) {
+        if (mounted) {
+          setState(() {
+            _thumbnailPath = thumbnailPath;
+            _hasError = thumbnailPath == null;
+            _isGenerating = false;
+          });
+          widget.onThumbnailGenerated(thumbnailPath);
+        }
+      },
+      // Đặt priority dựa trên hash để không bị xung đột
+      priority: 1000 -
+          int.parse(widget.videoPath.hashCode
+              .toString()
+              .replaceAll('-', '')
+              .substring(0, 3)),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     if (_hasError) {
-      return _buildFallbackWidget();
+      return widget.fallbackBuilder();
     }
 
-    if (_thumbnailPath != null) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(4),
-        child: Stack(
-          children: [
-            // Thumbnail image
-            Image.file(
-              File(_thumbnailPath!),
-              width: widget.width,
-              height: widget.height,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                debugPrint('Error loading thumbnail: $error');
-                return _buildFallbackWidget();
-              },
-            ),
-
-            // File name overlay at top
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                color: Colors.black54,
-                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                child: Text(
-                  path_util.basename(widget.videoPath),
-                  style: const TextStyle(color: Colors.white, fontSize: 11),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
-
-            // File info overlay at bottom
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: _buildFileInfo(),
-            ),
-          ],
-        ),
+    // Kiểm tra xem có sẵn trong memory cache không
+    final memoryData =
+        ThumbnailTaskManager.getFromMemoryCache(widget.videoPath);
+    if (memoryData != null) {
+      return Image.memory(
+        memoryData,
+        width: widget.width,
+        height: widget.height,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return widget.fallbackBuilder();
+        },
       );
     }
 
-    // Loading state
+    if (_thumbnailPath != null) {
+      return Image.file(
+        File(_thumbnailPath!),
+        width: widget.width,
+        height: widget.height,
+        fit: BoxFit.cover,
+        // Giảm chất lượng giải mã ảnh để tải nhanh hơn
+        cacheWidth: ThumbnailTaskManager.maxThumbnailSize,
+        errorBuilder: (context, error, stackTrace) {
+          return widget.fallbackBuilder();
+        },
+      );
+    }
+
+    // Trạng thái đang tải
     return Container(
       width: widget.width,
       height: widget.height,
       decoration: BoxDecoration(
-        color: Colors.black12,
+        color: Colors.grey[200],
         borderRadius: BorderRadius.circular(4),
       ),
       child: Stack(
         children: [
+          widget.fallbackBuilder(),
           if (_isGenerating)
-            const Center(
+            Center(
               child: SizedBox(
-                width: 30,
-                height: 30,
+                width: 20, // Nhỏ hơn để ít chiếm không gian hơn
+                height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                 ),
               ),
             ),
-          // File name overlay at top
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              color: Colors.black54,
-              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-              child: Text(
-                path_util.basename(widget.videoPath),
-                style: const TextStyle(color: Colors.white, fontSize: 11),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
         ],
       ),
     );
-  }
-
-  Widget _buildFallbackWidget() {
-    return Container(
-      width: widget.width,
-      height: widget.height,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: _getGradientColors(_extension ?? ''),
-        ),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Center(
-            child: Icon(
-              _getVideoTypeIcon(_extension ?? ''),
-              size: widget.width * 0.3,
-              color: Colors.white.withOpacity(0.7),
-            ),
-          ),
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              color: Colors.black54,
-              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-              child: Text(
-                path_util.basename(widget.videoPath),
-                style: const TextStyle(color: Colors.white, fontSize: 11),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: _buildFileInfo(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFileInfo() {
-    return FutureBuilder<FileStat>(
-      future: File(widget.videoPath).stat(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return Container(
-            color: Colors.black54,
-            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-            child: const Text(
-              'Loading info...',
-              style: TextStyle(color: Colors.white70, fontSize: 10),
-            ),
-          );
-        }
-
-        final fileSize = _formatFileSize(snapshot.data!.size);
-        final modified = snapshot.data!.modified;
-
-        return Container(
-          color: Colors.black54,
-          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                fileSize,
-                style: const TextStyle(color: Colors.white, fontSize: 10),
-              ),
-              Text(
-                _formatDate(modified),
-                style: const TextStyle(color: Colors.white70, fontSize: 9),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  IconData _getVideoTypeIcon(String ext) {
-    switch (ext) {
-      case '.mp4':
-        return Icons.movie;
-      case '.mkv':
-        return Icons.movie;
-      case '.avi':
-        return Icons.videocam;
-      case '.mov':
-        return Icons.videocam;
-      case '.wmv':
-        return Icons.video_library;
-      default:
-        return Icons.video_file;
-    }
-  }
-
-  List<Color> _getGradientColors(String ext) {
-    switch (ext) {
-      case '.mp4':
-        return [Colors.blue[900]!, Colors.blue[600]!];
-      case '.mkv':
-        return [Colors.green[900]!, Colors.green[600]!];
-      case '.avi':
-        return [Colors.purple[900]!, Colors.purple[600]!];
-      case '.mov':
-        return [Colors.orange[900]!, Colors.orange[600]!];
-      case '.wmv':
-        return [Colors.red[900]!, Colors.red[600]!];
-      default:
-        return [Colors.grey[900]!, Colors.grey[700]!];
-    }
-  }
-
-  String _formatFileSize(int bytes) {
-    if (bytes <= 0) return "0 B";
-    const suffixes = ["B", "KB", "MB", "GB", "TB"];
-    var i = (math.log(bytes) / math.log(1024)).floor();
-    return '${(bytes / math.pow(1024, i)).toStringAsFixed(1)} ${suffixes[i]}';
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year} ${_twoDigits(date.hour)}:${_twoDigits(date.minute)}';
-  }
-
-  String _twoDigits(int n) {
-    if (n >= 10) return "$n";
-    return "0$n";
   }
 }

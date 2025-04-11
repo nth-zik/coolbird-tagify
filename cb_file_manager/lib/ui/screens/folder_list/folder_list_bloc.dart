@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
+import 'package:cb_file_manager/helpers/io_extensions.dart';
+import 'package:path/path.dart' as pathlib;
 
 import 'folder_list_event.dart';
 import 'folder_list_state.dart';
@@ -13,8 +15,14 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
     on<AddTagToFile>(_onAddTagToFile);
     on<RemoveTagFromFile>(_onRemoveTagFromFile);
     on<SearchByTag>(_onSearchByTag);
+    on<SearchByTagGlobally>(_onSearchByTagGlobally);
+    on<SearchByFileName>(_onSearchByFileName);
+    on<SearchMediaFiles>(_onSearchMediaFiles);
     on<LoadTagsFromFile>(_onLoadTagsFromFile);
     on<LoadAllTags>(_onLoadAllTags);
+    on<SetViewMode>(_onSetViewMode);
+    on<SetSortOption>(_onSetSortOption);
+    on<SetGridZoom>(_onSetGridZoom);
   }
 
   void _onFolderListInit(
@@ -43,7 +51,7 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
           if (entity is Directory) {
             folders.add(entity);
           } else if (entity is File) {
-            // Skip tag files
+            // Skip tag files - no longer needed with global tags
             if (!entity.path.endsWith('.tags')) {
               files.add(entity);
             }
@@ -183,10 +191,14 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
   }
 
   void _onSearchByTag(SearchByTag event, Emitter<FolderListState> emit) async {
-    emit(state.copyWith(isLoading: true));
+    emit(state.copyWith(
+      isLoading: true,
+      isSearchByName: false,
+      isGlobalSearch: false,
+    ));
 
     try {
-      // Use TagManager to search for files with the given tag
+      // Use TagManager to search for files with the given tag within current directory
       final matchingFiles =
           await TagManager.findFilesByTag(state.currentPath.path, event.tag);
 
@@ -194,10 +206,194 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
         isLoading: false,
         searchResults: matchingFiles,
         currentSearchTag: event.tag,
+        currentSearchQuery: null,
       ));
     } catch (e) {
       emit(state.copyWith(
           isLoading: false, error: "Error searching by tag: ${e.toString()}"));
+    }
+  }
+
+  void _onSearchByTagGlobally(
+      SearchByTagGlobally event, Emitter<FolderListState> emit) async {
+    emit(state.copyWith(
+      isLoading: true,
+      isSearchByName: false,
+      isGlobalSearch: true,
+    ));
+
+    try {
+      // Use TagManager to search for files with the given tag across all directories
+      final matchingFiles = await TagManager.findFilesByTagGlobally(event.tag);
+
+      emit(state.copyWith(
+        isLoading: false,
+        searchResults: matchingFiles,
+        currentSearchTag: event.tag,
+        currentSearchQuery: null,
+      ));
+    } catch (e) {
+      emit(state.copyWith(
+          isLoading: false,
+          error: "Error searching by tag globally: ${e.toString()}"));
+    }
+  }
+
+  void _onSearchByFileName(
+      SearchByFileName event, Emitter<FolderListState> emit) async {
+    emit(state.copyWith(
+      isLoading: true,
+      isSearchByName: true,
+    ));
+
+    try {
+      final String query = event.query.toLowerCase();
+      final String path = state.currentPath.path;
+      final List<FileSystemEntity> matchingFiles = [];
+
+      // Function to search directory for matching files
+      Future<void> searchDirectory(String dirPath, bool recursive) async {
+        final Directory dir = Directory(dirPath);
+        if (!await dir.exists()) return;
+
+        await for (var entity in dir.list(recursive: recursive)) {
+          if (entity is File) {
+            final String fileName = pathlib.basename(entity.path).toLowerCase();
+            if (fileName.contains(query)) {
+              matchingFiles.add(entity);
+            }
+          }
+        }
+      }
+
+      // Perform search
+      await searchDirectory(path, event.recursive);
+
+      emit(state.copyWith(
+        isLoading: false,
+        searchResults: matchingFiles,
+        currentSearchQuery: event.query,
+        currentSearchTag: null,
+      ));
+    } catch (e) {
+      emit(state.copyWith(
+          isLoading: false, error: "Error searching files: ${e.toString()}"));
+    }
+  }
+
+  void _onSearchMediaFiles(
+      SearchMediaFiles event, Emitter<FolderListState> emit) async {
+    emit(state.copyWith(
+      isLoading: true,
+      isSearchByMedia: true,
+      isSearchByName: false,
+      searchRecursive: event.recursive,
+      currentMediaSearch: _convertMediaSearchTypeToMediaType(event.mediaType),
+      currentSearchTag: null,
+      currentSearchQuery: null,
+    ));
+
+    try {
+      final String path = state.currentPath.path;
+      final List<FileSystemEntity> matchingFiles = [];
+
+      // Define media type extensions
+      List<String> targetExtensions = [];
+      String mediaTypeLabel = '';
+
+      // Set up the file extensions to search for based on media type
+      switch (event.mediaType) {
+        case MediaSearchType.images:
+          targetExtensions = [
+            'jpg',
+            'jpeg',
+            'png',
+            'gif',
+            'webp',
+            'bmp',
+            'heic',
+            'heif'
+          ];
+          mediaTypeLabel = 'images';
+          break;
+        case MediaSearchType.videos:
+          targetExtensions = [
+            'mp4',
+            'mov',
+            'avi',
+            'mkv',
+            'flv',
+            'wmv',
+            'webm',
+            '3gp',
+            'm4v'
+          ];
+          mediaTypeLabel = 'videos';
+          break;
+        case MediaSearchType.all:
+          targetExtensions = [
+            'jpg',
+            'jpeg',
+            'png',
+            'gif',
+            'webp',
+            'bmp',
+            'heic',
+            'heif',
+            'mp4',
+            'mov',
+            'avi',
+            'mkv',
+            'flv',
+            'wmv',
+            'webm',
+            '3gp',
+            'm4v'
+          ];
+          mediaTypeLabel = 'media files';
+          break;
+      }
+
+      // Function to search directory for matching files
+      Future<void> searchDirectory(String dirPath, bool recursive) async {
+        final Directory dir = Directory(dirPath);
+        if (!await dir.exists()) return;
+
+        await for (var entity in dir.list(recursive: recursive)) {
+          if (entity is File) {
+            final String extension = entity.path.split('.').last.toLowerCase();
+            if (targetExtensions.contains(extension)) {
+              matchingFiles.add(entity);
+            }
+          }
+        }
+      }
+
+      // Perform search
+      await searchDirectory(path, event.recursive);
+
+      emit(state.copyWith(
+        isLoading: false,
+        searchResults: matchingFiles,
+      ));
+    } catch (e) {
+      emit(state.copyWith(
+          isLoading: false,
+          error: "Error searching media files: ${e.toString()}"));
+    }
+  }
+
+  // Helper method to convert MediaSearchType to MediaType
+  MediaType _convertMediaSearchTypeToMediaType(MediaSearchType searchType) {
+    switch (searchType) {
+      case MediaSearchType.images:
+        return MediaType.image;
+      case MediaSearchType.videos:
+        return MediaType.video;
+      case MediaSearchType.audio:
+        return MediaType.audio; // Handle the audio case
+      case MediaSearchType.all:
+        return MediaType.image; // Default to image type when searching all
     }
   }
 
@@ -220,11 +416,134 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
 
   void _onLoadAllTags(LoadAllTags event, Emitter<FolderListState> emit) async {
     try {
+      // Get all unique tags across the entire file system (globally)
       final Set<String> allTags =
           await TagManager.getAllUniqueTags(event.directory);
       emit(state.copyWith(allUniqueTags: allTags));
     } catch (e) {
       print('Error loading all tags: ${e.toString()}');
+    }
+  }
+
+  void _onSetViewMode(SetViewMode event, Emitter<FolderListState> emit) {
+    emit(state.copyWith(viewMode: event.viewMode));
+  }
+
+  void _onSetGridZoom(SetGridZoom event, Emitter<FolderListState> emit) {
+    // Update the grid zoom level
+    emit(state.copyWith(gridZoomLevel: event.zoomLevel));
+  }
+
+  void _onSetSortOption(
+      SetSortOption event, Emitter<FolderListState> emit) async {
+    emit(state.copyWith(isLoading: true));
+
+    try {
+      // Get file stats for sorting
+      Map<String, FileStat> fileStatsCache = {};
+
+      // Create new sorted lists by copying the original lists
+      List<FileSystemEntity> sortedFolders = List.from(state.folders);
+      List<FileSystemEntity> sortedFiles = List.from(state.files);
+      List<FileSystemEntity> sortedFilteredFiles =
+          List.from(state.filteredFiles);
+      List<FileSystemEntity> sortedSearchResults =
+          List.from(state.searchResults);
+
+      // Cache file stats for better performance
+      Future<void> cacheFileStats(List<FileSystemEntity> entities) async {
+        for (var entity in entities) {
+          if (!fileStatsCache.containsKey(entity.path)) {
+            fileStatsCache[entity.path] = await entity.stat();
+          }
+        }
+      }
+
+      // Wait for all file stats to be loaded
+      await Future.wait([
+        cacheFileStats(sortedFolders),
+        cacheFileStats(sortedFiles),
+        cacheFileStats(sortedFilteredFiles),
+        cacheFileStats(sortedSearchResults),
+      ]);
+
+      // Define the sorting function based on the selected sort option
+      int Function(FileSystemEntity, FileSystemEntity) compareFunction;
+
+      switch (event.sortOption) {
+        case SortOption.nameAsc:
+          compareFunction = (a, b) => pathlib
+              .basename(a.path)
+              .toLowerCase()
+              .compareTo(pathlib.basename(b.path).toLowerCase());
+          break;
+        case SortOption.nameDesc:
+          compareFunction = (a, b) => pathlib
+              .basename(b.path)
+              .toLowerCase()
+              .compareTo(pathlib.basename(a.path).toLowerCase());
+          break;
+        case SortOption.dateAsc:
+          compareFunction = (a, b) {
+            final aStats = fileStatsCache[a.path]!;
+            final bStats = fileStatsCache[b.path]!;
+            return aStats.modified.compareTo(bStats.modified);
+          };
+          break;
+        case SortOption.dateDesc:
+          compareFunction = (a, b) {
+            final aStats = fileStatsCache[a.path]!;
+            final bStats = fileStatsCache[b.path]!;
+            return bStats.modified.compareTo(aStats.modified);
+          };
+          break;
+        case SortOption.sizeAsc:
+          compareFunction = (a, b) {
+            final aStats = fileStatsCache[a.path]!;
+            final bStats = fileStatsCache[b.path]!;
+            return aStats.size.compareTo(bStats.size);
+          };
+          break;
+        case SortOption.sizeDesc:
+          compareFunction = (a, b) {
+            final aStats = fileStatsCache[a.path]!;
+            final bStats = fileStatsCache[b.path]!;
+            return bStats.size.compareTo(aStats.size);
+          };
+          break;
+        case SortOption.typeAsc:
+          compareFunction = (a, b) {
+            final aExt = a.path.split('.').last.toLowerCase();
+            final bExt = b.path.split('.').last.toLowerCase();
+            return aExt.compareTo(bExt);
+          };
+          break;
+        default:
+          compareFunction = (a, b) => pathlib
+              .basename(a.path)
+              .toLowerCase()
+              .compareTo(pathlib.basename(b.path).toLowerCase());
+      }
+
+      // Sort folders and files separately
+      sortedFolders.sort(compareFunction);
+      sortedFiles.sort(compareFunction);
+      sortedFilteredFiles.sort(compareFunction);
+      sortedSearchResults.sort(compareFunction);
+
+      // Emit the new state with sorted lists and the updated sort option
+      emit(state.copyWith(
+        isLoading: false,
+        sortOption: event.sortOption,
+        folders: sortedFolders,
+        files: sortedFiles,
+        filteredFiles: sortedFilteredFiles,
+        searchResults: sortedSearchResults,
+        fileStatsCache: fileStatsCache,
+      ));
+    } catch (e) {
+      emit(state.copyWith(
+          isLoading: false, error: "Error sorting files: ${e.toString()}"));
     }
   }
 }
