@@ -16,6 +16,8 @@ class UserPreferences {
       'image_gallery_thumbnail_size';
   static const String _videoGalleryThumbnailSizeKey =
       'video_gallery_thumbnail_size';
+  static const String _videoPlayerVolumeKey = 'video_player_volume';
+  static const String _videoPlayerMuteKey = 'video_player_mute';
 
   // Constants for grid zoom level
   static const int minGridZoomLevel = 2; // Largest thumbnails (2 per row)
@@ -148,5 +150,28 @@ class UserPreferences {
     // Ensure the zoom level is within bounds
     final validZoom = zoomLevel.clamp(minGridZoomLevel, maxGridZoomLevel);
     return await _preferences?.setInt(_gridZoomLevelKey, validZoom) ?? false;
+  }
+
+  /// Get video player volume preference (0-100)
+  double getVideoPlayerVolume() {
+    return _preferences?.getDouble(_videoPlayerVolumeKey) ?? 70.0;
+  }
+
+  /// Save video player volume preference (0-100)
+  Future<bool> setVideoPlayerVolume(double volume) async {
+    // Ensure volume is within bounds (0 to 100)
+    double validVolume = volume.clamp(0.0, 100.0);
+    return await _preferences?.setDouble(_videoPlayerVolumeKey, validVolume) ??
+        false;
+  }
+
+  /// Get video player mute state
+  bool getVideoPlayerMute() {
+    return _preferences?.getBool(_videoPlayerMuteKey) ?? false;
+  }
+
+  /// Save video player mute state
+  Future<bool> setVideoPlayerMute(bool isMuted) async {
+    return await _preferences?.setBool(_videoPlayerMuteKey, isMuted) ?? false;
   }
 }

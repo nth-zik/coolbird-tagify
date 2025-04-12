@@ -5,6 +5,9 @@ import 'ui/home.dart';
 import 'ui/main_ui.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'helpers/tag_manager.dart';
+import 'package:media_kit/media_kit.dart'; // Import Media Kit
+import 'package:window_manager/window_manager.dart'; // Import window_manager
+import 'helpers/media_kit_audio_helper.dart'; // Import our audio helper
 
 // Global key for app state access
 final GlobalKey<MyHomePageState> homeKey = GlobalKey<MyHomePageState>();
@@ -12,6 +15,41 @@ final GlobalKey<MyHomePageState> homeKey = GlobalKey<MyHomePageState>();
 void main() async {
   // Ensure Flutter is initialized before using platform plugins
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Media Kit with proper audio configuration
+  MediaKit.ensureInitialized();
+
+  // Initialize our audio helper to ensure sound works
+  if (Platform.isWindows) {
+    debugPrint('Setting up Windows-specific audio configuration');
+    await MediaKitAudioHelper.initialize();
+  }
+
+  // Initialize window_manager if on desktop platform
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    await windowManager.ensureInitialized();
+
+    // Create standard window options
+    WindowOptions windowOptions = const WindowOptions(
+      size: Size(800, 600),
+      center: true,
+      backgroundColor: Colors.transparent,
+      skipTaskbar: false,
+      titleBarStyle: TitleBarStyle.normal,
+    );
+
+    // Pre-configure window if on Windows
+    if (Platform.isWindows) {
+      await windowManager.setAsFrameless();
+      await windowManager.maximize();
+    }
+
+    // Now show the window with our configured options
+    await windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
+  }
 
   // Catch any errors during app initialization
   runZonedGuarded(() async {

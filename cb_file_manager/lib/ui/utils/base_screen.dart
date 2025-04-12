@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cb_file_manager/main.dart' show goHome;
 import 'package:cb_file_manager/ui/drawer.dart';
 import 'package:cb_file_manager/ui/utils/route.dart';
+import 'dart:io'; // For Platform check
 
 /// A base screen widget that handles common functionality across all screens
 /// including drawer, back button, and home button navigation.

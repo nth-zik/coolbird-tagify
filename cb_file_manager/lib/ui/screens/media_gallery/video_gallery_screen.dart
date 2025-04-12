@@ -10,7 +10,8 @@ import 'package:cb_file_manager/helpers/thumbnail_helper.dart';
 import 'package:cb_file_manager/helpers/user_preferences.dart';
 import 'package:cb_file_manager/ui/utils/base_screen.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
-import 'package:cb_file_manager/ui/components/shared_action_bar.dart'; // Import SharedActionBar
+import 'package:cb_file_manager/ui/components/shared_action_bar.dart';
+import 'package:cb_file_manager/ui/components/video_player/custom_video_player.dart'; // Import the new video player component
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/services.dart';
@@ -1244,117 +1245,7 @@ class VideoPlayerFullScreen extends StatefulWidget {
 }
 
 class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
-  late VideoPlayerController _videoPlayerController;
-  ChewieController? _chewieController;
-  bool _isLoading = true;
-  bool _hasError = false;
-  String _errorMessage = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _initializePlayer();
-  }
-
-  Future<void> _initializePlayer() async {
-    try {
-      setState(() {
-        _isLoading = true;
-        _hasError = false;
-      });
-
-      _videoPlayerController = VideoPlayerController.file(widget.file);
-
-      _videoPlayerController.addListener(_videoPlayerListener);
-
-      await _videoPlayerController.initialize().timeout(
-            const Duration(seconds: 30),
-            onTimeout: () => throw TimeoutException(
-                'Video initialization timed out after 30 seconds'),
-          );
-
-      if (!_videoPlayerController.value.isInitialized) {
-        throw Exception('Failed to initialize video player');
-      }
-
-      _chewieController = ChewieController(
-        videoPlayerController: _videoPlayerController,
-        autoPlay: true,
-        looping: false,
-        aspectRatio: _videoPlayerController.value.aspectRatio > 0
-            ? _videoPlayerController.value.aspectRatio
-            : 16 / 9,
-        allowFullScreen: true,
-        allowMuting: true,
-        allowPlaybackSpeedChanging: true,
-        placeholder: Center(
-          child: CircularProgressIndicator(),
-        ),
-        materialProgressColors: ChewieProgressColors(
-          playedColor: Colors.red,
-          handleColor: Colors.red,
-          backgroundColor: Colors.grey,
-          bufferedColor: Colors.white,
-        ),
-        errorBuilder: (context, errorMessage) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.error, color: Colors.white, size: 42),
-                const SizedBox(height: 16),
-                Text(
-                  'Lỗi phát video: $errorMessage',
-                  style: const TextStyle(color: Colors.white),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text('Quay lại'),
-                ),
-              ],
-            ),
-          );
-        },
-      );
-
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      print('Error initializing video player: $e');
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _hasError = true;
-          _errorMessage = e.toString();
-        });
-      }
-    }
-  }
-
-  void _videoPlayerListener() {
-    if (_videoPlayerController.value.hasError && !_hasError) {
-      setState(() {
-        _hasError = true;
-        _errorMessage = _videoPlayerController.value.errorDescription ??
-            'Unknown video error';
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _videoPlayerController.removeListener(_videoPlayerListener);
-    _videoPlayerController.dispose();
-    _chewieController?.dispose();
-    super.dispose();
-  }
+  Map<String, dynamic>? _videoMetadata;
 
   @override
   Widget build(BuildContext context) {
@@ -1368,153 +1259,36 @@ class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
         ),
       ],
       body: SafeArea(
-        child: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(color: Colors.white),
-              )
-            : _hasError
-                ? _buildErrorWidget()
-                : Center(
-                    child: _chewieController != null
-                        ? Chewie(controller: _chewieController!)
-                        : const Text('Không thể khởi tạo trình phát video',
-                            style: TextStyle(color: Colors.white)),
-                  ),
-      ),
-    );
-  }
-
-  Widget _buildErrorWidget() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.error_outline,
-            color: Colors.red,
-            size: 60,
-          ),
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(
-              'Không thể phát video này\n\n$_errorMessage',
-              style: const TextStyle(color: Colors.white),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () {
+        child: Center(
+          child: CustomVideoPlayer(
+            file: widget.file,
+            autoPlay: true,
+            showControls: true,
+            allowFullScreen: true,
+            onVideoInitialized: (metadata) {
               setState(() {
-                _isLoading = true;
-                _hasError = false;
-                _initializePlayer();
+                _videoMetadata = metadata;
               });
             },
-            child: const Text('Thử lại'),
-          ),
-          const SizedBox(height: 12),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
+            onError: (errorMessage) {
+              // Optional: Show a snackbar or other notification
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Lỗi: $errorMessage')),
+              );
             },
-            child:
-                const Text('Quay lại', style: TextStyle(color: Colors.white)),
           ),
-        ],
+        ),
       ),
     );
   }
 
-  void _showVideoInfo(BuildContext context) async {
-    try {
-      var fileStat = await widget.file.stat();
-      var fileSize = fileStat.size;
-      var modified = fileStat.modified;
-
-      if (!mounted) return;
-
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('Thông tin video'),
-            content: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _infoRow('Tên tập tin', pathlib.basename(widget.file.path)),
-                  const Divider(),
-                  _infoRow('Đường dẫn', widget.file.path),
-                  const Divider(),
-                  _infoRow('Kích thước', _formatFileSize(fileSize)),
-                  const Divider(),
-                  _infoRow('Cập nhật lần cuối',
-                      '${modified.day}/${modified.month}/${modified.year} ${modified.hour}:${modified.minute}'),
-                  if (_videoPlayerController.value.isInitialized) ...[
-                    const Divider(),
-                    _infoRow('Độ dài',
-                        _formatDuration(_videoPlayerController.value.duration)),
-                    const Divider(),
-                    _infoRow('Độ phân giải',
-                        '${_videoPlayerController.value.size.width.toInt()} x ${_videoPlayerController.value.size.height.toInt()}'),
-                  ],
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Text('Đóng'),
-              ),
-            ],
-          );
-        },
-      );
-    } catch (e) {
-      print('Error showing video info: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không thể hiển thị thông tin video: $e')),
-      );
-    }
-  }
-
-  Widget _infoRow(String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '$title: ',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontSize: 14),
-            ),
-          ),
-        ],
+  void _showVideoInfo(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => VideoInfoDialog(
+        file: widget.file,
+        videoMetadata: _videoMetadata,
       ),
     );
-  }
-
-  String _formatDuration(Duration duration) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
-    String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
-    return "${twoDigits(duration.inHours)}:$twoDigitMinutes:$twoDigitSeconds";
-  }
-
-  String _formatFileSize(int bytes) {
-    if (bytes <= 0) return "0 B";
-    const suffixes = ["B", "KB", "MB", "GB", "TB"];
-    var i = (log(bytes) / log(1024)).floor();
-    return '${(bytes / pow(1024, i)).toStringAsFixed(1)} ${suffixes[i]}';
   }
 }
