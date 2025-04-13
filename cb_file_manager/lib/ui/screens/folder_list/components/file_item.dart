@@ -4,6 +4,7 @@ import 'package:cb_file_manager/ui/screens/folder_list/file_details_screen.dart'
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
+import 'package:cb_file_manager/ui/screens/media_gallery/video_gallery_screen.dart'; // Import VideoGalleryScreen for VideoPlayerFullScreen
 import 'package:flutter/material.dart';
 
 import 'tag_dialogs.dart';
@@ -33,6 +34,7 @@ class FileItem extends StatelessWidget {
     final extension = file.path.split('.').last.toLowerCase();
     IconData icon;
     Color? iconColor;
+    bool isVideo = false; // Flag to check if file is video
 
     // Determine file type and icon
     if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(extension)) {
@@ -41,6 +43,7 @@ class FileItem extends StatelessWidget {
     } else if (['mp4', 'mov', 'avi', 'mkv', 'flv', 'wmv'].contains(extension)) {
       icon = Icons.videocam;
       iconColor = Colors.red;
+      isVideo = true; // Set video flag
     } else if (['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac']
         .contains(extension)) {
       icon = Icons.audiotrack;
@@ -87,7 +90,16 @@ class FileItem extends StatelessWidget {
             onTap: () {
               if (isSelectionMode) {
                 toggleFileSelection(file.path);
+              } else if (isVideo) {
+                // If it's a video file, navigate to VideoPlayerFullScreen
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => VideoPlayerFullScreen(file: file),
+                  ),
+                );
               } else {
+                // For non-video files, navigate to FileDetailsScreen as before
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -105,6 +117,14 @@ class FileItem extends StatelessWidget {
                         showAddTagToFileDialog(context, file.path);
                       } else if (value == 'delete_tag') {
                         showDeleteTagDialog(context, file.path, fileTags);
+                      } else if (value == 'details' && isVideo) {
+                        // Option to view details for video files
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => FileDetailsScreen(file: file),
+                          ),
+                        );
                       }
                     },
                     itemBuilder: (BuildContext context) => [
@@ -116,6 +136,12 @@ class FileItem extends StatelessWidget {
                         const PopupMenuItem(
                           value: 'delete_tag',
                           child: Text('Remove Tag'),
+                        ),
+                      // Add "View Details" option for video files
+                      if (isVideo)
+                        const PopupMenuItem(
+                          value: 'details',
+                          child: Text('View Details'),
                         ),
                     ],
                   ),

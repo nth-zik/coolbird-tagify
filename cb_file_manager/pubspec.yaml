@@ -28,9 +28,8 @@ dependencies:
   video_player: ^2.8.1
   video_thumbnail: ^0.5.3
   path: ^1.8.3
-  ffmpeg_helper: ^1.0.0
   shared_preferences: ^2.2.2
-  window_manager: ^0.3.8 # Added for desktop window management
+  window_manager: ^0.4.3 # Added for desktop window management
 
   # Media Kit packages for cross-platform video playback (including Windows)
   media_kit: ^1.1.10 # Primary package
@@ -42,6 +41,7 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.6
   chewie: ^1.7.5
+  file_picker: ^10.1.2
 
 dev_dependencies:
   flutter_test:

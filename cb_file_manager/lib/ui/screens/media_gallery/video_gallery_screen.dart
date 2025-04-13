@@ -489,28 +489,29 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
         return Card(
           margin: const EdgeInsets.only(bottom: 8),
           child: ListTile(
-            leading: Container(
+            leading: SizedBox(
               width: 60,
               height: 60,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  ThumbnailHelper.buildVideoThumbnail(
-                    videoPath: file.path,
-                    width: 60,
-                    height: 60,
-                    isVisible: true,
-                    onThumbnailGenerated: (_) {},
-                    fallbackBuilder: () => Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: ThumbnailHelper.buildVideoThumbnail(
+                      videoPath: file.path,
+                      width: 60,
+                      height: 60,
+                      isVisible: true,
+                      onThumbnailGenerated: (_) {},
+                      fallbackBuilder: () => Container(
+                        color: Colors.black12,
+                        child: const Icon(Icons.movie, color: Colors.grey),
                       ),
-                      child: const Icon(Icons.movie, color: Colors.grey),
                     ),
                   ),
                   Center(
                     child: Container(
-                      padding: const EdgeInsets.all(4),
+                      padding: const EdgeInsets.all(2),
                       decoration: BoxDecoration(
                         color: Colors.black.withOpacity(0.5),
                         shape: BoxShape.circle,
@@ -518,7 +519,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
                       child: const Icon(
                         Icons.play_arrow,
                         color: Colors.white,
-                        size: 24,
+                        size: 20,
                       ),
                     ),
                   ),
@@ -1246,18 +1247,26 @@ class VideoPlayerFullScreen extends StatefulWidget {
 
 class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
   Map<String, dynamic>? _videoMetadata;
+  bool _isFullScreen = false;
+  bool _showAppBar = true; // Control app bar visibility
 
   @override
   Widget build(BuildContext context) {
-    return BaseScreen(
-      title: pathlib.basename(widget.file.path),
+    return Scaffold(
+      // Use Scaffold instead of BaseScreen to have more control over app bar visibility
+      appBar: _isFullScreen && !_showAppBar
+          ? null // Hide app bar completely when in fullscreen and _showAppBar is false
+          : AppBar(
+              title: Text(pathlib.basename(widget.file.path)),
+              backgroundColor: Colors.black,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.info_outline),
+                  onPressed: () => _showVideoInfo(context),
+                ),
+              ],
+            ),
       backgroundColor: Colors.black,
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.info_outline),
-          onPressed: () => _showVideoInfo(context),
-        ),
-      ],
       body: SafeArea(
         child: Center(
           child: CustomVideoPlayer(
@@ -1275,6 +1284,40 @@ class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Lỗi: $errorMessage')),
               );
+            },
+            // Add callbacks to synchronize fullscreen state and control visibility
+            onFullScreenChanged: () {
+              setState(() {
+                _isFullScreen = !_isFullScreen;
+                // When entering fullscreen, start with controls/appbar visible then hide after delay
+                _showAppBar = true;
+                if (_isFullScreen) {
+                  // Auto-hide after a delay
+                  Future.delayed(const Duration(seconds: 3), () {
+                    if (mounted && _isFullScreen) {
+                      setState(() {
+                        _showAppBar = false;
+                      });
+                    }
+                  });
+                }
+              });
+            },
+            onControlVisibilityChanged: () {
+              // Sync app bar visibility with video controls visibility
+              if (_isFullScreen) {
+                setState(() {
+                  _showAppBar = true;
+                });
+                // Auto-hide after a delay
+                Future.delayed(const Duration(seconds: 3), () {
+                  if (mounted && _isFullScreen) {
+                    setState(() {
+                      _showAppBar = false;
+                    });
+                  }
+                });
+              }
             },
           ),
         ),

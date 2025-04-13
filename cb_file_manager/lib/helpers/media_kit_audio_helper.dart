@@ -45,7 +45,7 @@ class MediaKitAudioHelper {
 
       // Check if any audio track is selected
       final currentTrack = player.state.track.audio;
-      debugPrint('Current audio track: ${currentTrack?.id ?? "none"}');
+      debugPrint('Current audio track: ${currentTrack.id ?? "none"}');
 
       // Consider audio working if we have at least one audio track
       return audioTracks.isNotEmpty;

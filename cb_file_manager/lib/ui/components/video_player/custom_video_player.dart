@@ -27,6 +27,11 @@ class CustomVideoPlayer extends StatefulWidget {
   final VoidCallback? onPreviousVideo;
   final bool hasNextVideo;
   final bool hasPreviousVideo;
+  final VoidCallback?
+      onControlVisibilityChanged; // Callback when controls visibility changes
+  final VoidCallback?
+      onFullScreenChanged; // Callback when fullscreen state changes
+  final VoidCallback? onInitialized; // Added callback for when video is initialized and ready to play
 
   const CustomVideoPlayer({
     Key? key,
@@ -43,6 +48,9 @@ class CustomVideoPlayer extends StatefulWidget {
     this.onPreviousVideo,
     this.hasNextVideo = false,
     this.hasPreviousVideo = false,
+    this.onControlVisibilityChanged,
+    this.onFullScreenChanged,
+    this.onInitialized, // Added to constructor
   }) : super(key: key);
 
   @override
@@ -54,6 +62,9 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
   late final Player _player;
   late final VideoController _videoController;
 
+  // Focus node for keyboard events
+  final FocusNode _focusNode = FocusNode();
+
   bool _isLoading = true;
   bool _hasError = false;
   bool _isFullScreen = false;
@@ -63,7 +74,9 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
   Timer? _initializationTimeout;
   Map<String, dynamic>? _videoMetadata;
   double _savedVolume = 70.0; // Store volume as 0.0-100.0 scale, default 70.0
-  bool _showAudioTracksMenu = false; // Track if audio tracks menu is open
+// Track if audio tracks menu is open
+  bool _showControls = true; // Track if controls are visible in fullscreen
+  Timer? _hideControlsTimer; // Timer to auto-hide controls
 
   @override
   void initState() {
@@ -115,7 +128,7 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
       }
       _isMuted = userPreferences.getVideoPlayerMute();
       debugPrint(
-          'Loaded preferences - volume: ${_savedVolume.toStringAsFixed(1)}, muted: $_isMuted');
+          'Loaded preferences - volume: ${_savedVolume.toStringAsFixed(1)}, muted: _isMuted');
 
       // Create Media Kit player instance
       _player = Player();
@@ -225,6 +238,11 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
         widget.onVideoInitialized!(_videoMetadata!);
       }
 
+      // Notify parent widget that the video is initialized and ready to play
+      if (widget.onInitialized != null) {
+        widget.onInitialized!();
+      }
+
       // Update UI with loaded video
       if (mounted) {
         setState(() {
@@ -314,8 +332,40 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
 
   @override
   void dispose() {
+    _hideControlsTimer?.cancel();
     _disposeControllers();
     super.dispose();
+  }
+
+  // Start timer to auto-hide controls
+  void _startHideControlsTimer() {
+    _hideControlsTimer?.cancel();
+    _hideControlsTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted && _isFullScreen) {
+        setState(() {
+          _showControls = false;
+        });
+        // Notify parent about control visibility change if needed
+        if (widget.onControlVisibilityChanged != null) {
+          widget.onControlVisibilityChanged!();
+        }
+      }
+    });
+  }
+
+  // Show controls and restart timer
+  void _showControlsWithTimer() {
+    if (mounted) {
+      setState(() {
+        _showControls = true;
+      });
+      _startHideControlsTimer();
+
+      // Notify parent about control visibility change if needed
+      if (widget.onControlVisibilityChanged != null) {
+        widget.onControlVisibilityChanged!();
+      }
+    }
   }
 
   // Toggle fullscreen state
@@ -335,7 +385,18 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
           }
           setState(() {
             _isFullScreen = !isFullScreen;
+
+            // When entering fullscreen, start with controls visible
+            if (_isFullScreen) {
+              _showControls = true;
+              _startHideControlsTimer();
+            }
           });
+
+          // Notify parent about fullscreen state change
+          if (widget.onFullScreenChanged != null) {
+            widget.onFullScreenChanged!();
+          }
         } catch (e) {
           debugPrint('Error toggling fullscreen: $e');
         }
@@ -343,6 +404,12 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
         // Mobile platforms - use system chrome
         setState(() {
           _isFullScreen = !_isFullScreen;
+
+          // When entering fullscreen, start with controls visible
+          if (_isFullScreen) {
+            _showControls = true;
+            _startHideControlsTimer();
+          }
         });
 
         if (_isFullScreen) {
@@ -357,7 +424,72 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
           SystemChrome.setPreferredOrientations(DeviceOrientation.values);
           SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
         }
+
+        // Notify parent about fullscreen state change
+        if (widget.onFullScreenChanged != null) {
+          widget.onFullScreenChanged!();
+        }
       }
+    }
+  }
+
+  // Seek forward by the specified number of seconds
+  void _seekForward([int seconds = 10]) async {
+    final currentPosition = _player.state.position;
+    final newPosition = currentPosition + Duration(seconds: seconds);
+
+    // Make sure we don't seek past the end of the video
+    final seekPosition = newPosition > _player.state.duration
+        ? _player.state.duration
+        : newPosition;
+
+    await _player.seek(seekPosition);
+
+    // Show controls briefly when seeking
+    if (_isFullScreen) {
+      _showControlsWithTimer();
+    }
+  }
+
+  // Seek backward by the specified number of seconds
+  void _seekBackward([int seconds = 10]) async {
+    final currentPosition = _player.state.position;
+    final newPosition = currentPosition - Duration(seconds: seconds);
+
+    // Make sure we don't seek before the start of the video
+    final seekPosition =
+        newPosition < Duration.zero ? Duration.zero : newPosition;
+
+    await _player.seek(seekPosition);
+
+    // Show controls briefly when seeking
+    if (_isFullScreen) {
+      _showControlsWithTimer();
+    }
+  }
+
+  // Toggle play/pause state
+  void _togglePlayPause() async {
+    // Update local state immediately for UI responsiveness
+    setState(() {
+      _isPlaying = !_player.state.playing;
+    });
+
+    // Then update the actual player state
+    if (_player.state.playing) {
+      await _player.pause();
+    } else {
+      await _player.play();
+    }
+
+    // If in fullscreen, show controls briefly when play/pause is toggled
+    if (_isFullScreen) {
+      _showControlsWithTimer();
+    }
+
+    // Force another update to ensure UI is in sync with player
+    if (mounted) {
+      setState(() {});
     }
   }
 
@@ -369,27 +501,63 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
           )
         : _hasError
             ? _buildErrorWidget()
-            : Stack(
-                children: [
-                  // Base video with double-click for fullscreen
-                  GestureDetector(
-                    onDoubleTap:
-                        widget.allowFullScreen ? _toggleFullScreen : null,
-                    child: ClipRRect(
-                      borderRadius: _isFullScreen
-                          ? BorderRadius.zero
-                          : BorderRadius.circular(8.0),
-                      child: Video(
-                        controller: _videoController,
-                        controls: null, // Always use our custom controls
-                        fill: Colors.black,
-                      ),
+            : KeyboardListener(
+                focusNode: _focusNode,
+                autofocus: true,
+                onKeyEvent: (KeyEvent event) {
+                  if (event is KeyDownEvent) {
+                    if (event.logicalKey == LogicalKeyboardKey.space) {
+                      _togglePlayPause();
+                    } else if (event.logicalKey ==
+                        LogicalKeyboardKey.arrowLeft) {
+                      _seekBackward();
+                    } else if (event.logicalKey ==
+                        LogicalKeyboardKey.arrowRight) {
+                      _seekForward();
+                    }
+                  }
+                },
+                child: MouseRegion(
+                  // Detect mouse movements in fullscreen mode
+                  onHover: (_) {
+                    if (_isFullScreen) {
+                      _showControlsWithTimer();
+                    }
+                  },
+                  child: GestureDetector(
+                    // Add tap gesture to show controls in fullscreen mode
+                    onTap: () {
+                      if (_isFullScreen) {
+                        _showControlsWithTimer();
+                      }
+                    },
+                    child: Stack(
+                      children: [
+                        // Base video with double-click for fullscreen
+                        GestureDetector(
+                          onDoubleTap:
+                              widget.allowFullScreen ? _toggleFullScreen : null,
+                          child: ClipRRect(
+                            borderRadius: _isFullScreen
+                                ? BorderRadius.zero
+                                : BorderRadius.circular(8.0),
+                            child: Video(
+                              controller: _videoController,
+                              controls: null, // Always use our custom controls
+                              fill: Colors.black,
+                            ),
+                          ),
+                        ),
+
+                        // Add custom controls if enabled
+                        // In fullscreen mode, only show controls when _showControls is true
+                        if (widget.showControls &&
+                            (!_isFullScreen || _showControls))
+                          _buildCustomControls(),
+                      ],
                     ),
                   ),
-
-                  // Add custom controls if enabled
-                  if (widget.showControls) _buildCustomControls(),
-                ],
+                ),
               );
   }
 
@@ -851,26 +1019,6 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
     final seekMs =
         (_player.state.duration.inMilliseconds * seekPosition).round();
     _player.seek(Duration(milliseconds: seekMs));
-  }
-
-  // Toggle play/pause state
-  void _togglePlayPause() async {
-    // Update local state immediately for UI responsiveness
-    setState(() {
-      _isPlaying = !_player.state.playing;
-    });
-
-    // Then update the actual player state
-    if (_player.state.playing) {
-      await _player.pause();
-    } else {
-      await _player.play();
-    }
-
-    // Force another update to ensure UI is in sync with player
-    if (mounted) {
-      setState(() {});
-    }
   }
 
   // Helper methods for video information

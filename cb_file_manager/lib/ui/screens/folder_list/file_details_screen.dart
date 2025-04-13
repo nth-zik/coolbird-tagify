@@ -2,9 +2,11 @@ import 'dart:io';
 
 import 'package:cb_file_manager/helpers/io_extensions.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
+import 'package:cb_file_manager/helpers/thumbnail_helper.dart'; // Added ThumbnailHelper import
 import 'package:cb_file_manager/ui/utils/base_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as pathlib;
+import 'package:cb_file_manager/ui/components/video_player/custom_video_player.dart'; // Import the custom video player
 
 class FileDetailsScreen extends StatefulWidget {
   final File file;
@@ -19,6 +21,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
   late Future<FileStat> _fileStatFuture;
   late Future<List<String>> _tagsFuture;
   late TextEditingController _tagController;
+  bool _videoPlayerReady = false; // Track if video player is ready
 
   @override
   void initState() {
@@ -168,30 +171,63 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
   }
 
   Widget _buildVideoPreview() {
-    // NOTE: For actual implementation, you'd use a video player package like video_player
     return Container(
       width: double.infinity,
-      height: 200,
+      height: 300,
       color: Colors.black,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.videocam, size: 64, color: Colors.white54),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Show thumbnail first
+          if (!_videoPlayerReady)
+            Hero(
+              tag: widget.file.path,
+              child: ThumbnailHelper.buildVideoThumbnail(
+                videoPath: widget.file.path,
+                width: double.infinity,
+                height: 300,
+                isVisible: true,
+                onThumbnailGenerated: (_) {},
+                fallbackBuilder: () => Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.videocam, size: 64, color: Colors.white54),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Loading video...',
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          // Video player with opacity animation based on ready state
+          AnimatedOpacity(
+            opacity: _videoPlayerReady ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 300),
+            child: CustomVideoPlayer(
+              file: widget.file,
+              showControls: true,
+              allowFullScreen: true,
+              allowMuting: true,
+              onInitialized: () {
+                setState(() {
+                  _videoPlayerReady = true;
+                });
+              },
+              onError: (errorMessage) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                        'Video playback not implemented in this preview version'),
+                  SnackBar(
+                    content: Text('Error playing video: $errorMessage'),
                   ),
                 );
               },
-              child: const Text('Play Video'),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -1,7 +1,10 @@
 import 'dart:io';
 
+import 'package:cb_file_manager/helpers/thumbnail_helper.dart';
+import 'package:cb_file_manager/helpers/video_thumbnail_helper.dart'; // Added import for new helper
 import 'package:cb_file_manager/ui/screens/folder_list/file_details_screen.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
+import 'package:cb_file_manager/ui/screens/media_gallery/video_gallery_screen.dart';
 import 'package:flutter/material.dart';
 
 class FileGridItem extends StatelessWidget {
@@ -28,6 +31,7 @@ class FileGridItem extends StatelessWidget {
     IconData icon;
     Color? iconColor;
     bool isPreviewable = false;
+    bool isVideo = false; // Flag to check if file is video
 
     // Determine file type and icon
     if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(extension)) {
@@ -37,6 +41,7 @@ class FileGridItem extends StatelessWidget {
     } else if (['mp4', 'mov', 'avi', 'mkv', 'flv', 'wmv'].contains(extension)) {
       icon = Icons.videocam;
       iconColor = Colors.red;
+      isVideo = true; // Set video flag
     } else if (['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac']
         .contains(extension)) {
       icon = Icons.audiotrack;
@@ -61,7 +66,16 @@ class FileGridItem extends StatelessWidget {
         onTap: () {
           if (isSelectionMode) {
             toggleFileSelection(file.path);
+          } else if (isVideo) {
+            // If it's a video file, navigate to VideoPlayerFullScreen
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => VideoPlayerFullScreen(file: file),
+              ),
+            );
           } else {
+            // For non-video files, navigate to FileDetailsScreen as before
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -84,8 +98,8 @@ class FileGridItem extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Show image preview if it's an image file, otherwise show icon
-                  isPreviewable
+                  // Show image preview or appropriate icon for video files
+                  isPreviewable || isVideo
                       ? _buildThumbnail(file)
                       : Center(
                           child: Icon(
@@ -109,7 +123,8 @@ class FileGridItem extends StatelessWidget {
                         ),
                         child: Center(
                           child: isSelected
-                              ? Icon(Icons.check, size: 16, color: Colors.white)
+                              ? const Icon(Icons.check,
+                                  size: 16, color: Colors.white)
                               : null,
                         ),
                       ),
@@ -172,22 +187,67 @@ class FileGridItem extends StatelessWidget {
   }
 
   Widget _buildThumbnail(File file) {
-    return Hero(
-      tag: file.path,
-      child: Image.file(
-        file,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return Center(
-            child: Icon(
-              Icons.broken_image,
-              size: 48,
-              color: Colors.grey[400],
+    final String extension = _getFileExtension(file);
+    final bool isVideo =
+        ['mp4', 'mov', 'avi', 'mkv', 'flv', 'wmv'].contains(extension);
+
+    if (isVideo) {
+      // Use the new VideoThumbnailHelper instead of ThumbnailHelper
+      return Hero(
+        tag: file.path,
+        child: VideoThumbnailHelper.buildVideoThumbnail(
+          videoPath: file.path,
+          width: double.infinity,
+          height: double.infinity,
+          fallbackBuilder: () => Container(
+            color: Colors.black12,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.videocam,
+                    size: 36,
+                    color: Colors.red[400],
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      'Video',
+                      style: TextStyle(fontSize: 10, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          );
-        },
-      ),
-    );
+          ),
+        ),
+      );
+    } else {
+      // For image files, use the existing Image.file approach
+      return Hero(
+        tag: file.path,
+        child: Image.file(
+          file,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return Center(
+              child: Icon(
+                Icons.broken_image,
+                size: 48,
+                color: Colors.grey[400],
+              ),
+            );
+          },
+        ),
+      );
+    }
   }
 
   String _basename(File file) {

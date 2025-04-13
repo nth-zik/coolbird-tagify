@@ -1,34 +1,71 @@
-
 import 'dart:io';
 
 import 'package:equatable/equatable.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:simple_permissions/simple_permissions.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class CoreState extends Equatable {
-  Directory _currentPath;
-  final List<dynamic> folders = [];
-  final List<dynamic> subFolders = [];
+  final Directory currentPath;
+  final List<dynamic> folders;
+  final List<dynamic> subFolders;
 
-  CoreState(String currentPath) : this._currentPath = new Directory(currentPath);
+  const CoreState({
+    required this.currentPath,
+    this.folders = const [],
+    this.subFolders = const [],
+  });
 
-  @override
-  List<Object> get props => [_currentPath];
-  
-  set currentPath(Directory currentPath) {
-    _currentPath = currentPath;
+  // Factory constructor with string path
+  factory CoreState.withPath(String path) {
+    return CoreState(currentPath: Directory(path));
   }
 
-  Future<void> initialize() async {
-    //Requesting permissions if not granted
-    if (!await SimplePermissions.checkPermission(
-        Permission.WriteExternalStorage)) {
-      await SimplePermissions.requestPermission(
-          Permission.WriteExternalStorage);
-    }
+  @override
+  List<Object> get props => [currentPath, folders, subFolders];
 
-    print("Initializing");
-    // requesting permissions
-    currentPath = await getExternalStorageDirectory();
+  // Create a new instance with updated path
+  CoreState copyWith({
+    Directory? currentPath,
+    List<dynamic>? folders,
+    List<dynamic>? subFolders,
+  }) {
+    return CoreState(
+      currentPath: currentPath ?? this.currentPath,
+      folders: folders ?? this.folders,
+      subFolders: subFolders ?? this.subFolders,
+    );
+  }
+
+  Future<CoreState> initialize() async {
+    try {
+      // Requesting permissions if not granted using the newer permission_handler package
+      var status = await Permission.storage.status;
+      if (!status.isGranted) {
+        await Permission.storage.request();
+      }
+
+      print("Initializing");
+      // requesting storage directory
+      Directory? externalDir = await getExternalStorageDirectory();
+      if (externalDir != null) {
+        return copyWith(currentPath: externalDir);
+      } else {
+        print("Failed to get external storage directory");
+        return this;
+      }
+    } catch (e) {
+      print("Error during initialization: $e");
+      return this;
+    }
+  }
+
+  // Helper method to get current folder contents
+  Future<List<FileSystemEntity>> getCurrentFolderContents() async {
+    try {
+      return currentPath.listSync();
+    } catch (e) {
+      print("Error listing directory contents: $e");
+      return [];
+    }
   }
 }

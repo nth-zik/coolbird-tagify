@@ -27,44 +27,54 @@ class FolderGridItem extends StatelessWidget {
           );
         },
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            // Icon section
             Expanded(
+              flex: 3,
               child: Center(
                 child: Icon(
                   Icons.folder,
-                  size: 56,
+                  size: 40,
                   color: Colors.amber,
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
+            // Text section - using a container with fixed height to prevent overflow
+            Container(
+              constraints: BoxConstraints(maxHeight: 35),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
+              width: double.infinity,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     folder.basename(),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 10,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  FutureBuilder<FileStat>(
-                    future: folder.stat(),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasData) {
-                        return Text(
-                          '${snapshot.data!.modified.toString().split('.')[0]}',
-                          style: const TextStyle(fontSize: 10),
-                        );
-                      }
-                      return const Text('Loading...',
-                          style: TextStyle(fontSize: 10));
-                    },
+                  const SizedBox(height: 1),
+                  Flexible(
+                    child: FutureBuilder<FileStat>(
+                      future: folder.stat(),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData) {
+                          return Text(
+                            '${snapshot.data!.modified.toString().split('.')[0]}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 8),
+                          );
+                        }
+                        return const Text('Loading...',
+                            style: TextStyle(fontSize: 8));
+                      },
+                    ),
                   ),
                 ],
               ),
