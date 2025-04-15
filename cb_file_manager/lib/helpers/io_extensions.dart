@@ -90,7 +90,7 @@ extension DirectoryExtension on Directory {
 extension FileSystemEntityExtension on FileSystemEntity {
   /// Get the basename of the entity (last part of the path)
   String basename() {
-    return path.basename(this.path);
+    return this.path.split(Platform.isWindows ? r'\' : '/').last;
   }
 
   /// Check if the entity is a directory
@@ -102,4 +102,30 @@ extension FileSystemEntityExtension on FileSystemEntity {
   Future<bool> isFile() async {
     return await FileSystemEntity.isFile(this.path);
   }
+}
+
+/// Extension method to store and retrieve properties on Directory objects
+extension DirectoryProperties on Directory {
+  // A static map to store properties for directories - using path as a key
+  static final Map<String, Map<String, dynamic>> _properties = {};
+
+  // Set a property on a directory
+  void setProperty(String key, dynamic value) {
+    if (!_properties.containsKey(this.path)) {
+      _properties[this.path] = {};
+    }
+    _properties[this.path]![key] = value;
+  }
+
+  // Get a property from a directory
+  dynamic getProperty(String key, {dynamic defaultValue}) {
+    if (_properties.containsKey(this.path) &&
+        _properties[this.path]!.containsKey(key)) {
+      return _properties[this.path]![key];
+    }
+    return defaultValue;
+  }
+
+  // Check if a directory requires admin privileges
+  bool get requiresAdmin => getProperty('requiresAdmin', defaultValue: false);
 }

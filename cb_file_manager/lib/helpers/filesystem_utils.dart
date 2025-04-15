@@ -232,6 +232,7 @@ Future<List<FileSystemEntity>> sort(List<FileSystemEntity> elements, Sorting by,
 
 /// Get all available drives on Windows systems
 /// Returns a list of directories representing each drive
+/// Now also detects drives that require admin privileges
 Future<List<Directory>> getAllWindowsDrives() async {
   if (!Platform.isWindows) {
     return [];
@@ -246,13 +247,35 @@ Future<List<Directory>> getAllWindowsDrives() async {
 
     try {
       Directory drive = Directory(drivePath);
+
+      // First check if the drive exists
       if (await drive.exists()) {
-        drives.add(drive);
-        print('Found drive: $drivePath');
+        // Try to test if we can list files as a permission check
+        try {
+          // Just try to list one file to check permissions
+          await drive
+              .list(followLinks: false)
+              .first
+              .timeout(const Duration(milliseconds: 500), onTimeout: () {
+            throw TimeoutException('Permission check timed out');
+          });
+
+          // If we reach here, we have access
+          drives.add(drive);
+          print('Found accessible drive: $drivePath');
+        } catch (permissionError) {
+          // Drive exists but we don't have permission
+          // Create a special metadata property to mark as protected
+          drive = Directory(drivePath);
+          drives.add(drive);
+          // Add a "tag" to mark this as a protected drive
+          drive.setProperty('requiresAdmin', true);
+          print('Found protected drive: $drivePath (requires admin)');
+        }
       }
     } catch (e) {
-      // Ignore drives that can't be accessed
-      print('Error accessing drive $drivePath: $e');
+      // Ignore drives that can't be accessed or don't exist
+      print('Drive not found or cannot be accessed: $drivePath - $e');
     }
   }
 

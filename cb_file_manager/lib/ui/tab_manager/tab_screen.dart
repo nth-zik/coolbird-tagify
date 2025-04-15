@@ -61,9 +61,8 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
     // Initialize với 0 tab vì chúng ta sẽ tạo tab động
     _tabController = TabController(length: 0, vsync: this);
 
-    // Add a default tab when the screen is first created
+    // Only load drawer preferences, don't open a default tab
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _openDefaultTab();
       _loadDrawerPreferences();
     });
   }
@@ -334,31 +333,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                             ),
                           ),
                     actions: [
-                      // Drawer control actions
-                      IconButton(
-                        icon: Icon(_isDrawerVisible
-                            ? (_isDrawerPinned
-                                ? Icons.push_pin
-                                : Icons.push_pin_outlined)
-                            : Icons.menu),
-                        tooltip: _isDrawerVisible
-                            ? (_isDrawerPinned ? 'Unpin menu' : 'Pin menu')
-                            : 'Show menu',
-                        onPressed: () {
-                          if (_isDrawerVisible) {
-                            _toggleDrawerPin();
-                          } else {
-                            _toggleDrawerVisibility();
-                          }
-                        },
-                      ),
-                      if (_isDrawerVisible && !_isDrawerPinned)
-                        IconButton(
-                          icon: const Icon(Icons.visibility_off),
-                          tooltip: 'Hide menu',
-                          onPressed: _toggleDrawerVisibility,
-                        ),
-                      // Tab management actions
+                      // Remove drawer pin controls from app bar and keep only tab management actions
                       IconButton(
                         icon: const Icon(Icons.more_vert),
                         onPressed: () => _showTabOptions(context),
@@ -366,7 +341,14 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                     ],
                   ),
                   drawer: _isDrawerVisible && !_isDrawerPinned
-                      ? CBDrawer(context)
+                      ? CBDrawer(
+                          context,
+                          isPinned: _isDrawerPinned,
+                          onPinStateChanged: (isPinned) {
+                            _toggleDrawerPin();
+                          },
+                          onHideMenu: _toggleDrawerVisibility,
+                        )
                       : null,
                   body: Row(
                     children: [
@@ -374,7 +356,14 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                       if (_isDrawerVisible && _isDrawerPinned)
                         SizedBox(
                           width: 280,
-                          child: CBDrawer(context),
+                          child: CBDrawer(
+                            context,
+                            isPinned: _isDrawerPinned,
+                            onPinStateChanged: (isPinned) {
+                              _toggleDrawerPin();
+                            },
+                            onHideMenu: _toggleDrawerVisibility,
+                          ),
                         ),
                       // Main content area
                       Expanded(
@@ -500,6 +489,16 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                       .read<TabManagerBloc>()
                       .add(UpdateTabPath(activeTab.id, activeTab.path));
                 }
+              },
+            ),
+            // Add menu visibility toggle option
+            ListTile(
+              leading: Icon(
+                  _isDrawerVisible ? Icons.visibility : Icons.visibility_off),
+              title: Text(_isDrawerVisible ? 'Hide Menu' : 'Show Menu'),
+              onTap: () {
+                Navigator.pop(context);
+                _toggleDrawerVisibility();
               },
             ),
             ListTile(

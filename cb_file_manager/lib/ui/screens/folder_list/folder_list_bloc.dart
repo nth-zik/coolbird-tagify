@@ -23,6 +23,10 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
     on<SetViewMode>(_onSetViewMode);
     on<SetSortOption>(_onSetSortOption);
     on<SetGridZoom>(_onSetGridZoom);
+    on<ClearSearchAndFilters>(
+        _onClearSearchAndFilters); // Add handler for ClearSearchAndFilters event
+    on<FolderListDeleteFiles>(
+        _onFolderListDeleteFiles); // Register the delete files handler if not already done
   }
 
   void _onFolderListInit(
@@ -41,49 +45,88 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
     try {
       final directory = Directory(event.path);
       if (await directory.exists()) {
-        List<FileSystemEntity> contents = await directory.list().toList();
+        try {
+          List<FileSystemEntity> contents = await directory.list().toList();
 
-        // Separate folders and files
-        final List<FileSystemEntity> folders = [];
-        final List<FileSystemEntity> files = [];
+          // Separate folders and files
+          final List<FileSystemEntity> folders = [];
+          final List<FileSystemEntity> files = [];
 
-        for (var entity in contents) {
-          if (entity is Directory) {
-            folders.add(entity);
-          } else if (entity is File) {
-            // Skip tag files - no longer needed with global tags
-            if (!entity.path.endsWith('.tags')) {
-              files.add(entity);
+          for (var entity in contents) {
+            if (entity is Directory) {
+              folders.add(entity);
+            } else if (entity is File) {
+              // Skip tag files - no longer needed with global tags
+              if (!entity.path.endsWith('.tags')) {
+                files.add(entity);
+              }
             }
           }
-        }
 
-        // Load tags for all files
-        Map<String, List<String>> fileTags = {};
-        for (var file in files) {
-          if (file is File) {
-            final tags = await TagManager.getTags(file.path);
-            if (tags.isNotEmpty) {
-              fileTags[file.path] = tags;
+          // Load tags for all files
+          Map<String, List<String>> fileTags = {};
+          for (var file in files) {
+            if (file is File) {
+              final tags = await TagManager.getTags(file.path);
+              if (tags.isNotEmpty) {
+                fileTags[file.path] = tags;
+              }
             }
           }
+
+          emit(state.copyWith(
+            isLoading: false,
+            folders: folders,
+            files: files,
+            fileTags: fileTags,
+            error: null, // Clear any previous errors
+          ));
+
+          // Load all unique tags in this directory (async)
+          add(LoadAllTags(event.path));
+        } catch (e) {
+          // Handle specific permission errors
+          if (e.toString().toLowerCase().contains('permission denied') ||
+              e.toString().toLowerCase().contains('access denied')) {
+            emit(state.copyWith(
+              isLoading: false,
+              error:
+                  "Access denied: Administrator privileges required to access ${event.path}",
+              folders: [],
+              files: [],
+            ));
+          } else {
+            emit(state.copyWith(
+              isLoading: false,
+              error: "Error accessing directory: ${e.toString()}",
+              folders: [],
+              files: [],
+            ));
+          }
         }
-
-        emit(state.copyWith(
-          isLoading: false,
-          folders: folders,
-          files: files,
-          fileTags: fileTags,
-        ));
-
-        // Load all unique tags in this directory (async)
-        add(LoadAllTags(event.path));
       } else {
         emit(state.copyWith(
             isLoading: false, error: "Directory does not exist"));
       }
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
+      // Improved error handling with user-friendly messages
+      if (e.toString().toLowerCase().contains('permission denied') ||
+          e.toString().toLowerCase().contains('access denied')) {
+        emit(state.copyWith(
+          isLoading: false,
+          error:
+              "Access denied: Administrator privileges required to access ${event.path}",
+          folders: [],
+          files: [],
+        ));
+      } else {
+        emit(state.copyWith(
+          isLoading: false,
+          error: "Error: ${e.toString()}",
+          folders: [],
+          files: [],
+        ));
+      }
     }
   }
 
@@ -544,6 +587,59 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
     } catch (e) {
       emit(state.copyWith(
           isLoading: false, error: "Error sorting files: ${e.toString()}"));
+    }
+  }
+
+  void _onClearSearchAndFilters(
+      ClearSearchAndFilters event, Emitter<FolderListState> emit) {
+    // Reset all search and filter related state variables
+    emit(state.copyWith(
+      currentSearchTag: null,
+      currentSearchQuery: null,
+      currentFilter: null,
+      searchResults: [],
+      filteredFiles: [],
+      isSearchByName: false,
+      isSearchByMedia: false,
+      isGlobalSearch: false,
+      searchRecursive: false,
+      currentMediaSearch: null,
+      error: null, // Also clear any previous error messages
+    ));
+  }
+
+  void _onFolderListDeleteFiles(
+      FolderListDeleteFiles event, Emitter<FolderListState> emit) async {
+    emit(state.copyWith(isLoading: true));
+    try {
+      List<String> failedDeletes = [];
+
+      for (var filePath in event.filePaths) {
+        try {
+          final file = File(filePath);
+          if (await file.exists()) {
+            await file.delete();
+          }
+        } catch (e) {
+          failedDeletes.add(filePath);
+          print('Error deleting file $filePath: $e');
+        }
+      }
+
+      if (failedDeletes.isNotEmpty) {
+        emit(state.copyWith(
+          isLoading: false,
+          error: 'Failed to delete ${failedDeletes.length} files',
+        ));
+      }
+
+      // Refresh the current directory
+      add(FolderListLoad(state.currentPath.path));
+    } catch (e) {
+      emit(state.copyWith(
+        isLoading: false,
+        error: 'Error deleting files: ${e.toString()}',
+      ));
     }
   }
 }

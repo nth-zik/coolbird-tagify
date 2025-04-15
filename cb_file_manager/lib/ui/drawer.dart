@@ -10,13 +10,25 @@ import 'package:path_provider/path_provider.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_screen.dart';
 import 'package:cb_file_manager/helpers/filesystem_utils.dart';
+import 'package:cb_file_manager/helpers/io_extensions.dart'; // Add import for DirectoryProperties extension
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/tab_manager/tab_manager.dart';
+import 'package:cb_file_manager/helpers/user_preferences.dart'; // Add UserPreferences import
 
 class CBDrawer extends StatefulWidget {
   final BuildContext parentContext;
+  // Add parameters for pinned state
+  final bool isPinned;
+  final Function(bool) onPinStateChanged;
+  final Function() onHideMenu;
 
-  const CBDrawer(this.parentContext, {Key? key}) : super(key: key);
+  const CBDrawer(
+    this.parentContext, {
+    Key? key,
+    required this.isPinned,
+    required this.onPinStateChanged,
+    required this.onHideMenu,
+  }) : super(key: key);
 
   @override
   State<CBDrawer> createState() => _CBDrawerState();
@@ -67,18 +79,59 @@ class _CBDrawerState extends State<CBDrawer> {
       child: ListView(
         padding: EdgeInsets.zero,
         children: <Widget>[
-          const SizedBox(
+          // Custom drawer header with pin button
+          SizedBox(
             height: 120,
             child: DrawerHeader(
-              child: Text(
-                'CoolBird File Manager',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                ),
-              ),
-              decoration: BoxDecoration(
+              margin: EdgeInsets.zero,
+              padding: const EdgeInsets.fromLTRB(16, 16, 8, 16),
+              decoration: const BoxDecoration(
                 color: Colors.green,
+              ),
+              child: Row(
+                children: [
+                  // Add logo image
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12.0),
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      height: 40,
+                      width: 40,
+                    ),
+                  ),
+                  const Expanded(
+                    child: Text(
+                      'CoolBird File Manager',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                      ),
+                    ),
+                  ),
+                  // Pin button in drawer
+                  IconButton(
+                    icon: Icon(
+                      widget.isPinned
+                          ? Icons.push_pin
+                          : Icons.push_pin_outlined,
+                      color: Colors.white,
+                    ),
+                    tooltip: widget.isPinned ? 'Unpin menu' : 'Pin menu',
+                    onPressed: () {
+                      widget.onPinStateChanged(!widget.isPinned);
+                    },
+                  ),
+                  // Hide menu button (only shown when not pinned)
+                  if (!widget.isPinned)
+                    IconButton(
+                      icon: const Icon(
+                        Icons.visibility_off,
+                        color: Colors.white,
+                      ),
+                      tooltip: 'Hide menu',
+                      onPressed: widget.onHideMenu,
+                    ),
+                ],
               ),
             ),
           ),
@@ -203,13 +256,28 @@ class _CBDrawerState extends State<CBDrawer> {
       String driveLetter = drive.path.split(r'\')[0];
       String driveLabel = '$driveLetter (${_getDriveTypeIcon(drive)})';
 
+      // Check if the drive requires admin privileges
+      bool requiresAdmin = drive.requiresAdmin;
+
       return ListTile(
         contentPadding: const EdgeInsets.only(left: 30),
-        leading: const Icon(Icons.drive_folder_upload),
+        leading: requiresAdmin
+            ? const Icon(Icons.admin_panel_settings, color: Colors.orange)
+            : const Icon(Icons.drive_folder_upload),
         title: Text(driveLabel),
+        subtitle: requiresAdmin
+            ? const Text('Requires administrator privileges',
+                style: TextStyle(fontSize: 12, color: Colors.orange))
+            : null,
         onTap: () {
-          Navigator.pop(context);
-          _openInCurrentTab(drive.path, driveLabel);
+          if (requiresAdmin) {
+            // Show warning dialog for protected drives
+            _showAdminAccessDialog(context, drive);
+          } else {
+            // Regular drive access
+            Navigator.pop(context);
+            _openInCurrentTab(drive.path, driveLabel);
+          }
         },
       );
     }).toList();
@@ -279,6 +347,32 @@ class _CBDrawerState extends State<CBDrawer> {
       context,
       MaterialPageRoute(
         builder: (context) => const SettingsScreen(),
+      ),
+    );
+  }
+
+  void _showAdminAccessDialog(BuildContext context, Directory drive) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Admin Access Required'),
+        content: Text(
+          'The drive ${drive.path} requires administrator privileges to access.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              Navigator.pop(context);
+              _openInCurrentTab(drive.path, drive.path.split(r'\')[0]);
+            },
+            child: const Text('Continue'),
+          ),
+        ],
       ),
     );
   }
@@ -410,7 +504,17 @@ class _CBDrawerState extends State<CBDrawer> {
 
 /// A simplified app drawer for the main UI
 class AppDrawer extends StatefulWidget {
-  const AppDrawer({Key? key}) : super(key: key);
+  // Add parameters for pinned state like in CBDrawer
+  final bool isPinned;
+  final Function(bool) onPinStateChanged;
+  final Function() onHideMenu;
+
+  const AppDrawer({
+    Key? key,
+    required this.isPinned,
+    required this.onPinStateChanged,
+    required this.onHideMenu,
+  }) : super(key: key);
 
   @override
   State<AppDrawer> createState() => _AppDrawerState();
@@ -460,22 +564,60 @@ class _AppDrawerState extends State<AppDrawer> {
       child: ListView(
         padding: EdgeInsets.zero,
         children: <Widget>[
-          const DrawerHeader(
-            decoration: BoxDecoration(
+          DrawerHeader(
+            decoration: const BoxDecoration(
               color: Colors.blue,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'CoolBird File Manager',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                  ),
+                Row(
+                  children: [
+                    // Add logo image
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12.0),
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        height: 40,
+                        width: 40,
+                      ),
+                    ),
+                    const Expanded(
+                      child: Text(
+                        'CoolBird File Manager',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                        ),
+                      ),
+                    ),
+                    // Pin button in drawer
+                    IconButton(
+                      icon: Icon(
+                        widget.isPinned
+                            ? Icons.push_pin
+                            : Icons.push_pin_outlined,
+                        color: Colors.white,
+                      ),
+                      tooltip: widget.isPinned ? 'Unpin menu' : 'Pin menu',
+                      onPressed: () {
+                        widget.onPinStateChanged(!widget.isPinned);
+                      },
+                    ),
+                    // Hide menu button (only shown when not pinned)
+                    if (!widget.isPinned)
+                      IconButton(
+                        icon: const Icon(
+                          Icons.visibility_off,
+                          color: Colors.white,
+                        ),
+                        tooltip: 'Hide menu',
+                        onPressed: widget.onHideMenu,
+                      ),
+                  ],
                 ),
-                SizedBox(height: 8),
-                Text(
+                const SizedBox(height: 8),
+                const Text(
                   'File management made easy',
                   style: TextStyle(
                     color: Colors.white70,
@@ -600,13 +742,28 @@ class _AppDrawerState extends State<AppDrawer> {
       String driveLetter = drive.path.split(r'\')[0];
       String driveLabel = '$driveLetter (${_getDriveTypeIcon(drive)})';
 
+      // Check if the drive requires admin privileges
+      bool requiresAdmin = drive.requiresAdmin;
+
       return ListTile(
         contentPadding: const EdgeInsets.only(left: 30),
-        leading: const Icon(Icons.drive_folder_upload),
+        leading: requiresAdmin
+            ? const Icon(Icons.admin_panel_settings, color: Colors.orange)
+            : const Icon(Icons.drive_folder_upload),
         title: Text(driveLabel),
+        subtitle: requiresAdmin
+            ? const Text('Requires administrator privileges',
+                style: TextStyle(fontSize: 12, color: Colors.orange))
+            : null,
         onTap: () {
-          Navigator.pop(context);
-          _openInCurrentTab(drive.path, driveLabel);
+          if (requiresAdmin) {
+            // Show warning dialog for protected drives
+            _showAdminAccessDialog(context, drive);
+          } else {
+            // Regular drive access
+            Navigator.pop(context);
+            _openInCurrentTab(drive.path, driveLabel);
+          }
         },
       );
     }).toList();
@@ -676,6 +833,32 @@ class _AppDrawerState extends State<AppDrawer> {
       context,
       MaterialPageRoute(
         builder: (context) => const SettingsScreen(),
+      ),
+    );
+  }
+
+  void _showAdminAccessDialog(BuildContext context, Directory drive) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Admin Access Required'),
+        content: Text(
+          'The drive ${drive.path} requires administrator privileges to access.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              Navigator.pop(context);
+              _openInCurrentTab(drive.path, drive.path.split(r'\')[0]);
+            },
+            child: const Text('Continue'),
+          ),
+        ],
       ),
     );
   }

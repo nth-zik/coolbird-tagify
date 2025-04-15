@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cb_file_manager/main.dart' show goHome;
 import 'package:cb_file_manager/ui/drawer.dart';
 import 'package:cb_file_manager/ui/utils/route.dart';
+import 'package:cb_file_manager/helpers/user_preferences.dart'; // Add UserPreferences import
 import 'dart:io'; // For Platform check
 
 /// A base screen widget that handles common functionality across all screens
@@ -58,11 +59,70 @@ class _BaseScreenState extends State<BaseScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey =
       GlobalKey<ScaffoldState>(debugLabel: 'instanceScaffoldKey');
 
+  // Drawer state variables
+  bool _isDrawerPinned = false;
+  bool _isDrawerVisible = true;
+
   @override
   void initState() {
     super.initState();
     // Register as the most recent state
     BaseScreen._mostRecentState = this;
+    // Load drawer preferences
+    _loadDrawerPreferences();
+  }
+
+  // Load drawer preferences from storage
+  Future<void> _loadDrawerPreferences() async {
+    try {
+      final UserPreferences prefs = UserPreferences();
+      await prefs.init();
+
+      setState(() {
+        _isDrawerPinned = prefs.getDrawerPinned();
+        _isDrawerVisible = prefs.getDrawerVisible();
+      });
+    } catch (e) {
+      print('Error loading drawer preferences: $e');
+    }
+  }
+
+  // Save drawer pinned state
+  Future<void> _saveDrawerPinned(bool isPinned) async {
+    try {
+      final UserPreferences prefs = UserPreferences();
+      await prefs.init();
+      await prefs.setDrawerPinned(isPinned);
+    } catch (e) {
+      print('Error saving drawer pinned state: $e');
+    }
+  }
+
+  // Save drawer visibility
+  Future<void> _saveDrawerVisible(bool isVisible) async {
+    try {
+      final UserPreferences prefs = UserPreferences();
+      await prefs.init();
+      await prefs.setDrawerVisible(isVisible);
+    } catch (e) {
+      print('Error saving drawer visibility: $e');
+    }
+  }
+
+  // Toggle drawer pin state
+  void _toggleDrawerPin() {
+    setState(() {
+      _isDrawerPinned = !_isDrawerPinned;
+    });
+    _saveDrawerPinned(_isDrawerPinned);
+  }
+
+  // Toggle drawer visibility
+  void _toggleDrawerVisibility() {
+    setState(() {
+      _isDrawerVisible = !_isDrawerVisible;
+    });
+    _saveDrawerVisible(_isDrawerVisible);
   }
 
   @override
@@ -99,7 +159,14 @@ class _BaseScreenState extends State<BaseScreen> {
             if (widget.actions != null) ...widget.actions!,
           ],
         ),
-        drawer: CBDrawer(context),
+        drawer: CBDrawer(
+          context,
+          isPinned: _isDrawerPinned,
+          onPinStateChanged: (isPinned) {
+            _toggleDrawerPin();
+          },
+          onHideMenu: _toggleDrawerVisibility,
+        ),
         body: widget.body,
         backgroundColor: widget.backgroundColor,
         floatingActionButton: widget.floatingActionButton,
