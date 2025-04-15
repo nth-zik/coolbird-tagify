@@ -128,9 +128,10 @@ class _CBFileAppState extends State<CBFileApp> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadThemePreference();
-    
+
     // Listen for theme changes
-    _themeSubscription = _preferences.themeChangeStream.listen((ThemeMode newThemeMode) {
+    _themeSubscription =
+        _preferences.themeChangeStream.listen((ThemeMode newThemeMode) {
       setState(() {
         _themeMode = newThemeMode;
       });
