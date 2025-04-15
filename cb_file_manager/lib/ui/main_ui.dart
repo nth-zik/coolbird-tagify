@@ -1,6 +1,7 @@
 import 'package:cb_file_manager/ui/drawer.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_screen.dart';
 import 'package:cb_file_manager/ui/screens/test/video_thumbnail_test.dart';
+import 'package:cb_file_manager/ui/screens/settings/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
@@ -132,7 +133,16 @@ class _MainUIState extends State<MainUI> {
             title: const Text('Settings'),
             onTap: () {
               Navigator.pop(context);
-              // Navigate to settings screen (implement later)
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SettingsScreen(),
+                ),
+              ).then((_) {
+                // Refresh the UI when returning from settings
+                // This ensures theme changes are applied
+                setState(() {});
+              });
             },
           ),
           ListTile(

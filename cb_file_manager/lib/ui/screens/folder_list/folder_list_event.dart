@@ -161,5 +161,9 @@ class FolderListDeleteTagGlobally extends FolderListEvent {
   List<Object> get props => [tag];
 }
 
+class ClearSearchAndFilters extends FolderListEvent {
+  const ClearSearchAndFilters();
+}
+
 // Enum to represent media types for search
 enum MediaSearchType { images, videos, audio, all }

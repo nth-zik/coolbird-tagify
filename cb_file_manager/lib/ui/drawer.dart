@@ -3,11 +3,15 @@ import 'package:flutter/material.dart';
 import './main_ui.dart';
 import './utils/route.dart';
 import './home.dart';
+import './tab_manager/tab_main_screen.dart';
 import 'package:cb_file_manager/ui/screens/tag_management/tag_management_screen.dart';
+import 'package:cb_file_manager/ui/screens/settings/settings_screen.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_screen.dart';
 import 'package:cb_file_manager/helpers/filesystem_utils.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cb_file_manager/ui/tab_manager/tab_manager.dart';
 
 class CBDrawer extends StatefulWidget {
   final BuildContext parentContext;
@@ -82,8 +86,8 @@ class _CBDrawerState extends State<CBDrawer> {
             leading: const Icon(Icons.home),
             title: const Text('Homepage'),
             onTap: () {
-              RouteUtils.toNewScreen(
-                  context, const MyHomePage(title: 'CoolBird - File Manager'));
+              Navigator.pop(context);
+              RouteUtils.toNewScreen(context, const TabMainScreen());
             },
           ),
           ExpansionTile(
@@ -104,12 +108,8 @@ class _CBDrawerState extends State<CBDrawer> {
                   title: const Text('Documents'),
                   onTap: () async {
                     final directory = await getApplicationDocumentsDirectory();
-                    if (context.mounted) {
-                      RouteUtils.toNewScreen(
-                        context,
-                        FolderListScreen(path: directory.path),
-                      );
-                    }
+                    Navigator.pop(context);
+                    _showOpenOptions(context, directory.path, 'Documents');
                   },
                 ),
               ListTile(
@@ -201,20 +201,68 @@ class _CBDrawerState extends State<CBDrawer> {
     return _drives.map((drive) {
       // Get drive letter for display
       String driveLetter = drive.path.split(r'\')[0];
+      String driveLabel = '$driveLetter (${_getDriveTypeIcon(drive)})';
 
       return ListTile(
         contentPadding: const EdgeInsets.only(left: 30),
         leading: const Icon(Icons.drive_folder_upload),
-        title: Text('$driveLetter (${_getDriveTypeIcon(drive)})'),
+        title: Text(driveLabel),
         onTap: () {
           Navigator.pop(context);
-          RouteUtils.toNewScreen(
-            context,
-            FolderListScreen(path: drive.path),
-          );
+          _openInCurrentTab(drive.path, driveLabel);
         },
       );
     }).toList();
+  }
+
+  void _openInCurrentTab(String path, String name) {
+    // Check if we're already in a tab system
+    TabManagerBloc? tabBloc;
+    try {
+      tabBloc = BlocProvider.of<TabManagerBloc>(context, listen: false);
+    } catch (e) {
+      // BlocProvider.of will throw if the bloc isn't found
+      tabBloc = null;
+    }
+
+    if (tabBloc != null) {
+      // Lấy tab hiện tại và cập nhật đường dẫn
+      final activeTab = tabBloc.state.activeTab;
+      if (activeTab != null) {
+        tabBloc.add(UpdateTabPath(activeTab.id, path));
+
+        // Cập nhật tên tab để phản ánh thư mục mới
+        final tabName = _getNameFromPath(path);
+        tabBloc.add(UpdateTabName(activeTab.id, tabName));
+      } else {
+        // Nếu không có tab nào đang mở, tạo tab mới
+        tabBloc.add(AddTab(path: path, name: _getNameFromPath(path)));
+      }
+    } else {
+      // Không trong hệ thống tab, chuyển đến màn hình tab trước
+      Navigator.of(context)
+          .pushAndRemoveUntil(
+              MaterialPageRoute(builder: (context) => const TabMainScreen()),
+              (route) => false)
+          .then((_) {
+        // Thêm độ trễ nhỏ để đảm bảo TabManagerBloc được khởi tạo đúng cách
+        Future.delayed(Duration(milliseconds: 100), () {
+          TabMainScreen.openPath(context, path);
+        });
+      });
+    }
+  }
+
+  void _showOpenOptions(BuildContext context, String path, String name) {
+    // Trực tiếp cập nhật tab hiện tại với đường dẫn mới thay vì hiển thị dialog
+    _openInCurrentTab(path, name);
+  }
+
+  String _getNameFromPath(String path) {
+    final parts = path.split(Platform.pathSeparator);
+    final lastPart =
+        parts.lastWhere((part) => part.isNotEmpty, orElse: () => 'Root');
+    return lastPart.isEmpty ? 'Root' : lastPart;
   }
 
   String _getDriveTypeIcon(Directory drive) {
@@ -226,38 +274,15 @@ class _CBDrawerState extends State<CBDrawer> {
   }
 
   void _showSettingsDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Settings'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.label),
-              title: const Text('Migrate Tags to Global System'),
-              subtitle: const Text(
-                  'Migrate all existing directory-based tags to the new global system'),
-              onTap: () {
-                Navigator.pop(context);
-                _showTagMigrationDialog(context);
-              },
-            ),
-            // Add other settings options here
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
+    // Navigate to the settings screen instead of showing a dialog
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const SettingsScreen(),
       ),
     );
   }
 
-  // Reuse existing dialog methods
   void _showTagMigrationDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -399,7 +424,6 @@ class _AppDrawerState extends State<AppDrawer> {
   @override
   void initState() {
     super.initState();
-    // Load drives when initialized
     if (Platform.isWindows) {
       _loadDrives();
     }
@@ -488,16 +512,7 @@ class _AppDrawerState extends State<AppDrawer> {
                   onTap: () async {
                     Navigator.pop(context);
                     final directory = await getApplicationDocumentsDirectory();
-                    if (context.mounted) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => FolderListScreen(
-                            path: directory.path,
-                          ),
-                        ),
-                      );
-                    }
+                    _showOpenOptions(context, directory.path, 'Documents');
                   },
                 ),
             ],
@@ -583,24 +598,68 @@ class _AppDrawerState extends State<AppDrawer> {
     return _drives.map((drive) {
       // Get drive letter for display
       String driveLetter = drive.path.split(r'\')[0];
+      String driveLabel = '$driveLetter (${_getDriveTypeIcon(drive)})';
 
       return ListTile(
         contentPadding: const EdgeInsets.only(left: 30),
         leading: const Icon(Icons.drive_folder_upload),
-        title: Text('$driveLetter (${_getDriveTypeIcon(drive)})'),
+        title: Text(driveLabel),
         onTap: () {
           Navigator.pop(context);
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => FolderListScreen(
-                path: drive.path,
-              ),
-            ),
-          );
+          _openInCurrentTab(drive.path, driveLabel);
         },
       );
     }).toList();
+  }
+
+  void _openInCurrentTab(String path, String name) {
+    // Check if we're already in a tab system
+    TabManagerBloc? tabBloc;
+    try {
+      tabBloc = BlocProvider.of<TabManagerBloc>(context, listen: false);
+    } catch (e) {
+      // BlocProvider.of will throw if the bloc isn't found
+      tabBloc = null;
+    }
+
+    if (tabBloc != null) {
+      // Lấy tab hiện tại và cập nhật đường dẫn
+      final activeTab = tabBloc.state.activeTab;
+      if (activeTab != null) {
+        tabBloc.add(UpdateTabPath(activeTab.id, path));
+
+        // Cập nhật tên tab để phản ánh thư mục mới
+        final tabName = _getNameFromPath(path);
+        tabBloc.add(UpdateTabName(activeTab.id, tabName));
+      } else {
+        // Nếu không có tab nào đang mở, tạo tab mới
+        tabBloc.add(AddTab(path: path, name: _getNameFromPath(path)));
+      }
+    } else {
+      // Không trong hệ thống tab, chuyển đến màn hình tab trước
+      Navigator.of(context)
+          .pushAndRemoveUntil(
+              MaterialPageRoute(builder: (context) => const TabMainScreen()),
+              (route) => false)
+          .then((_) {
+        // Thêm độ trễ nhỏ để đảm bảo TabManagerBloc được khởi tạo đúng cách
+        Future.delayed(Duration(milliseconds: 100), () {
+          TabMainScreen.openPath(context, path);
+        });
+      });
+    }
+  }
+
+  void _showOpenOptions(BuildContext context, String path, String name) {
+    // Trực tiếp cập nhật tab hiện tại với đường dẫn mới thay vì hiển thị dialog
+    _openInCurrentTab(path, name);
+  }
+
+  String _getNameFromPath(String path) {
+    final parts = path.split(Platform.pathSeparator);
+    final lastPart =
+        parts.lastWhere((part) => part.isNotEmpty, orElse: () => 'Root');
+    return lastPart.isEmpty ? 'Root' : lastPart;
   }
 
   String _getDriveTypeIcon(Directory drive) {
@@ -612,31 +671,11 @@ class _AppDrawerState extends State<AppDrawer> {
   }
 
   void _showSettingsDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Settings'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Icons.view_module),
-              title: Text('View Settings'),
-              subtitle: Text('Change how files are displayed'),
-            ),
-            ListTile(
-              leading: Icon(Icons.filter_list),
-              title: Text('File Filters'),
-              subtitle: Text('Manage default filters'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
+    // Navigate to the settings screen instead of showing a dialog
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const SettingsScreen(),
       ),
     );
   }

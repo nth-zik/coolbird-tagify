@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:cb_file_manager/helpers/thumbnail_helper.dart';
-import 'package:cb_file_manager/helpers/video_thumbnail_helper.dart'; // Added import for new helper
+import 'package:cb_file_manager/helpers/video_thumbnail_helper.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/file_details_screen.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/video_gallery_screen.dart';
@@ -31,7 +31,7 @@ class FileGridItem extends StatelessWidget {
     IconData icon;
     Color? iconColor;
     bool isPreviewable = false;
-    bool isVideo = false; // Flag to check if file is video
+    bool isVideo = false;
 
     // Determine file type and icon
     if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(extension)) {
@@ -41,7 +41,7 @@ class FileGridItem extends StatelessWidget {
     } else if (['mp4', 'mov', 'avi', 'mkv', 'flv', 'wmv'].contains(extension)) {
       icon = Icons.videocam;
       iconColor = Colors.red;
-      isVideo = true; // Set video flag
+      isVideo = true;
     } else if (['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac']
         .contains(extension)) {
       icon = Icons.audiotrack;
@@ -67,7 +67,6 @@ class FileGridItem extends StatelessWidget {
           if (isSelectionMode) {
             toggleFileSelection(file.path);
           } else if (isVideo) {
-            // If it's a video file, navigate to VideoPlayerFullScreen
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -75,7 +74,6 @@ class FileGridItem extends StatelessWidget {
               ),
             );
           } else {
-            // For non-video files, navigate to FileDetailsScreen as before
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -93,8 +91,9 @@ class FileGridItem extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // File preview or icon
+            // File preview or icon - give it most of the space
             Expanded(
+              flex: 3,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -133,51 +132,62 @@ class FileGridItem extends StatelessWidget {
               ),
             ),
 
-            // File name and tags
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _basename(file),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+            // File name and tags - wrap in a Flexible to prevent overflow
+            Flexible(
+              flex: 2,
+              child: Container(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min, // Use minimum vertical space
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _basename(file),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  FutureBuilder<FileStat>(
-                    future: file.stat(),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasData) {
-                        return Text(
-                          _formatFileSize(snapshot.data!.size),
-                          style: const TextStyle(fontSize: 10),
-                        );
-                      }
-                      return const Text('Loading...',
-                          style: TextStyle(fontSize: 10));
-                    },
-                  ),
-                  // Tag indicators
-                  if (fileTags.isNotEmpty)
-                    Row(
-                      children: [
-                        Icon(Icons.label, size: 12, color: Colors.green[800]),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${fileTags.length} tags',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.green[800],
-                          ),
+                    const SizedBox(height: 2),
+                    FutureBuilder<FileStat>(
+                      future: file.stat(),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData) {
+                          return Text(
+                            _formatFileSize(snapshot.data!.size),
+                            style: const TextStyle(fontSize: 10),
+                          );
+                        }
+                        return const Text('Loading...',
+                            style: TextStyle(fontSize: 10));
+                      },
+                    ),
+                    // Tag indicators - only show if we have space and tags
+                    if (fileTags.isNotEmpty)
+                      Flexible(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.label,
+                                size: 12, color: Colors.green[800]),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                '${fileTags.length} tags',
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.green[800],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                ],
+                      ),
+                  ],
+                ),
               ),
             ),
           ],

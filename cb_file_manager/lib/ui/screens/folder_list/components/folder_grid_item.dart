@@ -27,6 +27,8 @@ class FolderGridItem extends StatelessWidget {
           );
         },
         child: Column(
+          mainAxisSize: MainAxisSize
+              .min, // Ensure the column only takes the minimum vertical space needed
           children: [
             // Icon section
             Expanded(
@@ -39,45 +41,49 @@ class FolderGridItem extends StatelessWidget {
                 ),
               ),
             ),
-            // Text section - using a container with fixed height to prevent overflow
+            // Text section - improved to prevent overflow
             Container(
-              constraints: BoxConstraints(maxHeight: 35),
+              constraints: BoxConstraints(
+                  minHeight: 36,
+                  maxHeight: 40), // Increased max height and added min height
               padding:
                   const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
               width: double.infinity,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    folder.basename(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+              child: LayoutBuilder(builder: (context, constraints) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      folder.basename(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 1),
-                  Flexible(
-                    child: FutureBuilder<FileStat>(
-                      future: folder.stat(),
-                      builder: (context, snapshot) {
-                        if (snapshot.hasData) {
-                          return Text(
-                            '${snapshot.data!.modified.toString().split('.')[0]}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 8),
-                          );
-                        }
-                        return const Text('Loading...',
-                            style: TextStyle(fontSize: 8));
-                      },
+                    const SizedBox(height: 1),
+                    Flexible(
+                      child: FutureBuilder<FileStat>(
+                        future: folder.stat(),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasData) {
+                            return Text(
+                              '${snapshot.data!.modified.toString().split('.')[0]}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 8),
+                            );
+                          }
+                          return const Text('Loading...',
+                              style: TextStyle(fontSize: 8));
+                        },
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                );
+              }),
             ),
           ],
         ),
