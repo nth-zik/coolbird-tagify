@@ -148,10 +148,41 @@ bool Win32Window::Create(const std::wstring &title,
   UINT dpi = FlutterDesktopGetDpiForMonitor(monitor);
   double scale_factor = dpi / 96.0;
 
+  // Get the monitor information to properly position the window
+  MONITORINFO monitor_info = {0};
+  monitor_info.cbSize = sizeof(monitor_info);
+  if (!GetMonitorInfo(monitor, &monitor_info))
+  {
+    return false;
+  }
+
+  // Calculate window size with respect to work area (excludes taskbar)
+  // This ensures the window doesn't overflow the usable screen area
+  int adjusted_width = size.width;
+  int adjusted_height = size.height;
+
+  // Calculate proper positioning - default to work area if needed
+  int x_pos = origin.x;
+  int y_pos = origin.y;
+
+  if (origin.x == 0 && origin.y == 0)
+  {
+    // Center in the work area if no specific position is specified
+    x_pos = monitor_info.rcWork.left +
+            (monitor_info.rcWork.right - monitor_info.rcWork.left - adjusted_width) / 2;
+    y_pos = monitor_info.rcWork.top +
+            (monitor_info.rcWork.bottom - monitor_info.rcWork.top - adjusted_height) / 2;
+  }
+
+  // Create a standard overlapped window with proper styles
   HWND window = CreateWindow(
-      window_class, title.c_str(), WS_OVERLAPPEDWINDOW,
-      Scale(origin.x, scale_factor), Scale(origin.y, scale_factor),
-      Scale(size.width, scale_factor), Scale(size.height, scale_factor),
+      window_class,
+      title.c_str(),
+      WS_OVERLAPPEDWINDOW,
+      Scale(x_pos, scale_factor),
+      Scale(y_pos, scale_factor),
+      Scale(adjusted_width, scale_factor),
+      Scale(adjusted_height, scale_factor),
       nullptr, nullptr, GetModuleHandle(nullptr), this);
 
   if (!window)
@@ -166,12 +197,23 @@ bool Win32Window::Create(const std::wstring &title,
 
 bool Win32Window::Show()
 {
-  return ShowWindow(window_handle_, SW_SHOWNORMAL);
+  return ShowWindow(window_handle_, SW_SHOWMAXIMIZED);
 }
 
 bool Win32Window::ShowMaximized()
 {
-  return ShowWindow(window_handle_, SW_SHOWMAXIMIZED);
+  if (!window_handle_)
+  {
+    return false;
+  }
+
+  // Use the proper Windows maximize command and ensure it persists
+  BOOL result = ShowWindow(window_handle_, SW_SHOWMAXIMIZED);
+
+  // Force the window to redraw after maximizing
+  UpdateWindow(window_handle_);
+
+  return result;
 }
 
 // static
@@ -226,14 +268,43 @@ Win32Window::MessageHandler(HWND hwnd,
 
     return 0;
   }
+
   case WM_SIZE:
   {
+    // When window size changes, make sure to reposition the child content correctly
     RECT rect = GetClientArea();
     if (child_content_ != nullptr)
     {
       // Size and position the child window.
       MoveWindow(child_content_, rect.left, rect.top, rect.right - rect.left,
                  rect.bottom - rect.top, TRUE);
+    }
+    return 0;
+  }
+
+  case WM_GETMINMAXINFO:
+  {
+    // Ensure the window can be properly maximized to fill the entire screen
+    LPMINMAXINFO lpMMI = (LPMINMAXINFO)lparam;
+
+    // Get the monitor info for proper maximization
+    HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+    if (monitor != NULL)
+    {
+      MONITORINFO monitorInfo;
+      monitorInfo.cbSize = sizeof(monitorInfo);
+      if (GetMonitorInfo(monitor, &monitorInfo))
+      {
+        // Set the max tracking size to the monitor's work area
+        lpMMI->ptMaxTrackSize.x = monitorInfo.rcWork.right - monitorInfo.rcWork.left;
+        lpMMI->ptMaxTrackSize.y = monitorInfo.rcWork.bottom - monitorInfo.rcWork.top;
+
+        // Set the maximized position and size
+        lpMMI->ptMaxPosition.x = monitorInfo.rcWork.left - monitorInfo.rcMonitor.left;
+        lpMMI->ptMaxPosition.y = monitorInfo.rcWork.top - monitorInfo.rcMonitor.top;
+        lpMMI->ptMaxSize.x = monitorInfo.rcWork.right - monitorInfo.rcWork.left;
+        lpMMI->ptMaxSize.y = monitorInfo.rcWork.bottom - monitorInfo.rcWork.top;
+      }
     }
     return 0;
   }

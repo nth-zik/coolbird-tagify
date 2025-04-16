@@ -5,8 +5,9 @@
 #include "flutter_window.h"
 #include "utils.h"
 
-// Function to get the primary monitor dimensions
-void GetPrimaryMonitorDimensions(int *width, int *height)
+// Function to get the primary monitor work area dimensions
+// This ensures we respect the taskbar and title bar areas
+void GetPrimaryMonitorWorkArea(int *width, int *height)
 {
   HMONITOR primaryMonitor = MonitorFromPoint({0, 0}, MONITOR_DEFAULTTOPRIMARY);
   MONITORINFO monitorInfo = {0};
@@ -14,14 +15,15 @@ void GetPrimaryMonitorDimensions(int *width, int *height)
 
   if (GetMonitorInfo(primaryMonitor, &monitorInfo))
   {
-    *width = monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left;
-    *height = monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top;
+    // Use work area (excludes taskbar) instead of full monitor area
+    *width = monitorInfo.rcWork.right - monitorInfo.rcWork.left;
+    *height = monitorInfo.rcWork.bottom - monitorInfo.rcWork.top;
   }
   else
   {
-    // Fallback to system metrics if GetMonitorInfo fails
-    *width = GetSystemMetrics(SM_CXSCREEN);
-    *height = GetSystemMetrics(SM_CYSCREEN);
+    // Fallback to system metrics for work area if GetMonitorInfo fails
+    *width = GetSystemMetrics(SM_CXMAXIMIZED);
+    *height = GetSystemMetrics(SM_CYMAXIMIZED);
   }
 }
 
@@ -46,15 +48,17 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
 
-  // Get screen dimensions
+  // Get work area dimensions (respects taskbar and title bar)
   int screenWidth = 0;
   int screenHeight = 0;
-  GetPrimaryMonitorDimensions(&screenWidth, &screenHeight);
+  GetPrimaryMonitorWorkArea(&screenWidth, &screenHeight);
 
   FlutterWindow window(project);
-  // Set the origin to (0, 0) to align with the top-left corner of the screen
+
+  // Use (0,0) as origin to align with the monitor's work area top-left corner
   Win32Window::Point origin(0, 0);
-  // Use the detected screen dimensions (adjust if needed for taskbar, etc.)
+
+  // Use the work area dimensions to ensure window fits properly
   Win32Window::Size size(screenWidth, screenHeight);
 
   if (!window.Create(L"cb_file_manager", origin, size))
@@ -63,8 +67,16 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   }
   window.SetQuitOnClose(true);
 
-  // Show the window maximized for best experience
+  // Use ShowMaximized to properly maximize the window
   window.ShowMaximized();
+
+  // Get the window handle
+  HWND hwnd = window.GetHandle();
+  if (hwnd != nullptr)
+  {
+    // Ensure the window is the topmost window
+    SetForegroundWindow(hwnd);
+  }
 
   ::MSG msg;
   while (::GetMessage(&msg, nullptr, 0, 0))

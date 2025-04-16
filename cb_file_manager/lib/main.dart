@@ -32,26 +32,37 @@ void main() async {
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       await windowManager.ensureInitialized();
 
-      // Create standard window options
+      // Create window options with minimum size but still allow maximized state
       WindowOptions windowOptions = const WindowOptions(
-        size: Size(800, 600),
         center: true,
         backgroundColor: Colors.transparent,
-        skipTaskbar: false,
         titleBarStyle: TitleBarStyle.normal,
+        windowButtonVisibility: true,
+        // Set minimum size but allow window to be resized
+        minimumSize: Size(800, 600),
       );
 
-      // Pre-configure window if on Windows
-      if (Platform.isWindows) {
-        await windowManager.setAsFrameless();
-        await windowManager.maximize();
-      }
+      // Apply the window options
+      await windowManager.waitUntilReadyToShow(windowOptions);
 
-      // Now show the window with our configured options
-      await windowManager.waitUntilReadyToShow(windowOptions, () async {
+      // For Windows, start maximized but allow toggling
+      if (Platform.isWindows) {
+        // Enable resizing so the window can be un-maximized
+        await windowManager.setResizable(true);
+
+        // Ensure the window is shown first
         await windowManager.show();
+
+        // Start maximized initially
+        await windowManager.maximize();
+
+        // Configure additional window properties
+        await windowManager.setPreventClose(false);
+        await windowManager.setSkipTaskbar(false);
+
+        // Focus the window
         await windowManager.focus();
-      });
+      }
     }
 
     // Request storage permissions at startup

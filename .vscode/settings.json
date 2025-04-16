@@ -6,6 +6,17 @@
     "*.vue": "vue",
     "*.js": "javascript",
     "*.xml": "xml",
-    "*.rh": "cpp"
+    "*.rh": "cpp",
+    "array": "cpp",
+    "deque": "cpp",
+    "initializer_list": "cpp",
+    "list": "cpp",
+    "queue": "cpp",
+    "utility": "cpp",
+    "vector": "cpp",
+    "xhash": "cpp",
+    "xstring": "cpp",
+    "xtree": "cpp",
+    "xutility": "cpp"
   }
 }

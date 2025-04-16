@@ -3,7 +3,6 @@ import 'package:flutter/services.dart'; // Import for keyboard shortcuts
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
-import 'package:cb_file_manager/helpers/filesystem_utils.dart';
 import 'tab_manager.dart';
 import 'tab_data.dart';
 import '../drawer.dart';
