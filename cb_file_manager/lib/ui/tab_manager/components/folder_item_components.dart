@@ -15,6 +15,8 @@ class FolderGridItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Card(
       clipBehavior: Clip.antiAlias,
       elevation: 2,
@@ -38,16 +40,18 @@ class FolderGridItem extends StatelessWidget {
               height: 40,
               width: double.infinity,
               padding: const EdgeInsets.all(4),
-              color: Colors.grey[200],
+              // Sử dụng màu thích hợp với theme
+              color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
               alignment: Alignment.center,
               child: Text(
                 folder.basename(),
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: Colors.black87,
+                  // Sử dụng màu thích hợp với theme
+                  color: isDarkMode ? Colors.white : Colors.black87,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -72,14 +76,17 @@ class FolderListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+      // Sử dụng màu card mặc định theo theme thay vì màu hardcode
       child: ListTile(
         leading: Icon(Icons.folder, color: Colors.amber[700], size: 28),
         title: Text(
           folder.basename(),
-          style: const TextStyle(
-            color: Colors.black87,
+          style: TextStyle(
+            color: isDarkMode ? Colors.white : Colors.black87,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -89,15 +96,17 @@ class FolderListItem extends StatelessWidget {
             if (snapshot.hasData) {
               return Text(
                 '${snapshot.data!.modified.toString().split('.')[0]}',
-                style: TextStyle(color: Colors.grey[800]),
+                style: TextStyle(
+                    color: isDarkMode ? Colors.grey[400] : Colors.grey[800]),
               );
             }
             return Text('Loading...',
-                style: TextStyle(color: Colors.grey[700]));
+                style: TextStyle(
+                    color: isDarkMode ? Colors.grey[500] : Colors.grey[700]));
           },
         ),
         onTap: () => onNavigate(folder.path),
-        tileColor: Colors.grey[50],
+        // Không gán màu nền cứng để card sử dụng màu mặc định theo theme
       ),
     );
   }

@@ -265,6 +265,16 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
 
   // Handle path submission when user manually edits the path
   void _handlePathSubmit(String path) {
+    // Handle empty path as drive selection view
+    if (path.isEmpty && Platform.isWindows) {
+      setState(() {
+        _currentPath = '';
+        _pathController.text = '';
+        _isEditingPath = false;
+      });
+      return;
+    }
+
     // Check if path exists
     final directory = Directory(path);
     directory.exists().then((exists) {
@@ -303,12 +313,42 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
       return false; // Don't exit the app, just exit search mode
     }
 
+    // Check if we are at a root drive level (like C:\) and should navigate to drive selection
+    if (Platform.isWindows &&
+        (_currentPath.length == 3 && _currentPath.endsWith(':\\'))) {
+      setState(() {
+        _currentPath = '';
+        _pathController.text = '';
+      });
+
+      // Update the tab's path in the TabManager
+      context.read<TabManagerBloc>().add(UpdateTabPath(widget.tabId, ''));
+      context.read<TabManagerBloc>().add(AddToTabHistory(widget.tabId, ''));
+      context.read<TabManagerBloc>().add(UpdateTabName(widget.tabId, 'Drives'));
+
+      // Don't call FolderListLoad here as the build method will handle showing the drive view
+      return false; // Don't exit app, we're navigating to the drives view
+    }
+
     // Check if we can navigate back in the folder hierarchy
     final tabManagerBloc = context.read<TabManagerBloc>();
     if (tabManagerBloc.canTabNavigateBack(widget.tabId)) {
       final previousPath = tabManagerBloc.getTabPreviousPath(widget.tabId);
       if (previousPath != null) {
-        // Navigate to the previous path without adding it to history
+        // Handle empty path case for Windows drive view
+        if (previousPath.isEmpty && Platform.isWindows) {
+          setState(() {
+            _currentPath = '';
+            _pathController.text = '';
+          });
+          // Update the tab name to indicate we're showing drives
+          context
+              .read<TabManagerBloc>()
+              .add(UpdateTabName(widget.tabId, 'Drives'));
+          return false; // Don't exit app, we're navigating to drives view
+        }
+
+        // Regular path navigation
         setState(() {
           _currentPath = previousPath;
           _pathController.text = previousPath;

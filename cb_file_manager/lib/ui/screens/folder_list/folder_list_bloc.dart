@@ -42,6 +42,14 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
       isLoading: true,
       currentPath: Directory(event.path),
     ));
+
+    // Special case for empty path on Windows - this is used for the drive listing view
+    if (event.path.isEmpty && Platform.isWindows) {
+      emit(state.copyWith(
+          isLoading: false, folders: [], files: [], error: null));
+      return;
+    }
+
     try {
       final directory = Directory(event.path);
       if (await directory.exists()) {

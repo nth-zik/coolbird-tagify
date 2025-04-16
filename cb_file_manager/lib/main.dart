@@ -131,7 +131,8 @@ class CBFileApp extends StatefulWidget {
 
 class _CBFileAppState extends State<CBFileApp> with WidgetsBindingObserver {
   final UserPreferences _preferences = UserPreferences();
-  late ThemeMode _themeMode;
+  // Change from late initialization to default value
+  ThemeMode _themeMode = ThemeMode.system;
   StreamSubscription<ThemeMode>? _themeSubscription;
 
   @override
