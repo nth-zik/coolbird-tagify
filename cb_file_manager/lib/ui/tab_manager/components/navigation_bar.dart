@@ -1,10 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import '../tab_manager.dart';
 
 /// Navigation bar component that includes back/forward buttons and path input field
-class PathNavigationBar extends StatelessWidget {
+class PathNavigationBar extends StatefulWidget {
   final String tabId;
   final TextEditingController pathController;
   final Function(String) onPathSubmitted;
@@ -17,6 +18,96 @@ class PathNavigationBar extends StatelessWidget {
     required this.onPathSubmitted,
     required this.currentPath,
   }) : super(key: key);
+
+  @override
+  State<PathNavigationBar> createState() => _PathNavigationBarState();
+}
+
+class _PathNavigationBarState extends State<PathNavigationBar> {
+  // Lưu trữ tham chiếu đến TabManagerBloc
+  TabManagerBloc? _tabBloc;
+  bool _canNavigateBack = false;
+  bool _canNavigateForward = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Lấy TabManagerBloc mỗi khi dependencies thay đổi
+    try {
+      _tabBloc = context.read<TabManagerBloc>();
+      _updateNavigationState();
+    } catch (e) {
+      print('Error accessing TabManagerBloc: $e');
+      _tabBloc = null;
+    }
+  }
+
+  void _updateNavigationState() {
+    if (_tabBloc != null) {
+      setState(() {
+        _canNavigateBack = _tabBloc!.canTabNavigateBack(widget.tabId);
+        _canNavigateForward = _tabBloc!.canTabNavigateForward(widget.tabId);
+      });
+    }
+  }
+
+  // Xử lý nút điều hướng lùi
+  void _handleBackNavigation() {
+    if (_tabBloc == null || !_canNavigateBack) return;
+
+    final state = _tabBloc!.state;
+    final tab = state.tabs.firstWhere((t) => t.id == widget.tabId);
+    if (tab.navigationHistory.length > 1) {
+      // Push currentPath into forwardHistory
+      final newForward = List<String>.from(tab.forwardHistory)..add(tab.path);
+      // Remove currentPath from navigationHistory
+      final newHistory = List<String>.from(tab.navigationHistory)..removeLast();
+      final newPath = newHistory.last;
+      // Update TabData
+      _tabBloc!.emit(state.copyWith(
+        tabs: state.tabs
+            .map((t) => t.id == widget.tabId
+                ? t.copyWith(
+                    path: newPath,
+                    navigationHistory: newHistory,
+                    forwardHistory: newForward)
+                : t)
+            .toList(),
+      ));
+      // Update UI through the parent's onPathSubmitted
+      widget.onPathSubmitted(newPath);
+    }
+  }
+
+  // Xử lý nút điều hướng tiến
+  void _handleForwardNavigation() {
+    if (_tabBloc == null || !_canNavigateForward) return;
+
+    final state = _tabBloc!.state;
+    final tab = state.tabs.firstWhere((t) => t.id == widget.tabId);
+    if (tab.forwardHistory.isNotEmpty) {
+      // Get next path
+      final nextPath = tab.forwardHistory.last;
+      // Remove this path from forwardHistory
+      final newForward = List<String>.from(tab.forwardHistory)..removeLast();
+      // Push currentPath into navigationHistory
+      final newHistory = List<String>.from(tab.navigationHistory)
+        ..add(nextPath);
+      // Update TabData
+      _tabBloc!.emit(state.copyWith(
+        tabs: state.tabs
+            .map((t) => t.id == widget.tabId
+                ? t.copyWith(
+                    path: nextPath,
+                    navigationHistory: newHistory,
+                    forwardHistory: newForward)
+                : t)
+            .toList(),
+      ));
+      // Update UI through the parent's onPathSubmitted
+      widget.onPathSubmitted(nextPath);
+    }
+  }
 
   // Helper method to get directory suggestions based on user input
   Future<List<String>> _getDirectorySuggestions(String query) async {
@@ -45,7 +136,7 @@ class PathNavigationBar extends StatelessWidget {
                     drive.toLowerCase().startsWith(query.toLowerCase()))
                 .toList();
           } else {
-            parentPath = currentPath;
+            parentPath = widget.currentPath;
             partialName = query.toLowerCase();
           }
         }
@@ -61,7 +152,7 @@ class PathNavigationBar extends StatelessWidget {
             parentPath = '/';
           }
         } else {
-          parentPath = currentPath;
+          parentPath = widget.currentPath;
           partialName = query.toLowerCase();
         }
       }
@@ -106,78 +197,26 @@ class PathNavigationBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Gọi lại _updateNavigationState để đảm bảo trạng thái mới nhất
+    if (_tabBloc != null) {
+      _updateNavigationState();
+    }
+
     return Row(
       children: [
         // Back button
         IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(EvaIcons.arrowBackOutline),
           tooltip: 'Back',
-          onPressed: context.read<TabManagerBloc>().canTabNavigateBack(tabId)
-              ? () {
-                  final tabBloc = context.read<TabManagerBloc>();
-                  final state = tabBloc.state;
-                  final tab = state.tabs.firstWhere((t) => t.id == tabId);
-                  if (tab.navigationHistory.length > 1) {
-                    // Push currentPath into forwardHistory
-                    final newForward = List<String>.from(tab.forwardHistory)
-                      ..add(tab.path);
-                    // Remove currentPath from navigationHistory
-                    final newHistory = List<String>.from(tab.navigationHistory)
-                      ..removeLast();
-                    final newPath = newHistory.last;
-                    // Update TabData
-                    tabBloc.emit(state.copyWith(
-                      tabs: state.tabs
-                          .map((t) => t.id == tabId
-                              ? t.copyWith(
-                                  path: newPath,
-                                  navigationHistory: newHistory,
-                                  forwardHistory: newForward)
-                              : t)
-                          .toList(),
-                    ));
-                    // Update UI through the parent's onPathSubmitted
-                    onPathSubmitted(newPath);
-                  }
-                }
-              : null,
+          onPressed: _canNavigateBack ? _handleBackNavigation : null,
           padding: const EdgeInsets.only(right: 4.0),
         ),
 
         // Forward button
         IconButton(
-          icon: const Icon(Icons.arrow_forward),
+          icon: const Icon(EvaIcons.arrowForwardOutline),
           tooltip: 'Forward',
-          onPressed: context.read<TabManagerBloc>().canTabNavigateForward(tabId)
-              ? () {
-                  final tabBloc = context.read<TabManagerBloc>();
-                  final state = tabBloc.state;
-                  final tab = state.tabs.firstWhere((t) => t.id == tabId);
-                  if (tab.forwardHistory.isNotEmpty) {
-                    // Get next path
-                    final nextPath = tab.forwardHistory.last;
-                    // Remove this path from forwardHistory
-                    final newForward = List<String>.from(tab.forwardHistory)
-                      ..removeLast();
-                    // Push currentPath into navigationHistory
-                    final newHistory = List<String>.from(tab.navigationHistory)
-                      ..add(nextPath);
-                    // Update TabData
-                    tabBloc.emit(state.copyWith(
-                      tabs: state.tabs
-                          .map((t) => t.id == tabId
-                              ? t.copyWith(
-                                  path: nextPath,
-                                  navigationHistory: newHistory,
-                                  forwardHistory: newForward)
-                              : t)
-                          .toList(),
-                    ));
-                    // Update UI through the parent's onPathSubmitted
-                    onPathSubmitted(nextPath);
-                  }
-                }
-              : null,
+          onPressed: _canNavigateForward ? _handleForwardNavigation : null,
           padding: const EdgeInsets.only(right: 8.0),
         ),
 
@@ -187,7 +226,7 @@ class PathNavigationBar extends StatelessWidget {
         // Address bar with autocomplete
         Expanded(
           child: RawAutocomplete<String>(
-            textEditingController: pathController,
+            textEditingController: widget.pathController,
             focusNode: FocusNode(),
             optionsBuilder: (TextEditingValue textEditingValue) async {
               if (textEditingValue.text.isEmpty) {
@@ -196,8 +235,8 @@ class PathNavigationBar extends StatelessWidget {
               return await _getDirectorySuggestions(textEditingValue.text);
             },
             onSelected: (String selection) {
-              pathController.text = selection;
-              onPathSubmitted(selection);
+              widget.pathController.text = selection;
+              widget.onPathSubmitted(selection);
             },
             fieldViewBuilder: (
               BuildContext context,
@@ -221,9 +260,9 @@ class PathNavigationBar extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                   isDense: true,
                   suffixIcon: IconButton(
-                    icon: const Icon(Icons.navigate_next, size: 20),
+                    icon: const Icon(EvaIcons.arrowIosForwardOutline, size: 20),
                     onPressed: () {
-                      onPathSubmitted(textEditingController.text);
+                      widget.onPathSubmitted(textEditingController.text);
                     },
                     padding: const EdgeInsets.all(0),
                     constraints: const BoxConstraints(),
@@ -231,7 +270,7 @@ class PathNavigationBar extends StatelessWidget {
                 ),
                 style: const TextStyle(fontSize: 14),
                 onSubmitted: (String value) {
-                  onPathSubmitted(value);
+                  widget.onPathSubmitted(value);
                 },
               );
             },

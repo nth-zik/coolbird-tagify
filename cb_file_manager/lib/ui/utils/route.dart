@@ -2,55 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cb_file_manager/main.dart' show goHome;
 
 class RouteUtils {
-  static void toNewScreen(BuildContext context, Widget screen) {
-    // Check if we can pop before attempting to pop
-    if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
-    }
-
-    Navigator.of(context)
-        .push(PageRouteBuilder(pageBuilder: (BuildContext context, _, __) {
-      return screen;
-    }, transitionsBuilder: (_, Animation<double> animation, __, Widget child) {
-      return FadeTransition(opacity: animation, child: child);
-    }));
-  }
-
-  static void toNewScreenWithoutPop(BuildContext context, Widget screen) {
-    try {
-      Navigator.of(context).push(PageRouteBuilder(
-          pageBuilder: (BuildContext context, _, __) {
-        return screen;
-      }, transitionsBuilder:
-              (_, Animation<double> animation, __, Widget child) {
-        return FadeTransition(opacity: animation, child: child);
-      }));
-    } catch (e) {
-      print('Navigation error in toNewScreenWithoutPop: $e');
-      // If regular navigation fails, try using goHome as fallback
-      if (context.mounted) {
-        goHome(context);
-      }
-    }
-  }
-
-  static void replaceScreen(BuildContext context, Widget screen) {
-    try {
-      Navigator.of(context).pushReplacement(PageRouteBuilder(
-          pageBuilder: (BuildContext context, _, __) {
-        return screen;
-      }, transitionsBuilder:
-              (_, Animation<double> animation, __, Widget child) {
-        return FadeTransition(opacity: animation, child: child);
-      }));
-    } catch (e) {
-      print('Navigation error in replaceScreen: $e');
-      // If navigation replacement fails, try using goHome
-      if (context.mounted) {
-        goHome(context);
-      }
-    }
-  }
+  // Remove redundant methods and keep only the most robust navigation method
 
   // Add a safe navigation method that ensures we never get an empty stack
   static void safeNavigate(BuildContext context, Widget screen) {

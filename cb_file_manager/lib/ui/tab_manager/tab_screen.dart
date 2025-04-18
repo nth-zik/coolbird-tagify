@@ -3,6 +3,7 @@ import 'package:flutter/services.dart'; // Import for keyboard shortcuts
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import 'package:eva_icons_flutter/eva_icons_flutter.dart'; // Import Eva Icons
 import 'tab_manager.dart';
 import 'tab_data.dart';
 import '../drawer.dart';
@@ -273,6 +274,11 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                   // AppBar chỉ hiển thị ở giao diện tablet
                   appBar: isTablet
                       ? AppBar(
+                          elevation: 0,
+                          backgroundColor:
+                              Theme.of(context).brightness == Brightness.dark
+                                  ? Color(0xFF292A2D)
+                                  : Color(0xFFDEE1E6),
                           // Move TabBar to the title area instead of using bottom
                           title: state.tabs.isEmpty
                               ? Text(context.tr.appTitle)
@@ -282,48 +288,42 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                                   child: ScrollableTabBar(
                                     controller: _tabController,
                                     onTap: (index) {
-                                      // Chỉ xử lý chuyển đổi tab, không cần kiểm tra nút "+" nữa
+                                      // Only handle tab switching for valid tabs
                                       if (index < state.tabs.length) {
                                         context.read<TabManagerBloc>().add(
                                             SwitchToTab(state.tabs[index].id));
                                       }
                                     },
-                                    // Thêm callback trực tiếp cho nút thêm tab mới
+                                    // Add tab close callback
+                                    onTabClose: (index) {
+                                      if (index < state.tabs.length) {
+                                        context.read<TabManagerBloc>().add(
+                                            CloseTab(state.tabs[index].id));
+                                      }
+                                    },
+                                    // Keep the add tab button functionality
                                     onAddTabPressed: _handleAddNewTab,
                                     tabs: [
-                                      // Chỉ hiển thị các tab thông thường, không cần tab "+" nữa
+                                      // Generate Chrome-style tabs without the close button (now handled by ScrollableTabBar)
                                       ...state.tabs.map((tab) {
                                         return Tab(
+                                          height: 38,
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               Icon(
                                                 tab.isPinned
-                                                    ? Icons.push_pin
-                                                    : tab.icon,
+                                                    ? EvaIcons.pin
+                                                    : tab.icon ??
+                                                        EvaIcons.folderOutline,
                                                 size: 16,
                                               ),
-                                              const SizedBox(width: 6),
-                                              Text(tab.name),
-                                              const SizedBox(width: 6),
-                                              // Tối ưu nút đóng tab để dễ nhấn hơn trên thiết bị cảm ứng
-                                              Material(
-                                                color: Colors.transparent,
-                                                child: InkWell(
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                  onTap: () {
-                                                    context
-                                                        .read<TabManagerBloc>()
-                                                        .add(CloseTab(tab.id));
-                                                  },
-                                                  child: Container(
-                                                    padding:
-                                                        const EdgeInsets.all(6),
-                                                    child: const Icon(
-                                                        Icons.close,
-                                                        size: 16),
-                                                  ),
+                                              const SizedBox(width: 8),
+                                              Flexible(
+                                                child: Text(
+                                                  tab.name,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
                                               ),
                                             ],
@@ -334,10 +334,19 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                                   ),
                                 ),
                           actions: [
-                            // Remove drawer pin controls from app bar and keep only tab management actions
-                            IconButton(
-                              icon: const Icon(Icons.more_vert),
-                              onPressed: () => _showTabOptions(context),
+                            // Chrome-style menu button
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: IconButton(
+                                icon: Icon(
+                                  EvaIcons.moreVertical,
+                                  color: Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Colors.white70
+                                      : Colors.black54,
+                                ),
+                                onPressed: () => _showTabOptions(context),
+                              ),
                             ),
                           ],
                         )
@@ -375,7 +384,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                       ? FloatingActionButton(
                           onPressed: _handleAddNewTab,
                           tooltip: context.tr.newFolder,
-                          child: const Icon(Icons.add),
+                          child: const Icon(EvaIcons.plus),
                         )
                       : null,
                 ),
@@ -411,7 +420,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(
-            Icons.tab_unselected,
+            EvaIcons.fileOutline,
             size: 64,
             color: Colors.grey,
           ),
@@ -427,7 +436,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
-            icon: const Icon(Icons.add),
+            icon: const Icon(EvaIcons.plus),
             label: Text(context.tr.newFolder),
             onPressed: _handleAddNewTab,
           ),
@@ -477,74 +486,137 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
   }
 
   void _showTabOptions(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? Color(0xFF292A2D) : Colors.white;
+    final textColor = isDarkMode ? Colors.white70 : Colors.black87;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(context.tr.settings),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.add),
-              title: Text('New Tab'),
-              onTap: () {
-                Navigator.pop(context);
-                _handleAddNewTab();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.refresh),
-              title: Text(context.tr.refresh),
-              onTap: () {
-                Navigator.pop(context);
-                // Get the current tab and refresh its content
-                final state = context.read<TabManagerBloc>().state;
-                final activeTab = state.activeTab;
-                if (activeTab != null) {
-                  // This will trigger a rebuild of the active tab
-                  context
-                      .read<TabManagerBloc>()
-                      .add(UpdateTabPath(activeTab.id, activeTab.path));
-                }
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings),
-              title: Text(context.tr.settings),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const SettingsScreen(),
-                  ),
-                ).then((_) {
-                  // Force rebuild when returning from settings to apply theme changes
-                  if (mounted) setState(() {});
-                });
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.close),
-              title: Text(context.tr.close),
-              onTap: () {
-                Navigator.pop(context);
-                // Get all tabs and close them one by one
-                final tabBloc = context.read<TabManagerBloc>();
-                final tabs = List<TabData>.from(tabBloc.state.tabs);
-                for (var tab in tabs) {
-                  tabBloc.add(CloseTab(tab.id));
-                }
-              },
-            ),
-          ],
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
-        actions: [
-          TextButton(
-            child: Text(context.tr.close),
-            onPressed: () => Navigator.of(context).pop(),
+        elevation: 5,
+        backgroundColor: backgroundColor,
+        child: Container(
+          width: 320,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: Text(
+                  context.tr.settings,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                ),
+              ),
+              _buildTabOptionItem(
+                context: context,
+                icon: EvaIcons.plus,
+                title: 'New Tab',
+                isDarkMode: isDarkMode,
+                onTap: () {
+                  Navigator.pop(context);
+                  _handleAddNewTab();
+                },
+              ),
+              _buildTabOptionItem(
+                context: context,
+                icon: EvaIcons.refresh,
+                title: context.tr.refresh,
+                isDarkMode: isDarkMode,
+                onTap: () {
+                  Navigator.pop(context);
+                  // Get the current tab and refresh its content
+                  final state = context.read<TabManagerBloc>().state;
+                  final activeTab = state.activeTab;
+                  if (activeTab != null) {
+                    // This will trigger a rebuild of the active tab
+                    context
+                        .read<TabManagerBloc>()
+                        .add(UpdateTabPath(activeTab.id, activeTab.path));
+                  }
+                },
+              ),
+              _buildTabOptionItem(
+                context: context,
+                icon: EvaIcons.settings2Outline,
+                title: context.tr.settings,
+                isDarkMode: isDarkMode,
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SettingsScreen(),
+                    ),
+                  ).then((_) {
+                    // Force rebuild when returning from settings to apply theme changes
+                    if (mounted) setState(() {});
+                  });
+                },
+              ),
+              _buildTabOptionItem(
+                context: context,
+                icon: EvaIcons.close,
+                title: context.tr.close,
+                isDarkMode: isDarkMode,
+                onTap: () {
+                  Navigator.pop(context);
+                  // Get all tabs and close them one by one
+                  final tabBloc = context.read<TabManagerBloc>();
+                  final tabs = List<TabData>.from(tabBloc.state.tabs);
+                  for (var tab in tabs) {
+                    tabBloc.add(CloseTab(tab.id));
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
           ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabOptionItem({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required bool isDarkMode,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: isDarkMode ? Colors.white70 : Colors.black87,
+              ),
+              const SizedBox(width: 16),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

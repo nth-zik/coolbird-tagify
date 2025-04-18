@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import './main_ui.dart';
 import './utils/route.dart';
 import './home.dart';
@@ -113,9 +114,7 @@ class _CBDrawerState extends State<CBDrawer> {
                   if (!isSmallScreen)
                     IconButton(
                       icon: Icon(
-                        widget.isPinned
-                            ? Icons.push_pin
-                            : Icons.push_pin_outlined,
+                        widget.isPinned ? EvaIcons.pin : EvaIcons.pinOutline,
                         color: Colors.white,
                       ),
                       tooltip: widget.isPinned ? 'Unpin menu' : 'Pin menu',
@@ -128,15 +127,15 @@ class _CBDrawerState extends State<CBDrawer> {
             ),
           ),
           ListTile(
-            leading: const Icon(Icons.home),
+            leading: const Icon(EvaIcons.homeOutline),
             title: Text(context.tr.home),
             onTap: () {
               Navigator.pop(context);
-              RouteUtils.toNewScreen(context, const TabMainScreen());
+              RouteUtils.safeNavigate(context, const TabMainScreen());
             },
           ),
           ExpansionTile(
-            leading: const Icon(Icons.phone_android),
+            leading: const Icon(EvaIcons.smartphone),
             title: const Text('Storage'),
             initiallyExpanded: _isStorageExpanded,
             onExpansionChanged: (isExpanded) {
@@ -148,7 +147,7 @@ class _CBDrawerState extends State<CBDrawer> {
               ..._buildStorageLocationsList(),
               ListTile(
                 contentPadding: const EdgeInsets.only(left: 30),
-                leading: const Icon(Icons.label),
+                leading: const Icon(EvaIcons.shoppingBag),
                 title: Text(context.tr.tags),
                 onTap: () async {
                   Navigator.pop(context);
@@ -170,7 +169,7 @@ class _CBDrawerState extends State<CBDrawer> {
             ],
           ),
           ListTile(
-            leading: const Icon(Icons.network_wifi),
+            leading: const Icon(EvaIcons.wifi),
             title: const Text('Networks'),
             onTap: () {
               Navigator.pop(context);
@@ -183,7 +182,7 @@ class _CBDrawerState extends State<CBDrawer> {
           ),
           const Divider(),
           ListTile(
-            leading: const Icon(Icons.settings),
+            leading: const Icon(EvaIcons.settings2Outline),
             title: Text(context.tr.settings),
             onTap: () {
               Navigator.pop(context);
@@ -191,7 +190,7 @@ class _CBDrawerState extends State<CBDrawer> {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.info_outline),
+            leading: const Icon(EvaIcons.infoOutline),
             title: const Text('About'),
             onTap: () {
               Navigator.pop(context);
@@ -225,7 +224,7 @@ class _CBDrawerState extends State<CBDrawer> {
           contentPadding: const EdgeInsets.only(left: 30),
           title: const Text('No storage locations found'),
           trailing: IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(EvaIcons.refresh),
             onPressed: _loadStorageLocations,
           ),
         )
@@ -281,7 +280,7 @@ class _CBDrawerState extends State<CBDrawer> {
           contentPadding: const EdgeInsets.only(left: 30),
           title: const Text('No storage locations found'),
           trailing: IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(EvaIcons.refresh),
             onPressed: _loadStorageLocations,
           ),
         )
@@ -609,43 +608,42 @@ class _CBDrawerState extends State<CBDrawer> {
     // Icons for different storage types
     if (Platform.isWindows && path.contains(':')) {
       if (path.startsWith('C:')) {
-        return Icons.computer;
+        return EvaIcons.monitor;
       }
-      return Icons.drive_folder_upload;
+      return EvaIcons.hardDriveOutline;
     }
 
     // Android/Linux paths
     if (path == '/') {
-      return Icons.admin_panel_settings;
+      return EvaIcons.shieldOutline;
     }
 
     if (path == '/storage/emulated/0' || path == '/sdcard') {
-      return Icons.phone_android;
+      return EvaIcons.smartphone;
     }
 
     if (path.startsWith('/storage/') && path != '/storage') {
-      // Sử dụng icon thẻ nhớ SD phù hợp hơn thay vì Icons.sd_card
-      return Icons.sd_storage;
+      return EvaIcons.saveOutline;
     }
 
     if (path == '/storage') {
-      return Icons.storage;
+      return EvaIcons.hardDriveOutline;
     }
 
     if (path == '/system') {
-      return Icons.system_security_update;
+      return EvaIcons.settingsOutline;
     }
 
     if (path == '/data') {
-      return Icons.data_usage;
+      return EvaIcons.activity;
     }
 
     if (path.startsWith('/mnt/')) {
-      return Icons.folder_special;
+      return EvaIcons.folderAddOutline;
     }
 
     // Default icon
-    return Icons.folder;
+    return EvaIcons.folderOutline;
   }
 }
 
@@ -742,9 +740,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     if (!isSmallScreen)
                       IconButton(
                         icon: Icon(
-                          widget.isPinned
-                              ? Icons.push_pin
-                              : Icons.push_pin_outlined,
+                          widget.isPinned ? EvaIcons.pin : EvaIcons.pinOutline,
                           color: Colors.white,
                         ),
                         tooltip: widget.isPinned ? 'Unpin menu' : 'Pin menu',
@@ -766,7 +762,7 @@ class _AppDrawerState extends State<AppDrawer> {
             ),
           ),
           ListTile(
-            leading: const Icon(Icons.home),
+            leading: const Icon(EvaIcons.homeOutline),
             title: Text(context.tr.home),
             onTap: () {
               Navigator.pop(context);
@@ -774,7 +770,7 @@ class _AppDrawerState extends State<AppDrawer> {
           ),
           // Storage section
           ExpansionTile(
-            leading: const Icon(Icons.storage),
+            leading: const Icon(EvaIcons.smartphone),
             title: const Text('Storage'),
             initiallyExpanded: _isStorageExpanded,
             onExpansionChanged: (isExpanded) {
@@ -785,7 +781,7 @@ class _AppDrawerState extends State<AppDrawer> {
             children: _buildStorageLocationsList(),
           ),
           ListTile(
-            leading: const Icon(Icons.label),
+            leading: const Icon(EvaIcons.shoppingBag),
             title: Text(context.tr.tags),
             onTap: () async {
               Navigator.pop(context);
@@ -813,7 +809,7 @@ class _AppDrawerState extends State<AppDrawer> {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.settings),
+            leading: const Icon(EvaIcons.settings2Outline),
             title: Text(context.tr.settings),
             onTap: () {
               Navigator.pop(context);
@@ -821,7 +817,7 @@ class _AppDrawerState extends State<AppDrawer> {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.info),
+            leading: const Icon(EvaIcons.infoOutline),
             title: const Text('About'),
             onTap: () {
               Navigator.pop(context);
@@ -855,7 +851,7 @@ class _AppDrawerState extends State<AppDrawer> {
           contentPadding: const EdgeInsets.only(left: 30),
           title: const Text('No storage locations found'),
           trailing: IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(EvaIcons.refresh),
             onPressed: _loadStorageLocations,
           ),
         )
@@ -911,7 +907,7 @@ class _AppDrawerState extends State<AppDrawer> {
           contentPadding: const EdgeInsets.only(left: 30),
           title: const Text('No storage locations found'),
           trailing: IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(EvaIcons.refresh),
             onPressed: _loadStorageLocations,
           ),
         )
@@ -1141,42 +1137,41 @@ class _AppDrawerState extends State<AppDrawer> {
     // Icons for different storage types
     if (Platform.isWindows && path.contains(':')) {
       if (path.startsWith('C:')) {
-        return Icons.computer;
+        return EvaIcons.monitor;
       }
-      return Icons.drive_folder_upload;
+      return EvaIcons.hardDriveOutline;
     }
 
     // Android/Linux paths
     if (path == '/') {
-      return Icons.admin_panel_settings;
+      return EvaIcons.shieldOutline;
     }
 
     if (path == '/storage/emulated/0' || path == '/sdcard') {
-      return Icons.phone_android;
+      return EvaIcons.smartphone;
     }
 
     if (path.startsWith('/storage/') && path != '/storage') {
-      // Sử dụng icon thẻ nhớ SD phù hợp hơn thay vì Icons.sd_card
-      return Icons.sd_storage;
+      return EvaIcons.saveOutline;
     }
 
     if (path == '/storage') {
-      return Icons.storage;
+      return EvaIcons.hardDriveOutline;
     }
 
     if (path == '/system') {
-      return Icons.system_security_update;
+      return EvaIcons.settingsOutline;
     }
 
     if (path == '/data') {
-      return Icons.data_usage;
+      return EvaIcons.activity;
     }
 
     if (path.startsWith('/mnt/')) {
-      return Icons.folder_special;
+      return EvaIcons.folderAddOutline;
     }
 
     // Default icon
-    return Icons.folder;
+    return EvaIcons.folderOutline;
   }
 }

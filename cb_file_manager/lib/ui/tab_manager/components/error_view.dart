@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 
 /// Component to display error messages with appropriate styling and actions
 class ErrorView extends StatelessWidget {
@@ -24,7 +25,7 @@ class ErrorView extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            isAdminError ? Icons.admin_panel_settings : Icons.error_outline,
+            isAdminError ? EvaIcons.shieldOutline : EvaIcons.alertCircleOutline,
             size: 48,
             color: isAdminError ? Colors.orange : Colors.red,
           ),

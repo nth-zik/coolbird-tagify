@@ -64,20 +64,6 @@ class AddToTabHistory extends TabEvent {
   AddToTabHistory(this.tabId, this.path);
 }
 
-/// Event to navigate back in tab history
-class PopFromTabHistory extends TabEvent {
-  final String tabId;
-
-  PopFromTabHistory(this.tabId);
-}
-
-/// Event to navigate forward in tab history
-class GoForwardInTabHistory extends TabEvent {
-  final String tabId;
-
-  GoForwardInTabHistory(this.tabId);
-}
-
 /// State for the TabManager
 class TabManagerState {
   final List<TabData> tabs;
@@ -115,8 +101,6 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
     on<UpdateTabName>(_onUpdateTabName);
     on<ToggleTabPin>(_onToggleTabPin);
     on<AddToTabHistory>(_onAddToTabHistory);
-    on<PopFromTabHistory>(_onPopFromTabHistory);
-    on<GoForwardInTabHistory>(_onGoForwardInTabHistory);
   }
 
   void _onAddTab(AddTab event, Emitter<TabManagerState> emit) {
@@ -232,57 +216,6 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
     emit(state.copyWith(tabs: tabs));
   }
 
-  void _onPopFromTabHistory(
-      PopFromTabHistory event, Emitter<TabManagerState> emit) {
-    final tabs = state.tabs.map((tab) {
-      if (tab.id == event.tabId) {
-        if (tab.navigationHistory.length > 1) {
-          final List<String> updatedHistory = List.from(tab.navigationHistory);
-          // Store current path in forward history
-          final List<String> updatedForwardHistory =
-              List.from(tab.forwardHistory);
-          updatedForwardHistory.add(tab.path);
-
-          // Remove the current path (last in the list)
-          updatedHistory.removeLast();
-          final String newPath = updatedHistory.last;
-
-          return tab.copyWith(
-              path: newPath,
-              navigationHistory: updatedHistory,
-              forwardHistory: updatedForwardHistory);
-        }
-      }
-      return tab;
-    }).toList();
-
-    emit(state.copyWith(tabs: tabs));
-  }
-
-  void _onGoForwardInTabHistory(
-      GoForwardInTabHistory event, Emitter<TabManagerState> emit) {
-    final tabs = state.tabs.map((tab) {
-      if (tab.id == event.tabId && tab.forwardHistory.isNotEmpty) {
-        // Get the next path from forward history
-        final List<String> updatedForwardHistory =
-            List.from(tab.forwardHistory);
-        final String nextPath = updatedForwardHistory.removeLast();
-
-        // Add to navigation history
-        final List<String> updatedHistory = List.from(tab.navigationHistory);
-        updatedHistory.add(nextPath);
-
-        return tab.copyWith(
-            path: nextPath,
-            navigationHistory: updatedHistory,
-            forwardHistory: updatedForwardHistory);
-      }
-      return tab;
-    }).toList();
-
-    emit(state.copyWith(tabs: tabs));
-  }
-
   String _extractNameFromPath(String path) {
     final pathParts = path.split('/');
     return pathParts.isEmpty || pathParts.last.isEmpty
@@ -321,8 +254,10 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
     if (previousPath != null) {
       // Update the tab with the new path
       tabs[tabIndex] = tabs[tabIndex].copyWith(path: previousPath);
-      // Emit the new state
-      emit(state.copyWith(tabs: tabs));
+
+      // Update state using add() instead of emit()
+      add(UpdateTabPath(tabId, previousPath));
+
       // Return the path we navigated to
       return previousPath;
     }
@@ -344,8 +279,10 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
     if (nextPath != null) {
       // Update the tab with the new path
       tabs[tabIndex] = tabs[tabIndex].copyWith(path: nextPath);
-      // Emit the new state
-      emit(state.copyWith(tabs: tabs));
+
+      // Update state using add() instead of emit()
+      add(UpdateTabPath(tabId, nextPath));
+
       // Return the path we navigated to
       return nextPath;
     }

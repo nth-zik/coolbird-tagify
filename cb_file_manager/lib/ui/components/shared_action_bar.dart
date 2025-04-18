@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/helpers/user_preferences.dart';
+import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 
 class SharedActionBar {
   /// Tạo popup menu item cho các tùy chọn sắp xếp
@@ -31,7 +32,7 @@ class SharedActionBar {
           ),
           const Spacer(),
           if (option == currentOption)
-            const Icon(Icons.check, color: Colors.blue, size: 20),
+            const Icon(EvaIcons.checkmark, color: Colors.blue, size: 20),
         ],
       ),
     );
@@ -159,7 +160,7 @@ class SharedActionBar {
     String? currentPath,
   }) {
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert),
+      icon: const Icon(EvaIcons.moreVertical),
       tooltip: 'Tùy chọn khác',
       onSelected: (value) {
         if (value == 'select') {
@@ -186,7 +187,7 @@ class SharedActionBar {
             value: 'image_gallery',
             child: Row(
               children: [
-                Icon(Icons.photo_library, size: 20),
+                Icon(EvaIcons.imageOutline, size: 20),
                 SizedBox(width: 8),
                 Text('Thư viện ảnh'),
               ],
@@ -196,7 +197,7 @@ class SharedActionBar {
             value: 'video_gallery',
             child: Row(
               children: [
-                Icon(Icons.video_library, size: 20),
+                Icon(EvaIcons.videoOutline, size: 20),
                 SizedBox(width: 8),
                 Text('Thư viện video'),
               ],
@@ -227,7 +228,7 @@ class SharedActionBar {
     // Thêm nút tìm kiếm
     actions.add(
       IconButton(
-        icon: const Icon(Icons.search),
+        icon: const Icon(EvaIcons.search),
         tooltip: 'Tìm kiếm',
         onPressed: onSearchPressed,
       ),
@@ -236,36 +237,40 @@ class SharedActionBar {
     // Thêm nút sắp xếp
     actions.add(
       PopupMenuButton<SortOption>(
-        icon: const Icon(Icons.sort),
+        icon: const Icon(EvaIcons.options2Outline),
         tooltip: 'Sắp xếp theo',
         initialValue: currentSortOption,
         onSelected: onSortOptionSelected,
         itemBuilder: (context) => [
           buildSortMenuItem(context, SortOption.nameAsc, 'Tên (A → Z)',
-              Icons.sort_by_alpha, currentSortOption),
+              EvaIcons.textOutline, currentSortOption),
           buildSortMenuItem(context, SortOption.nameDesc, 'Tên (Z → A)',
-              Icons.sort_by_alpha, currentSortOption),
+              EvaIcons.textOutline, currentSortOption),
           const PopupMenuDivider(),
           buildSortMenuItem(context, SortOption.dateAsc, 'Ngày (Cũ nhất trước)',
-              Icons.calendar_today, currentSortOption),
-          buildSortMenuItem(context, SortOption.dateDesc,
-              'Ngày (Mới nhất trước)', Icons.calendar_today, currentSortOption),
+              EvaIcons.calendarOutline, currentSortOption),
+          buildSortMenuItem(
+              context,
+              SortOption.dateDesc,
+              'Ngày (Mới nhất trước)',
+              EvaIcons.calendarOutline,
+              currentSortOption),
           const PopupMenuDivider(),
           buildSortMenuItem(
               context,
               SortOption.sizeAsc,
               'Kích thước (Nhỏ nhất trước)',
-              Icons.data_usage,
+              EvaIcons.activity,
               currentSortOption),
           buildSortMenuItem(
               context,
               SortOption.sizeDesc,
               'Kích thước (Lớn nhất trước)',
-              Icons.data_usage,
+              EvaIcons.activity,
               currentSortOption),
           const PopupMenuDivider(),
           buildSortMenuItem(context, SortOption.typeAsc, 'Loại tệp (A → Z)',
-              Icons.insert_drive_file, currentSortOption),
+              EvaIcons.fileOutline, currentSortOption),
         ],
       ),
     );
@@ -274,7 +279,7 @@ class SharedActionBar {
     if (viewMode == ViewMode.grid && onGridSizePressed != null) {
       actions.add(
         IconButton(
-          icon: const Icon(Icons.grid_view_outlined),
+          icon: const Icon(EvaIcons.gridOutline),
           tooltip: 'Điều chỉnh kích thước lưới',
           onPressed: onGridSizePressed,
         ),
@@ -284,7 +289,9 @@ class SharedActionBar {
     // Thêm nút chuyển đổi chế độ xem
     actions.add(
       IconButton(
-        icon: Icon(viewMode == ViewMode.grid ? Icons.list : Icons.grid_view),
+        icon: Icon(viewMode == ViewMode.grid
+            ? EvaIcons.listOutline
+            : EvaIcons.gridOutline),
         tooltip: viewMode == ViewMode.grid ? 'Chế độ danh sách' : 'Chế độ lưới',
         onPressed: onViewModeToggled,
       ),
@@ -293,7 +300,7 @@ class SharedActionBar {
     // Thêm nút làm mới
     actions.add(
       IconButton(
-        icon: const Icon(Icons.refresh),
+        icon: const Icon(EvaIcons.refresh),
         tooltip: 'Làm mới',
         onPressed: onRefresh,
       ),

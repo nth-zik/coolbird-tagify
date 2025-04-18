@@ -4,6 +4,7 @@ import 'package:cb_file_manager/ui/drawer.dart';
 import 'package:cb_file_manager/ui/utils/route.dart';
 import 'package:cb_file_manager/helpers/user_preferences.dart'; // Add UserPreferences import
 import 'package:cb_file_manager/config/translation_helper.dart'; // Import translation helper
+import 'package:eva_icons_flutter/eva_icons_flutter.dart'; // Import EvaIcons
 import 'dart:io'; // For Platform check
 
 /// A base screen widget that handles common functionality across all screens
@@ -146,13 +147,13 @@ class _BaseScreenState extends State<BaseScreen> {
           actions: <Widget>[
             // Always add the menu button as the first action
             IconButton(
-              icon: const Icon(Icons.menu),
+              icon: const Icon(EvaIcons.menu2Outline),
               onPressed: () => _scaffoldKey.currentState?.openDrawer(),
             ),
 
             // Home button for emergency navigation
             IconButton(
-              icon: const Icon(Icons.home),
+              icon: const Icon(EvaIcons.homeOutline),
               tooltip: context.tr.home,
               onPressed: () => goHome(context),
             ),
@@ -180,7 +181,7 @@ class _BaseScreenState extends State<BaseScreen> {
   /// Build the leading icon based on the navigation state
   Widget _buildLeadingIcon(BuildContext context) {
     return IconButton(
-      icon: const Icon(Icons.arrow_back),
+      icon: const Icon(EvaIcons.arrowBack),
       onPressed: () => _handleBackNavigation(context),
     );
   }

@@ -124,7 +124,7 @@ class MyHomePageState extends State<MyHomePage> {
                     const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
               ),
               onPressed: () {
-                RouteUtils.toNewScreenWithoutPop(context, const LocalHome());
+                RouteUtils.safeNavigate(context, const LocalHome());
               },
             ),
           ],

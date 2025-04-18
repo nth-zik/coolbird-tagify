@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cb_file_manager/ui/utils/base_screen.dart';
+import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 
 /// Helper class to standardize app bar functionality across the application
 class ActionBarHelper {
@@ -32,12 +33,12 @@ class ActionBarHelper {
 
     if (canPop) {
       return IconButton(
-        icon: const Icon(Icons.arrow_back),
+        icon: const Icon(EvaIcons.arrowBack),
         onPressed: () => _handleBackNavigation(context),
       );
     } else {
       return IconButton(
-        icon: const Icon(Icons.menu),
+        icon: const Icon(EvaIcons.menu2Outline),
         onPressed: () => BaseScreen.openDrawer(),
       );
     }
@@ -77,7 +78,7 @@ class ActionBarHelper {
   /// Creates a search action for the app bar
   static IconButton createSearchAction(VoidCallback onPressed) {
     return IconButton(
-      icon: const Icon(Icons.search),
+      icon: const Icon(EvaIcons.searchOutline),
       tooltip: 'Search',
       onPressed: onPressed,
     );
@@ -86,7 +87,7 @@ class ActionBarHelper {
   /// Creates a settings action for the app bar
   static IconButton createSettingsAction(VoidCallback onPressed) {
     return IconButton(
-      icon: const Icon(Icons.settings),
+      icon: const Icon(EvaIcons.settings2Outline),
       tooltip: 'Settings',
       onPressed: onPressed,
     );
@@ -154,7 +155,7 @@ class ActionBarHelper {
   }) {
     return AppBar(
       leading: IconButton(
-        icon: const Icon(Icons.close),
+        icon: const Icon(EvaIcons.close),
         onPressed: onClose,
       ),
       title: Text('$selectedCount selected'),

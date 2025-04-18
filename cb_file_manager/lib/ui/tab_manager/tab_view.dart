@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'tab_manager.dart';
 import 'tab_data.dart';
 import 'tabbed_folder_list_screen.dart';
@@ -39,7 +40,7 @@ class TabView extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(
-            Icons.tab_unselected,
+            EvaIcons.fileOutline,
             size: 64,
             color: Colors.grey,
           ),
@@ -55,7 +56,7 @@ class TabView extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
-            icon: const Icon(Icons.add),
+            icon: const Icon(EvaIcons.plus),
             label: const Text('New Tab'),
             onPressed: () => onAddNewTab?.call(),
           ),
@@ -91,7 +92,7 @@ class TabView extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.add),
+            icon: const Icon(EvaIcons.plus),
             tooltip: 'New Tab',
             onPressed: () => onAddNewTab?.call(),
           ),
@@ -123,7 +124,7 @@ class TabView extends StatelessWidget {
         child: Row(
           children: [
             Icon(
-              tab.isPinned ? Icons.push_pin : tab.icon,
+              tab.isPinned ? EvaIcons.pinOutline : tab.icon,
               size: 16,
               color: isActive
                   ? Theme.of(context).primaryColor
@@ -145,7 +146,7 @@ class TabView extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               child: const Padding(
                 padding: EdgeInsets.all(4.0),
-                child: Icon(Icons.close, size: 14),
+                child: Icon(EvaIcons.close, size: 14),
               ),
             ),
           ],

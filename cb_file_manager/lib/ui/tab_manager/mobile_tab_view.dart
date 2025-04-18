@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Thêm import cho SystemUiOverlayStyle
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:io'; // Thêm import cho Platform
+import 'package:eva_icons_flutter/eva_icons_flutter.dart'; // Import Eva Icons
 import 'tab_manager.dart';
 import 'tab_data.dart';
 import '../screens/settings/settings_screen.dart';
@@ -100,7 +101,7 @@ class MobileTabView extends StatelessWidget {
         children: [
           // Nút menu để mở drawer
           IconButton(
-            icon: Icon(Icons.menu, color: textColor),
+            icon: Icon(EvaIcons.menu, color: textColor),
             onPressed: () {
               // Mở Scaffold drawer
               Scaffold.of(context).openDrawer();
@@ -127,14 +128,14 @@ class MobileTabView extends StatelessWidget {
 
           // Nút thêm tab mới
           IconButton(
-            icon: Icon(Icons.add, color: textColor),
+            icon: Icon(EvaIcons.plus, color: textColor),
             tooltip: 'Add new tab',
             onPressed: onAddNewTab,
           ),
 
           // Nút menu tùy chọn
           IconButton(
-            icon: Icon(Icons.more_vert, color: textColor),
+            icon: Icon(EvaIcons.moreVertical, color: textColor),
             onPressed: () {
               _showMobileTabOptions(context);
             },
@@ -175,7 +176,7 @@ class MobileTabView extends StatelessWidget {
         children: [
           // Nút menu để mở drawer
           IconButton(
-            icon: Icon(Icons.menu, color: textColor),
+            icon: Icon(EvaIcons.menu, color: textColor),
             onPressed: () {
               // Mở Scaffold drawer
               Scaffold.of(context).openDrawer();
@@ -199,7 +200,7 @@ class MobileTabView extends StatelessWidget {
 
           // Nút menu tùy chọn
           IconButton(
-            icon: Icon(Icons.more_vert, color: textColor),
+            icon: Icon(EvaIcons.moreVertical, color: textColor),
             onPressed: () {
               _showMobileTabOptions(context);
             },
@@ -261,7 +262,7 @@ class MobileTabView extends StatelessWidget {
                 children: [
                   // Thêm tab mới
                   ListTile(
-                    leading: const Icon(Icons.add),
+                    leading: const Icon(EvaIcons.plus),
                     title: const Text('Thêm tab mới'),
                     onTap: () {
                       Navigator.pop(context);
@@ -272,7 +273,7 @@ class MobileTabView extends StatelessWidget {
                   // Làm mới tab hiện tại
                   if (activeTab != null)
                     ListTile(
-                      leading: const Icon(Icons.refresh),
+                      leading: const Icon(EvaIcons.refresh),
                       title: const Text('Làm mới tab'),
                       onTap: () {
                         Navigator.pop(context);
@@ -285,7 +286,7 @@ class MobileTabView extends StatelessWidget {
                   // Xem thông tin chi tiết về tab
                   if (activeTab != null)
                     ListTile(
-                      leading: const Icon(Icons.info_outline),
+                      leading: const Icon(EvaIcons.infoOutline),
                       title: const Text('Thông tin tab'),
                       onTap: () {
                         Navigator.pop(context);
@@ -296,7 +297,7 @@ class MobileTabView extends StatelessWidget {
                   // Đóng tất cả các tab
                   if (state.tabs.isNotEmpty)
                     ListTile(
-                      leading: const Icon(Icons.close),
+                      leading: const Icon(EvaIcons.close),
                       title: const Text('Đóng tất cả các tab'),
                       onTap: () {
                         Navigator.pop(context);
@@ -308,7 +309,7 @@ class MobileTabView extends StatelessWidget {
 
                   // Cài đặt
                   ListTile(
-                    leading: const Icon(Icons.settings),
+                    leading: const Icon(EvaIcons.settings2Outline),
                     title: const Text('Cài đặt'),
                     onTap: () {
                       Navigator.pop(context);
@@ -474,7 +475,7 @@ class MobileTabView extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Icon(
-              Icons.tab,
+              EvaIcons.fileOutline,
               size: 16,
               color: textColor,
             ),
@@ -527,7 +528,7 @@ class MobileTabView extends StatelessWidget {
                         const Spacer(),
                         // Nút thêm tab mới
                         IconButton(
-                          icon: const Icon(Icons.add),
+                          icon: const Icon(EvaIcons.plus),
                           tooltip: 'Add new tab',
                           onPressed: () {
                             Navigator.pop(newContext); // Đóng bottom sheet
@@ -567,7 +568,9 @@ class MobileTabView extends StatelessWidget {
 
                               return ListTile(
                                 leading: Icon(
-                                  tab.isPinned ? Icons.push_pin : Icons.folder,
+                                  tab.isPinned
+                                      ? EvaIcons.pin
+                                      : EvaIcons.folderOutline,
                                   color: isActive
                                       ? Theme.of(newContext).colorScheme.primary
                                       : null,
@@ -626,7 +629,7 @@ class MobileTabView extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(
-            Icons.tab_unselected,
+            EvaIcons.fileOutline,
             size: 64,
             color: Colors.grey,
           ),
@@ -642,7 +645,7 @@ class MobileTabView extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
-            icon: const Icon(Icons.add),
+            icon: const Icon(EvaIcons.plus),
             label: const Text('New Tab'),
             onPressed: onAddNewTab,
           ),
@@ -740,7 +743,7 @@ class MobileTabView extends StatelessWidget {
                       const Spacer(),
                       // Nút đóng
                       IconButton(
-                        icon: Icon(Icons.close, color: textColor),
+                        icon: Icon(EvaIcons.close, color: textColor),
                         onPressed: () => Navigator.pop(newContext),
                       ),
                     ],
@@ -1007,7 +1010,7 @@ class AddressBarWidget extends StatelessWidget {
         child: Row(
           children: [
             Icon(
-              Icons.folder_outlined,
+              EvaIcons.folderOutline,
               size: 16,
               color: isDarkMode ? Colors.white70 : Colors.black87,
             ),
@@ -1022,7 +1025,7 @@ class AddressBarWidget extends StatelessWidget {
               ),
             ),
             Icon(
-              Icons.arrow_drop_down,
+              EvaIcons.chevronDown,
               size: 20,
               color: isDarkMode ? Colors.white70 : Colors.black87,
             ),

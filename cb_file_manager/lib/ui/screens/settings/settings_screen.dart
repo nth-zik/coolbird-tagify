@@ -3,7 +3,6 @@ import 'package:cb_file_manager/helpers/user_preferences.dart';
 import 'package:cb_file_manager/ui/utils/base_screen.dart';
 import 'package:cb_file_manager/config/language_controller.dart';
 import 'package:cb_file_manager/config/translation_helper.dart';
-import 'package:cb_file_manager/ui/screens/language_test_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -84,22 +83,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _buildLanguageSection(context),
                 const Divider(),
                 _buildThemeSection(context),
-                const Divider(),
-                // Test language section
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const LanguageTestScreen(),
-                        ),
-                      );
-                    },
-                    child: Text('Test Language Translations'),
-                  ),
-                ),
                 // Other settings sections can be added here
               ],
             ),

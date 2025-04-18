@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:cb_file_manager/helpers/io_extensions.dart';
 
 /// Component for displaying a folder item in grid view
@@ -29,7 +30,7 @@ class FolderGridItem extends StatelessWidget {
               flex: 3,
               child: Center(
                 child: Icon(
-                  Icons.folder,
+                  EvaIcons.folderOutline,
                   size: 40,
                   color: Colors.amber[700],
                 ),
@@ -82,7 +83,8 @@ class FolderListItem extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
       // Sử dụng màu card mặc định theo theme thay vì màu hardcode
       child: ListTile(
-        leading: Icon(Icons.folder, color: Colors.amber[700], size: 28),
+        leading:
+            Icon(EvaIcons.folderOutline, color: Colors.amber[700], size: 28),
         title: Text(
           folder.basename(),
           style: TextStyle(

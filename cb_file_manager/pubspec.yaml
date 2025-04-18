@@ -39,6 +39,7 @@ dependencies:
   path: ^1.8.3
   shared_preferences: ^2.2.2
   window_manager: ^0.4.3 # Added for desktop window management
+  eva_icons_flutter: ^3.1.0 # Eva Icons package
 
   # Media Kit packages for cross-platform video playback (including Windows)
   media_kit: ^1.1.10 # Primary package

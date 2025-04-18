@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
@@ -183,7 +184,7 @@ class _SearchBarState extends State<SearchBar> {
                               dense: true,
                               visualDensity: VisualDensity.compact,
                               leading: Icon(
-                                Icons.local_offer,
+                                EvaIcons.shoppingBag,
                                 size: 16,
                                 color: theme.colorScheme.primary,
                               ),
@@ -194,7 +195,7 @@ class _SearchBarState extends State<SearchBar> {
                                 ),
                               ),
                               trailing: Icon(
-                                Icons.add_circle_outline,
+                                EvaIcons.plusCircleOutline,
                                 size: 16,
                                 color:
                                     theme.colorScheme.primary.withOpacity(0.7),
@@ -320,12 +321,12 @@ class _SearchBarState extends State<SearchBar> {
             },
             child: _isSearchingTags
                 ? Icon(
-                    Icons.local_offer,
+                    EvaIcons.shoppingBag,
                     key: const ValueKey('tagIcon'),
                     color: theme.colorScheme.primary,
                   )
                 : Icon(
-                    Icons.search,
+                    EvaIcons.search,
                     key: const ValueKey('searchIcon'),
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -389,13 +390,13 @@ class _SearchBarState extends State<SearchBar> {
                     duration: const Duration(milliseconds: 300),
                     child: _isGlobalSearch
                         ? Icon(
-                            Icons.public,
+                            EvaIcons.globe2Outline,
                             key: const ValueKey('globalIcon'),
                             color: theme.colorScheme.primary,
                             size: 20,
                           )
                         : Icon(
-                            Icons.folder,
+                            EvaIcons.folderOutline,
                             key: const ValueKey('folderIcon'),
                             size: 20,
                             color: theme.colorScheme.onSurfaceVariant,
@@ -415,7 +416,7 @@ class _SearchBarState extends State<SearchBar> {
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Icon(
-                  Icons.search,
+                  EvaIcons.search,
                   color: theme.colorScheme.primary,
                   size: 20,
                 ),
@@ -434,7 +435,7 @@ class _SearchBarState extends State<SearchBar> {
                 child: Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: Icon(
-                    Icons.close,
+                    EvaIcons.close,
                     color: theme.colorScheme.onSurfaceVariant,
                     size: 20,
                   ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import '../../screens/folder_list/folder_list_bloc.dart';
 import '../../screens/folder_list/folder_list_event.dart';
 import 'tag_dialogs.dart';
@@ -28,14 +29,14 @@ class SelectionAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       title: Text('$selectedCount selected'),
       leading: IconButton(
-        icon: const Icon(Icons.close),
+        icon: const Icon(EvaIcons.close),
         onPressed: onClearSelection,
       ),
       actions: [
         if (selectedFilePaths.isNotEmpty) ...[
           // Tag management dropdown menu
           PopupMenuButton<String>(
-            icon: const Icon(Icons.label),
+            icon: const Icon(EvaIcons.shoppingBag),
             tooltip: 'Quản lý thẻ',
             onSelected: (value) {
               if (value == 'add_tag') {
@@ -51,7 +52,7 @@ class SelectionAppBar extends StatelessWidget implements PreferredSizeWidget {
                 value: 'add_tag',
                 child: Row(
                   children: [
-                    Icon(Icons.add_circle_outline),
+                    Icon(EvaIcons.plusCircleOutline),
                     SizedBox(width: 8),
                     Text('Thêm thẻ'),
                   ],
@@ -61,7 +62,7 @@ class SelectionAppBar extends StatelessWidget implements PreferredSizeWidget {
                 value: 'remove_tag',
                 child: Row(
                   children: [
-                    Icon(Icons.remove_circle_outline),
+                    Icon(EvaIcons.minusCircleOutline),
                     SizedBox(width: 8),
                     Text('Xóa thẻ'),
                   ],
@@ -71,7 +72,7 @@ class SelectionAppBar extends StatelessWidget implements PreferredSizeWidget {
                 value: 'manage_all_tags',
                 child: Row(
                   children: [
-                    Icon(Icons.settings),
+                    Icon(EvaIcons.settings2Outline),
                     SizedBox(width: 8),
                     Text('Quản lý tất cả thẻ'),
                   ],
@@ -80,7 +81,7 @@ class SelectionAppBar extends StatelessWidget implements PreferredSizeWidget {
             ],
           ),
           IconButton(
-            icon: const Icon(Icons.delete),
+            icon: const Icon(EvaIcons.trash2Outline),
             tooltip: 'Delete selected',
             onPressed: () {
               showDeleteConfirmationDialog(context);

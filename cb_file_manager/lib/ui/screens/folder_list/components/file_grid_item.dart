@@ -6,6 +6,7 @@ import 'package:cb_file_manager/ui/screens/folder_list/file_details_screen.dart'
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/video_gallery_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 
 class FileGridItem extends StatelessWidget {
   final File file;
@@ -37,23 +38,23 @@ class FileGridItem extends StatelessWidget {
 
     // Determine file type and icon
     if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(extension)) {
-      icon = Icons.image;
+      icon = EvaIcons.imageOutline;
       iconColor = Colors.blue;
       isPreviewable = true;
     } else if (['mp4', 'mov', 'avi', 'mkv', 'flv', 'wmv'].contains(extension)) {
-      icon = Icons.videocam;
+      icon = EvaIcons.videoOutline;
       iconColor = Colors.red;
       isVideo = true;
     } else if (['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac']
         .contains(extension)) {
-      icon = Icons.audiotrack;
+      icon = EvaIcons.musicOutline;
       iconColor = Colors.purple;
     } else if (['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx', 'ppt', 'pptx']
         .contains(extension)) {
-      icon = Icons.description;
+      icon = EvaIcons.fileTextOutline;
       iconColor = Colors.indigo;
     } else {
-      icon = Icons.insert_drive_file;
+      icon = EvaIcons.fileOutline;
       iconColor = Colors.grey;
     }
 
@@ -133,7 +134,7 @@ class FileGridItem extends StatelessWidget {
                         ),
                         child: Center(
                           child: isSelected
-                              ? const Icon(Icons.check,
+                              ? const Icon(EvaIcons.checkmark,
                                   size: 16, color: Colors.white)
                               : null,
                         ),
@@ -181,7 +182,7 @@ class FileGridItem extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.label,
+                            Icon(EvaIcons.bookmarkOutline,
                                 size: 12, color: Colors.green[800]),
                             const SizedBox(width: 4),
                             Flexible(
@@ -227,7 +228,7 @@ class FileGridItem extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    Icons.videocam,
+                    EvaIcons.videoOutline,
                     size: 36,
                     color: Colors.red[400],
                   ),
@@ -260,7 +261,7 @@ class FileGridItem extends StatelessWidget {
           errorBuilder: (context, error, stackTrace) {
             return Center(
               child: Icon(
-                Icons.broken_image,
+                EvaIcons.alertTriangleOutline,
                 size: 48,
                 color: Colors.grey[400],
               ),

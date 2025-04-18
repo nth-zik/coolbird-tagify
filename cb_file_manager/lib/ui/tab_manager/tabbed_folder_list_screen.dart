@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart'; // Import for mouse buttons
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/helpers/user_preferences.dart';
+import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'tab_manager.dart';
 
 // Import folder list components with explicit alias
@@ -267,13 +268,13 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   ListTile(
-                    leading: Icon(Icons.search),
+                    leading: Icon(EvaIcons.search),
                     title: Text('Tìm kiếm theo tên'),
                     subtitle: Text('Gõ từ khóa để tìm tệp theo tên'),
                   ),
                   Divider(),
                   ListTile(
-                    leading: Icon(Icons.local_offer),
+                    leading: Icon(EvaIcons.shoppingBag),
                     title: Text('Tìm kiếm theo tag'),
                     subtitle: Text('Gõ # và tên tag (ví dụ: #important)'),
                   ),
@@ -590,7 +591,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                         tab_components.showBatchAddTagDialog(
                             context, _selectedFilePaths.toList());
                       },
-                      child: const Icon(Icons.label),
+                      child: const Icon(EvaIcons.shoppingBag),
                     ),
                   );
                 }
@@ -599,6 +600,8 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                 return Scaffold(
                   appBar: widget.showAppBar
                       ? AppBar(
+                          automaticallyImplyLeading:
+                              false, // Tắt nút back tự động
                           title: _showSearchBar
                               ? tab_components.SearchBar(
                                   currentPath: _currentPath,
@@ -620,7 +623,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                   body: _buildBody(context, state),
                   floatingActionButton: FloatingActionButton(
                     onPressed: _toggleSelectionMode,
-                    child: const Icon(Icons.checklist),
+                    child: const Icon(EvaIcons.checkmarkSquare2Outline),
                   ),
                 );
               },
@@ -702,8 +705,8 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                 children: [
                   Icon(
                     state.currentSearchTag != null
-                        ? Icons.local_offer
-                        : Icons.search,
+                        ? EvaIcons.shoppingBag
+                        : EvaIcons.search,
                     color: Theme.of(context).colorScheme.primary,
                   ),
                   const SizedBox(width: 8.0),
@@ -713,7 +716,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                         : 'Không tìm thấy kết quả cho "${state.currentSearchQuery}"'),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close),
+                    icon: const Icon(EvaIcons.close),
                     onPressed: () {
                       _folderListBloc.add(const ClearSearchAndFilters());
                       _folderListBloc.add(FolderListLoad(_currentPath));
@@ -728,7 +731,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.search_off, size: 64, color: Colors.grey),
+                    Icon(EvaIcons.search, size: 64, color: Colors.grey),
                     SizedBox(height: 16),
                     Text(
                       'Không tìm thấy tệp nào phù hợp',
@@ -965,8 +968,9 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
           });
         }
 
-        // Pop from tab history in the TabManager
-        context.read<TabManagerBloc>().add(PopFromTabHistory(widget.tabId));
+        // Use direct method call instead of BLoC event
+        final String? actualPath =
+            tabManagerBloc.backNavigationToPath(widget.tabId);
 
         // Load the folder content
         _folderListBloc.add(FolderListLoad(previousPath));
