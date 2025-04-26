@@ -9,6 +9,7 @@ import 'package:flutter/gestures.dart'; // Import for mouse buttons
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/helpers/user_preferences.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:cb_file_manager/helpers/video_thumbnail_helper.dart'; // Add import for VideoThumbnailHelper
 import 'tab_manager.dart';
 
 // Import folder list components with explicit alias
@@ -229,7 +230,24 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
   }
 
   void _refreshFileList() {
-    _folderListBloc.add(FolderListLoad(_currentPath));
+    // Clear Flutter's image cache to force reload of all images
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
+
+    // Clear thumbnail cache and system-level caches
+    VideoThumbnailHelper.clearCache();
+
+    // Reload the folder with forceRegenerate flag to ensure fresh thumbnails
+    _folderListBloc
+        .add(FolderListRefresh(_currentPath, forceRegenerateThumbnails: true));
+
+    // Show a brief message that thumbnails are refreshing
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Refreshing thumbnails...'),
+        duration: Duration(seconds: 1),
+      ),
+    );
   }
 
   void _showSearchScreen(BuildContext context, FolderListState state) {
@@ -774,7 +792,10 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
     // Default view - folders and files
     return RefreshIndicator(
       onRefresh: () async {
-        _folderListBloc.add(FolderListLoad(_currentPath));
+        // Use FolderListRefresh instead of FolderListLoad to force thumbnail regeneration
+        VideoThumbnailHelper.trimCache();
+        _folderListBloc.add(
+            FolderListRefresh(_currentPath, forceRegenerateThumbnails: true));
       },
       child: _buildFolderAndFileList(state),
     );

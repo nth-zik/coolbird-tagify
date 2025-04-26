@@ -177,5 +177,16 @@ class SetTagSearchResults extends FolderListEvent {
   List<Object?> get props => [results, tagName];
 }
 
+// Add a specific event for refreshing with thumbnail regeneration
+class FolderListRefresh extends FolderListEvent {
+  final String path;
+  final bool forceRegenerateThumbnails;
+
+  const FolderListRefresh(this.path, {this.forceRegenerateThumbnails = false});
+
+  @override
+  List<Object> get props => [path, forceRegenerateThumbnails];
+}
+
 // Enum to represent media types for search
 enum MediaSearchType { images, videos, audio, all }

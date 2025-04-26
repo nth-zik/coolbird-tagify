@@ -3,6 +3,7 @@
 #include <optional>
 
 #include "flutter/generated_plugin_registrant.h"
+#include "fc_native_video_thumbnail_plugin.h"
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
@@ -21,10 +22,17 @@ bool FlutterWindow::OnCreate() {
   flutter_controller_ = std::make_unique<flutter::FlutterViewController>(
       frame.right - frame.left, frame.bottom - frame.top, project_);
   // Ensure that basic setup of the controller was successful.
-  if (!flutter_controller_->engine() || !flutter_controller_->view()) {
+if (!flutter_controller_->engine() || !flutter_controller_->view()) {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
+  
+  // Manually register FC Native Video Thumbnail plugin
+  auto registrar = flutter_controller_->engine()->GetRegistrarForPlugin("FcNativeVideoThumbnailPlugin");
+  fc_native_video_thumbnail::FcNativeVideoThumbnailPlugin::RegisterWithRegistrar(
+      flutter::PluginRegistrarManager::GetInstance()
+          ->GetRegistrar<flutter::PluginRegistrarWindows>(registrar));
+  
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {

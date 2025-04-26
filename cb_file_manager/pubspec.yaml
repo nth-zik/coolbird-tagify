@@ -40,6 +40,8 @@ dependencies:
   shared_preferences: ^2.2.2
   window_manager: ^0.4.3 # Added for desktop window management
   eva_icons_flutter: ^3.1.0 # Eva Icons package
+  ffmpeg_helper: ^1.0.1 # Updated to available version
+  visibility_detector: ^0.4.0+2 # Added for detecting visible thumbnails
 
   # Media Kit packages for cross-platform video playback (including Windows)
   media_kit: ^1.1.10 # Primary package
@@ -56,6 +58,7 @@ dependencies:
   file_picker: ^10.1.2
   system_info_plus: ^0.0.6
   win32: ^5.0.9
+  crypto: ^3.0.6
 
 dev_dependencies:
   flutter_test:

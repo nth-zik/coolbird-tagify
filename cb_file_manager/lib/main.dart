@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Thêm import này cho SystemUiOverlayStyle
+import 'package:flutter/foundation.dart'; // For kDebugMode
 import 'dart:async';
 import 'dart:io';
 import 'ui/home.dart';
@@ -10,6 +11,8 @@ import 'package:media_kit/media_kit.dart'; // Import Media Kit
 import 'package:window_manager/window_manager.dart'; // Import window_manager
 import 'helpers/media_kit_audio_helper.dart'; // Import our audio helper
 import 'helpers/user_preferences.dart'; // Import user preferences
+import 'helpers/folder_thumbnail_service.dart'; // Import thumbnail service
+import 'helpers/video_thumbnail_helper.dart'; // Import our video thumbnail helper
 import 'config/app_theme.dart'; // Import global theme configuration
 import 'package:flutter_localizations/flutter_localizations.dart'; // Import for localization
 import 'config/language_controller.dart'; // Import our language controller
@@ -17,6 +20,9 @@ import 'config/languages/app_localizations_delegate.dart'; // Import our localiz
 
 // Global key for app state access
 final GlobalKey<MyHomePageState> homeKey = GlobalKey<MyHomePageState>();
+
+// Global access to test the video thumbnail screen (for development)
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   // Catch any errors during app initialization
@@ -79,6 +85,24 @@ void main() async {
     // Initialize user preferences
     final preferences = UserPreferences();
     await preferences.init();
+
+    // Initialize folder thumbnail service
+    await FolderThumbnailService().initialize();
+
+    // Initialize FFmpeg for video thumbnails (especially important for Windows)
+    if (Platform.isWindows) {
+      debugPrint('Initializing FFmpeg for Windows');
+      await VideoThumbnailHelper.initializeFFmpeg();
+    }
+
+    // Initialize video thumbnail cache system
+    debugPrint('Initializing video thumbnail cache system');
+    await VideoThumbnailHelper.initializeCache();
+
+    // Enable verbose logging for thumbnail debugging (can be disabled in production)
+    if (kDebugMode) {
+      VideoThumbnailHelper.setVerboseLogging(true);
+    }
 
     // Initialize language controller
     await LanguageController().initialize();
@@ -198,6 +222,7 @@ class _CBFileAppState extends State<CBFileApp> with WidgetsBindingObserver {
       title: 'CoolBird - File Manager',
       // Use our TabMainScreen as the default entry point
       home: const TabMainScreen(),
+      navigatorKey: navigatorKey, // Add navigator key for global access
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: _themeMode,

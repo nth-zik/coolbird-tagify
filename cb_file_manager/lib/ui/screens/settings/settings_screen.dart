@@ -3,6 +3,7 @@ import 'package:cb_file_manager/helpers/user_preferences.dart';
 import 'package:cb_file_manager/ui/utils/base_screen.dart';
 import 'package:cb_file_manager/config/language_controller.dart';
 import 'package:cb_file_manager/config/translation_helper.dart';
+import 'package:cb_file_manager/helpers/video_thumbnail_helper.dart'; // Add import for VideoThumbnailHelper
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -18,6 +19,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late String _currentLanguageCode;
   late bool _isLoading = true;
 
+  // Video thumbnail timestamp value
+  late int _videoThumbnailTimestamp;
+
+  // Video thumbnail percentage value (new setting)
+  late int _videoThumbnailPercentage;
+
+  // Add a loading indicator state for cache clearing operation
+  bool _isClearingCache = false;
+
   @override
   void initState() {
     super.initState();
@@ -29,6 +39,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _themePreference = _preferences.getThemePreference();
       _currentLanguageCode = _languageController.currentLocale.languageCode;
+      _videoThumbnailTimestamp = _preferences.getVideoThumbnailTimestamp();
+      _videoThumbnailPercentage = _preferences.getVideoThumbnailPercentage();
       _isLoading = false;
     });
   }
@@ -39,8 +51,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _themePreference = preference;
     });
 
-    // No need for the snackbar message since the theme change will be immediately visible
-    // Instead, we can add a subtle visual feedback
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -71,6 +81,94 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _updateVideoThumbnailTimestamp(int seconds) async {
+    await _preferences.setVideoThumbnailTimestamp(seconds);
+    setState(() {
+      _videoThumbnailTimestamp = seconds;
+    });
+
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Video thumbnail timestamp set to $seconds seconds'),
+        duration: const Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+        width: 280,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  Future<void> _updateVideoThumbnailPercentage(int percentage) async {
+    await _preferences.setVideoThumbnailPercentage(percentage);
+    setState(() {
+      _videoThumbnailPercentage = percentage;
+    });
+
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+            'Video thumbnail position set to $percentage% of video duration'),
+        duration: const Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+        width: 320,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  // Add method to clear the video thumbnail cache
+  Future<void> _clearVideoThumbnailCache() async {
+    setState(() {
+      _isClearingCache = true;
+    });
+
+    try {
+      // Call the clearCache method from VideoThumbnailHelper
+      await VideoThumbnailHelper.clearCache();
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Đã xoá tất cả thumbnail video'),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            width: 320,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (e) {
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi khi xoá thumbnail: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            width: 320,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+      debugPrint('Error clearing video thumbnail cache: $e');
+    } finally {
+      // Make sure to reset loading state even if there's an error
+      if (mounted) {
+        setState(() {
+          _isClearingCache = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BaseScreen(
@@ -83,7 +181,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _buildLanguageSection(context),
                 const Divider(),
                 _buildThemeSection(context),
-                // Other settings sections can be added here
+                const Divider(),
+                _buildVideoThumbnailSection(context),
               ],
             ),
     );
@@ -183,6 +282,137 @@ class _SettingsScreenState extends State<SettingsScreen> {
           icon: Icons.dark_mode,
         ),
       ],
+    );
+  }
+
+  Widget _buildVideoThumbnailSection(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              children: [
+                const Icon(Icons.videocam_outlined, size: 24),
+                const SizedBox(width: 16),
+                Text(
+                  'Video Thumbnails',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+            child: Text(
+              'Choose where to extract video thumbnails from',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Thumbnail position:'),
+                    Text(
+                      '$_videoThumbnailPercentage% of video',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Slider(
+                  value: _videoThumbnailPercentage.toDouble(),
+                  min: UserPreferences.minVideoThumbnailPercentage.toDouble(),
+                  max: UserPreferences.maxVideoThumbnailPercentage.toDouble(),
+                  divisions: 20,
+                  label: '$_videoThumbnailPercentage%',
+                  onChanged: (value) {
+                    setState(() {
+                      _videoThumbnailPercentage = value.round();
+                    });
+                  },
+                  onChangeEnd: (value) {
+                    _updateVideoThumbnailPercentage(value.round());
+                  },
+                ),
+                Text(
+                  'Set the position in the video (as a percentage of total duration) where thumbnails will be extracted. Lower values (near the beginning) load faster but may show intros or blank screens. Higher values may show more representative content.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 32, indent: 16, endIndent: 16),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Thumbnail Cache',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Video thumbnails are cached to improve performance. If thumbnails appear outdated or you want to free up space, you can clear the cache.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed:
+                        _isClearingCache ? null : _clearVideoThumbnailCache,
+                    icon: _isClearingCache
+                        ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Icon(Icons.cleaning_services_outlined),
+                    label: Text(_isClearingCache
+                        ? 'Clearing...'
+                        : 'Clear Thumbnail Cache'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

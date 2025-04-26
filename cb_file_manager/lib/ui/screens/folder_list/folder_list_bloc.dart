@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
 import 'package:cb_file_manager/helpers/io_extensions.dart';
 import 'package:path/path.dart' as pathlib;
+import 'package:cb_file_manager/helpers/video_thumbnail_helper.dart'; // Add import here at the top
 
 import 'folder_list_event.dart';
 import 'folder_list_state.dart';
@@ -11,6 +12,8 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
   FolderListBloc() : super(FolderListState("/")) {
     on<FolderListInit>(_onFolderListInit);
     on<FolderListLoad>(_onFolderListLoad);
+    on<FolderListRefresh>(
+        _onFolderListRefresh); // Add handler for the new refresh event
     on<FolderListFilter>(_onFolderListFilter);
     on<AddTagToFile>(_onAddTagToFile);
     on<RemoveTagFromFile>(_onRemoveTagFromFile);
@@ -146,6 +149,147 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
           files: [],
         ));
       }
+    }
+  }
+
+  void _onFolderListRefresh(
+      FolderListRefresh event, Emitter<FolderListState> emit) async {
+    emit(state.copyWith(
+      isLoading: true,
+      currentPath: Directory(event.path),
+    ));
+
+    // Special case for empty path on Windows - this is used for the drive listing view
+    if (event.path.isEmpty && Platform.isWindows) {
+      emit(state.copyWith(
+          isLoading: false, folders: [], files: [], error: null));
+      return;
+    }
+
+    try {
+      if (event.forceRegenerateThumbnails) {
+        // Call VideoThumbnailHelper's method to invalidate thumbnails for videos in this directory
+        await _invalidateVideoThumbnails(event.path);
+      }
+
+      final directory = Directory(event.path);
+      if (await directory.exists()) {
+        try {
+          List<FileSystemEntity> contents = await directory.list().toList();
+
+          // Separate folders and files
+          final List<FileSystemEntity> folders = [];
+          final List<FileSystemEntity> files = [];
+
+          for (var entity in contents) {
+            if (entity is Directory) {
+              folders.add(entity);
+            } else if (entity is File) {
+              // Skip tag files - no longer needed with global tags
+              if (!entity.path.endsWith('.tags')) {
+                files.add(entity);
+              }
+            }
+          }
+
+          // Load tags for all files
+          Map<String, List<String>> fileTags = {};
+          for (var file in files) {
+            if (file is File) {
+              final tags = await TagManager.getTags(file.path);
+              if (tags.isNotEmpty) {
+                fileTags[file.path] = tags;
+              }
+            }
+          }
+
+          emit(state.copyWith(
+            isLoading: false,
+            folders: folders,
+            files: files,
+            fileTags: fileTags,
+            error: null, // Clear any previous errors
+          ));
+
+          // Load all unique tags in this directory (async)
+          add(LoadAllTags(event.path));
+        } catch (e) {
+          // Handle specific permission errors
+          if (e.toString().toLowerCase().contains('permission denied') ||
+              e.toString().toLowerCase().contains('access denied')) {
+            emit(state.copyWith(
+              isLoading: false,
+              error:
+                  "Access denied: Administrator privileges required to access ${event.path}",
+              folders: [],
+              files: [],
+            ));
+          } else {
+            emit(state.copyWith(
+              isLoading: false,
+              error: "Error accessing directory: ${e.toString()}",
+              folders: [],
+              files: [],
+            ));
+          }
+        }
+      } else {
+        emit(state.copyWith(
+            isLoading: false, error: "Directory does not exist"));
+      }
+    } catch (e) {
+      // Improved error handling with user-friendly messages
+      if (e.toString().toLowerCase().contains('permission denied') ||
+          e.toString().toLowerCase().contains('access denied')) {
+        emit(state.copyWith(
+          isLoading: false,
+          error:
+              "Access denied: Administrator privileges required to access ${event.path}",
+          folders: [],
+          files: [],
+        ));
+      } else {
+        emit(state.copyWith(
+          isLoading: false,
+          error: "Error: ${e.toString()}",
+          folders: [],
+          files: [],
+        ));
+      }
+    }
+  }
+
+  // Helper method to invalidate video thumbnails in a specific directory
+  Future<void> _invalidateVideoThumbnails(String directoryPath) async {
+    try {
+      final directory = Directory(directoryPath);
+      if (await directory.exists()) {
+        final List<FileSystemEntity> contents = await directory.list().toList();
+
+        // Find all video files in the directory
+        final List<String> videoFilePaths = [];
+        for (var entity in contents) {
+          if (entity is File) {
+            final extension = entity.path.split('.').last.toLowerCase();
+            if (['mp4', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'webm', '3gp', 'm4v']
+                .contains(extension)) {
+              videoFilePaths.add(entity.path);
+            }
+          }
+        }
+
+        // Force regeneration of thumbnails for all video files
+        for (var videoPath in videoFilePaths) {
+          // Schedule thumbnail regeneration with force flag
+          VideoThumbnailHelper.generateThumbnail(
+            videoPath,
+            isPriority: true,
+            forceRegenerate: true,
+          );
+        }
+      }
+    } catch (e) {
+      print('Error invalidating video thumbnails: $e');
     }
   }
 

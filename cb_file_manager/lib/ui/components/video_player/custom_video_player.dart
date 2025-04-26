@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as pathlib;
@@ -31,7 +32,8 @@ class CustomVideoPlayer extends StatefulWidget {
       onControlVisibilityChanged; // Callback when controls visibility changes
   final VoidCallback?
       onFullScreenChanged; // Callback when fullscreen state changes
-  final VoidCallback? onInitialized; // Added callback for when video is initialized and ready to play
+  final VoidCallback?
+      onInitialized; // Added callback for when video is initialized and ready to play
 
   const CustomVideoPlayer({
     Key? key,
@@ -290,6 +292,206 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
     await _player.setVolume(volumeValue.clamp(0.0, 100.0));
 
     debugPrint('Applied volume: ${volumeValue.toStringAsFixed(1)}');
+  }
+
+  /// Take a screenshot of the current frame
+  Future<void> _takeScreenshot() async {
+    try {
+      debugPrint('Taking screenshot...');
+
+      // Pause video while taking screenshot
+      final wasPlaying = _player.state.playing;
+      if (wasPlaying) {
+        await _player.pause();
+      }
+
+      // Get screenshot data using MediaKit's screenshot method
+      final screenshotData = await _player.screenshot();
+
+      // Resume playback if it was playing before
+      if (wasPlaying) {
+        await _player.play();
+      }
+
+      if (screenshotData != null) {
+        debugPrint('Screenshot captured, size: ${screenshotData.length} bytes');
+
+        // Get default file name from video filename
+        final videoFileName = pathlib.basename(widget.file.path);
+        final videoNameWithoutExt =
+            pathlib.basenameWithoutExtension(videoFileName);
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final defaultFileName =
+            '${videoNameWithoutExt}_screenshot_$timestamp.jpg';
+
+        // Show save dialog
+        await _showSaveDialog(screenshotData, defaultFileName);
+      } else {
+        debugPrint('Failed to capture screenshot - returned null data');
+        _showErrorSnackBar('Failed to capture screenshot');
+      }
+    } catch (e) {
+      debugPrint('Error taking screenshot: $e');
+      _showErrorSnackBar('Error taking screenshot: $e');
+    }
+  }
+
+  /// Show a snackbar with an error message
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  /// Show a dialog to save the screenshot
+  Future<void> _showSaveDialog(
+      Uint8List imageData, String defaultFileName) async {
+    // Create a text controller for the filename input
+    final fileNameController = TextEditingController(text: defaultFileName);
+
+    // Get the directory of the current video file as the default save location
+    final videoDirectory = pathlib.dirname(widget.file.path);
+    final directoryController = TextEditingController(text: videoDirectory);
+
+    // Show a dialog to let the user choose where to save the screenshot
+    return showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('Save Screenshot'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Show thumbnail preview
+                  Container(
+                    alignment: Alignment.center,
+                    height: 150,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Image.memory(
+                      imageData,
+                      fit: BoxFit.contain,
+                      height: 150,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Directory input with browse button
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: directoryController,
+                          decoration: const InputDecoration(
+                            labelText: 'Save Location',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.folder_open),
+                        onPressed: () async {
+                          // Here you would show a folder picker
+                          // For simplicity, let's just use the video directory
+                          // In a real implementation, you'd integrate a folder picker plugin
+                          debugPrint('Folder selection would be shown here');
+                        },
+                        tooltip: 'Browse',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Filename input
+                  TextField(
+                    controller: fileNameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Filename',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  final fileName = fileNameController.text.trim();
+                  final directory = directoryController.text.trim();
+
+                  if (fileName.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please enter a filename')),
+                    );
+                    return;
+                  }
+
+                  final filePath = pathlib.join(directory, fileName);
+                  try {
+                    // Save the screenshot
+                    final file = File(filePath);
+                    await file.writeAsBytes(imageData);
+
+                    // Close the dialog
+                    Navigator.of(context).pop();
+
+                    // Show success message
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Screenshot saved to $filePath'),
+                        backgroundColor: Colors.green,
+                        action: SnackBarAction(
+                          label: 'Open',
+                          onPressed: () async {
+                            // Open file with default application
+                            try {
+                              if (Platform.isWindows) {
+                                await Process.run('start', [filePath],
+                                    runInShell: true);
+                              } else if (Platform.isMacOS) {
+                                await Process.run('open', [filePath]);
+                              } else if (Platform.isLinux) {
+                                await Process.run('xdg-open', [filePath]);
+                              }
+                            } catch (e) {
+                              debugPrint('Error opening file: $e');
+                            }
+                          },
+                          textColor: Colors.white,
+                        ),
+                      ),
+                    );
+                  } catch (e) {
+                    debugPrint('Error saving screenshot: $e');
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error saving screenshot: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   Widget _buildErrorWidget([String? errorMessage]) {
@@ -640,6 +842,14 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
 
                     // Flexible spacer to push volume and fullscreen to the right
                     const Spacer(),
+
+                    // Screenshot button
+                    _buildControlButton(
+                      icon: Icons.photo_camera,
+                      onPressed: _takeScreenshot,
+                      enabled: true,
+                      tooltip: 'Take screenshot',
+                    ),
 
                     // Volume control
                     if (widget.allowMuting) _buildVolumeControl(),

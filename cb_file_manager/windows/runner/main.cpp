@@ -4,6 +4,7 @@
 
 #include "flutter_window.h"
 #include "utils.h"
+#include "fc_native_video_thumbnail_plugin.h"
 
 // Function to get the primary monitor work area dimensions
 // This ensures we respect the taskbar and title bar areas
@@ -35,9 +36,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   if (!::AttachConsole(ATTACH_PARENT_PROCESS) && ::IsDebuggerPresent())
   {
     CreateAndAttachConsole();
-  }
-
-  // Initialize COM, so that it is available for use in the library and/or
+  } // Initialize COM, so that it is available for use in the library and/or
   // plugins.
   ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 

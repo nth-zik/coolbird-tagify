@@ -221,6 +221,9 @@ class FileGridItem extends StatelessWidget {
           videoPath: file.path,
           width: double.infinity,
           height: double.infinity,
+          isPriority: true, // Set high priority for visible thumbnails
+          forceRegenerate:
+              false, // This will be controlled by the refresh action
           fallbackBuilder: () => Container(
             color: Colors.black12,
             child: Center(

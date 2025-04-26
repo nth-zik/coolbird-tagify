@@ -808,6 +808,7 @@ class _AppDrawerState extends State<AppDrawer> {
               }
             },
           ),
+          const Divider(),
           ListTile(
             leading: const Icon(EvaIcons.settings2Outline),
             title: Text(context.tr.settings),

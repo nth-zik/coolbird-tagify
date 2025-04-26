@@ -37,6 +37,9 @@ class UserPreferences {
   static const String _drawerPinnedKey = 'drawer_pinned';
   static const String _themePreferenceKey = 'theme_preference';
   static const String _keySearchTipShown = 'search_tip_shown';
+  static const String _videoThumbnailTimestampKey = 'video_thumbnail_timestamp';
+  static const String _videoThumbnailPercentageKey =
+      'video_thumbnail_percentage';
 
   // Constants for grid zoom level
   static const int minGridZoomLevel = 2; // Largest thumbnails (2 per row)
@@ -47,6 +50,17 @@ class UserPreferences {
   static const double minThumbnailSize = 2.0;
   static const double maxThumbnailSize = 10.0;
   static const double defaultThumbnailSize = 3.0;
+
+  // Constants for video thumbnail timestamp (in seconds)
+  static const int defaultVideoThumbnailTimestamp = 1;
+  static const int minVideoThumbnailTimestamp = 0;
+  static const int maxVideoThumbnailTimestamp = 60;
+
+  // Constants for video thumbnail position (in percentage)
+  static const int defaultVideoThumbnailPercentage =
+      10; // 10% of video duration
+  static const int minVideoThumbnailPercentage = 0; // Start of video
+  static const int maxVideoThumbnailPercentage = 100; // End of video
 
   factory UserPreferences() {
     return _instance;
@@ -234,6 +248,38 @@ class UserPreferences {
       _themeChangeController.add(getThemeMode());
     }
     return result;
+  }
+
+  /// Get video thumbnail timestamp preference (in seconds)
+  int getVideoThumbnailTimestamp() {
+    return _preferences?.getInt(_videoThumbnailTimestampKey) ??
+        defaultVideoThumbnailTimestamp;
+  }
+
+  /// Save video thumbnail timestamp preference
+  Future<bool> setVideoThumbnailTimestamp(int seconds) async {
+    // Ensure the timestamp is within bounds
+    final validTimestamp =
+        seconds.clamp(minVideoThumbnailTimestamp, maxVideoThumbnailTimestamp);
+    return await _preferences?.setInt(
+            _videoThumbnailTimestampKey, validTimestamp) ??
+        false;
+  }
+
+  /// Get video thumbnail position preference (as percentage of video duration)
+  int getVideoThumbnailPercentage() {
+    return _preferences?.getInt(_videoThumbnailPercentageKey) ??
+        defaultVideoThumbnailPercentage;
+  }
+
+  /// Save video thumbnail position preference (as percentage of video duration)
+  Future<bool> setVideoThumbnailPercentage(int percentage) async {
+    // Ensure the percentage is within bounds
+    final validPercentage = percentage.clamp(
+        minVideoThumbnailPercentage, maxVideoThumbnailPercentage);
+    return await _preferences?.setInt(
+            _videoThumbnailPercentageKey, validPercentage) ??
+        false;
   }
 
   /// Search tip shown preference

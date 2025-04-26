@@ -24,7 +24,8 @@ class ThumbnailTaskManager {
     int priority = 0,
   }) async {
     // Sử dụng VideoThumbnailHelper để tạo thumbnail
-    final thumbnailPath = await VideoThumbnailHelper.generateThumbnail(videoPath);
+    final thumbnailPath =
+        await VideoThumbnailHelper.generateThumbnail(videoPath);
     onComplete(thumbnailPath);
   }
 
@@ -43,12 +44,12 @@ class ThumbnailTaskManager {
   static Future<void> preloadFirstBatch(List<String> videoPaths,
       {int count = 20}) async {
     final pathsToPreload = videoPaths.take(count).toList();
-    
+
     for (final path in pathsToPreload) {
       // Tạo thumbnail không đồng bộ
       unawaited(VideoThumbnailHelper.generateThumbnail(path));
     }
-    
+
     // Không chờ đợi các tác vụ hoàn thành
     return Future.value();
   }
@@ -58,7 +59,7 @@ class ThumbnailTaskManager {
 class ThumbnailHelper {
   // Cache để lưu trữ các thumbnail đã tạo
   static final Map<String, String> _thumbnailCache = {};
-  
+
   /// Hàm này luôn trả về true vì không cần FFmpeg nữa
   static Future<bool> ensureFFmpegInstalled([BuildContext? context]) async {
     return true;
@@ -72,6 +73,7 @@ class ThumbnailHelper {
     double width = 300,
     double height = 300,
     bool isVisible = true,
+    bool forceRegenerate = false,
   }) {
     if (!isVisible) {
       return Container(
@@ -81,19 +83,32 @@ class ThumbnailHelper {
         child: fallbackBuilder(),
       );
     }
-    
+
+    // Đảm bảo gọi callback khi thumbnail được tạo
+    Future.delayed(Duration.zero, () async {
+      // Đánh dấu là force regenerate để đảm bảo không dùng thumbnail cũ
+      final path = await VideoThumbnailHelper.generateThumbnail(
+        videoPath,
+        isPriority: true,
+        forceRegenerate: forceRegenerate,
+      );
+      onThumbnailGenerated(path);
+    });
+
     // Sử dụng VideoThumbnailHelper để tạo và hiển thị thumbnail
     return VideoThumbnailHelper.buildVideoThumbnail(
       videoPath: videoPath,
       width: width,
       height: height,
+      isPriority: true, // Đánh dấu là ưu tiên cao để tạo ngay
+      forceRegenerate: forceRegenerate, // Truyền lại tham số force
       fallbackBuilder: fallbackBuilder,
     );
   }
 
   /// Xóa toàn bộ cache thumbnail
-  static void clearCache() {
-    VideoThumbnailHelper.clearCache();
+  static Future<void> clearCache() async {
+    await VideoThumbnailHelper.clearCache();
     _thumbnailCache.clear();
   }
 }
@@ -118,6 +133,7 @@ class OptimizedLazyThumbnailWidget extends StatelessWidget {
   final double height;
   final Function(String?) onThumbnailGenerated;
   final Widget Function() fallbackBuilder;
+  final bool forceRegenerate;
 
   const OptimizedLazyThumbnailWidget({
     Key? key,
@@ -126,20 +142,28 @@ class OptimizedLazyThumbnailWidget extends StatelessWidget {
     required this.height,
     required this.onThumbnailGenerated,
     required this.fallbackBuilder,
+    this.forceRegenerate = false,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     // Tự động gọi onThumbnailGenerated khi thumbnail được tạo
     Future.delayed(Duration.zero, () async {
-      final path = await VideoThumbnailHelper.generateThumbnail(videoPath);
+      // Đánh dấu là ưu tiên cao và có thể force regenerate để đảm bảo thumbnail được tạo mới
+      final path = await VideoThumbnailHelper.generateThumbnail(
+        videoPath,
+        isPriority: true,
+        forceRegenerate: forceRegenerate,
+      );
       onThumbnailGenerated(path);
     });
-    
+
     return VideoThumbnailHelper.buildVideoThumbnail(
       videoPath: videoPath,
       width: width,
       height: height,
+      isPriority: true, // Đánh dấu là ưu tiên cao để tạo ngay lập tức
+      forceRegenerate: forceRegenerate, // Đảm bảo tạo mới nếu cần
       fallbackBuilder: fallbackBuilder,
     );
   }

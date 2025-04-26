@@ -17,7 +17,19 @@
     "xhash": "cpp",
     "xstring": "cpp",
     "xtree": "cpp",
-    "xutility": "cpp"
+    "xutility": "cpp",
+    "variant": "cpp",
+    "xiosbase": "cpp",
+    "memory": "cpp",
+    "format": "cpp",
+    "future": "cpp",
+    "istream": "cpp",
+    "tuple": "cpp",
+    "type_traits": "cpp",
+    "xlocmes": "cpp",
+    "xlocmon": "cpp",
+    "xlocnum": "cpp",
+    "xloctime": "cpp"
   },
   "cmake.ignoreCMakeListsMissing": true
 }
