@@ -294,6 +294,12 @@ class _FolderListScreenState extends State<FolderListScreen> {
     _folderListBloc.add(FolderListLoad(path));
   }
 
+  // Phương thức xử lý thay đổi mức zoom bằng cuộn chuột
+  void _handleZoomLevelChange(int direction) {
+    // Đảo ngược chiều: tăng zoom khi cuộn xuống (direction > 0), giảm zoom khi cuộn lên (direction < 0)
+    _changeZoomLevel(direction);
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider<FolderListBloc>.value(
@@ -571,8 +577,8 @@ class _FolderListScreenState extends State<FolderListScreen> {
               toggleSelectionMode: _toggleSelectionMode,
               showDeleteTagDialog: _showDeleteTagDialog,
               showAddTagToFileDialog: _showAddTagToFileDialog,
-              onFolderTap: _onFolderTap, // Thêm callback
-              onFileTap: _onFileTap, // Thêm callback
+              onFolderTap: _onFolderTap,
+              onFileTap: _onFileTap,
               onThumbnailGenerated: () {
                 // Immediately force a rebuild when any thumbnail is generated
                 if (mounted) {
@@ -585,6 +591,7 @@ class _FolderListScreenState extends State<FolderListScreen> {
                   });
                 }
               },
+              onZoomChanged: _handleZoomLevelChange, // Thêm callback cho zoom
             ),
           ),
         ],
@@ -633,8 +640,8 @@ class _FolderListScreenState extends State<FolderListScreen> {
               toggleSelectionMode: _toggleSelectionMode,
               showDeleteTagDialog: _showDeleteTagDialog,
               showAddTagToFileDialog: _showAddTagToFileDialog,
-              onFolderTap: _onFolderTap, // Thêm callback
-              onFileTap: _onFileTap, // Thêm callback
+              onFolderTap: _onFolderTap,
+              onFileTap: _onFileTap,
               onThumbnailGenerated: () {
                 // Immediately force a rebuild when any thumbnail is generated
                 if (mounted) {
@@ -647,6 +654,7 @@ class _FolderListScreenState extends State<FolderListScreen> {
                   });
                 }
               },
+              onZoomChanged: _handleZoomLevelChange, // Thêm callback cho zoom
             ),
           ),
         ],

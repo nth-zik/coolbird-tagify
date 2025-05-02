@@ -14,6 +14,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/helpers/user_preferences.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:cb_file_manager/helpers/video_thumbnail_helper.dart'; // Add import for VideoThumbnailHelper
+import 'package:flutter/services.dart'; // Import for keyboard keys
 import 'tab_manager.dart';
 
 // Import folder list components with explicit alias
@@ -863,42 +864,66 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
     FrameTimingOptimizer().optimizeBeforeHeavyOperation();
 
     if (state.viewMode == ViewMode.grid) {
-      return GridView.builder(
-        padding: const EdgeInsets.all(8.0),
-        // Add physics for better scrolling performance
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-        // Add caching for better scroll performance
-        cacheExtent: 1000,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: state.gridZoomLevel,
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 8,
-        ),
-        itemCount: state.folders.length + state.files.length,
-        itemBuilder: (context, index) {
-          // Wrap with RepaintBoundary to optimize rendering
-          return RepaintBoundary(
-            child: index < state.folders.length
-                ? tab_components.FolderGridItem(
-                    folder: state.folders[index] as Directory,
-                    onNavigate: _navigateToPath)
-                : folder_list_components.FileGridItem(
-                    file: state.files[index - state.folders.length] as File,
-                    state: state,
-                    isSelectionMode: _isSelectionMode,
-                    isSelected: _selectedFilePaths.contains(
-                        state.files[index - state.folders.length].path),
-                    toggleFileSelection: _toggleFileSelection,
-                    toggleSelectionMode: _toggleSelectionMode,
-                    onFileTap: _onFileTap,
-                    // Add tag management callbacks to enable context menu functionality
-                    showAddTagToFileDialog: _showAddTagToFileDialog,
-                    showDeleteTagDialog: _showDeleteTagDialog,
-                  ),
-          );
+      return Listener(
+        onPointerSignal: (PointerSignalEvent event) {
+          // Chỉ xử lý khi ở chế độ lưới
+          if (state.viewMode != ViewMode.grid) return;
+
+          // Xử lý sự kiện cuộn chuột kết hợp với phím Ctrl
+          if (event is PointerScrollEvent) {
+            // Kiểm tra xem phím Ctrl có được nhấn không
+            if (RawKeyboard.instance.keysPressed
+                    .contains(LogicalKeyboardKey.controlLeft) ||
+                RawKeyboard.instance.keysPressed
+                    .contains(LogicalKeyboardKey.controlRight)) {
+              // Xác định hướng cuộn (lên = -1, xuống = 1)
+              final int direction = event.scrollDelta.dy > 0 ? 1 : -1;
+
+              // Gọi phương thức để thay đổi mức zoom
+              _handleZoomLevelChange(direction);
+
+              // Ngăn chặn sự kiện mặc định
+              GestureBinding.instance.pointerSignalResolver.resolve(event);
+            }
+          }
         },
+        child: GridView.builder(
+          padding: const EdgeInsets.all(8.0),
+          // Add physics for better scrolling performance
+          physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
+          // Add caching for better scroll performance
+          cacheExtent: 1000,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: state.gridZoomLevel,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+          ),
+          itemCount: state.folders.length + state.files.length,
+          itemBuilder: (context, index) {
+            // Wrap with RepaintBoundary to optimize rendering
+            return RepaintBoundary(
+              child: index < state.folders.length
+                  ? tab_components.FolderGridItem(
+                      folder: state.folders[index] as Directory,
+                      onNavigate: _navigateToPath)
+                  : folder_list_components.FileGridItem(
+                      file: state.files[index - state.folders.length] as File,
+                      state: state,
+                      isSelectionMode: _isSelectionMode,
+                      isSelected: _selectedFilePaths.contains(
+                          state.files[index - state.folders.length].path),
+                      toggleFileSelection: _toggleFileSelection,
+                      toggleSelectionMode: _toggleSelectionMode,
+                      onFileTap: _onFileTap,
+                      // Add tag management callbacks to enable context menu functionality
+                      showAddTagToFileDialog: _showAddTagToFileDialog,
+                      showDeleteTagDialog: _showDeleteTagDialog,
+                    ),
+            );
+          },
+        ),
       );
     } else {
       return ListView.builder(
@@ -1129,6 +1154,21 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
           _folderListBloc.add(FolderListLoad(actualPath));
         }
       }
+    }
+  }
+
+  // Phương thức xử lý thay đổi mức zoom bằng cuộn chuột
+  void _handleZoomLevelChange(int direction) {
+    // Đảo ngược chiều: tăng zoom khi cuộn xuống (direction > 0), giảm zoom khi cuộn lên (direction < 0)
+    final currentZoom = _gridZoomLevel;
+    final newZoom = (currentZoom + direction).clamp(
+      UserPreferences.minGridZoomLevel,
+      UserPreferences.maxGridZoomLevel,
+    );
+
+    if (newZoom != currentZoom) {
+      _folderListBloc.add(SetGridZoom(newZoom));
+      _saveGridZoomSetting(newZoom);
     }
   }
 }
