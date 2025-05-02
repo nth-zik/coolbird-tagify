@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Added import for HapticFeedback
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 
 /// A custom TabBar wrapper that translates vertical mouse wheel scrolling
@@ -299,7 +300,14 @@ class _ChromeTabState extends State<_ChromeTab>
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
-        onTap: widget.onTap,
+        onTap: () {
+          // Call the onTap callback directly to ensure the tab is selected properly
+          widget.onTap();
+          // Force tab controller update with haptic feedback for better user experience
+          HapticFeedback.lightImpact();
+        },
+        behavior: HitTestBehavior
+            .opaque, // Ensures taps are always captured, even on transparent areas
         child: AnimatedBuilder(
           animation: _animation,
           builder: (context, child) {

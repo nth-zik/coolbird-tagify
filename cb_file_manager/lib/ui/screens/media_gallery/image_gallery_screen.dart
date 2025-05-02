@@ -5,9 +5,11 @@ import 'package:cb_file_manager/helpers/user_preferences.dart';
 import 'package:cb_file_manager/ui/utils/base_screen.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/ui/components/shared_action_bar.dart';
-import 'package:cb_file_manager/ui/screens/media_gallery/image_viewer_screen.dart'; // Import the new ImageViewerScreen
+import 'package:cb_file_manager/ui/screens/media_gallery/image_viewer_screen.dart';
 import 'package:path/path.dart' as pathlib;
 import 'dart:math';
+import 'package:share_plus/share_plus.dart'; // Add import for Share Plus
+import 'package:cross_file/cross_file.dart'; // Add import for XFile
 
 class ImageGalleryScreen extends StatefulWidget {
   final String path;
@@ -593,12 +595,8 @@ class _ImageGalleryScreenState extends State<ImageGalleryScreen> {
             title: const Text('Chia sẻ'),
             onTap: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                      'Chức năng chia sẻ sẽ được triển khai trong tương lai'),
-                ),
-              );
+              final XFile xFile = XFile(file.path);
+              Share.shareXFiles([xFile], text: 'Chia sẻ hình ảnh');
             },
           ),
           ListTile(
@@ -786,11 +784,8 @@ class _ImageViewerScreen extends StatelessWidget {
         IconButton(
           icon: const Icon(Icons.share),
           onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                  content: Text(
-                      'Chức năng chia sẻ sẽ được triển khai trong tương lai')),
-            );
+            final XFile xFile = XFile(file.path);
+            Share.shareXFiles([xFile], text: 'Chia sẻ hình ảnh');
           },
         ),
         IconButton(

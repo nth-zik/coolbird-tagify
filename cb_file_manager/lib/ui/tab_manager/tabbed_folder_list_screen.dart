@@ -893,6 +893,9 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                     toggleFileSelection: _toggleFileSelection,
                     toggleSelectionMode: _toggleSelectionMode,
                     onFileTap: _onFileTap,
+                    // Add tag management callbacks to enable context menu functionality
+                    showAddTagToFileDialog: _showAddTagToFileDialog,
+                    showDeleteTagDialog: _showDeleteTagDialog,
                   ),
           );
         },

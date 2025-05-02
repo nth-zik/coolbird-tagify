@@ -501,6 +501,8 @@ class _FolderContextMenuState extends State<FolderContextMenu> {
   List<File> _mediaFiles = [];
   String? _currentThumbnailPath;
   bool _hasCustomThumbnail = false;
+  bool _showThumbnailSelector =
+      false; // Add state to control showing thumbnail selector
 
   @override
   void initState() {
@@ -602,11 +604,12 @@ class _FolderContextMenuState extends State<FolderContextMenu> {
     setState(() {
       _currentThumbnailPath = filePath;
       _hasCustomThumbnail = true;
+      _showThumbnailSelector =
+          false; // Hide the selector after setting a thumbnail
     });
-    // Close bottom sheet
+
+    // Show confirmation
     if (mounted) {
-      Navigator.pop(context);
-      // Show confirmation
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Folder thumbnail updated')),
       );
@@ -619,13 +622,19 @@ class _FolderContextMenuState extends State<FolderContextMenu> {
       _hasCustomThumbnail = false;
     });
     await _loadData(); // Reload data to show auto thumbnail
+
     // Show confirmation
     if (mounted) {
-      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Folder thumbnail reset to automatic')),
       );
     }
+  }
+
+  void _openThumbnailSelector() {
+    setState(() {
+      _showThumbnailSelector = true;
+    });
   }
 
   @override
@@ -634,6 +643,191 @@ class _FolderContextMenuState extends State<FolderContextMenu> {
     final textColor = isDarkMode ? Colors.white : Colors.black87;
     final backgroundColor = isDarkMode ? Colors.grey[850] : Colors.white;
 
+    // Show thumbnail selector if requested
+    if (_showThumbnailSelector) {
+      return _buildThumbnailSelector(isDarkMode, textColor, backgroundColor);
+    }
+
+    // Otherwise show the main context menu
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Header with folder name and icon
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!,
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.folder, color: Colors.amber[700]),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  widget.folder.basename(),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        ),
+
+        // Action items
+        ListTile(
+          leading: Icon(Icons.folder_open_outlined,
+              color: isDarkMode ? Colors.white70 : Colors.black87),
+          title: Text(
+            'Open Folder',
+            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+          ),
+          onTap: () {
+            Navigator.pop(context);
+            Navigator.pushNamed(
+              context,
+              '/folder',
+              arguments: {'path': widget.folder.path},
+            );
+          },
+        ),
+
+        ListTile(
+          leading: Icon(Icons.image_outlined,
+              color: isDarkMode ? Colors.white70 : Colors.black87),
+          title: Text(
+            'Change Folder Thumbnail',
+            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+          ),
+          subtitle: Text(
+            _hasCustomThumbnail
+                ? 'Currently using custom thumbnail'
+                : 'Currently using automatic thumbnail',
+            style: TextStyle(
+              fontSize: 12,
+              color: _hasCustomThumbnail
+                  ? Colors.green[isDarkMode ? 300 : 700]
+                  : (isDarkMode ? Colors.blue[300] : Colors.blue[700]),
+            ),
+          ),
+          onTap: _openThumbnailSelector,
+        ),
+
+        if (_hasCustomThumbnail)
+          ListTile(
+            leading: Icon(Icons.refresh_outlined,
+                color: isDarkMode ? Colors.white70 : Colors.black87),
+            title: Text(
+              'Reset to Automatic Thumbnail',
+              style:
+                  TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+            ),
+            onTap: () {
+              _resetThumbnail();
+              Navigator.pop(context);
+            },
+          ),
+
+        ListTile(
+          leading: Icon(EvaIcons.infoOutline,
+              color: isDarkMode ? Colors.white70 : Colors.black87),
+          title: Text(
+            'Properties',
+            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+          ),
+          onTap: () async {
+            try {
+              final FileStat stat = await widget.folder.stat();
+
+              if (context.mounted) {
+                // Show folder properties dialog
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: Text('Folder Properties'),
+                    content: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _infoRow('Name', widget.folder.basename()),
+                          const Divider(),
+                          _infoRow('Path', widget.folder.path),
+                          const Divider(),
+                          _infoRow('Modified',
+                              stat.modified.toString().split('.')[0]),
+                          const Divider(),
+                          _infoRow('Accessed',
+                              stat.accessed.toString().split('.')[0]),
+                        ],
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('CLOSE'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+            } catch (e) {
+              debugPrint('Error getting folder properties: $e');
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                      content: Text('Error getting folder properties: $e')),
+                );
+                Navigator.pop(context);
+              }
+            }
+          },
+        ),
+      ],
+    );
+  }
+
+  // Helper for folder properties dialog
+  Widget _infoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Build the thumbnail selector UI
+  Widget _buildThumbnailSelector(
+      bool isDarkMode, Color textColor, Color? backgroundColor) {
     return Container(
       decoration: BoxDecoration(
         color: backgroundColor,
@@ -654,11 +848,11 @@ class _FolderContextMenuState extends State<FolderContextMenu> {
             ),
             child: Row(
               children: [
-                Icon(Icons.folder, color: Colors.amber[700]),
+                Icon(Icons.image, color: Colors.blue),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Folder Properties',
+                    'Choose Folder Thumbnail',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -667,8 +861,10 @@ class _FolderContextMenuState extends State<FolderContextMenu> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => setState(() {
+                    _showThumbnailSelector = false;
+                  }),
                 ),
               ],
             ),
@@ -811,20 +1007,15 @@ class _FolderContextMenuState extends State<FolderContextMenu> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Thumbnail Options',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: textColor,
-                  ),
-                ),
-                const SizedBox(height: 12),
-
                 // Reset thumbnail button
                 if (_hasCustomThumbnail)
                   ElevatedButton.icon(
-                    onPressed: _resetThumbnail,
+                    onPressed: () {
+                      _resetThumbnail();
+                      setState(() {
+                        _showThumbnailSelector = false;
+                      });
+                    },
                     icon: const Icon(Icons.refresh),
                     label: const Text('Reset to Automatic Thumbnail'),
                     style: ElevatedButton.styleFrom(
@@ -890,7 +1081,7 @@ class _FolderContextMenuState extends State<FolderContextMenu> {
                             '.flv'
                           ].contains(extension);
 
-                          // Check if this file matches the current thumbnail (handling video:: prefix)
+                          // Check if this file matches the current thumbnail
                           final bool isCurrentThumbnail =
                               _isCurrentThumbnail(file, isVideo);
 

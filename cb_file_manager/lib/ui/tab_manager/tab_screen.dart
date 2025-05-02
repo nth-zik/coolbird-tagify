@@ -46,6 +46,12 @@ class CloseTabIntent extends Intent {
   const CloseTabIntent();
 }
 
+// Create actions for switching to specific tabs
+class SwitchToTabIntent extends Intent {
+  final int tabIndex;
+  const SwitchToTabIntent(this.tabIndex);
+}
+
 class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
   bool _initialTabAdded = false;
 
@@ -205,6 +211,25 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
     }
   }
 
+  // Method to switch to a specific tab by index
+  void _handleSwitchToTab(int tabIndex) {
+    final state = context.read<TabManagerBloc>().state;
+    // Check if the tab index is valid
+    if (tabIndex >= 0 && tabIndex < state.tabs.length) {
+      // Switch to the tab
+      context.read<TabManagerBloc>().add(SwitchToTab(state.tabs[tabIndex].id));
+
+      // Force UI update to make active tab display correctly
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            // This triggers a rebuild that ensures tab state is correctly reflected
+          });
+        }
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Apply frame timing optimization before building the tabbed interface
@@ -241,18 +266,51 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
 
         // Define keyboard shortcuts and actions
         final Map<ShortcutActivator, Intent> shortcuts = {
+          // Create new tab with Ctrl+T
           LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyT):
               const CreateNewTabIntent(),
+          // Close current tab with Ctrl+W
           LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyW):
               const CloseTabIntent(),
+          // Switch to tabs 1-9 with Ctrl+1, Ctrl+2, etc.
+          LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.digit1):
+              const SwitchToTabIntent(0),
+          LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.digit2):
+              const SwitchToTabIntent(1),
+          LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.digit3):
+              const SwitchToTabIntent(2),
+          LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.digit4):
+              const SwitchToTabIntent(3),
+          LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.digit5):
+              const SwitchToTabIntent(4),
+          LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.digit6):
+              const SwitchToTabIntent(5),
+          LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.digit7):
+              const SwitchToTabIntent(6),
+          LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.digit8):
+              const SwitchToTabIntent(7),
+          LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.digit9):
+              const SwitchToTabIntent(8),
         };
 
         final Map<Type, Action<Intent>> actions = {
           CreateNewTabIntent: CallbackAction<CreateNewTabIntent>(
-            onInvoke: (CreateNewTabIntent intent) => _handleAddNewTab(),
+            onInvoke: (CreateNewTabIntent intent) {
+              // Use HapticFeedback for better user experience
+              HapticFeedback.mediumImpact();
+              // Force create new tab with FocusScope to ensure keyboard events are captured properly
+              SchedulerBinding.instance.addPostFrameCallback((_) {
+                _handleAddNewTab();
+              });
+              return null;
+            },
           ),
           CloseTabIntent: CallbackAction<CloseTabIntent>(
             onInvoke: (CloseTabIntent intent) => _handleCloseCurrentTab(),
+          ),
+          SwitchToTabIntent: CallbackAction<SwitchToTabIntent>(
+            onInvoke: (SwitchToTabIntent intent) =>
+                _handleSwitchToTab(intent.tabIndex),
           ),
         };
 
@@ -296,8 +354,19 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                                     onTap: (index) {
                                       // Only handle tab switching for valid tabs
                                       if (index < state.tabs.length) {
+                                        // Dispatch event to change active tab
                                         context.read<TabManagerBloc>().add(
                                             SwitchToTab(state.tabs[index].id));
+
+                                        // Force UI update to make active tab display correctly on desktop
+                                        SchedulerBinding.instance
+                                            .addPostFrameCallback((_) {
+                                          if (mounted) {
+                                            setState(() {
+                                              // This triggers a rebuild that ensures tab state is correctly reflected
+                                            });
+                                          }
+                                        });
                                       }
                                     },
                                     // Add tab close callback

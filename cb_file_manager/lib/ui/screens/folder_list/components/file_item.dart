@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:cb_file_manager/ui/screens/folder_list/file_details_screen.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/video_gallery_screen.dart';
+import 'package:cb_file_manager/ui/screens/media_gallery/image_viewer_screen.dart';
+import 'package:cb_file_manager/helpers/trash_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:cb_file_manager/widgets/lazy_video_thumbnail.dart';
@@ -37,11 +39,13 @@ class FileItem extends StatelessWidget {
     IconData icon;
     Color? iconColor;
     bool isVideo = false;
+    bool isImage = false;
 
     // Determine file type and icon
     if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(extension)) {
       icon = EvaIcons.imageOutline;
       iconColor = Colors.blue;
+      isImage = true;
     } else if (['mp4', 'mov', 'avi', 'mkv', 'flv', 'wmv'].contains(extension)) {
       icon = EvaIcons.videoOutline;
       iconColor = Colors.red;
@@ -62,47 +66,229 @@ class FileItem extends StatelessWidget {
     // Get tags for this file
     final List<String> fileTags = state.getTagsForFile(file.path);
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-      decoration: BoxDecoration(
-        color: isSelected ? Colors.blue.shade50 : Theme.of(context).cardColor,
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(8.0),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ListTile(
-            leading: isSelectionMode
-                ? Checkbox(
-                    value: isSelected,
-                    onChanged: (bool? value) {
-                      toggleFileSelection(file.path);
-                    },
-                  )
-                : _buildLeadingWidget(isVideo, icon, iconColor),
-            title: Text(_basename(file)),
-            subtitle: FutureBuilder<FileStat>(
-              future: file.stat(),
-              builder: (context, snapshot) {
-                if (snapshot.hasData) {
-                  String sizeText = _formatFileSize(snapshot.data!.size);
-                  return Text(
-                      '${snapshot.data!.modified.toString().split('.')[0]} • $sizeText');
+    return GestureDetector(
+      onSecondaryTap: () => _showFileContextMenu(context, isVideo, isImage),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.blue.shade50 : Theme.of(context).cardColor,
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(8.0),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ListTile(
+              leading: isSelectionMode
+                  ? Checkbox(
+                      value: isSelected,
+                      onChanged: (bool? value) {
+                        toggleFileSelection(file.path);
+                      },
+                    )
+                  : _buildLeadingWidget(isVideo, icon, iconColor),
+              title: Text(_basename(file)),
+              subtitle: FutureBuilder<FileStat>(
+                future: file.stat(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+                    String sizeText = _formatFileSize(snapshot.data!.size);
+                    return Text(
+                        '${snapshot.data!.modified.toString().split('.')[0]} • $sizeText');
+                  }
+                  return const Text('Loading...');
+                },
+              ),
+              onTap: () {
+                if (isSelectionMode) {
+                  toggleFileSelection(file.path);
+                } else if (onFileTap != null) {
+                  onFileTap!(file, isVideo);
+                } else if (isVideo) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => VideoPlayerFullScreen(file: file),
+                    ),
+                  );
+                } else if (isImage) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ImageViewerScreen(file: file),
+                    ),
+                  );
+                } else {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => FileDetailsScreen(file: file),
+                    ),
+                  );
                 }
-                return const Text('Loading...');
               },
+              onLongPress: () {
+                if (isSelectionMode) {
+                  toggleFileSelection(file.path);
+                } else {
+                  _showFileContextMenu(context, isVideo, isImage);
+                }
+              },
+              trailing: isSelectionMode
+                  ? null
+                  : PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert),
+                      onSelected: (String value) {
+                        if (value == 'tag') {
+                          showAddTagToFileDialog(context, file.path);
+                        } else if (value == 'delete_tag') {
+                          showDeleteTagDialog(context, file.path, fileTags);
+                        } else if (value == 'details') {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  FileDetailsScreen(file: file),
+                            ),
+                          );
+                        } else if (value == 'trash') {
+                          _moveToTrash(context);
+                        }
+                      },
+                      itemBuilder: (BuildContext context) => [
+                        const PopupMenuItem(
+                          value: 'tag',
+                          child: Text('Add Tag'),
+                        ),
+                        if (fileTags.isNotEmpty)
+                          const PopupMenuItem(
+                            value: 'delete_tag',
+                            child: Text('Remove Tag'),
+                          ),
+                        const PopupMenuItem(
+                          value: 'details',
+                          child: Text('Properties'),
+                        ),
+                        const PopupMenuItem(
+                          value: 'trash',
+                          child: Text('Move to Trash',
+                              style: TextStyle(color: Colors.red)),
+                        ),
+                      ],
+                    ),
+            ),
+            if (fileTags.isNotEmpty)
+              Padding(
+                padding:
+                    const EdgeInsets.only(left: 16.0, bottom: 8.0, right: 16.0),
+                child: Wrap(
+                  spacing: 8.0,
+                  children: fileTags.map((tag) {
+                    return Chip(
+                      label: Text(tag),
+                      backgroundColor: Colors.green[100],
+                      deleteIcon: const Icon(Icons.close, size: 18),
+                      onDeleted: () {},
+                    );
+                  }).toList(),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showFileContextMenu(BuildContext context, bool isVideo, bool isImage) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final List<String> fileTags = state.getTagsForFile(file.path);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDarkMode ? Colors.grey[850] : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isVideo
+                      ? EvaIcons.videoOutline
+                      : isImage
+                          ? EvaIcons.imageOutline
+                          : EvaIcons.fileOutline,
+                  color: isVideo
+                      ? Colors.red
+                      : isImage
+                          ? Colors.blue
+                          : Colors.grey,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _basename(file),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          ),
+          ListTile(
+            leading: Icon(
+                isVideo
+                    ? EvaIcons.playCircleOutline
+                    : isImage
+                        ? EvaIcons.imageOutline
+                        : EvaIcons.eyeOutline,
+                color: isDarkMode ? Colors.white70 : Colors.black87),
+            title: Text(
+              isVideo
+                  ? 'Play Video'
+                  : isImage
+                      ? 'View Image'
+                      : 'Open File',
+              style:
+                  TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
             ),
             onTap: () {
-              if (isSelectionMode) {
-                toggleFileSelection(file.path);
-              } else if (onFileTap != null) {
+              Navigator.pop(context);
+              if (onFileTap != null) {
                 onFileTap!(file, isVideo);
               } else if (isVideo) {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => VideoPlayerFullScreen(file: file),
+                  ),
+                );
+              } else if (isImage) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ImageViewerScreen(
+                      file: file,
+                    ),
                   ),
                 );
               } else {
@@ -114,61 +300,108 @@ class FileItem extends StatelessWidget {
                 );
               }
             },
-            trailing: isSelectionMode
-                ? null
-                : PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert),
-                    onSelected: (String value) {
-                      if (value == 'tag') {
-                        showAddTagToFileDialog(context, file.path);
-                      } else if (value == 'delete_tag') {
-                        showDeleteTagDialog(context, file.path, fileTags);
-                      } else if (value == 'details' && isVideo) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => FileDetailsScreen(file: file),
-                          ),
-                        );
-                      }
-                    },
-                    itemBuilder: (BuildContext context) => [
-                      const PopupMenuItem(
-                        value: 'tag',
-                        child: Text('Add Tag'),
-                      ),
-                      if (fileTags.isNotEmpty)
-                        const PopupMenuItem(
-                          value: 'delete_tag',
-                          child: Text('Remove Tag'),
-                        ),
-                      if (isVideo)
-                        const PopupMenuItem(
-                          value: 'details',
-                          child: Text('View Details'),
-                        ),
-                    ],
-                  ),
+          ),
+          ListTile(
+            leading: Icon(EvaIcons.infoOutline,
+                color: isDarkMode ? Colors.white70 : Colors.black87),
+            title: Text(
+              'Properties',
+              style:
+                  TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => FileDetailsScreen(file: file),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: Icon(EvaIcons.bookmarkOutline,
+                color: isDarkMode ? Colors.white70 : Colors.black87),
+            title: Text(
+              'Add Tag',
+              style:
+                  TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              showAddTagToFileDialog(context, file.path);
+            },
           ),
           if (fileTags.isNotEmpty)
-            Padding(
-              padding:
-                  const EdgeInsets.only(left: 16.0, bottom: 8.0, right: 16.0),
-              child: Wrap(
-                spacing: 8.0,
-                children: fileTags.map((tag) {
-                  return Chip(
-                    label: Text(tag),
-                    backgroundColor: Colors.green[100],
-                    deleteIcon: const Icon(Icons.close, size: 18),
-                    onDeleted: () {},
-                  );
-                }).toList(),
+            ListTile(
+              leading: Icon(EvaIcons.minusCircleOutline,
+                  color: isDarkMode ? Colors.white70 : Colors.black87),
+              title: Text(
+                'Remove Tag',
+                style: TextStyle(
+                    color: isDarkMode ? Colors.white : Colors.black87),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                showDeleteTagDialog(context, file.path, fileTags);
+              },
+            ),
+          ListTile(
+            leading: Icon(EvaIcons.trash2Outline, color: Colors.red),
+            title: Text(
+              'Move to Trash',
+              style: TextStyle(
+                color: Colors.red,
               ),
             ),
+            onTap: () {
+              Navigator.pop(context);
+              _moveToTrash(context);
+            },
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _moveToTrash(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Move to Trash?'),
+        content: Text('Do you want to move "${_basename(file)}" to trash?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCEL'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('MOVE TO TRASH',
+                style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      try {
+        final trashManager = TrashManager();
+        await trashManager.moveToTrash(file.path);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Moved "${_basename(file)}" to trash')),
+        );
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to move file to trash: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   Widget _buildLeadingWidget(bool isVideo, IconData icon, Color? iconColor) {

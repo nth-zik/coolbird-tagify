@@ -8,7 +8,9 @@ import 'package:cb_file_manager/ui/utils/base_screen.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:cb_file_manager/helpers/frame_timing_optimizer.dart';
 import 'package:cb_file_manager/ui/components/thumbnail_strip.dart';
-import 'package:cb_file_manager/helpers/trash_manager.dart'; // Add import for TrashManager
+import 'package:cb_file_manager/helpers/trash_manager.dart';
+import 'package:share_plus/share_plus.dart'; // Add import for Share Plus
+import 'package:cross_file/cross_file.dart'; // Add import for XFile
 
 class ImageViewerScreen extends StatefulWidget {
   final File file;
@@ -378,10 +380,9 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
   }
 
   void _shareImage() {
-    // TODO: Implement sharing functionality when available
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Sharing feature will be implemented soon')),
-    );
+    final file = _allImages[_currentIndex];
+    final XFile xFile = XFile(file.path);
+    Share.shareXFiles([xFile], text: 'Check out this image!');
   }
 
   // Phương thức để tải và cache ảnh
