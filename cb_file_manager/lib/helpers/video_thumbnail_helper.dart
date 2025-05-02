@@ -192,6 +192,18 @@ Future<bool> _isFileValidNonBlocking(String filePath) async {
 }
 
 class VideoThumbnailHelper {
+  // Add a StreamController to notify when cache is cleared
+  static final StreamController<void> _cacheChangedController =
+      StreamController<void>.broadcast();
+
+  // Expose a stream that widgets can listen to
+  static Stream<void> get onCacheChanged => _cacheChangedController.stream;
+
+  // Method to notify listeners that cache has changed
+  static void _notifyCacheChanged() {
+    _cacheChangedController.add(null);
+  }
+
   static final LinkedHashMap<String, String> _fileCache =
       LinkedHashMap<String, String>();
 
@@ -1127,63 +1139,12 @@ class VideoThumbnailHelper {
       _cacheInitialized = false;
       _userPrefsInitialized = false;
       _log('VideoThumbnail: Cache cleared completely.');
+
+      // Notify listeners that cache has been cleared
+      _notifyCacheChanged();
     } finally {
       // Restore processing flag to previous state if it wasn't already processing
       _isProcessingQueue = wasProcessing;
-    }
-  }
-
-  /// Regenerate thumbnails for all video files in the specified directory
-  /// This is useful after clearing the cache to ensure thumbnails are regenerated
-  static Future<void> regenerateThumbnailsForDirectory(
-      String directoryPath) async {
-    _log(
-        'VideoThumbnail: Regenerating thumbnails for directory: $directoryPath',
-        forceShow: true);
-
-    if (!_cacheInitialized) {
-      await initializeCache();
-    }
-
-    try {
-      final directory = Directory(directoryPath);
-      if (!await directory.exists()) {
-        _log('VideoThumbnail: Directory does not exist: $directoryPath',
-            forceShow: true);
-        return;
-      }
-
-      // Set as current directory
-      setCurrentDirectory(directoryPath);
-
-      // Get all video files in the directory
-      final fileList = await directory.list().toList();
-      final videoPaths = fileList
-          .where(
-              (entity) => entity is File && isSupportedVideoFormat(entity.path))
-          .map((entity) => entity.path)
-          .toList();
-
-      if (videoPaths.isEmpty) {
-        _log('VideoThumbnail: No video files found in directory',
-            forceShow: true);
-        return;
-      }
-
-      _log(
-          'VideoThumbnail: Found ${videoPaths.length} video files to regenerate thumbnails',
-          forceShow: true);
-
-      // Use the optimized batch preload to regenerate thumbnails
-      await optimizedBatchPreload(videoPaths,
-          maxConcurrent: 2, visibleCount: 10);
-
-      _log(
-          'VideoThumbnail: Regeneration queued for ${videoPaths.length} videos',
-          forceShow: true);
-    } catch (e) {
-      _log('VideoThumbnail: Error regenerating thumbnails: $e',
-          forceShow: true);
     }
   }
 
@@ -1320,6 +1281,60 @@ class VideoThumbnailHelper {
     return await _requestThumbnail(videoPath,
         priority: _visiblePriority + 50, // Super high priority
         forceRegenerate: true);
+  }
+
+  /// Regenerate thumbnails for all video files in the specified directory
+  /// This is useful after clearing the cache to ensure thumbnails are regenerated
+  static Future<void> regenerateThumbnailsForDirectory(
+      String directoryPath) async {
+    _log(
+        'VideoThumbnail: Regenerating thumbnails for directory: $directoryPath',
+        forceShow: true);
+
+    if (!_cacheInitialized) {
+      await initializeCache();
+    }
+
+    try {
+      final directory = Directory(directoryPath);
+      if (!await directory.exists()) {
+        _log('VideoThumbnail: Directory does not exist: $directoryPath',
+            forceShow: true);
+        return;
+      }
+
+      // Set as current directory
+      setCurrentDirectory(directoryPath);
+
+      // Get all video files in the directory
+      final fileList = await directory.list().toList();
+      final videoPaths = fileList
+          .where(
+              (entity) => entity is File && isSupportedVideoFormat(entity.path))
+          .map((entity) => entity.path)
+          .toList();
+
+      if (videoPaths.isEmpty) {
+        _log('VideoThumbnail: No video files found in directory',
+            forceShow: true);
+        return;
+      }
+
+      _log(
+          'VideoThumbnail: Found ${videoPaths.length} video files to regenerate thumbnails',
+          forceShow: true);
+
+      // Use the optimized batch preload to regenerate thumbnails
+      await optimizedBatchPreload(videoPaths,
+          maxConcurrent: 2, visibleCount: 10);
+
+      _log(
+          'VideoThumbnail: Regeneration queued for ${videoPaths.length} videos',
+          forceShow: true);
+    } catch (e) {
+      _log('VideoThumbnail: Error regenerating thumbnails: $e',
+          forceShow: true);
+    }
   }
 }
 

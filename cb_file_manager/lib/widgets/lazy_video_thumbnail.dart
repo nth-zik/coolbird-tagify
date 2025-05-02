@@ -66,6 +66,9 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
   // Progress simulation timer
   Timer? _progressTimer;
 
+  // Stream subscription to cache clear events
+  StreamSubscription? _cacheChangedSubscription;
+
   // AutomaticKeepAliveClientMixin implementation
   @override
   bool get wantKeepAlive => widget.keepAlive;
@@ -73,7 +76,14 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
   @override
   void initState() {
     super.initState();
+    debugPrint(
+        '[Thumbnail] Initializing thumbnail for video: ${widget.videoPath}');
     _scheduleInitialLoad();
+
+    // Subscribe to cache changed events
+    _cacheChangedSubscription = VideoThumbnailHelper.onCacheChanged.listen((_) {
+      _handleCacheCleared();
+    });
   }
 
   @override
@@ -82,13 +92,48 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
     _thumbnailPathNotifier.dispose();
     _progressNotifier.dispose();
     _progressTimer?.cancel();
+    _cacheChangedSubscription?.cancel();
     super.dispose();
+  }
+
+  /// Handle the event when the thumbnail cache is cleared
+  void _handleCacheCleared() {
+    debugPrint(
+        '[Thumbnail] Cache cleared notification received for ${widget.videoPath}');
+    if (!mounted) return;
+
+    // Reset thumbnail path
+    final hadThumbnail = _thumbnailPathNotifier.value != null;
+    _thumbnailPathNotifier.value = null;
+
+    // Only reload immediately if the widget is visible
+    if (_visibilityNotifier.value) {
+      debugPrint(
+          '[Thumbnail] Widget is visible, reloading thumbnail after cache clear for ${widget.videoPath}');
+      // Reset error state if there was one
+      if (_isError) {
+        _isError = false;
+      }
+
+      // If we had a thumbnail before, force regeneration
+      _loadThumbnail(forceRegenerate: hadThumbnail, isPriority: true);
+    } else if (hadThumbnail) {
+      // For non-visible thumbnails, just mark as needing regeneration when they become visible
+      _wasAttempted = false;
+
+      // Force a rebuild to show placeholder instead of thumbnail
+      setState(() {});
+      debugPrint(
+          '[Thumbnail] Widget not visible, will reload when visible: ${widget.videoPath}');
+    }
   }
 
   /// Schedule the initial thumbnail loading after the first frame is rendered
   void _scheduleInitialLoad() {
     SchedulerBinding.instance.addPostFrameCallback((_) {
       if (mounted && !widget.placeholderOnly) {
+        debugPrint(
+            '[Thumbnail] Scheduling thumbnail load for: ${widget.videoPath}');
         _prefetchThumbnail();
       }
     });
@@ -104,6 +149,8 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
     // Try quick cache lookup first
     final cachedPath = await _checkCache();
     if (cachedPath != null && mounted) {
+      debugPrint(
+          '[Thumbnail] Using cached thumbnail for ${widget.videoPath}: $cachedPath');
       _setThumbnailPath(cachedPath);
       return;
     }
@@ -113,6 +160,8 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
 
     // Queue thumbnail generation with low priority
     if (mounted) {
+      debugPrint(
+          '[Thumbnail] No cached thumbnail found for ${widget.videoPath}, generating new one');
       _generateThumbnail(priority: 0);
     }
   }
@@ -167,6 +216,9 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
   void _setThumbnailPath(String? path) {
     if (!mounted) return;
 
+    debugPrint(
+        '[Thumbnail] Setting thumbnail path for ${widget.videoPath}: $path');
+
     // Update state
     _thumbnailPathNotifier.value = path;
     _updateProgress(path != null
@@ -183,6 +235,8 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
       // Use a post-frame callback to avoid calling during build
       SchedulerBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
+          debugPrint(
+              '[Thumbnail] Notifying parent about thumbnail generated for ${widget.videoPath}');
           widget.onThumbnailGenerated!(path);
         }
       });
@@ -208,11 +262,15 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
       if (_thumbnailPathNotifier.value == null &&
           !_isLoading &&
           !widget.placeholderOnly) {
+        debugPrint(
+            '[Thumbnail] Widget became visible, loading thumbnail for ${widget.videoPath}');
         _loadThumbnail(isPriority: true);
       } else if (_wasAttempted &&
           _thumbnailPathNotifier.value == null &&
           !_isLoading &&
           !widget.placeholderOnly) {
+        debugPrint(
+            '[Thumbnail] Widget became visible, regenerating thumbnail for ${widget.videoPath}');
         _loadThumbnail(forceRegenerate: true, isPriority: true);
       }
     } else if (_visibilityNotifier.value) {
@@ -224,8 +282,14 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
   /// Check if thumbnail is available in cache
   Future<String?> _checkCache() async {
     try {
-      return await VideoThumbnailHelper.getFromCache(widget.videoPath);
-    } catch (_) {
+      final cachedPath =
+          await VideoThumbnailHelper.getFromCache(widget.videoPath);
+      debugPrint(
+          '[Thumbnail] Cache check for ${widget.videoPath}: ${cachedPath != null ? 'Found: $cachedPath' : 'Not found'}');
+      return cachedPath;
+    } catch (e) {
+      debugPrint(
+          '[Thumbnail] Error checking cache for ${widget.videoPath}: $e');
       return null;
     }
   }
@@ -233,6 +297,9 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
   /// Primary thumbnail loading handler with multi-stage approach
   void _loadThumbnail({bool forceRegenerate = false, bool isPriority = false}) {
     if (!mounted) return;
+
+    debugPrint(
+        '[Thumbnail] Loading thumbnail for ${widget.videoPath} (force: $forceRegenerate, priority: $isPriority)');
 
     _isLoading = true;
     _wasAttempted = true;
@@ -248,6 +315,8 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
     if (!forceRegenerate) {
       _checkCache().then((cachedPath) {
         if (mounted && cachedPath != null) {
+          debugPrint(
+              '[Thumbnail] Using cached thumbnail for ${widget.videoPath}: $cachedPath');
           _setThumbnailPath(cachedPath);
           // Force UI update immediately when thumbnail is found in cache
           setState(() {});
@@ -256,10 +325,14 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
 
         // Proceed with generation if not in cache
         if (mounted) {
+          debugPrint(
+              '[Thumbnail] No cached thumbnail found for ${widget.videoPath}, generating new one');
           _generateThumbnailWithFallbacks(forceRegenerate, isPriority);
         }
       });
     } else {
+      debugPrint(
+          '[Thumbnail] Force regenerating thumbnail for ${widget.videoPath}');
       _generateThumbnailWithFallbacks(forceRegenerate, isPriority);
     }
   }
@@ -269,12 +342,19 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
     if (!mounted) return;
 
     final priority = isPriority ? 150 : 100;
+    debugPrint(
+        '[Thumbnail] Generating thumbnail with direct approach for ${widget.videoPath}');
 
     // Try direct approach first
     VideoThumbnailHelper.forceRegenerateThumbnail(widget.videoPath)
-        .timeout(const Duration(seconds: 5), onTimeout: () => null)
-        .then((directPath) {
+        .timeout(const Duration(seconds: 5), onTimeout: () {
+      debugPrint(
+          '[Thumbnail] Direct thumbnail generation timed out for ${widget.videoPath}');
+      return null;
+    }).then((directPath) {
       if (mounted && directPath != null) {
+        debugPrint(
+            '[Thumbnail] Direct thumbnail generation succeeded for ${widget.videoPath}: $directPath');
         _setThumbnailPath(directPath);
         // Force an immediate UI update when the thumbnail is loaded
         setState(() {});
@@ -283,6 +363,8 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
 
       // Fall back to isolate manager
       if (mounted) {
+        debugPrint(
+            '[Thumbnail] Direct approach failed for ${widget.videoPath}, trying isolate manager');
         _generateThumbnail(
             priority: priority, forceRegenerate: forceRegenerate);
       }
@@ -292,6 +374,9 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
   /// Generate thumbnail using ThumbnailIsolateManager
   void _generateThumbnail(
       {required int priority, bool forceRegenerate = false}) {
+    debugPrint(
+        '[Thumbnail] Generating thumbnail with isolate manager for ${widget.videoPath} (priority: $priority)');
+
     _isolateManager
         .generateThumbnail(widget.videoPath,
             priority: priority, forceRegenerate: forceRegenerate)
@@ -299,16 +384,22 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
       if (!mounted) return;
 
       if (path != null) {
+        debugPrint(
+            '[Thumbnail] Isolate manager thumbnail generation succeeded for ${widget.videoPath}: $path');
         _setThumbnailPath(path);
         // Force UI update immediately when thumbnail is loaded
         setState(() {});
       } else {
+        debugPrint(
+            '[Thumbnail] Isolate manager failed for ${widget.videoPath}, making last attempt');
         // Make last attempt if isolate manager fails
         _makeLastAttempt();
       }
-    }).catchError((_) {
+    }).catchError((error) {
       if (!mounted) return;
 
+      debugPrint(
+          '[Thumbnail] Error generating thumbnail with isolate manager for ${widget.videoPath}: $error');
       _isLoading = false;
       _isError = true;
       _updateProgress(0.0);
@@ -320,12 +411,22 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
   void _makeLastAttempt() {
     if (!mounted) return;
 
+    debugPrint(
+        '[Thumbnail] Making last attempt to generate thumbnail for ${widget.videoPath}');
     VideoThumbnailHelper.markAttempted(widget.videoPath);
 
     VideoThumbnailHelper.generateThumbnail(widget.videoPath, isPriority: true)
-        .timeout(const Duration(seconds: 3), onTimeout: () => null)
-        .then((lastPath) {
+        .timeout(const Duration(seconds: 3), onTimeout: () {
+      debugPrint('[Thumbnail] Last attempt timed out for ${widget.videoPath}');
+      return null;
+    }).then((lastPath) {
       if (mounted) {
+        if (lastPath != null) {
+          debugPrint(
+              '[Thumbnail] Last attempt succeeded for ${widget.videoPath}: $lastPath');
+        } else {
+          debugPrint('[Thumbnail] Last attempt failed for ${widget.videoPath}');
+        }
         _setThumbnailPath(lastPath);
         // Force an immediate UI update when the thumbnail is loaded
         setState(() {});
@@ -455,6 +556,9 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
       }
     });
 
+    debugPrint(
+        '[Thumbnail] Building thumbnail image for ${widget.videoPath} with path: $thumbnailPath');
+
     return SizedBox(
       width: widget.width,
       height: widget.height,
@@ -466,6 +570,8 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
         fit: BoxFit.contain,
         filterQuality: FilterQuality.medium,
         errorBuilder: (context, error, stackTrace) {
+          debugPrint(
+              '[Thumbnail] Error loading thumbnail image for ${widget.videoPath}: $error');
           _thumbnailPathNotifier.value = null;
           _isLoading = false;
           _isError = true;
@@ -474,6 +580,8 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
         },
         frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
           if (wasSynchronouslyLoaded) {
+            debugPrint(
+                '[Thumbnail] Thumbnail image loaded synchronously for ${widget.videoPath}');
             // Also notify for synchronously loaded images
             SchedulerBinding.instance.addPostFrameCallback((_) {
               if (mounted && widget.onThumbnailGenerated != null) {
@@ -481,6 +589,11 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
               }
             });
             return child;
+          }
+
+          if (frame != null) {
+            debugPrint(
+                '[Thumbnail] Thumbnail image frame loaded for ${widget.videoPath}');
           }
 
           return AnimatedSwitcher(

@@ -146,27 +146,6 @@ class _CBDrawerState extends State<CBDrawer> {
             },
             children: <Widget>[
               ..._buildStorageLocationsList(),
-              ListTile(
-                contentPadding: const EdgeInsets.only(left: 30),
-                leading: const Icon(EvaIcons.shoppingBag),
-                title: Text(context.tr.tags),
-                onTap: () async {
-                  Navigator.pop(context);
-                  // Get documents directory as starting directory
-                  final directory = await getApplicationDocumentsDirectory();
-                  // Navigate to the Tag Management screen
-                  if (context.mounted) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => TagManagementScreen(
-                          startingDirectory: directory.path,
-                        ),
-                      ),
-                    );
-                  }
-                },
-              ),
               // Add Trash Bin entry
               ListTile(
                 contentPadding: const EdgeInsets.only(left: 30),
@@ -186,6 +165,27 @@ class _CBDrawerState extends State<CBDrawer> {
                 },
               ),
             ],
+          ),
+          // Tags menu item moved out to the same level as Storage
+          ListTile(
+            leading: const Icon(EvaIcons.shoppingBag),
+            title: Text(context.tr.tags),
+            onTap: () async {
+              Navigator.pop(context);
+              // Get documents directory as starting directory
+              final directory = await getApplicationDocumentsDirectory();
+              // Navigate to the Tag Management screen
+              if (context.mounted) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => TagManagementScreen(
+                      startingDirectory: directory.path,
+                    ),
+                  ),
+                );
+              }
+            },
           ),
           ListTile(
             leading: const Icon(EvaIcons.wifi),
@@ -813,6 +813,7 @@ class _AppDrawerState extends State<AppDrawer> {
               );
             },
           ),
+          // Tags menu item moved out to the same level as Storage
           ListTile(
             leading: const Icon(EvaIcons.shoppingBag),
             title: Text(context.tr.tags),

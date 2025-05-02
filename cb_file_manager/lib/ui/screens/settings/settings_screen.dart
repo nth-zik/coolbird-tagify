@@ -153,40 +153,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
       }
 
-      // Force refresh of the UI by rebuilding the widget tree
+      // Force refresh of the UI without closing the screen
       if (mounted) {
         // Notify the ImageCache to clear Flutter's internal image cache
         PaintingBinding.instance.imageCache.clear();
         PaintingBinding.instance.imageCache.clearLiveImages();
 
-        // Send a notification to folder screens that thumbnails have been cleared
-        // This will trigger a rebuild of any folder screens that are visible
+        // VideoThumbnailHelper already notifies all listeners via onCacheChanged stream
+        // No need to manually refresh this screen since we're already showing proper state
         VideoThumbnailHelper.setVerboseLogging(true);
 
-        // Force the application to rebuild screens that might be showing thumbnails
-        try {
-          // Wait a short time for the cache clearing operation to complete
-          await Future.delayed(const Duration(milliseconds: 100));
-
-          // Use this special method to notify the app's state needs to refresh
-          final navigatorState = Navigator.of(context);
-          if (navigatorState.canPop()) {
-            // Briefly pop and push the same screen to force a refresh
-            navigatorState.pop();
-            await Future.delayed(const Duration(milliseconds: 50));
-            if (mounted) {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              );
-            }
-          }
-        } catch (e) {
-          debugPrint('Error refreshing UI after cache clear: $e');
-        }
-      }
-
-      // Show success message only if we're still mounted
-      if (mounted) {
+        // Show success message
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
