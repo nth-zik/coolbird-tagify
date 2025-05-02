@@ -221,7 +221,6 @@ class FolderThumbnailService {
       // Then look for videos
       for (final entity in entities) {
         if (entity is File) {
-          final ext = path.extension(entity.path).toLowerCase();
           if (VideoThumbnailHelper.isSupportedVideoFormat(entity.path)) {
             debugPrint('Found video file: ${entity.path}');
 

@@ -53,6 +53,9 @@ class _FolderListScreenState extends State<FolderListScreen> {
   // Global search toggle for tag search
   bool isGlobalSearch = false;
 
+  // Timer for periodic UI refresh to display thumbnails
+  Timer? _refreshTimer;
+
   @override
   void initState() {
     super.initState();
@@ -86,6 +89,10 @@ class _FolderListScreenState extends State<FolderListScreen> {
         print('Error in dispose cleanup: $e');
       }
     });
+
+    // Clean up the timer
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
 
     _searchController.dispose();
     _tagController.dispose();
@@ -218,54 +225,23 @@ class _FolderListScreenState extends State<FolderListScreen> {
     // Hiển thị thông báo đang làm mới
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Đang làm mới thumbnails...'),
-        duration: Duration(seconds: 2),
+        content: Text('Đang làm mới...'),
+        duration: Duration(seconds: 1),
       ),
     );
 
-    // Đặt cờ để theo dõi trạng thái refresh
-    bool isRefreshing = true;
-
-    // Xóa cache hình ảnh của Flutter - sửa từ SchedulerBinding sang PaintingBinding
-    PaintingBinding.instance.imageCache.clear();
-    PaintingBinding.instance.imageCache.clearLiveImages();
-
-    // Gọi hàm xóa cache thumbnail
-    try {
-      // Xóa cache thumbnail
-      VideoThumbnailHelper.clearCache();
-    } catch (e) {
-      print('Error clearing thumbnail cache: $e');
-    }
-
-    // Reload folder với forceRegenerateThumbnails để tạo lại thumbnail
+    // Reload folder without forcing thumbnail regeneration
     _folderListBloc
-        .add(FolderListRefresh(widget.path, forceRegenerateThumbnails: true));
+        .add(FolderListRefresh(widget.path, forceRegenerateThumbnails: false));
 
     // Thiết lập thời gian cố định để hiển thị hoàn thành
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted && isRefreshing) {
-        isRefreshing = false;
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) {
         // Thông báo hoàn tất làm mới
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Đã làm mới xong!'),
             duration: Duration(seconds: 1),
-          ),
-        );
-      }
-    });
-
-    // Thiết lập timeout dài hơn để đảm bảo không bị kẹt
-    Future.delayed(const Duration(seconds: 15), () {
-      if (mounted && isRefreshing) {
-        isRefreshing = false;
-        // Thông báo hoàn tất khi timeout
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'Đã hoàn tất làm mới. Một số thumbnail có thể cần thời gian để cập nhật.'),
-            duration: Duration(seconds: 3),
           ),
         );
       }
@@ -597,6 +573,18 @@ class _FolderListScreenState extends State<FolderListScreen> {
               showAddTagToFileDialog: _showAddTagToFileDialog,
               onFolderTap: _onFolderTap, // Thêm callback
               onFileTap: _onFileTap, // Thêm callback
+              onThumbnailGenerated: () {
+                // Immediately force a rebuild when any thumbnail is generated
+                if (mounted) {
+                  SchedulerBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      setState(() {
+                        // Force rebuild now
+                      });
+                    }
+                  });
+                }
+              },
             ),
           ),
         ],
@@ -647,6 +635,18 @@ class _FolderListScreenState extends State<FolderListScreen> {
               showAddTagToFileDialog: _showAddTagToFileDialog,
               onFolderTap: _onFolderTap, // Thêm callback
               onFileTap: _onFileTap, // Thêm callback
+              onThumbnailGenerated: () {
+                // Immediately force a rebuild when any thumbnail is generated
+                if (mounted) {
+                  SchedulerBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      setState(() {
+                        // Force rebuild now
+                      });
+                    }
+                  });
+                }
+              },
             ),
           ),
         ],

@@ -182,10 +182,7 @@ class FolderListRefresh extends FolderListEvent {
   final String path;
   final bool forceRegenerateThumbnails;
 
-  const FolderListRefresh(this.path, {this.forceRegenerateThumbnails = false});
-
-  @override
-  List<Object> get props => [path, forceRegenerateThumbnails];
+  FolderListRefresh(this.path, {this.forceRegenerateThumbnails = false});
 }
 
 // Enum to represent media types for search

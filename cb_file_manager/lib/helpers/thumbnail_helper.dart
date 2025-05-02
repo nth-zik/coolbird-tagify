@@ -1,8 +1,6 @@
-import 'dart:io';
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 import 'video_thumbnail_helper.dart';
 
 /// Adapter class để đảm bảo tương thích với mã hiện tại

@@ -455,8 +455,6 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
               width: double.infinity,
               height: double.infinity,
               filterQuality: FilterQuality.medium,
-              cacheWidth: (widget.size * 3).toInt(),
-              cacheHeight: (widget.size * 3).toInt(),
               errorBuilder: (context, error, stackTrace) {
                 debugPrint('Image loading error: $error');
                 return Center(

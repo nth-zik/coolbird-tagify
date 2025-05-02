@@ -17,6 +17,8 @@ class FileGridItem extends StatelessWidget {
   final Function(String) toggleFileSelection;
   final Function() toggleSelectionMode;
   final Function(File, bool)? onFileTap;
+  // Add new callback for thumbnail generation
+  final Function()? onThumbnailGenerated;
 
   const FileGridItem({
     Key? key,
@@ -27,6 +29,7 @@ class FileGridItem extends StatelessWidget {
     required this.toggleFileSelection,
     required this.toggleSelectionMode,
     this.onFileTap,
+    this.onThumbnailGenerated,
   }) : super(key: key);
 
   @override
@@ -217,6 +220,12 @@ class FileGridItem extends StatelessWidget {
             width: double.infinity,
             height: double.infinity,
             keepAlive: true,
+            onThumbnailGenerated: (path) {
+              // Directly call the callback when thumbnail is generated
+              if (onThumbnailGenerated != null) {
+                onThumbnailGenerated!();
+              }
+            },
             fallbackBuilder: () => Container(
               color: Colors.black12,
               child: Center(
@@ -254,10 +263,8 @@ class FileGridItem extends StatelessWidget {
           tag: file.path,
           child: Image.file(
             file,
-            fit: BoxFit.cover,
+            fit: BoxFit.contain,
             // Add caching parameters to improve performance
-            cacheWidth: 300,
-            cacheHeight: 300,
             // Lower quality for better performance
             filterQuality: FilterQuality.medium,
             errorBuilder: (context, error, stackTrace) {

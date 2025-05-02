@@ -2,8 +2,9 @@ import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
 import 'package:cb_file_manager/helpers/io_extensions.dart';
+import 'package:cb_file_manager/helpers/trash_manager.dart'; // Add import for TrashManager
 import 'package:path/path.dart' as pathlib;
-import 'package:cb_file_manager/helpers/video_thumbnail_helper.dart'; // Add import here at the top
+import 'package:cb_file_manager/helpers/video_thumbnail_helper.dart';
 
 import 'folder_list_event.dart';
 import 'folder_list_state.dart';
@@ -751,12 +752,13 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
     emit(state.copyWith(isLoading: true));
     try {
       List<String> failedDeletes = [];
+      final trashManager = TrashManager(); // Create an instance of TrashManager
 
       for (var filePath in event.filePaths) {
         try {
           final file = File(filePath);
           if (await file.exists()) {
-            await file.delete();
+            await trashManager.moveToTrash(filePath); // Use the instance method
           }
         } catch (e) {
           failedDeletes.add(filePath);

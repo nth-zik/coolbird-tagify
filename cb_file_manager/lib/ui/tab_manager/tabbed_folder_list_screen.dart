@@ -4,6 +4,7 @@ import 'dart:async'; // Add this import for Completer
 import 'package:cb_file_manager/ui/screens/folder_list/file_details_screen.dart'; // Add this import
 import 'package:cb_file_manager/ui/screens/media_gallery/image_gallery_screen.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/video_gallery_screen.dart';
+import 'package:cb_file_manager/ui/screens/media_gallery/image_viewer_screen.dart'; // Import the new ImageViewerScreen
 import 'package:cb_file_manager/ui/components/shared_action_bar.dart';
 import 'package:cb_file_manager/helpers/frame_timing_optimizer.dart'; // Import frame timing optimizer
 import 'package:flutter/material.dart';
@@ -869,7 +870,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
           parent: AlwaysScrollableScrollPhysics(),
         ),
         // Add caching for better scroll performance
-        cacheExtent: 500,
+        cacheExtent: 1000,
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: state.gridZoomLevel,
           crossAxisSpacing: 8,
@@ -958,9 +959,9 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Delete ${_selectedFilePaths.length} items?'),
+        title: Text('Move ${_selectedFilePaths.length} items to trash?'),
         content: const Text(
-            'This action cannot be undone. Are you sure you want to delete these items?'),
+            'These items will be moved to the trash bin. You can restore them later if needed.'),
         actions: [
           TextButton(
             onPressed: () {
@@ -976,7 +977,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
               _clearSelection();
             },
             child: const Text(
-              'DELETE',
+              'MOVE TO TRASH',
               style: TextStyle(color: Colors.red),
             ),
           ),
@@ -985,43 +986,68 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
     );
   }
 
-  String _formatSize(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    if (bytes < 1024 * 1024 * 1024)
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
-  }
-
   // Tag search dialog and handling
-  void _showTagSearchDialog(BuildContext context) {
-    tab_components.showTagSearchDialog(
-      context,
-      _currentPath,
-      (List<FileSystemEntity> results, String tagName) {
-        // Update UI to show search results
-        _folderListBloc.add(SetTagSearchResults(results, tagName));
-      },
-    );
-  }
 
   // Xử lý khi người dùng click vào một file trong kết quả tìm kiếm
   void _onFileTap(File file, bool isVideo) {
-    // Mở file theo loại tương ứng
+    // Get file extension to determine file type
+    final extension = file.path.split('.').last.toLowerCase();
+
+    // Define image extensions
+    final imageExtensions = [
+      'jpg',
+      'jpeg',
+      'png',
+      'gif',
+      'webp',
+      'bmp',
+      'heic'
+    ];
+
+    // Open file based on file type
     if (isVideo) {
+      // Open video in video player
       Navigator.push(
         context,
         MaterialPageRoute(
-          // VideoPlayerFullScreen là class đúng để mở video, không phải viewSingleVideo
           builder: (context) => VideoPlayerFullScreen(file: file),
         ),
       );
-    } else {
-      // Xử lý các loại file khác
+    } else if (imageExtensions.contains(extension)) {
+      // Get all image files in the same directory for gallery navigation
+      List<File> imageFiles = [];
+      int initialIndex = 0;
+
+      // Only process this if we're showing the folder contents (not search results)
+      if (_currentFilter == null &&
+          _currentSearchTag == null &&
+          _folderListBloc.state.files.isNotEmpty) {
+        imageFiles = _folderListBloc.state.files.whereType<File>().where((f) {
+          final ext = f.path.split('.').last.toLowerCase();
+          return imageExtensions.contains(ext);
+        }).toList();
+
+        // Find the index of the current file in the imageFiles list
+        initialIndex = imageFiles.indexWhere((f) => f.path == file.path);
+        if (initialIndex < 0) initialIndex = 0;
+      }
+
+      // Open image in our enhanced image viewer with gallery support
       Navigator.push(
         context,
         MaterialPageRoute(
-          // Import đúng FileDetailsScreen từ folder_list
+          builder: (context) => ImageViewerScreen(
+            file: file,
+            imageFiles: imageFiles.isNotEmpty ? imageFiles : null,
+            initialIndex: initialIndex,
+          ),
+        ),
+      );
+    } else {
+      // For other file types, use the generic file details screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
           builder: (context) => FileDetailsScreen(file: file),
         ),
       );

@@ -5,6 +5,7 @@ import 'package:cb_file_manager/helpers/user_preferences.dart';
 import 'package:cb_file_manager/ui/utils/base_screen.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/ui/components/shared_action_bar.dart';
+import 'package:cb_file_manager/ui/screens/media_gallery/image_viewer_screen.dart'; // Import the new ImageViewerScreen
 import 'package:path/path.dart' as pathlib;
 import 'dart:math';
 
@@ -382,10 +383,15 @@ class _ImageGalleryScreenState extends State<ImageGalleryScreen> {
                 }
               });
             } else {
+              // Use our enhanced ImageViewerScreen with all files
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => _ImageViewerScreen(file: file),
+                  builder: (context) => ImageViewerScreen(
+                    file: file,
+                    imageFiles: _imageFiles,
+                    initialIndex: index,
+                  ),
                 ),
               );
             }
@@ -527,7 +533,11 @@ class _ImageGalleryScreenState extends State<ImageGalleryScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => _ImageViewerScreen(file: file),
+                        builder: (context) => ImageViewerScreen(
+                          file: file,
+                          imageFiles: _imageFiles,
+                          initialIndex: index,
+                        ),
                       ),
                     );
                   },
@@ -556,10 +566,16 @@ class _ImageGalleryScreenState extends State<ImageGalleryScreen> {
             title: const Text('Xem hình ảnh'),
             onTap: () {
               Navigator.pop(context);
+              // Find the index of the file in the image list for gallery navigation
+              final index = _imageFiles.indexWhere((f) => f.path == file.path);
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => _ImageViewerScreen(file: file),
+                  builder: (context) => ImageViewerScreen(
+                    file: file,
+                    imageFiles: _imageFiles,
+                    initialIndex: index >= 0 ? index : 0,
+                  ),
                 ),
               );
             },

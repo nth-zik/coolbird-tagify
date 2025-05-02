@@ -29,6 +29,9 @@ class LazyVideoThumbnail extends StatefulWidget {
   /// If true, only shows the placeholder and doesn't attempt to load thumbnails
   final bool placeholderOnly;
 
+  /// Callback when thumbnail is successfully generated
+  final Function(String path)? onThumbnailGenerated;
+
   const LazyVideoThumbnail({
     Key? key,
     required this.videoPath,
@@ -37,6 +40,7 @@ class LazyVideoThumbnail extends StatefulWidget {
     required this.fallbackBuilder,
     this.keepAlive = true,
     this.placeholderOnly = false,
+    this.onThumbnailGenerated,
   }) : super(key: key);
 
   @override
@@ -119,18 +123,18 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
     _progressTimer?.cancel();
 
     // Set initial progress
-    _updateProgress(0.1);
+    _updateProgress(0.2); // Start at 20% for better visual feedback
 
     // Force immediate UI update
     SchedulerBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (_progressNotifier.value <= 0.1) {
-        _updateProgress(0.15);
+      if (_progressNotifier.value <= 0.2) {
+        _updateProgress(0.25);
       }
     });
 
-    // Create periodic timer for progress updates
-    _progressTimer = Timer.periodic(const Duration(milliseconds: 80), (timer) {
+    // Create periodic timer for progress updates with faster interval
+    _progressTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
       if (!mounted || !_isLoading) {
         timer.cancel();
         return;
@@ -139,12 +143,12 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
       double current = _progressNotifier.value;
 
       // Progressive simulation with different speeds based on current progress
-      if (current < 0.3) {
+      if (current < 0.4) {
         _updateProgress(current + 0.08); // Fast initial progress
       } else if (current < 0.7) {
         _updateProgress(current + 0.05); // Medium speed
       } else if (current < 0.95) {
-        _updateProgress(current + 0.02); // Slower near completion
+        _updateProgress(current + 0.01); // Slower near completion
       } else if (_thumbnailPathNotifier.value != null) {
         _updateProgress(1.0);
         timer.cancel();
@@ -163,9 +167,31 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
   void _setThumbnailPath(String? path) {
     if (!mounted) return;
 
+    // Update state
     _thumbnailPathNotifier.value = path;
-    _updateProgress(path != null ? 1.0 : 0.0);
+    _updateProgress(path != null
+        ? 1.0
+        : 0.0); // Immediately set to 100% when thumbnail is loaded
     _isLoading = false;
+
+    // Cancel any progress simulation timer when thumbnail is ready
+    _progressTimer?.cancel();
+    _progressTimer = null;
+
+    // Notify parent about the thumbnail being generated
+    if (path != null && widget.onThumbnailGenerated != null) {
+      // Use a post-frame callback to avoid calling during build
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          widget.onThumbnailGenerated!(path);
+        }
+      });
+    }
+
+    // Force an immediate UI update to show the thumbnail
+    if (mounted && path != null) {
+      setState(() {});
+    }
   }
 
   /// Visibility change handler that triggers thumbnail loading when widget becomes visible
@@ -210,15 +236,21 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
 
     _isLoading = true;
     _wasAttempted = true;
-    _updateProgress(0.1);
+    _updateProgress(
+        0.25); // Start at higher progress for better visual feedback
     _startProgressSimulation();
     _optimizeFrameTiming();
+
+    // Force an immediate rebuild to show the loading state
+    setState(() {});
 
     // Try cache first unless forcing regeneration
     if (!forceRegenerate) {
       _checkCache().then((cachedPath) {
         if (mounted && cachedPath != null) {
           _setThumbnailPath(cachedPath);
+          // Force UI update immediately when thumbnail is found in cache
+          setState(() {});
           return;
         }
 
@@ -244,6 +276,8 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
         .then((directPath) {
       if (mounted && directPath != null) {
         _setThumbnailPath(directPath);
+        // Force an immediate UI update when the thumbnail is loaded
+        setState(() {});
         return;
       }
 
@@ -266,6 +300,8 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
 
       if (path != null) {
         _setThumbnailPath(path);
+        // Force UI update immediately when thumbnail is loaded
+        setState(() {});
       } else {
         // Make last attempt if isolate manager fails
         _makeLastAttempt();
@@ -291,6 +327,8 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
         .then((lastPath) {
       if (mounted) {
         _setThumbnailPath(lastPath);
+        // Force an immediate UI update when the thumbnail is loaded
+        setState(() {});
       }
     });
   }
@@ -410,6 +448,13 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
 
   /// Build the actual thumbnail image
   Widget _buildThumbnailImage(String thumbnailPath) {
+    // Notify parent with the path as soon as we build the thumbnail
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (mounted && widget.onThumbnailGenerated != null) {
+        widget.onThumbnailGenerated!(thumbnailPath);
+      }
+    });
+
     return SizedBox(
       width: widget.width,
       height: widget.height,
@@ -418,14 +463,8 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
         key: ValueKey(thumbnailPath),
         width: widget.width,
         height: widget.height,
-        fit: BoxFit.cover,
-        cacheWidth: (widget.width.isFinite && widget.width > 0)
-            ? (widget.width * 1.5).toInt()
-            : null,
-        cacheHeight: (widget.height.isFinite && widget.height > 0)
-            ? (widget.height * 1.5).toInt()
-            : null,
-        filterQuality: FilterQuality.low,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.medium,
         errorBuilder: (context, error, stackTrace) {
           _thumbnailPathNotifier.value = null;
           _isLoading = false;
@@ -434,7 +473,16 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
           return widget.fallbackBuilder();
         },
         frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-          if (wasSynchronouslyLoaded) return child;
+          if (wasSynchronouslyLoaded) {
+            // Also notify for synchronously loaded images
+            SchedulerBinding.instance.addPostFrameCallback((_) {
+              if (mounted && widget.onThumbnailGenerated != null) {
+                widget.onThumbnailGenerated!(thumbnailPath);
+              }
+            });
+            return child;
+          }
+
           return AnimatedSwitcher(
             duration: const Duration(milliseconds: 200),
             child: frame != null

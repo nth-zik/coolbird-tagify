@@ -23,6 +23,8 @@ class FileView extends StatelessWidget {
   final Function(BuildContext, String) showAddTagToFileDialog;
   final Function(String)? onFolderTap;
   final Function(File, bool)? onFileTap; // Thêm callback cho file click
+  final Function()?
+      onThumbnailGenerated; // Add callback for thumbnail generation
 
   const FileView({
     Key? key,
@@ -38,6 +40,7 @@ class FileView extends StatelessWidget {
     required this.showAddTagToFileDialog,
     this.onFolderTap,
     this.onFileTap, // Thêm parameter mới
+    this.onThumbnailGenerated, // Add new parameter for thumbnail notification
   }) : super(key: key);
 
   @override
@@ -121,6 +124,8 @@ class FileView extends StatelessWidget {
                   toggleFileSelection: toggleFileSelection,
                   toggleSelectionMode: toggleSelectionMode,
                   onFileTap: onFileTap,
+                  onThumbnailGenerated:
+                      onThumbnailGenerated, // Pass the callback
                 ),
         );
       },

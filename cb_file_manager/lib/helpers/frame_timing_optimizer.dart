@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
-import 'dart:io';
 
 /// A helper class to optimize frame timing and prevent the
 /// "Reported frame time is older than the last one" error
