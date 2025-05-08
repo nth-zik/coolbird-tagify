@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
 import 'package:cb_file_manager/helpers/io_extensions.dart';
 import 'package:cb_file_manager/helpers/trash_manager.dart'; // Add import for TrashManager
+import 'package:cb_file_manager/helpers/filesystem_utils.dart'; // Import for FileOperations
 import 'package:path/path.dart' as pathlib;
 import 'package:cb_file_manager/helpers/video_thumbnail_helper.dart';
 
@@ -13,8 +14,7 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
   FolderListBloc() : super(FolderListState("/")) {
     on<FolderListInit>(_onFolderListInit);
     on<FolderListLoad>(_onFolderListLoad);
-    on<FolderListRefresh>(
-        _onFolderListRefresh); // Add handler for the new refresh event
+    on<FolderListRefresh>(_onFolderListRefresh);
     on<FolderListFilter>(_onFolderListFilter);
     on<AddTagToFile>(_onAddTagToFile);
     on<RemoveTagFromFile>(_onRemoveTagFromFile);
@@ -29,8 +29,13 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
     on<SetGridZoom>(_onSetGridZoom);
     on<ClearSearchAndFilters>(_onClearSearchAndFilters);
     on<FolderListDeleteFiles>(_onFolderListDeleteFiles);
-    on<SetTagSearchResults>(
-        _onSetTagSearchResults); // Add this line to register the event handler
+    on<SetTagSearchResults>(_onSetTagSearchResults);
+
+    // Register file operation event handlers
+    on<CopyFile>(_onCopyFile);
+    on<CutFile>(_onCutFile);
+    on<PasteFile>(_onPasteFile);
+    on<RenameFileOrFolder>(_onRenameFileOrFolder);
   }
 
   @override
@@ -384,15 +389,18 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
     try {
       // Xóa cache TagManager trước khi tìm kiếm để đảm bảo kết quả mới nhất
       TagManager.clearCache();
-      
+
       // Dùng phương thức đã cải thiện để tìm kiếm file theo tag trong thư mục hiện tại
-      final matchingFiles = await TagManager.findFilesByTag(state.currentPath.path, event.tag);
+      final matchingFiles =
+          await TagManager.findFilesByTag(state.currentPath.path, event.tag);
 
       // Nếu không tìm thấy kết quả, thử tìm kiếm toàn cục
       if (matchingFiles.isEmpty) {
-        print("Không tìm thấy kết quả trong thư mục hiện tại, thử tìm kiếm toàn cục");
-        final globalResults = await TagManager.findFilesByTagGlobally(event.tag);
-        
+        print(
+            "Không tìm thấy kết quả trong thư mục hiện tại, thử tìm kiếm toàn cục");
+        final globalResults =
+            await TagManager.findFilesByTagGlobally(event.tag);
+
         emit(state.copyWith(
           isLoading: false,
           searchResults: globalResults,
@@ -425,7 +433,7 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
     try {
       // Xóa cache TagManager trước khi tìm kiếm để đảm bảo kết quả mới nhất
       TagManager.clearCache();
-      
+
       // Dùng phương thức đã cải thiện để tìm kiếm file theo tag trên toàn hệ thống
       final matchingFiles = await TagManager.findFilesByTagGlobally(event.tag);
 
@@ -813,5 +821,76 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
       isGlobalSearch: false,
       currentSearchQuery: null,
     ));
+  }
+
+  // File operation handlers
+  void _onCopyFile(CopyFile event, Emitter<FolderListState> emit) {
+    try {
+      // Use the FileOperations singleton to add the file to clipboard
+      FileOperations().copyToClipboard(event.entity);
+      emit(state.copyWith(
+        error: null, // Clear any previous errors
+      ));
+    } catch (e) {
+      emit(state.copyWith(
+        error: 'Error copying file/folder: ${e.toString()}',
+      ));
+    }
+  }
+
+  void _onCutFile(CutFile event, Emitter<FolderListState> emit) {
+    try {
+      // Use the FileOperations singleton to add the file to clipboard for cutting
+      FileOperations().cutToClipboard(event.entity);
+      emit(state.copyWith(
+        error: null, // Clear any previous errors
+      ));
+    } catch (e) {
+      emit(state.copyWith(
+        error: 'Error cutting file/folder: ${e.toString()}',
+      ));
+    }
+  }
+
+  void _onPasteFile(PasteFile event, Emitter<FolderListState> emit) async {
+    if (!FileOperations().hasClipboardItem) {
+      emit(state.copyWith(
+        error: 'Nothing to paste - clipboard is empty',
+      ));
+      return;
+    }
+
+    emit(state.copyWith(isLoading: true));
+
+    try {
+      // Use the FileOperations singleton to paste the file
+      await FileOperations().pasteFromClipboard(event.destinationPath);
+
+      // Refresh the current directory to show the new file/folder
+      add(FolderListLoad(state.currentPath.path));
+    } catch (e) {
+      emit(state.copyWith(
+        isLoading: false,
+        error: 'Error pasting file/folder: ${e.toString()}',
+      ));
+    }
+  }
+
+  void _onRenameFileOrFolder(
+      RenameFileOrFolder event, Emitter<FolderListState> emit) async {
+    emit(state.copyWith(isLoading: true));
+
+    try {
+      // Use the FileOperations singleton to rename the file or folder
+      await FileOperations().rename(event.entity, event.newName);
+
+      // Refresh the current directory to show the renamed file/folder
+      add(FolderListLoad(state.currentPath.path));
+    } catch (e) {
+      emit(state.copyWith(
+        isLoading: false,
+        error: 'Error renaming file/folder: ${e.toString()}',
+      ));
+    }
   }
 }

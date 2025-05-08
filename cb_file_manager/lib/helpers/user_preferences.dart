@@ -1,9 +1,14 @@
 import 'dart:io';
 import 'dart:async';
+import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:flutter/material.dart';
 import 'package:cb_file_manager/models/database/database_manager.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:intl/intl.dart';
+import 'package:path/path.dart' as path;
 
 /// Theme mode preference options
 enum ThemePreference {
@@ -707,6 +712,255 @@ class UserPreferences {
       await _databaseManager!.saveBoolPreference(_keySearchTipShown, shown);
     } else {
       await _preferences?.setBool(_keySearchTipShown, shown);
+    }
+  }
+
+  /// Export preferences to a JSON file with custom destination
+  Future<String?> exportPreferences({String? customPath}) async {
+    try {
+      // Get all settings
+      final settingsMap = getAllSettings();
+      final jsonData = jsonEncode(settingsMap);
+
+      String filePath;
+
+      if (customPath != null) {
+        // Use the provided custom path
+        filePath = customPath;
+      } else {
+        // Generate a default path in app documents directory
+        final directory = await getApplicationDocumentsDirectory();
+        final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+        filePath =
+            path.join(directory.path, 'coolbird_preferences_$timestamp.json');
+      }
+
+      // Write to file
+      final file = File(filePath);
+      await file.writeAsString(jsonData);
+
+      return filePath;
+    } catch (e) {
+      print('Error exporting preferences: $e');
+      return null;
+    }
+  }
+
+  /// Import preferences from a JSON file
+  Future<bool> importPreferences() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
+
+      if (result != null && result.files.single.path != null) {
+        final file = File(result.files.single.path!);
+        final jsonString = await file.readAsString();
+        final Map<String, dynamic> preferencesMap = jsonDecode(jsonString);
+
+        for (final key in preferencesMap.keys) {
+          final value = preferencesMap[key];
+          if (value is int) {
+            await _preferences?.setInt(key, value);
+          } else if (value is double) {
+            await _preferences?.setDouble(key, value);
+          } else if (value is bool) {
+            await _preferences?.setBool(key, value);
+          } else if (value is String) {
+            await _preferences?.setString(key, value);
+          }
+        }
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Error importing preferences: $e');
+      return false;
+    }
+  }
+
+  /// Export all data (preferences and database) to a user-selected location
+  Future<String?> exportAllData() async {
+    try {
+      // Ask user to select export directory
+      String? customDir = await FilePicker.platform.getDirectoryPath(
+        dialogTitle: 'Select folder to save backup',
+      );
+
+      if (customDir == null) {
+        return null; // User cancelled
+      }
+
+      // Create a directory to store all export files
+      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final exportDirName = 'coolbird_export_$timestamp';
+      final exportDir = Directory(path.join(customDir, exportDirName));
+
+      // Create the directory if it doesn't exist
+      await exportDir.create();
+
+      // Export preferences
+      final Map<String, dynamic> preferencesMap = getAllSettings();
+      final prefsJsonString = jsonEncode(preferencesMap);
+      final prefsFilePath = path.join(exportDir.path, 'preferences.json');
+      final prefsFile = File(prefsFilePath);
+      await prefsFile.writeAsString(prefsJsonString);
+
+      // Export database
+      bool databaseExported = false;
+      if (_useObjectBox) {
+        _databaseManager ??= DatabaseManager.getInstance();
+        if (_databaseManager!.isInitialized()) {
+          // Get all tags in the system
+          final Map<String, List<String>> tagsData = {};
+          final uniqueTags = await _databaseManager!.getAllUniqueTags();
+
+          // For each tag, get all files with that tag
+          for (final tag in uniqueTags) {
+            final files = await _databaseManager!.findFilesByTag(tag);
+            tagsData[tag] = files;
+          }
+
+          // Create a data structure to export
+          final Map<String, dynamic> exportData = {
+            'tags': tagsData,
+            'exportDate': DateTime.now().toIso8601String(),
+            'version': '1.0'
+          };
+
+          // Convert to JSON
+          final dbJsonString = jsonEncode(exportData);
+          final dbFilePath = path.join(exportDir.path, 'database.json');
+          final dbFile = File(dbFilePath);
+          await dbFile.writeAsString(dbJsonString);
+          databaseExported = true;
+        }
+      }
+
+      // Create a manifest file
+      final manifestData = {
+        'exportDate': DateTime.now().toIso8601String(),
+        'version': '1.0',
+        'components': {'preferences': true, 'database': databaseExported}
+      };
+
+      final manifestJsonString = jsonEncode(manifestData);
+      final manifestFilePath = path.join(exportDir.path, 'manifest.json');
+      final manifestFile = File(manifestFilePath);
+      await manifestFile.writeAsString(manifestJsonString);
+
+      return exportDir.path;
+    } catch (e) {
+      print('Error exporting all data: $e');
+      return null;
+    }
+  }
+
+  /// Import all data (preferences and database) from a user-selected location
+  Future<bool> importAllData() async {
+    try {
+      // Ask user to select the export directory to import from
+      String? importDirPath = await FilePicker.platform.getDirectoryPath(
+        dialogTitle: 'Select backup folder to import',
+      );
+
+      if (importDirPath == null) {
+        return false; // User cancelled
+      }
+
+      final importDir = Directory(importDirPath);
+      if (!await importDir.exists()) {
+        return false;
+      }
+
+      // Check for manifest file
+      final manifestFile = File(path.join(importDirPath, 'manifest.json'));
+      if (!await manifestFile.exists()) {
+        print('Manifest file not found in import directory');
+        // Try to look for individual files even without manifest
+      } else {
+        // Read manifest to verify contents
+        final String manifestContent = await manifestFile.readAsString();
+        final Map<String, dynamic> manifest = jsonDecode(manifestContent);
+        print('Found manifest: $manifest');
+      }
+
+      // Try to import preferences
+      bool prefsImported = false;
+      final prefsFile = File(path.join(importDirPath, 'preferences.json'));
+      if (await prefsFile.exists()) {
+        final String prefsContent = await prefsFile.readAsString();
+        try {
+          final Map<String, dynamic> prefsData = jsonDecode(prefsContent);
+
+          // Save all preferences
+          for (final key in prefsData.keys) {
+            final dynamic value = prefsData[key];
+
+            if (value is String) {
+              await _preferences?.setString(key, value);
+            } else if (value is int) {
+              await _preferences?.setInt(key, value);
+            } else if (value is double) {
+              await _preferences?.setDouble(key, value);
+            } else if (value is bool) {
+              await _preferences?.setBool(key, value);
+            }
+            // Skip other types as SharedPreferences doesn't support them
+          }
+
+          prefsImported = true;
+          print('Preferences imported successfully');
+        } catch (e) {
+          print('Error importing preferences: $e');
+        }
+      }
+
+      // Try to import database
+      bool dbImported = false;
+      final dbFile = File(path.join(importDirPath, 'database.json'));
+      if (await dbFile.exists()) {
+        try {
+          // Make sure database manager is initialized
+          _databaseManager ??= DatabaseManager.getInstance();
+          await _databaseManager!.initialize();
+
+          // Read database file
+          final String dbContent = await dbFile.readAsString();
+          final Map<String, dynamic> dbData = jsonDecode(dbContent);
+
+          // Check that tags exist in the data
+          if (dbData.containsKey('tags')) {
+            final Map<String, dynamic> tagsData = dbData['tags'];
+
+            // Import each tag and its associated files
+            for (final tag in tagsData.keys) {
+              final List<dynamic> files = tagsData[tag];
+
+              // Add the tag to each file
+              for (final file in files) {
+                if (file is String) {
+                  // Check if file exists before adding tag
+                  final fileExists = File(file).existsSync();
+                  if (fileExists) {
+                    await _databaseManager!.addTagToFile(file, tag);
+                  }
+                }
+              }
+            }
+            dbImported = true;
+            print('Database imported successfully');
+          }
+        } catch (e) {
+          print('Error importing database: $e');
+        }
+      }
+
+      return prefsImported || dbImported;
+    } catch (e) {
+      print('Error importing all data: $e');
+      return false;
     }
   }
 

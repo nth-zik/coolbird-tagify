@@ -2,6 +2,11 @@ import 'package:cb_file_manager/models/database/database_provider.dart';
 import 'package:cb_file_manager/models/objectbox/objectbox_database_provider.dart';
 import 'package:cb_file_manager/helpers/user_preferences.dart';
 import 'dart:async'; // Thêm import này để sử dụng Completer
+import 'dart:convert'; // Added for JSON encoding/decoding
+import 'dart:io'; // Added for File operations
+import 'package:path_provider/path_provider.dart';
+import 'package:intl/intl.dart';
+import 'package:path/path.dart' as path;
 
 /// Database manager for centralizing access to the database
 class DatabaseManager implements IDatabaseProvider {
@@ -248,6 +253,94 @@ class DatabaseManager implements IDatabaseProvider {
     await _ensureInitialized();
     if (!_cloudSyncEnabled) return false;
     return _provider.syncFromCloud();
+  }
+
+  /// Export database data to a JSON file
+  Future<String?> exportDatabase({String? customPath}) async {
+    try {
+      await _ensureInitialized();
+
+      // Get all tags in the system
+      final Map<String, List<String>> tagsData = {};
+      final uniqueTags = await getAllUniqueTags();
+
+      // For each tag, get all files with that tag
+      for (final tag in uniqueTags) {
+        final files = await findFilesByTag(tag);
+        tagsData[tag] = files;
+      }
+
+      // Create a data structure to export
+      final Map<String, dynamic> exportData = {
+        'tags': tagsData,
+        'exportDate': DateTime.now().toIso8601String(),
+        'version': '1.0'
+      };
+
+      // Convert to JSON
+      final jsonString = jsonEncode(exportData);
+
+      String filePath;
+
+      if (customPath != null) {
+        // Use the provided custom path
+        filePath = customPath;
+      } else {
+        // Generate a path in the application documents directory
+        final directory = await getApplicationDocumentsDirectory();
+        final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+        filePath =
+            path.join(directory.path, 'coolbird_db_export_$timestamp.json');
+      }
+
+      final file = File(filePath);
+      await file.writeAsString(jsonString);
+
+      return filePath;
+    } catch (e) {
+      print('Error exporting database: $e');
+      return null;
+    }
+  }
+
+  /// Import database data from a JSON file
+  Future<bool> importDatabase(String filePath) async {
+    try {
+      await _ensureInitialized();
+
+      // Read from file
+      final file = File(filePath);
+      final jsonString = await file.readAsString();
+
+      // Parse JSON
+      final Map<String, dynamic> importData = jsonDecode(jsonString);
+
+      // Import tags
+      if (importData.containsKey('tags')) {
+        final Map<String, dynamic> tagsData = importData['tags'];
+
+        // Process each tag
+        for (final tag in tagsData.keys) {
+          final List<dynamic> files = tagsData[tag];
+
+          // Add the tag to each file
+          for (final file in files) {
+            if (file is String) {
+              // Check if file exists before adding tag
+              final fileExists = File(file).existsSync();
+              if (fileExists) {
+                await addTagToFile(file, tag);
+              }
+            }
+          }
+        }
+      }
+
+      return true;
+    } catch (e) {
+      print('Error importing database: $e');
+      return false;
+    }
   }
 }
 

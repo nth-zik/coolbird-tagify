@@ -185,5 +185,43 @@ class FolderListRefresh extends FolderListEvent {
   FolderListRefresh(this.path, {this.forceRegenerateThumbnails = false});
 }
 
+// File operation events
+class CopyFile extends FolderListEvent {
+  final FileSystemEntity entity;
+
+  const CopyFile(this.entity);
+
+  @override
+  List<Object> get props => [entity];
+}
+
+class CutFile extends FolderListEvent {
+  final FileSystemEntity entity;
+
+  const CutFile(this.entity);
+
+  @override
+  List<Object> get props => [entity];
+}
+
+class PasteFile extends FolderListEvent {
+  final String destinationPath;
+
+  const PasteFile(this.destinationPath);
+
+  @override
+  List<Object> get props => [destinationPath];
+}
+
+class RenameFileOrFolder extends FolderListEvent {
+  final FileSystemEntity entity;
+  final String newName;
+
+  const RenameFileOrFolder(this.entity, this.newName);
+
+  @override
+  List<Object> get props => [entity, newName];
+}
+
 // Enum to represent media types for search
 enum MediaSearchType { images, videos, audio, all }

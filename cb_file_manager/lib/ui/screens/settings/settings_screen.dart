@@ -5,6 +5,8 @@ import 'package:cb_file_manager/config/language_controller.dart';
 import 'package:cb_file_manager/config/translation_helper.dart';
 import 'package:cb_file_manager/helpers/video_thumbnail_helper.dart'; // Add import for VideoThumbnailHelper
 import 'package:cb_file_manager/ui/screens/settings/database_settings_screen.dart'; // Import for database settings screen
+import 'package:file_picker/file_picker.dart'; // Import for FilePicker
+import 'package:intl/intl.dart'; // Import for DateFormat
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -136,7 +138,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-            'Video thumbnail position set to $percentage% of video duration'),
+            'Đã đặt vị trí hình thu nhỏ video tại $percentage% thời lượng video'),
         duration: const Duration(seconds: 1),
         behavior: SnackBarBehavior.floating,
         width: 320,
@@ -274,11 +276,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
             child: Text(
-              'Choose your preferred language',
-              style: TextStyle(
+              'Chọn ngôn ngữ bạn muốn sử dụng',
+              style: const TextStyle(
                 fontSize: 14,
                 color: Colors.grey,
               ),
@@ -320,7 +322,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Text(
-            'Choose how the app looks',
+            'Chọn giao diện hiển thị cho ứng dụng',
             style: const TextStyle(
               fontSize: 14,
               color: Colors.grey,
@@ -329,19 +331,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         _buildThemeOption(
           title: context.tr.systemMode,
-          subtitle: 'Follow system theme settings',
+          subtitle: 'Theo cài đặt giao diện của hệ thống',
           value: ThemePreference.system,
           icon: Icons.brightness_auto,
         ),
         _buildThemeOption(
           title: context.tr.lightMode,
-          subtitle: 'Light theme for all screens',
+          subtitle: 'Giao diện sáng cho tất cả màn hình',
           value: ThemePreference.light,
           icon: Icons.light_mode,
         ),
         _buildThemeOption(
           title: context.tr.darkMode,
-          subtitle: 'Dark theme for all screens',
+          subtitle: 'Giao diện tối cho tất cả màn hình',
           value: ThemePreference.dark,
           icon: Icons.dark_mode,
         ),
@@ -362,7 +364,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Icon(Icons.videocam_outlined, size: 24),
                 const SizedBox(width: 16),
                 Text(
-                  'Video Thumbnails',
+                  context.tr.videoThumbnails,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -374,7 +376,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
             child: Text(
-              'Choose where to extract video thumbnails from',
+              'Chọn vị trí trích xuất hình thu nhỏ video',
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey,
@@ -389,9 +391,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Thumbnail position:'),
+                    Text(context.tr.thumbnailPosition),
                     Text(
-                      '$_videoThumbnailPercentage% of video',
+                      '$_videoThumbnailPercentage% ${context.tr.percentOfVideo}',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Theme.of(context).primaryColor,
@@ -416,7 +418,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                 ),
                 Text(
-                  'Set the position in the video (as a percentage of total duration) where thumbnails will be extracted. Lower values (near the beginning) load faster but may show intros or blank screens. Higher values may show more representative content.',
+                  context.tr.thumbnailDescription,
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey[600],
@@ -432,17 +434,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Thumbnail Cache',
-                  style: TextStyle(
+                Text(
+                  context.tr.thumbnailCache,
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Video thumbnails are cached to improve performance. If thumbnails appear outdated or you want to free up space, you can clear the cache.',
-                  style: TextStyle(
+                Text(
+                  context.tr.thumbnailCacheDescription,
+                  style: const TextStyle(
                     fontSize: 12,
                     color: Colors.grey,
                   ),
@@ -465,8 +467,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           )
                         : const Icon(Icons.cleaning_services_outlined),
                     label: Text(_isClearingCache
-                        ? 'Clearing...'
-                        : 'Clear Thumbnail Cache'),
+                        ? context.tr.clearing
+                        : context.tr.clearThumbnailCache),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
@@ -493,7 +495,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Icon(Icons.storage, size: 24),
                 const SizedBox(width: 16),
                 Text(
-                  'Database',
+                  context.tr.databaseSettings,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -502,11 +504,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
             child: Text(
-              'Configure database and cloud sync settings',
-              style: TextStyle(
+              context.tr.databaseDescription,
+              style: const TextStyle(
                 fontSize: 14,
                 color: Colors.grey,
               ),
@@ -514,8 +516,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 16),
           ListTile(
-            title: const Text('Database Settings'),
-            subtitle: const Text('Configure tags and preferences storage'),
+            title: Text(context.tr.databaseSettings),
+            subtitle: Text(context.tr.databaseDescription),
             leading: const Icon(Icons.settings_applications),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
@@ -528,16 +530,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           const SizedBox(height: 8),
+          _buildImportExportSection(context),
+          const SizedBox(height: 8),
           ListTile(
-            title: Text('Settings Data'),
-            subtitle: Text('View and manage settings data'),
+            title: Text(context.tr.settingsData),
+            subtitle: Text(context.tr.viewManageSettings),
             leading: Icon(Icons.data_usage),
             onTap: () {
               final settingsData = _preferences.getAllSettings();
               showDialog(
                 context: context,
                 builder: (context) => AlertDialog(
-                  title: Text('Settings Data'),
+                  title: Text(context.tr.settingsData),
                   content: Container(
                     width: double.maxFinite,
                     constraints: BoxConstraints(
@@ -559,7 +563,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: Text('Close'),
+                      child: Text(context.tr.close),
                     ),
                   ],
                 ),
@@ -568,6 +572,190 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildImportExportSection(BuildContext context) {
+    return Column(
+      children: [
+        ListTile(
+          title: Text(context.tr.exportSettings),
+          subtitle: Text(context.tr.exportDescription),
+          leading: const Icon(Icons.upload_file),
+          onTap: () async {
+            try {
+              // Ask the user to select where to save the file
+              String? saveLocation = await FilePicker.platform.saveFile(
+                dialogTitle: context.tr.saveSettingsExport,
+                fileName:
+                    'coolbird_preferences_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.json',
+                type: FileType.custom,
+                allowedExtensions: ['json'],
+              );
+
+              if (saveLocation != null) {
+                final filePath = await _preferences.exportPreferences(
+                    customPath: saveLocation);
+                if (filePath != null) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(context.tr.exportSuccess + filePath),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                } else {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(context.tr.exportFailed),
+                        behavior: SnackBarBehavior.floating,
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              }
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(context.tr.errorExporting + e.toString()),
+                    behavior: SnackBarBehavior.floating,
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            }
+          },
+        ),
+        ListTile(
+          title: Text(context.tr.importSettings),
+          subtitle: Text(context.tr.importDescription),
+          leading: const Icon(Icons.file_download),
+          onTap: () async {
+            try {
+              final success = await _preferences.importPreferences();
+              if (success) {
+                // Reload preferences after import
+                await _loadPreferences();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(context.tr.importSuccess),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              } else {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(context.tr.importFailed),
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                }
+              }
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(context.tr.errorImporting + e.toString()),
+                    behavior: SnackBarBehavior.floating,
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            }
+          },
+        ),
+        const Divider(),
+        ListTile(
+          title: Text(context.tr.completeBackup),
+          subtitle: Text(context.tr.exportAllData),
+          leading: const Icon(Icons.backup),
+          onTap: () async {
+            try {
+              final dirPath = await _preferences.exportAllData();
+              if (dirPath != null) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(context.tr.exportSuccess + dirPath),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              } else {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(context.tr.exportFailed),
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(context.tr.errorExporting + e.toString()),
+                    behavior: SnackBarBehavior.floating,
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            }
+          },
+        ),
+        ListTile(
+          title: Text(context.tr.completeRestore),
+          subtitle: Text(context.tr.importAllData),
+          leading: const Icon(Icons.restore),
+          onTap: () async {
+            try {
+              final success = await _preferences.importAllData();
+              if (success) {
+                // Reload preferences after import
+                await _loadPreferences();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(context.tr.importSuccess),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              } else {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(context.tr.importFailed),
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                }
+              }
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(context.tr.errorImporting + e.toString()),
+                    behavior: SnackBarBehavior.floating,
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            }
+          },
+        ),
+      ],
     );
   }
 

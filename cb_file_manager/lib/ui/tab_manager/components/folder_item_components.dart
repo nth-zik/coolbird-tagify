@@ -5,6 +5,9 @@ import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:cb_file_manager/helpers/io_extensions.dart';
 import 'package:cb_file_manager/helpers/folder_thumbnail_service.dart';
 import 'package:cb_file_manager/widgets/lazy_video_thumbnail.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
+import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
 import 'package:path/path.dart' as path;
 
 /// Component for displaying a folder item in grid view
@@ -637,6 +640,47 @@ class _FolderContextMenuState extends State<FolderContextMenu> {
     });
   }
 
+  void _showRenameDialog(BuildContext context) {
+    final TextEditingController controller =
+        TextEditingController(text: widget.folder.basename());
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Rename Folder'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'New Name',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL'),
+          ),
+          TextButton(
+            onPressed: () {
+              final newName = controller.text.trim();
+              if (newName.isNotEmpty) {
+                context
+                    .read<FolderListBloc>()
+                    .add(RenameFileOrFolder(widget.folder, newName));
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                      content:
+                          Text('Renamed folder to "$newName" successfully')),
+                );
+              }
+            },
+            child: const Text('RENAME'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -704,6 +748,57 @@ class _FolderContextMenuState extends State<FolderContextMenu> {
         ),
 
         ListTile(
+          leading: Icon(EvaIcons.copyOutline,
+              color: isDarkMode ? Colors.white70 : Colors.black87),
+          title: Text(
+            'Copy',
+            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+          ),
+          onTap: () {
+            Navigator.pop(context);
+            // Dispatch copy event to the bloc
+            context.read<FolderListBloc>().add(CopyFile(widget.folder));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                  content: Text(
+                      'Copied "${widget.folder.basename()}" to clipboard')),
+            );
+          },
+        ),
+
+        ListTile(
+          leading: Icon(Icons.content_cut,
+              color: isDarkMode ? Colors.white70 : Colors.black87),
+          title: Text(
+            'Cut',
+            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+          ),
+          onTap: () {
+            Navigator.pop(context);
+            // Dispatch cut event to the bloc
+            context.read<FolderListBloc>().add(CutFile(widget.folder));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                  content:
+                      Text('Cut "${widget.folder.basename()}" to clipboard')),
+            );
+          },
+        ),
+
+        ListTile(
+          leading: Icon(EvaIcons.editOutline,
+              color: isDarkMode ? Colors.white70 : Colors.black87),
+          title: Text(
+            'Rename',
+            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+          ),
+          onTap: () {
+            Navigator.pop(context);
+            _showRenameDialog(context);
+          },
+        ),
+
+        ListTile(
           leading: Icon(Icons.image_outlined,
               color: isDarkMode ? Colors.white70 : Colors.black87),
           title: Text(
@@ -738,6 +833,24 @@ class _FolderContextMenuState extends State<FolderContextMenu> {
               Navigator.pop(context);
             },
           ),
+
+        ListTile(
+          leading: Icon(Icons.content_paste,
+              color: isDarkMode ? Colors.white70 : Colors.black87),
+          title: Text(
+            'Paste Here',
+            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+          ),
+          // Only enabled if there's something in the clipboard
+          onTap: () {
+            Navigator.pop(context);
+            // Dispatch paste event to the bloc
+            context.read<FolderListBloc>().add(PasteFile(widget.folder.path));
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Pasting...')),
+            );
+          },
+        ),
 
         ListTile(
           leading: Icon(EvaIcons.infoOutline,

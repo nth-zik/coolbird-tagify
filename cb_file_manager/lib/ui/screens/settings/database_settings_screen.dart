@@ -4,6 +4,9 @@ import 'package:cb_file_manager/helpers/user_preferences.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
 import 'package:cb_file_manager/ui/utils/base_screen.dart';
 import 'package:cb_file_manager/config/translation_helper.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io';
+import 'package:intl/intl.dart';
 
 /// A screen for managing database settings
 class DatabaseSettingsScreen extends StatefulWidget {
@@ -311,7 +314,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return BaseScreen(
-      title: 'Database Settings',
+      title: context.tr.databaseSettings,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
@@ -320,6 +323,8 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
                 _buildDatabaseTypeSection(),
                 const Divider(),
                 _buildCloudSyncSection(),
+                const Divider(),
+                _buildImportExportSection(),
                 const Divider(),
                 _buildStatisticsSection(),
               ],
@@ -340,7 +345,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
                 const Icon(Icons.storage, size: 24),
                 const SizedBox(width: 16),
                 Text(
-                  'Database Storage',
+                  context.tr.databaseStorage,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -350,9 +355,8 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
             ),
           ),
           SwitchListTile(
-            title: const Text('Use ObjectBox Database'),
-            subtitle:
-                const Text('Store tags and preferences in a local database'),
+            title: Text(context.tr.useObjectBox),
+            subtitle: Text(context.tr.databaseDescription),
             value: _isUsingObjectBox,
             onChanged: _toggleObjectBoxEnabled,
           ),
@@ -360,8 +364,8 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Text(
               _isUsingObjectBox
-                  ? 'Using ObjectBox for efficient local database storage'
-                  : 'Using JSON file for basic storage',
+                  ? context.tr.objectBoxStorage
+                  : context.tr.jsonStorage,
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey[600],
@@ -387,7 +391,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
                 const Icon(Icons.cloud_sync, size: 24),
                 const SizedBox(width: 16),
                 Text(
-                  'Cloud Sync',
+                  context.tr.cloudSync,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -397,8 +401,8 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
             ),
           ),
           SwitchListTile(
-            title: const Text('Enable Cloud Sync'),
-            subtitle: const Text('Sync tags and preferences to the cloud'),
+            title: Text(context.tr.enableCloudSync),
+            subtitle: Text(context.tr.cloudSyncDescription),
             value: _isCloudSyncEnabled,
             onChanged: _isUsingObjectBox ? _toggleCloudSyncEnabled : null,
           ),
@@ -407,9 +411,9 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
             child: Text(
               _isUsingObjectBox
                   ? (_isCloudSyncEnabled
-                      ? 'Tags and preferences will be synced to the cloud'
-                      : 'Cloud sync is disabled')
-                  : 'Enable ObjectBox database to use cloud sync',
+                      ? context.tr.cloudSyncEnabled
+                      : context.tr.cloudSyncDisabled)
+                  : context.tr.enableObjectBoxForCloud,
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey[600],
@@ -423,13 +427,13 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
               children: [
                 ElevatedButton.icon(
                   icon: const Icon(Icons.cloud_upload),
-                  label: const Text('Sync to Cloud'),
+                  label: Text(context.tr.syncToCloud),
                   onPressed:
                       _isCloudSyncEnabled && !_isSyncing ? _syncToCloud : null,
                 ),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.cloud_download),
-                  label: const Text('Sync from Cloud'),
+                  label: Text(context.tr.syncFromCloud),
                   onPressed: _isCloudSyncEnabled && !_isSyncing
                       ? _syncFromCloud
                       : null,
@@ -448,6 +452,158 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
     );
   }
 
+  Widget _buildImportExportSection() {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                const Icon(Icons.import_export, size: 24),
+                const SizedBox(width: 16),
+                Text(
+                  context.tr.importExportDatabase,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(
+              context.tr.backupRestoreDescription,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          ListTile(
+            title: Text(context.tr.exportDatabase),
+            subtitle: Text(context.tr.exportDescription),
+            leading: const Icon(Icons.upload_file),
+            onTap: () async {
+              try {
+                // Ask the user to choose where to save the file
+                String? saveLocation = await FilePicker.platform.saveFile(
+                  dialogTitle: context.tr.saveDatabaseExport,
+                  fileName:
+                      'coolbird_db_export_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.json',
+                  type: FileType.custom,
+                  allowedExtensions: ['json'],
+                );
+
+                if (saveLocation != null) {
+                  final filePath = await _databaseManager.exportDatabase(
+                      customPath: saveLocation);
+                  if (filePath != null) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(context.tr.exportSuccess + filePath),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                  } else {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(context.tr.exportFailed),
+                          behavior: SnackBarBehavior.floating,
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(context.tr.errorExporting + e.toString()),
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+          ),
+          ListTile(
+            title: Text(context.tr.importDatabase),
+            subtitle: Text(context.tr.importDescription),
+            leading: const Icon(Icons.file_download),
+            onTap: () async {
+              try {
+                // Open file picker to select the database export file
+                final result = await FilePicker.platform.pickFiles(
+                  type: FileType.custom,
+                  allowedExtensions: ['json'],
+                );
+
+                if (result != null && result.files.single.path != null) {
+                  final filePath = result.files.single.path!;
+                  final success =
+                      await _databaseManager.importDatabase(filePath);
+
+                  if (success) {
+                    // Reload statistics after import
+                    await _loadStatistics();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(context.tr.importSuccess),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                  } else {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(context.tr.importFailed),
+                          behavior: SnackBarBehavior.floating,
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                } else {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(context.tr.importCancelled),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(context.tr.errorImporting + e.toString()),
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStatisticsSection() {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -461,7 +617,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
                 const Icon(Icons.bar_chart, size: 24),
                 const SizedBox(width: 16),
                 Text(
-                  'Database Statistics',
+                  context.tr.databaseStatistics,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -471,33 +627,33 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
             ),
           ),
           ListTile(
-            title: const Text('Total unique tags'),
+            title: Text(context.tr.totalUniqueTags),
             trailing: Text(
               '$_totalTagCount',
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
           ListTile(
-            title: const Text('Tagged files'),
+            title: Text(context.tr.taggedFiles),
             trailing: Text(
               '$_totalFileCount',
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Text(
-              'Most Popular Tags',
-              style: TextStyle(
+              context.tr.popularTags,
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ),
           _popularTags.isEmpty
-              ? const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Center(child: Text('No tags found')),
+              ? Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Center(child: Text(context.tr.noTagsFound)),
                 )
               : Padding(
                   padding: const EdgeInsets.all(16),
@@ -531,7 +687,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
             child: Center(
               child: OutlinedButton.icon(
                 icon: const Icon(Icons.refresh),
-                label: const Text('Refresh Statistics'),
+                label: Text(context.tr.refreshStatistics),
                 onPressed: () async {
                   setState(() {
                     _isLoading = true;

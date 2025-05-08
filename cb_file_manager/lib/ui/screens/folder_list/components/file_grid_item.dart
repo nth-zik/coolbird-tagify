@@ -11,6 +11,9 @@ import 'package:flutter/scheduler.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:cb_file_manager/widgets/lazy_video_thumbnail.dart';
 import 'package:path/path.dart' as pathlib;
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
+import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
 
 class FileGridItem extends StatelessWidget {
   final File file;
@@ -335,6 +338,58 @@ class FileGridItem extends StatelessWidget {
               );
             },
           ),
+          // Thêm tùy chọn Sao chép (Copy)
+          ListTile(
+            leading: Icon(EvaIcons.copyOutline,
+                color: isDarkMode ? Colors.white70 : Colors.black87),
+            title: Text(
+              'Copy',
+              style:
+                  TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              // Gửi sự kiện Copy tới BLoC
+              context.read<FolderListBloc>().add(CopyFile(file));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                    content: Text('Copied "${_basename(file)}" to clipboard')),
+              );
+            },
+          ),
+          // Thêm tùy chọn Cắt (Cut)
+          ListTile(
+            leading: Icon(Icons.content_cut,
+                color: isDarkMode ? Colors.white70 : Colors.black87),
+            title: Text(
+              'Cut',
+              style:
+                  TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              // Gửi sự kiện Cut tới BLoC
+              context.read<FolderListBloc>().add(CutFile(file));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                    content: Text('Cut "${_basename(file)}" to clipboard')),
+              );
+            },
+          ),
+          // Thêm tùy chọn Đổi tên (Rename)
+          ListTile(
+            leading: Icon(EvaIcons.editOutline,
+                color: isDarkMode ? Colors.white70 : Colors.black87),
+            title: Text(
+              'Rename',
+              style:
+                  TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              _showRenameDialog(context);
+            },
+          ),
           if (showAddTagToFileDialog != null)
             ListTile(
               leading: Icon(EvaIcons.bookmarkOutline,
@@ -513,5 +568,70 @@ class FileGridItem extends StatelessWidget {
     } else {
       return '${(size / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
     }
+  }
+
+  void _showRenameDialog(BuildContext context) {
+    final TextEditingController nameController =
+        TextEditingController(text: _basename(file));
+    final String fileName = _basename(file);
+    final String extension = pathlib.extension(file.path);
+    final String fileNameWithoutExt =
+        pathlib.basenameWithoutExtension(file.path);
+
+    // Pre-fill with current name without extension
+    nameController.text = fileNameWithoutExt;
+    nameController.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: fileNameWithoutExt.length,
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Rename File'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Current name: $fileName'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: 'New name',
+                border: OutlineInputBorder(),
+              ),
+              autofocus: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL'),
+          ),
+          TextButton(
+            onPressed: () {
+              final String newName = nameController.text.trim() + extension;
+              if (newName.isEmpty || newName == fileName) {
+                Navigator.pop(context);
+                return;
+              }
+
+              // Dispatch rename event with correct event type
+              context
+                  .read<FolderListBloc>()
+                  .add(RenameFileOrFolder(file, newName));
+              Navigator.pop(context);
+
+              // Show confirmation
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Renamed file to "$newName"')),
+              );
+            },
+            child: const Text('RENAME'),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -486,3 +486,163 @@ Future<List<File>> getAllImages(String path, {bool recursive = true}) async {
 
   return imageFiles;
 }
+
+/// Class to manage file operations like copy, cut, paste, rename
+class FileOperations {
+  // Singleton instance
+  static final FileOperations _instance = FileOperations._internal();
+  factory FileOperations() => _instance;
+  FileOperations._internal();
+
+  // Store the current clipboard item (for copy/cut operations)
+  FileSystemEntity? _clipboardItem;
+  bool _isCut = false; // Flag to determine if operation is cut or copy
+
+  // Getter to check if clipboard has an item
+  bool get hasClipboardItem => _clipboardItem != null;
+
+  // Getter to check if clipboard operation is cut
+  bool get isClipboardItemCut => _isCut;
+
+  // Getter for the clipboard item
+  FileSystemEntity? get clipboardItem => _clipboardItem;
+
+  // Set clipboard with file or folder
+  void copyToClipboard(FileSystemEntity entity) {
+    _clipboardItem = entity;
+    _isCut = false;
+  }
+
+  // Set clipboard for cut operation
+  void cutToClipboard(FileSystemEntity entity) {
+    _clipboardItem = entity;
+    _isCut = true;
+  }
+
+  // Clear clipboard after operation
+  void clearClipboard() {
+    _clipboardItem = null;
+    _isCut = false;
+  }
+
+  // Paste file or folder from clipboard to destination
+  Future<FileSystemEntity?> pasteFromClipboard(String destinationPath) async {
+    if (_clipboardItem == null) return null;
+
+    try {
+      final filename = pathlib.basename(_clipboardItem!.path);
+      final newPath = pathlib.join(destinationPath, filename);
+
+      // Check if destination already exists
+      bool exists =
+          await File(newPath).exists() || await Directory(newPath).exists();
+
+      // Create a unique name if destination exists
+      String uniquePath = newPath;
+      if (exists) {
+        int counter = 1;
+        String extension = '';
+        String baseName = filename;
+
+        // Handle file extensions
+        if (_clipboardItem is File) {
+          extension = pathlib.extension(filename);
+          baseName = pathlib.basenameWithoutExtension(filename);
+        }
+
+        // Find a unique name
+        while (exists) {
+          String newName = '${baseName}_${counter}${extension}';
+          uniquePath = pathlib.join(destinationPath, newName);
+          exists = await File(uniquePath).exists() ||
+              await Directory(uniquePath).exists();
+          counter++;
+        }
+      }
+
+      // Perform the operation based on entity type and operation type
+      FileSystemEntity? result;
+
+      if (_clipboardItem is File) {
+        final file = _clipboardItem as File;
+
+        if (_isCut) {
+          // Move operation
+          result = await file.rename(uniquePath);
+        } else {
+          // Copy operation
+          result =
+              await File(uniquePath).writeAsBytes(await file.readAsBytes());
+        }
+      } else if (_clipboardItem is Directory) {
+        final directory = _clipboardItem as Directory;
+        final newDirectory = Directory(uniquePath);
+
+        // Create the new directory
+        await newDirectory.create(recursive: true);
+
+        // Copy all contents recursively
+        await for (final entity in directory.list(recursive: true)) {
+          final relativePath =
+              pathlib.relative(entity.path, from: directory.path);
+          final newEntityPath = pathlib.join(newDirectory.path, relativePath);
+
+          if (entity is File) {
+            // Create parent directories if needed
+            final newEntityParent = Directory(pathlib.dirname(newEntityPath));
+            if (!await newEntityParent.exists()) {
+              await newEntityParent.create(recursive: true);
+            }
+
+            // Copy the file
+            await File(newEntityPath).writeAsBytes(await entity.readAsBytes());
+          } else if (entity is Directory) {
+            // Create directory
+            await Directory(newEntityPath).create(recursive: true);
+          }
+        }
+
+        result = newDirectory;
+
+        // If cut operation, delete original directory
+        if (_isCut) {
+          await directory.delete(recursive: true);
+        }
+      }
+
+      // Clear clipboard if it was a cut operation
+      if (_isCut) {
+        clearClipboard();
+      }
+
+      return result;
+    } catch (e) {
+      print('Error during paste operation: $e');
+      return null;
+    }
+  }
+
+  // Rename a file or folder
+  Future<FileSystemEntity?> rename(
+      FileSystemEntity entity, String newName) async {
+    try {
+      final directory = pathlib.dirname(entity.path);
+      final newPath = pathlib.join(directory, newName);
+
+      // Check if destination already exists
+      bool exists =
+          await File(newPath).exists() || await Directory(newPath).exists();
+
+      if (exists) {
+        throw FileSystemException(
+            'A file or folder with this name already exists');
+      }
+
+      // Perform rename operation
+      return await entity.rename(newPath);
+    } catch (e) {
+      print('Error during rename operation: $e');
+      return null;
+    }
+  }
+}

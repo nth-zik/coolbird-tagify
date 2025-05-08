@@ -5,6 +5,7 @@ import 'package:cb_file_manager/helpers/io_extensions.dart';
 import 'package:cb_file_manager/helpers/batch_tag_manager.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
 import 'package:cb_file_manager/helpers/frame_timing_optimizer.dart';
+import 'package:cb_file_manager/helpers/filesystem_utils.dart'; // Import for FileOperations
 import 'package:cb_file_manager/ui/screens/folder_list/file_details_screen.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/image_gallery_screen.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/video_gallery_screen.dart';
@@ -17,6 +18,7 @@ import 'package:path/path.dart' as pathlib;
 import 'package:cb_file_manager/helpers/user_preferences.dart';
 import 'package:cb_file_manager/main.dart'; // Import for goHome function
 import 'package:cb_file_manager/helpers/video_thumbnail_helper.dart';
+import 'package:eva_icons_flutter/eva_icons_flutter.dart'; // Import for EvaIcons
 
 import 'folder_list_bloc.dart';
 import 'folder_list_event.dart';
@@ -449,10 +451,7 @@ class _FolderListScreenState extends State<FolderListScreen> {
             title: 'Files',
             actions: actions,
             body: _buildBody(context, state),
-            floatingActionButton: FloatingActionButton(
-              onPressed: _toggleSelectionMode,
-              child: const Icon(Icons.checklist),
-            ),
+            floatingActionButton: _buildFloatingActionButtons(),
           );
         },
       ),
@@ -1086,5 +1085,36 @@ class _FolderListScreenState extends State<FolderListScreen> {
         );
       },
     );
+  }
+
+  // Return either the main selection FAB or the paste FAB based on priority
+  FloatingActionButton? _buildFloatingActionButtons() {
+    if (FileOperations().hasClipboardItem) {
+      // Show paste button as the main FAB when there's content to paste
+      return FloatingActionButton(
+        heroTag: 'paste',
+        backgroundColor: Colors.green,
+        onPressed: () {
+          // Dispatch paste event to the bloc
+          context.read<FolderListBloc>().add(PasteFile(widget.path));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Pasting...')),
+          );
+        },
+        child: Icon(
+          FileOperations().isClipboardItemCut
+              ? Icons.content_cut
+              : Icons.content_paste,
+          color: Colors.white,
+        ),
+      );
+    } else {
+      // Show selection mode button when there's nothing to paste
+      return FloatingActionButton(
+        heroTag: 'selection',
+        onPressed: _toggleSelectionMode,
+        child: const Icon(Icons.checklist),
+      );
+    }
   }
 }

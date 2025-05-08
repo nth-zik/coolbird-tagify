@@ -39,7 +39,7 @@ class _TabMainScreenState extends State<TabMainScreen> {
     super.initState();
     _tabManagerBloc = TabManagerBloc();
     // Mở tab mặc định ngay khi khởi tạo
-    _openDefaultTab();
+    // _openDefaultTab();
   }
 
   Future<void> _openDefaultTab() async {
