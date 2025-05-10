@@ -1,12 +1,16 @@
 import 'dart:io';
 import 'dart:async'; // Add this import for Completer
 
+import 'package:cb_file_manager/helpers/io_extensions.dart';
+import 'package:cb_file_manager/helpers/batch_tag_manager.dart';
+import 'package:cb_file_manager/helpers/tag_manager.dart';
+import 'package:cb_file_manager/helpers/frame_timing_optimizer.dart';
+import 'package:cb_file_manager/helpers/filesystem_utils.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/file_details_screen.dart'; // Add this import
 import 'package:cb_file_manager/ui/screens/media_gallery/image_gallery_screen.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/video_gallery_screen.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/image_viewer_screen.dart'; // Import the new ImageViewerScreen
 import 'package:cb_file_manager/ui/components/shared_action_bar.dart';
-import 'package:cb_file_manager/helpers/frame_timing_optimizer.dart'; // Import frame timing optimizer
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart'; // Add for scheduler bindings
 import 'package:flutter/gestures.dart'; // Import for mouse buttons
@@ -26,6 +30,8 @@ import '../screens/folder_list/components/index.dart' as folder_list_components;
 // Import our new components with a clear namespace
 import 'components/index.dart' as tab_components;
 import 'tab_data.dart'; // Import TabData explicitly
+import 'package:cb_file_manager/ui/dialogs/open_with_dialog.dart';
+import 'package:cb_file_manager/helpers/external_app_helper.dart';
 
 /// A modified version of FolderListScreen that works with the tab system
 class TabbedFolderListScreen extends StatefulWidget {
@@ -1020,19 +1026,8 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
 
   // Xử lý khi người dùng click vào một file trong kết quả tìm kiếm
   void _onFileTap(File file, bool isVideo) {
-    // Get file extension to determine file type
     final extension = file.path.split('.').last.toLowerCase();
-
-    // Define image extensions
-    final imageExtensions = [
-      'jpg',
-      'jpeg',
-      'png',
-      'gif',
-      'webp',
-      'bmp',
-      'heic'
-    ];
+    final imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
 
     // Open file based on file type
     if (isVideo) {
@@ -1074,13 +1069,18 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
         ),
       );
     } else {
-      // For other file types, use the generic file details screen
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => FileDetailsScreen(file: file),
-        ),
-      );
+      // For other file types, open with external app
+      // First try to open with the default app
+      ExternalAppHelper.openFileWithApp(file.path, 'shell_open')
+          .then((success) {
+        if (!success) {
+          // If that fails, show the open with dialog
+          showDialog(
+            context: context,
+            builder: (context) => OpenWithDialog(filePath: file.path),
+          );
+        }
+      });
     }
   }
 

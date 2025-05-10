@@ -15,6 +15,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
 import 'package:cb_file_manager/ui/dialogs/open_with_dialog.dart';
+import 'package:cb_file_manager/helpers/external_app_helper.dart';
+import 'package:cb_file_manager/helpers/file_icon_helper.dart';
 
 class FileGridItem extends StatelessWidget {
   final File file;
@@ -46,11 +48,15 @@ class FileGridItem extends StatelessWidget {
   Widget build(BuildContext context) {
     FrameTimingOptimizer().optimizeImageRendering();
 
-    final extension = _getFileExtension(file);
+    final extension = file.path.split('.').last.toLowerCase();
+    final bool isVideo =
+        ['mp4', 'avi', 'mov', 'mkv', 'webm', 'flv', 'wmv'].contains(extension);
+    final bool isImage =
+        ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(extension);
+
     IconData icon;
     Color? iconColor;
     bool isPreviewable = false;
-    bool isVideo = false;
 
     if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(extension)) {
       icon = EvaIcons.imageOutline;
@@ -59,7 +65,6 @@ class FileGridItem extends StatelessWidget {
     } else if (['mp4', 'mov', 'avi', 'mkv', 'flv', 'wmv'].contains(extension)) {
       icon = EvaIcons.videoOutline;
       iconColor = Colors.red;
-      isVideo = true;
     } else if (['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac']
         .contains(extension)) {
       icon = EvaIcons.musicOutline;
@@ -97,13 +102,25 @@ class FileGridItem extends StatelessWidget {
                   builder: (context) => VideoPlayerFullScreen(file: file),
                 ),
               );
-            } else {
+            } else if (isImage) {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => FileDetailsScreen(file: file),
+                  builder: (context) => ImageViewerScreen(file: file),
                 ),
               );
+            } else {
+              // Open other file types with external app
+              ExternalAppHelper.openFileWithApp(file.path, 'shell_open')
+                  .then((success) {
+                if (!success && context.mounted) {
+                  // If that fails, show the open with dialog
+                  showDialog(
+                    context: context,
+                    builder: (context) => OpenWithDialog(filePath: file.path),
+                  );
+                }
+              });
             }
           },
           onLongPress: () {
@@ -124,10 +141,31 @@ class FileGridItem extends StatelessWidget {
                     isPreviewable || isVideo
                         ? _buildThumbnail(file)
                         : Center(
-                            child: Icon(
-                              icon,
-                              size: 48,
-                              color: iconColor,
+                            child: FutureBuilder<Widget>(
+                              future:
+                                  FileIconHelper.getIconForFile(file, size: 48),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  // Return a generic icon while loading
+                                  return Icon(
+                                    icon,
+                                    size: 48,
+                                    color: iconColor,
+                                  );
+                                }
+
+                                if (snapshot.hasData) {
+                                  return snapshot.data!;
+                                }
+
+                                // Fallback to generic icon
+                                return Icon(
+                                  icon,
+                                  size: 48,
+                                  color: iconColor,
+                                );
+                              },
                             ),
                           ),
                     if (isSelectionMode)

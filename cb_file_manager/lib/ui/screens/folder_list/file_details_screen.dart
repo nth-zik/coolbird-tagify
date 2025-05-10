@@ -2,12 +2,13 @@ import 'dart:io';
 
 import 'package:cb_file_manager/helpers/io_extensions.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
-import 'package:cb_file_manager/helpers/thumbnail_helper.dart'; // Added ThumbnailHelper import
+import 'package:cb_file_manager/helpers/thumbnail_helper.dart';
 import 'package:cb_file_manager/ui/dialogs/open_with_dialog.dart';
 import 'package:cb_file_manager/ui/utils/base_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as pathlib;
-import 'package:cb_file_manager/ui/components/video_player/custom_video_player.dart'; // Import the custom video player
+import 'package:cb_file_manager/ui/components/video_player/custom_video_player.dart';
+import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 
 class FileDetailsScreen extends StatefulWidget {
   final File file;
@@ -22,7 +23,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
   late Future<FileStat> _fileStatFuture;
   late Future<List<String>> _tagsFuture;
   late TextEditingController _tagController;
-  bool _videoPlayerReady = false; // Track if video player is ready
+  bool _videoPlayerReady = false;
 
   @override
   void initState() {
@@ -79,20 +80,26 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
     final bool isAudio =
         ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].contains(extension);
 
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDarkMode ? Colors.grey[900]! : Colors.grey[100]!;
+    final Color cardColor = isDarkMode ? Colors.grey[850]! : Colors.white;
+    final Color textColor = isDarkMode ? Colors.white : Colors.black87;
+    final Color secondaryTextColor =
+        isDarkMode ? Colors.grey[400]! : Colors.grey[700]!;
+
     return BaseScreen(
-      title: pathlib.basename(widget.file.path),
+      title: 'File Properties',
       actions: [
         IconButton(
-          icon: const Icon(Icons.open_in_new),
-          tooltip: 'Open with...',
+          icon: const Icon(EvaIcons.externalLinkOutline),
+          tooltip: 'Open with external app',
           onPressed: () {
             _showOpenWithDialog();
           },
         ),
         IconButton(
-          icon: const Icon(Icons.share),
+          icon: const Icon(EvaIcons.shareOutline),
           onPressed: () {
-            // Share functionality would go here
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('Share functionality not implemented yet'),
@@ -101,49 +108,241 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
           },
         ),
       ],
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // File preview section
-            if (isImage) _buildImagePreview(),
-            if (isVideo) _buildVideoPreview(),
-            if (isAudio) _buildAudioPreview(),
-
-            // Tags section
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Tags',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+      body: Container(
+        color: bgColor,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // File preview section with hero animation
+              if (isImage || isVideo || isAudio)
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  _buildTagsSection(),
-                ],
-              ),
-            ),
-
-            // File details section
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'File Details',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  child: Column(
+                    children: [
+                      if (isImage) _buildImagePreview(),
+                      if (isVideo) _buildVideoPreview(),
+                      if (isAudio) _buildAudioPreview(),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  _buildFileDetails(),
-                ],
+                ),
+
+              const SizedBox(height: 16),
+
+              // Basic file info card
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Card(
+                  elevation: 2,
+                  color: cardColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildHeaderSection(),
+                        const SizedBox(height: 16),
+                        _buildFileDetails(textColor, secondaryTextColor),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ],
+
+              const SizedBox(height: 16),
+
+              // Tags section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Card(
+                  elevation: 2,
+                  color: cardColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              EvaIcons.bookmarkOutline,
+                              color: textColor,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Tags',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: textColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        _buildTagsSection(),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Actions section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Card(
+                  elevation: 2,
+                  color: cardColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
+                      children: [
+                        ListTile(
+                          leading: Icon(EvaIcons.externalLinkOutline,
+                              color: textColor),
+                          title: Text('Open with...',
+                              style: TextStyle(color: textColor)),
+                          onTap: _showOpenWithDialog,
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading:
+                              Icon(EvaIcons.fileTextOutline, color: textColor),
+                          title: Text('Make a copy',
+                              style: TextStyle(color: textColor)),
+                          onTap: () {
+                            // Make a copy functionality
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text(
+                                      'Copy functionality not implemented yet')),
+                            );
+                          },
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: Icon(EvaIcons.trash2Outline,
+                              color: Colors.red[300]),
+                          title: Text('Delete file',
+                              style: TextStyle(color: Colors.red[300])),
+                          onTap: () {
+                            // Delete functionality
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content:
+                                      Text('Delete functionality coming soon')),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildHeaderSection() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final extension = widget.file.extension().toLowerCase();
+    final Color textColor = isDarkMode ? Colors.white : Colors.black87;
+
+    IconData fileIcon;
+    Color iconColor;
+
+    // Set icon based on file type
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(extension)) {
+      fileIcon = EvaIcons.imageOutline;
+      iconColor = Colors.blue;
+    } else if (['mp4', 'mov', 'avi', 'mkv', 'flv', 'wmv'].contains(extension)) {
+      fileIcon = EvaIcons.videoOutline;
+      iconColor = Colors.red;
+    } else if (['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac']
+        .contains(extension)) {
+      fileIcon = EvaIcons.musicOutline;
+      iconColor = Colors.purple;
+    } else if (['pdf'].contains(extension)) {
+      fileIcon = EvaIcons.fileOutline;
+      iconColor = Colors.orange;
+    } else if (['doc', 'docx', 'txt', 'rtf'].contains(extension)) {
+      fileIcon = EvaIcons.fileTextOutline;
+      iconColor = Colors.blue;
+    } else if (['xls', 'xlsx', 'csv'].contains(extension)) {
+      fileIcon = EvaIcons.gridOutline;
+      iconColor = Colors.green;
+    } else {
+      fileIcon = EvaIcons.fileOutline;
+      iconColor = Colors.grey;
+    }
+
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: iconColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            fileIcon,
+            size: 28,
+            color: iconColor,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                pathlib.basename(widget.file.path),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                widget.file.extension().toUpperCase(),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDarkMode ? Colors.grey[400] : Colors.grey[700],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -241,14 +440,23 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
   }
 
   Widget _buildAudioPreview() {
-    // NOTE: For actual implementation, you'd use an audio player package like just_audio
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
       color: Colors.grey[900],
       child: Column(
         children: [
-          const Icon(Icons.audiotrack, size: 64, color: Colors.white),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.purple.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(EvaIcons.musicOutline,
+                size: 64, color: Colors.purpleAccent),
+          ),
           const SizedBox(height: 16),
           Text(
             pathlib.basename(widget.file.path),
@@ -277,6 +485,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
                 style: ElevatedButton.styleFrom(
                   shape: const CircleBorder(),
                   padding: const EdgeInsets.all(20),
+                  backgroundColor: Colors.purpleAccent,
                 ),
                 child: const Icon(Icons.play_arrow, size: 32),
               ),
@@ -288,13 +497,19 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
         ],
       ),
     );
   }
 
   Widget _buildTagsSection() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDarkMode ? Colors.white : Colors.black87;
+    final Color chipBgColor =
+        isDarkMode ? Colors.teal.shade900 : Colors.teal.shade50;
+    final Color chipTextColor =
+        isDarkMode ? Colors.white : Colors.teal.shade800;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -302,17 +517,25 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
           future: _tagsFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: CircularProgressIndicator(),
+                ),
+              );
             }
 
             final tags = snapshot.data ?? [];
 
             if (tags.isEmpty) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16.0),
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16.0),
                 child: Text(
                   'No tags added to this file yet',
-                  style: TextStyle(fontStyle: FontStyle.italic),
+                  style: TextStyle(
+                    fontStyle: FontStyle.italic,
+                    color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                  ),
                 ),
               );
             }
@@ -322,10 +545,16 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
               runSpacing: 8.0,
               children: tags.map((tag) {
                 return Chip(
-                  label: Text(tag),
-                  backgroundColor: Colors.green[100],
-                  deleteIcon: const Icon(Icons.close, size: 18),
+                  label: Text(
+                    tag,
+                    style: TextStyle(color: chipTextColor),
+                  ),
+                  backgroundColor: chipBgColor,
+                  deleteIcon: Icon(Icons.close, size: 18, color: chipTextColor),
                   onDeleted: () => _removeTag(tag),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 );
               }).toList(),
             );
@@ -337,10 +566,16 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
             Expanded(
               child: TextField(
                 controller: _tagController,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
+                style: TextStyle(color: textColor),
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   hintText: 'Enter a new tag',
                   isDense: true,
+                  hintStyle: TextStyle(
+                    color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                  ),
                 ),
                 onSubmitted: (value) {
                   if (value.isNotEmpty) {
@@ -356,6 +591,13 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
                   _addTag(_tagController.text);
                 }
               },
+              style: ElevatedButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              ),
               child: const Text('Add Tag'),
             ),
           ],
@@ -364,19 +606,25 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
     );
   }
 
-  Widget _buildFileDetails() {
+  Widget _buildFileDetails(Color textColor, Color secondaryTextColor) {
     return FutureBuilder<FileStat>(
       future: _fileStatFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
-            child: CircularProgressIndicator(),
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: CircularProgressIndicator(),
+            ),
           );
         }
 
         if (!snapshot.hasData) {
-          return const Center(
-            child: Text('Error loading file details'),
+          return Center(
+            child: Text(
+              'Error loading file details',
+              style: TextStyle(color: textColor),
+            ),
           );
         }
 
@@ -386,39 +634,51 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
 
         return Column(
           children: [
-            _buildDetailRow('Name', pathlib.basename(widget.file.path)),
-            _buildDetailRow('Type', widget.file.extension().toUpperCase()),
-            _buildDetailRow('Size', fileSize),
-            _buildDetailRow('Path', widget.file.path),
-            _buildDetailRow('Created', stat.changed.toString().split('.')[0]),
-            _buildDetailRow('Modified', formattedDate),
+            _buildDetailRow('Size', fileSize, Icons.storage_outlined, textColor,
+                secondaryTextColor),
+            const Divider(height: 24),
+            _buildDetailRow('Location', pathlib.dirname(widget.file.path),
+                Icons.folder_outlined, textColor, secondaryTextColor),
+            const Divider(height: 24),
+            _buildDetailRow('Created', stat.changed.toString().split('.')[0],
+                Icons.date_range_outlined, textColor, secondaryTextColor),
+            const Divider(height: 24),
+            _buildDetailRow('Modified', formattedDate,
+                Icons.edit_calendar_outlined, textColor, secondaryTextColor),
           ],
         );
       },
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
+  Widget _buildDetailRow(String label, String value, IconData icon,
+      Color textColor, Color secondaryTextColor) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20, color: secondaryTextColor),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
               label,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 14,
+                color: secondaryTextColor,
+              ),
             ),
-          ),
-          Expanded(
-            child: Text(
+            const SizedBox(height: 4),
+            Text(
               value,
-              style: const TextStyle(color: Colors.black87),
+              style: TextStyle(
+                fontSize: 16,
+                color: textColor,
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+      ],
     );
   }
 

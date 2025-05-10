@@ -13,6 +13,8 @@ import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
 import 'package:path/path.dart' as pathlib;
 import 'package:cb_file_manager/ui/dialogs/open_with_dialog.dart';
+import 'package:cb_file_manager/helpers/external_app_helper.dart';
+import 'package:cb_file_manager/helpers/file_icon_helper.dart';
 
 import 'tag_dialogs.dart';
 
@@ -124,12 +126,18 @@ class FileItem extends StatelessWidget {
                     ),
                   );
                 } else {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => FileDetailsScreen(file: file),
-                    ),
-                  );
+                  // Open other file types with external app
+                  ExternalAppHelper.openFileWithApp(file.path, 'shell_open')
+                      .then((success) {
+                    if (!success && context.mounted) {
+                      // If that fails, show the open with dialog
+                      showDialog(
+                        context: context,
+                        builder: (context) =>
+                            OpenWithDialog(filePath: file.path),
+                      );
+                    }
+                  });
                 }
               },
               onLongPress: () {
@@ -564,7 +572,23 @@ class FileItem extends StatelessWidget {
         ),
       );
     } else {
-      return Icon(icon, color: iconColor, size: 36);
+      // Wrap with FutureBuilder to load the app icon
+      return FutureBuilder<Widget>(
+        future: FileIconHelper.getIconForFile(file, size: 36),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            // Return a generic icon while loading
+            return Icon(icon, color: iconColor, size: 36);
+          }
+
+          if (snapshot.hasData) {
+            return snapshot.data!;
+          }
+
+          // Fallback to generic icon
+          return Icon(icon, color: iconColor, size: 36);
+        },
+      );
     }
   }
 
