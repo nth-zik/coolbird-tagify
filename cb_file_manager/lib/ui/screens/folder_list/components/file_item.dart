@@ -14,17 +14,15 @@ import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
-import 'package:path/path.dart' as pathlib;
 import 'package:cb_file_manager/ui/dialogs/open_with_dialog.dart';
 import 'package:cb_file_manager/helpers/external_app_helper.dart';
 import 'package:cb_file_manager/helpers/file_icon_helper.dart';
-import 'package:cb_file_manager/config/app_theme.dart'; // Import app theme
+// Import app theme
 import 'package:cb_file_manager/widgets/tag_chip.dart'; // Import the new TagChip widget
-import 'package:cb_file_manager/ui/tab_manager/components/tag_dialogs.dart';
 import 'package:cb_file_manager/ui/components/shared_file_context_menu.dart';
 import 'package:cb_file_manager/widgets/lazy_video_thumbnail.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart'; // Import for keyboard key detection
+import 'package:flutter/rendering.dart'; // Import for RepaintBoundary
 
 // Add this class to disable ripple effects
 class NoSplashFactory extends InteractiveInkFeatureFactory {
@@ -101,15 +99,11 @@ class _FileItemState extends State<FileItem> {
   late List<String> _fileTags;
   StreamSubscription? _tagChangeSubscription;
   bool _isHovering = false;
-  // Local visual selection state for instant feedback
-  bool _visuallySelected = false;
 
   @override
   void initState() {
     super.initState();
     _fileTags = widget.state.getTagsForFile(widget.file.path);
-    _visuallySelected = widget.isSelected;
-
     // Đăng ký lắng nghe thay đổi tag
     _tagChangeSubscription = TagManager.onTagChanged.listen(_onTagChanged);
   }
@@ -124,24 +118,21 @@ class _FileItemState extends State<FileItem> {
   @override
   void didUpdateWidget(FileItem oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // Visual selection updates are driven by widget.isSelected via ValueListenableBuilder in parent
 
-    // Update visual state when external selection changes
-    if (widget.isSelected != oldWidget.isSelected) {
-      _visuallySelected = widget.isSelected;
-    }
-
-    // Vẫn giữ mã này để cập nhật từ state khi state thay đổi
+    // Update tags if they've changed
     final newTags = widget.state.getTagsForFile(widget.file.path);
     if (!_areTagListsEqual(newTags, _fileTags)) {
-      setState(() {
-        _fileTags = newTags;
-      });
+      if (mounted) {
+        setState(() {
+          _fileTags = newTags;
+        });
+      }
     }
   }
 
   // Xử lý sự kiện thay đổi tag
   void _onTagChanged(String changedFilePath) {
-    // Kiểm tra xem có phải tag_only event không
     bool isTagOnlyEvent = false;
     String actualPath = changedFilePath;
 
@@ -150,61 +141,42 @@ class _FileItemState extends State<FileItem> {
       actualPath = changedFilePath.substring("tag_only:".length);
     }
 
-    // Chỉ xử lý nếu sự kiện liên quan đến file này
     if (actualPath == widget.file.path ||
         changedFilePath == "global:tag_deleted") {
-      // Chỉ xóa cache khi cần thiết, không xóa nếu là tag_only event
       if (!isTagOnlyEvent) {
         TagManager.clearCache();
       }
-
-      // Lấy tags mới từ state
       final newTags = widget.state.getTagsForFile(widget.file.path);
-
-      // Cập nhật UI nếu tags đã thay đổi
       if (!_areTagListsEqual(newTags, _fileTags)) {
-        setState(() {
-          _fileTags = newTags;
-        });
+        if (mounted) {
+          setState(() {
+            _fileTags = newTags;
+          });
+        }
       }
     }
   }
 
-  // Helper để so sánh hai danh sách tag
   bool _areTagListsEqual(List<String> list1, List<String> list2) {
     if (list1.length != list2.length) return false;
+    list1.sort();
+    list2.sort();
     for (int i = 0; i < list1.length; i++) {
-      if (!list2.contains(list1[i])) return false;
+      if (list1[i] != list2[i]) return false;
     }
     return true;
   }
 
-  // Hàm xóa tag trực tiếp, không reload tab
   Future<void> _removeTagDirectly(String tag) async {
     try {
-      // Xóa tag
       await TagManager.removeTag(widget.file.path, tag);
-
-      // Cập nhật danh sách local
-      setState(() {
-        _fileTags.remove(tag);
-      });
-
-      // Thông báo cho các thành phần khác với prefix tag_only
-      TagManager.instance.notifyTagChanged("tag_only:" + widget.file.path);
-
-      // Thông báo bloc nếu có
-      try {
-        if (context.mounted) {
-          final bloc = BlocProvider.of<FolderListBloc>(context, listen: false);
-          bloc.add(RemoveTagFromFile(widget.file.path, tag));
-        }
-      } catch (e) {
-        print('Error notifying bloc: $e');
-      }
-
-      // Hiển thị thông báo
-      if (context.mounted) {
+      if (mounted) {
+        setState(() {
+          _fileTags.remove(tag);
+        });
+        TagManager.instance.notifyTagChanged("tag_only:" + widget.file.path);
+        final bloc = BlocProvider.of<FolderListBloc>(context, listen: false);
+        bloc.add(RemoveTagFromFile(widget.file.path, tag));
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Tag "$tag" đã được xóa'),
@@ -213,7 +185,7 @@ class _FileItemState extends State<FileItem> {
         );
       }
     } catch (e) {
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Lỗi khi xóa tag: $e'),
@@ -224,7 +196,6 @@ class _FileItemState extends State<FileItem> {
     }
   }
 
-  // Mở file
   void _openFile(bool isVideo, bool isImage) {
     if (widget.onFileTap != null) {
       widget.onFileTap!(widget.file, isVideo);
@@ -243,13 +214,11 @@ class _FileItemState extends State<FileItem> {
         ),
       );
     } else {
-      // Open other file types with external app
       ExternalAppHelper.openFileWithApp(
         widget.file.path,
         'shell_open',
       ).then((success) {
-        if (!success && context.mounted) {
-          // If that fails, show the open with dialog
+        if (!success && mounted) {
           showDialog(
             context: context,
             builder: (context) => OpenWithDialog(filePath: widget.file.path),
@@ -259,62 +228,157 @@ class _FileItemState extends State<FileItem> {
     }
   }
 
-  // Handle file selection with instant visual feedback
-  void _handleFileSelection() {
-    // Get keyboard state
-    final RawKeyboard keyboard = RawKeyboard.instance;
-
-    final bool isShiftPressed =
-        keyboard.keysPressed.contains(LogicalKeyboardKey.shift) ||
-            keyboard.keysPressed.contains(LogicalKeyboardKey.shiftLeft) ||
-            keyboard.keysPressed.contains(LogicalKeyboardKey.shiftRight);
-
+  // Simplified selection tap handler
+  void _handleFileSelectionTap() {
+    final HardwareKeyboard keyboard = HardwareKeyboard.instance;
+    final bool isShiftPressed = keyboard.isShiftPressed;
     final bool isCtrlPressed =
-        keyboard.keysPressed.contains(LogicalKeyboardKey.control) ||
-            keyboard.keysPressed.contains(LogicalKeyboardKey.controlLeft) ||
-            keyboard.keysPressed.contains(LogicalKeyboardKey.controlRight) ||
-            keyboard.keysPressed.contains(LogicalKeyboardKey.meta) ||
-            keyboard.keysPressed.contains(LogicalKeyboardKey.metaLeft) ||
-            keyboard.keysPressed.contains(LogicalKeyboardKey.metaRight);
+        keyboard.isControlPressed || keyboard.isMetaPressed;
 
-    // Visual update for immediate feedback
-    if (!isShiftPressed) {
-      // For single selection or Ctrl+click, update this item
-      setState(() {
-        if (!isCtrlPressed) {
-          // Single selection without Ctrl: this item will be selected, others will be deselected
-          _visuallySelected = true;
-        } else {
-          // Ctrl+click: toggle this item's selection
-          _visuallySelected = !_visuallySelected;
-        }
-      });
-    }
-    // For Shift+click, we don't update visually here since the parent will handle
-    // the range selection and update all items in the range
-
-    // Call parent handler with the appropriate modifiers
     widget.toggleFileSelection(widget.file.path,
         shiftSelect: isShiftPressed, ctrlSelect: isCtrlPressed);
   }
 
   @override
   Widget build(BuildContext context) {
-    final extension = widget.file.path.split('.').last.toLowerCase();
+    final String extension = widget.file.path.split('.').last.toLowerCase();
+    final bool isVideo = [
+      'mp4',
+      'mov',
+      'avi',
+      'mkv',
+      'flv',
+      'wmv',
+    ].contains(extension);
+    final bool isImage = [
+      'jpg',
+      'jpeg',
+      'png',
+      'gif',
+      'webp',
+      'bmp',
+    ].contains(extension);
+
+    // Use widget.isSelected directly for styling
+    final Color tileColor = widget.isSelected
+        ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.7)
+        : _isHovering && widget.isDesktopMode
+            ? Theme.of(context).hoverColor
+            : Theme.of(context).cardColor;
+
+    return MouseRegion(
+      onEnter: (_) {
+        if (mounted) setState(() => _isHovering = true);
+      },
+      onExit: (_) {
+        if (mounted) setState(() => _isHovering = false);
+      },
+      cursor: SystemMouseCursors.click,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 2.0),
+        decoration: BoxDecoration(
+          color: tileColor,
+          borderRadius: BorderRadius.circular(4.0),
+        ),
+        child: RepaintBoundary(
+          child: Stack(
+            children: [
+              _FileContentLayer(
+                file: widget.file,
+                fileTags: _fileTags,
+                isVideo: isVideo,
+                isImage: isImage,
+                onRemoveTag: _removeTagDirectly,
+                onAddTag: () =>
+                    widget.showAddTagToFileDialog(context, widget.file.path),
+                showDeleteTagDialog: widget.showDeleteTagDialog,
+              ),
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    if (widget.isSelectionMode) {
+                      _handleFileSelectionTap();
+                    } else if (widget.isDesktopMode) {
+                      _handleFileSelectionTap(); // Desktop single click selects
+                    } else {
+                      _openFile(isVideo, isImage); // Mobile single click opens
+                    }
+                  },
+                  onDoubleTap: () {
+                    if (widget.isDesktopMode) {
+                      _openFile(isVideo, isImage);
+                    }
+                  },
+                  onSecondaryTap: () {
+                    _showContextMenu(context, isVideo, isImage);
+                  },
+                  onLongPress: () {
+                    if (!widget.isSelectionMode && !widget.isDesktopMode) {
+                      // Mobile long press enters selection mode and selects item
+                      widget.toggleFileSelection(widget.file.path,
+                          shiftSelect: false, ctrlSelect: false);
+                    } else if (widget.isSelectionMode) {
+                      _handleFileSelectionTap(); // Allow modification of selection
+                    }
+                    // For desktop, long press might also trigger context menu or other actions, handled by onSecondaryTap or specific listeners
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showContextMenu(BuildContext context, bool isVideo, bool isImage) {
+    showFileContextMenu(
+      context: context,
+      file: widget.file,
+      fileTags: _fileTags,
+      isVideo: isVideo,
+      isImage: isImage,
+      showAddTagToFileDialog: widget.showAddTagToFileDialog,
+    );
+  }
+}
+
+// _FileContentLayer and other helper methods like _basename, _formatFileSize, _moveToTrash, _showRenameDialog, _buildLeadingWidget remain largely the same
+// They do not directly manage selection state, only display data.
+
+class _FileContentLayer extends StatelessWidget {
+  final File file;
+  final List<String> fileTags;
+  final bool isVideo;
+  final bool isImage;
+  final Function(String) onRemoveTag;
+  final VoidCallback onAddTag;
+  final Function(BuildContext, String, List<String>) showDeleteTagDialog;
+
+  const _FileContentLayer({
+    Key? key,
+    required this.file,
+    required this.fileTags,
+    required this.isVideo,
+    required this.isImage,
+    required this.onRemoveTag,
+    required this.onAddTag,
+    required this.showDeleteTagDialog,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final String extension = file.path.split('.').last.toLowerCase();
     IconData icon;
     Color? iconColor;
-    bool isVideo = false;
-    bool isImage = false;
 
-    // Determine file type and icon
     if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(extension)) {
       icon = EvaIcons.imageOutline;
       iconColor = Colors.blue;
-      isImage = true;
     } else if (['mp4', 'mov', 'avi', 'mkv', 'flv', 'wmv'].contains(extension)) {
       icon = EvaIcons.videoOutline;
       iconColor = Colors.red;
-      isVideo = true;
     } else if ([
       'mp3',
       'wav',
@@ -342,420 +406,146 @@ class _FileItemState extends State<FileItem> {
       iconColor = Colors.grey;
     }
 
-    // Thay đổi phần tạo TagChip để xử lý xóa tag trực tiếp
-    Widget _buildTagChip(String tag) {
-      return TagChip(
-        tag: tag,
-        onTap: () {
-          // Search by tag functionality
-          final bloc = BlocProvider.of<FolderListBloc>(
-            context,
-          );
-          bloc.add(SearchByTag(tag));
-        },
-        onDeleted: () {
-          // Xóa tag trực tiếp thay vì hiển thị dialog
-          _removeTagDirectly(tag);
-        },
-      );
-    }
-
-    // DIRECT RENDERING - no animations for maximum performance
-    final Color itemBackgroundColor = _visuallySelected
-        ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.7)
-        : _isHovering && widget.isDesktopMode
-            ? Theme.of(context).hoverColor
-            : Theme.of(context).cardColor;
-
-    final Color borderColor = _visuallySelected
-        ? Theme.of(context).primaryColor
-        : _isHovering && widget.isDesktopMode
-            ? Theme.of(context).primaryColor.withOpacity(0.5)
-            : Colors.grey.shade300;
-
-    final List<BoxShadow>? boxShadow =
-        _visuallySelected || (_isHovering && widget.isDesktopMode)
-            ? [
-                BoxShadow(
-                  color: _visuallySelected
-                      ? Theme.of(context).primaryColor.withOpacity(0.3)
-                      : Colors.black.withOpacity(0.1),
-                  blurRadius: 4,
-                  offset: Offset(0, 1),
-                )
-              ]
-            : null;
-
-    return GestureDetector(
-      onSecondaryTap: () => _showFileContextMenu(context, isVideo, isImage),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _isHovering = true),
-        onExit: (_) => setState(() => _isHovering = false),
-        cursor: SystemMouseCursors.click,
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-          decoration: BoxDecoration(
-            color: itemBackgroundColor,
-            border: Border.all(color: borderColor, width: 1.0),
-            borderRadius: BorderRadius.circular(8.0),
-            boxShadow: boxShadow,
-          ),
-          child: Theme(
-            // Apply no splash theme to remove ripple effect
-            data: Theme.of(context).copyWith(
-              splashFactory: NoSplashFactory(),
-              highlightColor: Colors.transparent,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                GestureDetector(
-                  onDoubleTap: widget.isDesktopMode && !widget.isSelectionMode
-                      ? () => _openFile(isVideo, isImage)
-                      : null,
-                  child: Material(
-                    type: MaterialType.transparency,
-                    child: ListTile(
-                      leading: _buildLeadingWidget(isVideo, icon, iconColor),
-                      title: Text(
-                        _basename(widget.file),
-                        style: TextStyle(
-                          fontWeight: _visuallySelected
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                        ),
-                      ),
-                      subtitle: FutureBuilder<FileStat>(
-                        future: widget.file.stat(),
-                        builder: (context, snapshot) {
-                          if (snapshot.hasData) {
-                            String sizeText =
-                                _formatFileSize(snapshot.data!.size);
-                            return Text(
-                              '${snapshot.data!.modified.toString().split('.')[0]} • $sizeText',
-                            );
-                          }
-                          return const Text('Loading...');
-                        },
-                      ),
-                      onTap: () {
-                        if (widget.isSelectionMode) {
-                          // Kiểm tra phím bấm khi ở chế độ selection
-                          final RawKeyboard keyboard = RawKeyboard.instance;
-
-                          final bool isShiftPressed = keyboard.keysPressed
-                                  .contains(LogicalKeyboardKey.shift) ||
-                              keyboard.keysPressed
-                                  .contains(LogicalKeyboardKey.shiftLeft) ||
-                              keyboard.keysPressed
-                                  .contains(LogicalKeyboardKey.shiftRight);
-
-                          final bool isCtrlPressed = keyboard.keysPressed
-                                  .contains(LogicalKeyboardKey.control) ||
-                              keyboard.keysPressed
-                                  .contains(LogicalKeyboardKey.controlLeft) ||
-                              keyboard.keysPressed
-                                  .contains(LogicalKeyboardKey.controlRight) ||
-                              keyboard.keysPressed
-                                  .contains(LogicalKeyboardKey.meta) ||
-                              keyboard.keysPressed
-                                  .contains(LogicalKeyboardKey.metaLeft) ||
-                              keyboard.keysPressed
-                                  .contains(LogicalKeyboardKey.metaRight);
-
-                          // Gọi toggleFileSelection với các modifier
-                          widget.toggleFileSelection(widget.file.path,
-                              shiftSelect: isShiftPressed,
-                              ctrlSelect: isCtrlPressed);
-
-                          // Cập nhật trạng thái hiển thị ngay lập tức
-                          if (!isShiftPressed) {
-                            setState(() {
-                              if (!isCtrlPressed) {
-                                _visuallySelected = true;
-                              } else {
-                                _visuallySelected = !_visuallySelected;
-                              }
-                            });
-                          }
-                        } else if (widget.isDesktopMode) {
-                          // On desktop, use keyboard modifiers for selection with instant feedback
-                          _handleFileSelection();
-                        } else {
-                          // On mobile, single click opens the file
-                          _openFile(isVideo, isImage);
-                        }
-                      },
-                      onLongPress: () {
-                        if (widget.isSelectionMode) {
-                          // Kiểm tra phím bấm khi ở chế độ selection
-                          final RawKeyboard keyboard = RawKeyboard.instance;
-
-                          final bool isShiftPressed = keyboard.keysPressed
-                                  .contains(LogicalKeyboardKey.shift) ||
-                              keyboard.keysPressed
-                                  .contains(LogicalKeyboardKey.shiftLeft) ||
-                              keyboard.keysPressed
-                                  .contains(LogicalKeyboardKey.shiftRight);
-
-                          final bool isCtrlPressed = keyboard.keysPressed
-                                  .contains(LogicalKeyboardKey.control) ||
-                              keyboard.keysPressed
-                                  .contains(LogicalKeyboardKey.controlLeft) ||
-                              keyboard.keysPressed
-                                  .contains(LogicalKeyboardKey.controlRight) ||
-                              keyboard.keysPressed
-                                  .contains(LogicalKeyboardKey.meta) ||
-                              keyboard.keysPressed
-                                  .contains(LogicalKeyboardKey.metaLeft) ||
-                              keyboard.keysPressed
-                                  .contains(LogicalKeyboardKey.metaRight);
-
-                          widget.toggleFileSelection(widget.file.path,
-                              shiftSelect: isShiftPressed,
-                              ctrlSelect: isCtrlPressed);
-                        } else {
-                          _showFileContextMenu(context, isVideo, isImage);
-                        }
-                      },
-                      // Remove the ripple effect by setting the enable property to false
-                      enabled: true,
-                      trailing: PopupMenuButton<String>(
-                        icon: const Icon(Icons.more_vert),
-                        onSelected: (String value) {
-                          if (value == 'tag') {
-                            widget.showAddTagToFileDialog(
-                              context,
-                              widget.file.path,
-                            );
-                          } else if (value == 'delete_tag') {
-                            widget.showDeleteTagDialog(
-                              context,
-                              widget.file.path,
-                              _fileTags,
-                            );
-                          } else if (value == 'details') {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    FileDetailsScreen(file: widget.file),
-                              ),
-                            );
-                          } else if (value == 'trash') {
-                            _moveToTrash(context);
-                          }
-                        },
-                        itemBuilder: (BuildContext context) => [
-                          const PopupMenuItem(
-                            value: 'tag',
-                            child: Text('Add Tag'),
-                          ),
-                          if (_fileTags.isNotEmpty)
-                            const PopupMenuItem(
-                              value: 'delete_tag',
-                              child: Text('Manage Tags'),
-                            ),
-                          const PopupMenuItem(
-                            value: 'details',
-                            child: Text('Properties'),
-                          ),
-                          const PopupMenuItem(
-                            value: 'trash',
-                            child: Text(
-                              'Move to Trash',
-                              style: TextStyle(color: Colors.red),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                if (_fileTags.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(
-                      left: 16.0,
-                      bottom: 8.0,
-                      right: 16.0,
-                    ),
-                    child: Wrap(
-                      spacing: 8.0,
-                      runSpacing: 4.0,
-                      children:
-                          _fileTags.map((tag) => _buildTagChip(tag)).toList(),
-                    ),
-                  ),
-              ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ListTile(
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12.0, vertical: 0),
+          leading: _buildLeadingWidget(isVideo, icon, iconColor),
+          title: Text(
+            _basename(file),
+            style: const TextStyle(
+              fontSize: 14,
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  void _showFileContextMenu(BuildContext context, bool isVideo, bool isImage) {
-    // Use the shared file context menu
-    showFileContextMenu(
-      context: context,
-      file: widget.file,
-      fileTags: _fileTags,
-      isVideo: isVideo,
-      isImage: isImage,
-      showAddTagToFileDialog: widget.showAddTagToFileDialog,
-    );
-  }
-
-  Future<void> _moveToTrash(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Move to Trash?'),
-        content: Text(
-          'Do you want to move "${_basename(widget.file)}" to trash?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('CANCEL'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text(
-              'MOVE TO TRASH',
-              style: TextStyle(color: Colors.red),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && context.mounted) {
-      try {
-        final trashManager = TrashManager();
-        await trashManager.moveToTrash(widget.file.path);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Moved "${_basename(widget.file)}" to trash')),
-        );
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to move file to trash: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    }
-  }
-
-  void _showRenameDialog(BuildContext context) {
-    final TextEditingController nameController = TextEditingController();
-    final String fileName = _basename(widget.file);
-    final String extension = pathlib.extension(widget.file.path);
-    final String fileNameWithoutExt = pathlib.basenameWithoutExtension(
-      widget.file.path,
-    );
-
-    // Pre-fill with current name without extension
-    nameController.text = fileNameWithoutExt;
-    nameController.selection = TextSelection(
-      baseOffset: 0,
-      extentOffset: fileNameWithoutExt.length,
-    );
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Rename File'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Current name: $fileName'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'New name',
-                border: OutlineInputBorder(),
-              ),
-              autofocus: true,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL'),
-          ),
-          TextButton(
-            onPressed: () {
-              final String newName = nameController.text.trim() + extension;
-              if (newName.isEmpty || newName == fileName) {
-                Navigator.pop(context);
-                return;
+          subtitle: FutureBuilder<FileStat>(
+            future: file.stat(),
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                String sizeText = _formatFileSize(snapshot.data!.size);
+                return Text(
+                  '${snapshot.data!.modified.toString().split('.')[0]} • $sizeText',
+                );
               }
-
-              // Dispatch rename event
-              context.read<FolderListBloc>().add(
-                    RenameFileOrFolder(widget.file, newName),
-                  );
-              Navigator.pop(context);
-
-              // Show confirmation
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Renamed file to "$newName"')),
-              );
+              return const Text('Loading...');
             },
-            child: const Text('RENAME'),
           ),
-        ],
-      ),
+          trailing: PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (String value) {
+              if (value == 'tag') {
+                onAddTag();
+              } else if (value == 'delete_tag') {
+                showDeleteTagDialog(context, file.path, fileTags);
+              } else if (value == 'details') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FileDetailsScreen(file: file),
+                  ),
+                );
+              } else if (value == 'trash') {
+                _moveToTrash(context, file); // Pass file to moveToTrash
+              }
+            },
+            itemBuilder: (BuildContext context) => [
+              const PopupMenuItem(
+                value: 'tag',
+                child: Text('Add Tag'),
+              ),
+              if (fileTags.isNotEmpty)
+                const PopupMenuItem(
+                  value: 'delete_tag',
+                  child: Text('Manage Tags'),
+                ),
+              const PopupMenuItem(
+                value: 'details',
+                child: Text('Properties'),
+              ),
+              const PopupMenuItem(
+                value: 'trash',
+                child: Text(
+                  'Move to Trash',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (fileTags.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(
+              left: 16.0,
+              bottom: 8.0,
+              right: 16.0,
+            ),
+            child: Wrap(
+              spacing: 8.0,
+              runSpacing: 4.0,
+              children:
+                  fileTags.map((tag) => _buildTagChip(tag, context)).toList(),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildTagChip(String tag, BuildContext context) {
+    return TagChip(
+      tag: tag,
+      onTap: () {
+        final bloc = BlocProvider.of<FolderListBloc>(context);
+        bloc.add(SearchByTag(tag));
+      },
+      onDeleted: () {
+        onRemoveTag(tag); // This should call _FileItemState._removeTagDirectly
+      },
     );
   }
 
   Widget _buildLeadingWidget(bool isVideo, IconData icon, Color? iconColor) {
     if (isVideo) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(4),
-        child: SizedBox(
-          width: 56,
-          height: 56,
+      return SizedBox(
+        width: 48,
+        height: 48,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(4),
           child: LazyVideoThumbnail(
-            videoPath: widget.file.path,
-            width: 56,
-            height: 56,
-            keepAlive: true,
-            fallbackBuilder: () => Container(
-              color: Colors.black12,
-              child: Center(
-                child: Icon(
-                  EvaIcons.videoOutline,
-                  size: 24,
-                  color: Colors.red[400],
-                ),
-              ),
-            ),
+            videoPath: file.path,
+            width: 48,
+            height: 48,
+            fallbackBuilder: () => Icon(icon, size: 32, color: iconColor),
+          ),
+        ),
+      );
+    } else if (isImage) {
+      return SizedBox(
+        width: 48,
+        height: 48,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: Image.file(
+            file,
+            width: 48,
+            height: 48,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) =>
+                Icon(icon, size: 32, color: iconColor),
           ),
         ),
       );
     } else {
-      // Wrap with FutureBuilder to load the app icon
       return FutureBuilder<Widget>(
-        future: FileIconHelper.getIconForFile(widget.file, size: 36),
+        future: FileIconHelper.getIconForFile(file, size: 32),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            // Return a generic icon while loading
-            return Icon(icon, color: iconColor, size: 36);
+            return Icon(icon, size: 32, color: iconColor);
           }
-
           if (snapshot.hasData) {
             return snapshot.data!;
           }
-
-          // Fallback to generic icon
-          return Icon(icon, color: iconColor, size: 36);
+          return Icon(icon, size: 32, color: iconColor);
         },
       );
     }
@@ -775,5 +565,40 @@ class _FileItemState extends State<FileItem> {
     } else {
       return '${(size / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
     }
+  }
+
+  void _moveToTrash(BuildContext context, File fileToTrash) {
+    final trashManager = TrashManager();
+    trashManager.moveToTrash(fileToTrash.path).then((success) {
+      if (success && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Moved ${_basename(fileToTrash)} to trash'),
+            action: SnackBarAction(
+              label: 'UNDO',
+              onPressed: () {
+                trashManager
+                    .restoreFromTrash(fileToTrash.path)
+                    .then((restored) {
+                  if (restored && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text('Restored ${_basename(fileToTrash)}')),
+                    );
+                  }
+                });
+              },
+            ),
+          ),
+        );
+      } else if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to move ${_basename(fileToTrash)} to trash'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    });
   }
 }

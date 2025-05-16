@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:flutter/material.dart';
@@ -55,6 +56,7 @@ class UserPreferences {
   static const String _videoThumbnailPercentageKey =
       'video_thumbnail_percentage';
   static const String _useObjectBoxKey = 'use_objectbox_storage';
+  static const String _columnVisibilityKey = 'column_visibility';
 
   // Constants for grid zoom level
   static const int minGridZoomLevel = 2; // Largest thumbnails (2 per row)
@@ -982,5 +984,46 @@ class UserPreferences {
   /// Dispose resources
   void dispose() {
     _themeChangeController.close();
+  }
+
+  /// Get column visibility settings for details view
+  Future<ColumnVisibility> getColumnVisibility() async {
+    String? columnVisibilityJson;
+
+    if (_useObjectBox) {
+      columnVisibilityJson = await _databaseManager!.getStringPreference(
+        _columnVisibilityKey,
+      );
+    } else {
+      columnVisibilityJson = _preferences?.getString(_columnVisibilityKey);
+    }
+
+    if (columnVisibilityJson == null) {
+      return const ColumnVisibility(); // Use default
+    }
+
+    try {
+      final Map<String, dynamic> map =
+          json.decode(columnVisibilityJson) as Map<String, dynamic>;
+      return ColumnVisibility.fromMap(map);
+    } catch (e) {
+      print('Error parsing column visibility settings: $e');
+      return const ColumnVisibility(); // Use default on error
+    }
+  }
+
+  /// Save column visibility settings
+  Future<bool> setColumnVisibility(ColumnVisibility visibility) async {
+    final String jsonData = json.encode(visibility.toMap());
+
+    if (_useObjectBox) {
+      return await _databaseManager!.saveStringPreference(
+        _columnVisibilityKey,
+        jsonData,
+      );
+    }
+
+    return await _preferences?.setString(_columnVisibilityKey, jsonData) ??
+        false;
   }
 }

@@ -1,186 +1,182 @@
 import 'dart:io';
-
-import 'package:cb_file_manager/helpers/io_extensions.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
-import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
+import 'package:cb_file_manager/helpers/io_extensions.dart';
 import 'package:cb_file_manager/ui/components/shared_file_context_menu.dart';
+import 'folder_thumbnail.dart';
 
-class FolderGridItem extends StatelessWidget {
+class FolderGridItem extends StatefulWidget {
   final Directory folder;
-  final Function(String)? onTap;
+  final Function(String) onNavigate;
+  final bool isSelected;
+  final Function(String, {bool shiftSelect, bool ctrlSelect})?
+      toggleFolderSelection;
+  final bool isDesktopMode;
+  final String? lastSelectedPath;
 
   const FolderGridItem({
     Key? key,
     required this.folder,
-    this.onTap,
+    required this.onNavigate,
+    this.isSelected = false,
+    this.toggleFolderSelection,
+    this.isDesktopMode = false,
+    this.lastSelectedPath,
   }) : super(key: key);
 
   @override
+  State<FolderGridItem> createState() => _FolderGridItemState();
+}
+
+class _FolderGridItemState extends State<FolderGridItem> {
+  bool _isHovering = false;
+  bool _visuallySelected = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _visuallySelected = widget.isSelected;
+  }
+
+  @override
+  void didUpdateWidget(FolderGridItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Only update when external selection state changes
+    if (widget.isSelected != oldWidget.isSelected) {
+      _visuallySelected = widget.isSelected;
+    }
+  }
+
+  // Handle folder selection with immediate visual feedback
+  void _handleFolderSelection() {
+    if (widget.toggleFolderSelection == null) return;
+
+    // Get keyboard state
+    final HardwareKeyboard keyboard = HardwareKeyboard.instance;
+    final bool isShiftPressed = keyboard.isShiftPressed;
+    final bool isCtrlPressed =
+        keyboard.isControlPressed || keyboard.isMetaPressed;
+
+    // Visual update depends on the selection type
+    if (!isShiftPressed) {
+      // For single selection or Ctrl+click, toggle this item
+      setState(() {
+        if (!isCtrlPressed) {
+          // Single selection: this item will be selected
+          _visuallySelected = true;
+        } else {
+          // Ctrl+click: toggle this item's selection
+          _visuallySelected = !_visuallySelected;
+        }
+      });
+    }
+
+    // Call the selection handler with the appropriate modifiers
+    widget.toggleFolderSelection!(widget.folder.path,
+        shiftSelect: isShiftPressed, ctrlSelect: isCtrlPressed);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    final Color backgroundColor = _visuallySelected
+        ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.7)
+        : _isHovering && widget.isDesktopMode
+            ? Theme.of(context).hoverColor
+            : Theme.of(context).cardColor;
+
+    final Color borderColor = _visuallySelected
+        ? Theme.of(context).primaryColor
+        : _isHovering && widget.isDesktopMode
+            ? Theme.of(context).primaryColor.withOpacity(0.5)
+            : Colors.transparent;
+
+    final double elevation = _visuallySelected
+        ? 3
+        : _isHovering && widget.isDesktopMode
+            ? 2
+            : 1;
+
     return GestureDetector(
-      onSecondaryTap: () => _showFolderContextMenu(
-          context), // Thêm menu ngữ cảnh khi click chuột phải
-      child: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(8.0),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () {
-            if (onTap != null) {
-              onTap!(folder.path);
-            }
-          },
-          onLongPress: () => _showFolderContextMenu(
-              context), // Thêm menu ngữ cảnh khi nhấn giữ
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Icon section
-              Expanded(
-                flex: 3,
-                child: Center(
-                  child: Icon(
-                    Icons.folder,
-                    size: 40,
-                    color: Colors.amber,
+      onSecondaryTap: () => _showFolderContextMenu(context),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovering = true),
+        onExit: (_) => setState(() => _isHovering = false),
+        cursor: SystemMouseCursors.click,
+        child: Card(
+          clipBehavior: Clip.antiAlias,
+          elevation: elevation,
+          color: backgroundColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8.0),
+            side: BorderSide(
+              color: borderColor,
+              width: 1.0,
+            ),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                if (widget.isDesktopMode &&
+                    widget.toggleFolderSelection != null) {
+                  // On desktop, use keyboard modifiers for selection
+                  _handleFolderSelection();
+                } else {
+                  // Navigate to folder
+                  widget.onNavigate(widget.folder.path);
+                }
+              },
+              onDoubleTap: widget.isDesktopMode
+                  ? () => widget.onNavigate(widget.folder.path)
+                  : null,
+              onLongPress: () => _showFolderContextMenu(context),
+              child: Column(
+                children: [
+                  // Thumbnail/Icon section
+                  Expanded(
+                    flex: 3,
+                    child: FolderThumbnail(folder: widget.folder),
                   ),
-                ),
-              ),
-              // Text section - improved to prevent overflow
-              Container(
-                constraints: BoxConstraints(
-                    minHeight: 36,
-                    maxHeight: 40), // Increased max height and added min height
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
-                width: double.infinity,
-                child: LayoutBuilder(builder: (context, constraints) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        folder.basename(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
+                  // Text section
+                  Container(
+                    height: 40,
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(4),
+                    color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                    alignment: Alignment.center,
+                    child: Text(
+                      widget.folder.basename(),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDarkMode ? Colors.white : Colors.black87,
+                        fontWeight: _visuallySelected
+                            ? FontWeight.bold
+                            : FontWeight.w500,
                       ),
-                      const SizedBox(height: 1),
-                      Flexible(
-                        child: FutureBuilder<FileStat>(
-                          future: folder.stat(),
-                          builder: (context, snapshot) {
-                            if (snapshot.hasData) {
-                              return Text(
-                                '${snapshot.data!.modified.toString().split('.')[0]}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 8),
-                              );
-                            }
-                            return const Text('Loading...',
-                                style: TextStyle(fontSize: 8));
-                          },
-                        ),
-                      ),
-                    ],
-                  );
-                }),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  // Hiển thị menu ngữ cảnh cho thư mục
   void _showFolderContextMenu(BuildContext context) {
     // Use the shared folder context menu
     showFolderContextMenu(
       context: context,
-      folder: folder,
-      onNavigate: onTap,
-    );
-  }
-
-  // Hiển thị hộp thoại đổi tên thư mục
-  void _showRenameDialog(BuildContext context) {
-    final TextEditingController controller =
-        TextEditingController(text: folder.basename());
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Rename Folder'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            labelText: 'New Name',
-            border: OutlineInputBorder(),
-          ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL'),
-          ),
-          TextButton(
-            onPressed: () {
-              final newName = controller.text.trim();
-              if (newName.isNotEmpty && newName != folder.basename()) {
-                context
-                    .read<FolderListBloc>()
-                    .add(RenameFileOrFolder(folder, newName));
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Renamed folder to "$newName"')),
-                );
-              } else {
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('RENAME'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Helper cho việc hiển thị thông tin trong hộp thoại thuộc tính
-  Widget _infoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 80,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(),
-            ),
-          ),
-        ],
-      ),
+      folder: widget.folder,
+      onNavigate: widget.onNavigate,
     );
   }
 }

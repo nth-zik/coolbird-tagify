@@ -44,67 +44,193 @@ class SharedActionBar {
     required int currentGridSize,
     required Function(int) onApply,
   }) {
-    int tempGridSize = currentGridSize;
+    int size = currentGridSize;
 
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Điều chỉnh kích thước lưới'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Slider(
+                value: size.toDouble(),
+                min: UserPreferences.minGridZoomLevel.toDouble(),
+                max: UserPreferences.maxGridZoomLevel.toDouble(),
+                divisions: UserPreferences.maxGridZoomLevel -
+                    UserPreferences.minGridZoomLevel,
+                label: '${size.round()} ô trên mỗi hàng',
+                onChanged: (double value) {
+                  size = value.round();
+                },
+              ),
+              const Text(
+                'Di chuyển thanh trượt để chọn số lượng ô hiển thị trên mỗi hàng',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('HỦY'),
+            ),
+            TextButton(
+              onPressed: () {
+                onApply(size);
+                Navigator.pop(context);
+              },
+              child: const Text('ÁP DỤNG'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Dialog thiết lập hiển thị cột
+  static void showColumnVisibilityDialog(
+    BuildContext context, {
+    required ColumnVisibility currentVisibility,
+    required Function(ColumnVisibility) onApply,
+  }) {
+    // Create a mutable copy of the current visibility
+    bool size = currentVisibility.size;
+    bool type = currentVisibility.type;
+    bool dateModified = currentVisibility.dateModified;
+    bool dateCreated = currentVisibility.dateCreated;
+    bool attributes = currentVisibility.attributes;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: const Text('Điều chỉnh kích thước lưới'),
-              content: SizedBox(
-                width: double.maxFinite,
+              title: Row(
+                children: [
+                  const Icon(Icons.view_column, size: 24),
+                  const SizedBox(width: 8),
+                  const Text('Tùy chỉnh hiển thị cột'),
+                ],
+              ),
+              content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Số cột: $tempGridSize'),
-                    Slider(
-                      value: tempGridSize.toDouble(),
-                      min: UserPreferences.minGridZoomLevel.toDouble(),
-                      max: UserPreferences.maxGridZoomLevel.toDouble(),
-                      divisions: (UserPreferences.maxGridZoomLevel -
-                          UserPreferences.minGridZoomLevel),
-                      label: tempGridSize.toString(),
-                      onChanged: (double value) {
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: const Text(
+                        'Chọn các cột bạn muốn hiển thị trong chế độ xem chi tiết. '
+                        'Cột "Tên" luôn được hiển thị và không thể tắt.',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    CheckboxListTile(
+                      title: const Text('Kích thước'),
+                      subtitle: const Text('Hiển thị kích thước của file'),
+                      value: size,
+                      onChanged: (value) {
                         setState(() {
-                          tempGridSize = value.round();
+                          size = value ?? true;
                         });
                       },
+                      secondary: const Icon(Icons.storage),
+                      dense: true,
                     ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _buildSizePreviewBox(2, tempGridSize),
-                        _buildSizePreviewBox(4, tempGridSize),
-                        _buildSizePreviewBox(8, tempGridSize),
-                        _buildSizePreviewBox(12, tempGridSize),
-                      ],
+                    const Divider(height: 1),
+                    CheckboxListTile(
+                      title: const Text('Loại'),
+                      subtitle:
+                          const Text('Hiển thị loại tệp tin (PDF, Word, v.v.)'),
+                      value: type,
+                      onChanged: (value) {
+                        setState(() {
+                          type = value ?? true;
+                        });
+                      },
+                      secondary: const Icon(Icons.description),
+                      dense: true,
                     ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Hình lớn', style: TextStyle(fontSize: 12)),
-                        Text('Hình nhỏ', style: TextStyle(fontSize: 12)),
-                      ],
+                    const Divider(height: 1),
+                    CheckboxListTile(
+                      title: const Text('Ngày sửa đổi'),
+                      subtitle:
+                          const Text('Hiển thị ngày giờ tệp được sửa đổi'),
+                      value: dateModified,
+                      onChanged: (value) {
+                        setState(() {
+                          dateModified = value ?? true;
+                        });
+                      },
+                      secondary: const Icon(Icons.update),
+                      dense: true,
+                    ),
+                    const Divider(height: 1),
+                    CheckboxListTile(
+                      title: const Text('Ngày tạo'),
+                      subtitle: const Text('Hiển thị ngày giờ tệp được tạo ra'),
+                      value: dateCreated,
+                      onChanged: (value) {
+                        setState(() {
+                          dateCreated = value ?? false;
+                        });
+                      },
+                      secondary: const Icon(Icons.calendar_today),
+                      dense: true,
+                    ),
+                    const Divider(height: 1),
+                    CheckboxListTile(
+                      title: const Text('Thuộc tính'),
+                      subtitle:
+                          const Text('Hiển thị thuộc tính tệp (quyền đọc/ghi)'),
+                      value: attributes,
+                      onChanged: (value) {
+                        setState(() {
+                          attributes = value ?? false;
+                        });
+                      },
+                      secondary: const Icon(Icons.info_outline),
+                      dense: true,
                     ),
                   ],
                 ),
               ),
-              actions: <Widget>[
+              actions: [
                 TextButton(
-                  child: const Text('Hủy'),
                   onPressed: () {
-                    Navigator.of(context).pop();
+                    Navigator.pop(context);
                   },
+                  child: const Text('HỦY'),
                 ),
-                TextButton(
-                  child: const Text('Áp dụng'),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.check),
+                  label: const Text('ÁP DỤNG'),
                   onPressed: () {
-                    onApply(tempGridSize);
-                    Navigator.of(context).pop();
+                    final newVisibility = ColumnVisibility(
+                      size: size,
+                      type: type,
+                      dateModified: dateModified,
+                      dateCreated: dateCreated,
+                      attributes: attributes,
+                    );
+                    onApply(newVisibility);
+                    Navigator.pop(context);
                   },
                 ),
               ],
@@ -115,44 +241,7 @@ class SharedActionBar {
     );
   }
 
-  /// Widget hiển thị kích thước ô lưới mẫu
-  static Widget _buildSizePreviewBox(int size, int currentSize) {
-    return Column(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          padding: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: currentSize == size ? Colors.blue : Colors.grey,
-              width: 2,
-            ),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: GridView.count(
-            crossAxisCount: size,
-            mainAxisSpacing: 1,
-            crossAxisSpacing: 1,
-            physics: const NeverScrollableScrollPhysics(),
-            children: List.generate(
-              size * size,
-              (index) => Container(
-                color: Colors.grey[300],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          '$size',
-          style: const TextStyle(fontSize: 12),
-        ),
-      ],
-    );
-  }
-
-  /// Tạo menu popup cho các tùy chọn khác
+  /// Xây dựng menu "Thêm tùy chọn"
   static Widget buildMoreOptionsMenu({
     required VoidCallback onSelectionModeToggled,
     VoidCallback? onManageTagsPressed,
@@ -160,55 +249,95 @@ class SharedActionBar {
     String? currentPath,
   }) {
     return PopupMenuButton<String>(
-      icon: const Icon(EvaIcons.moreVertical),
-      tooltip: 'Tùy chọn khác',
-      onSelected: (value) {
-        if (value == 'select') {
-          onSelectionModeToggled();
-        } else if (value == 'manage_tags' && onManageTagsPressed != null) {
-          onManageTagsPressed();
-        } else if ((value == 'image_gallery' || value == 'video_gallery') &&
-            onGallerySelected != null) {
-          onGallerySelected(value);
+      icon: const Icon(EvaIcons.moreVerticalOutline),
+      tooltip: 'Thêm tùy chọn',
+      itemBuilder: (context) {
+        List<PopupMenuEntry<String>> items = [
+          PopupMenuItem<String>(
+            value: 'selection_mode',
+            child: Row(
+              children: [
+                Icon(EvaIcons.checkmarkSquare2Outline, size: 20),
+                const SizedBox(width: 10),
+                const Text('Chọn nhiều file'),
+              ],
+            ),
+          ),
+        ];
+
+        // Only show tag management if the callback is provided
+        if (onManageTagsPressed != null) {
+          items.add(
+            PopupMenuItem<String>(
+              value: 'manage_tags',
+              child: Row(
+                children: [
+                  const Icon(EvaIcons.bookmarkOutline, size: 20),
+                  const SizedBox(width: 10),
+                  const Text('Quản lý thẻ'),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // Only show gallery options if the callback and path are provided
+        if (onGallerySelected != null && currentPath != null) {
+          items.add(const PopupMenuDivider());
+          items.add(
+            PopupMenuItem<String>(
+              value: 'image_gallery',
+              child: Row(
+                children: [
+                  const Icon(EvaIcons.imageOutline, size: 20),
+                  const SizedBox(width: 10),
+                  const Text('Xem thư viện ảnh'),
+                ],
+              ),
+            ),
+          );
+          items.add(
+            PopupMenuItem<String>(
+              value: 'video_gallery',
+              child: Row(
+                children: [
+                  const Icon(EvaIcons.videoOutline, size: 20),
+                  const SizedBox(width: 10),
+                  const Text('Xem thư viện video'),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return items;
+      },
+      onSelected: (String value) {
+        switch (value) {
+          case 'selection_mode':
+            onSelectionModeToggled();
+            break;
+          case 'manage_tags':
+            if (onManageTagsPressed != null) {
+              onManageTagsPressed();
+            }
+            break;
+          case 'image_gallery':
+            if (onGallerySelected != null && currentPath != null) {
+              onGallerySelected(currentPath);
+            }
+            break;
+          case 'video_gallery':
+            if (onGallerySelected != null && currentPath != null) {
+              onGallerySelected(currentPath);
+            }
+            break;
         }
       },
-      itemBuilder: (context) => [
-        const PopupMenuItem(
-          value: 'select',
-          child: Text('Chọn các mục'),
-        ),
-        if (onManageTagsPressed != null)
-          const PopupMenuItem(
-            value: 'manage_tags',
-            child: Text('Quản lý thẻ'),
-          ),
-        if (onGallerySelected != null && currentPath != null) ...[
-          const PopupMenuItem(
-            value: 'image_gallery',
-            child: Row(
-              children: [
-                Icon(EvaIcons.imageOutline, size: 20),
-                SizedBox(width: 8),
-                Text('Thư viện ảnh'),
-              ],
-            ),
-          ),
-          const PopupMenuItem(
-            value: 'video_gallery',
-            child: Row(
-              children: [
-                Icon(EvaIcons.videoOutline, size: 20),
-                SizedBox(width: 8),
-                Text('Thư viện video'),
-              ],
-            ),
-          ),
-        ],
-      ],
     );
   }
 
-  /// Tạo danh sách các action cho thanh công cụ
+  /// Xây dựng danh sách action cho app bar
   static List<Widget> buildCommonActions({
     required BuildContext context,
     required VoidCallback onSearchPressed,
@@ -218,10 +347,12 @@ class SharedActionBar {
     required VoidCallback onViewModeToggled,
     required VoidCallback onRefresh,
     VoidCallback? onGridSizePressed,
+    VoidCallback? onColumnSettingsPressed,
     required VoidCallback onSelectionModeToggled,
     VoidCallback? onManageTagsPressed,
     Function(String)? onGallerySelected,
     String? currentPath,
+    Function(ViewMode)? onViewModeSelected,
   }) {
     List<Widget> actions = [];
 
@@ -264,7 +395,6 @@ class SharedActionBar {
               'Ngày tạo (Cũ nhất trước)', EvaIcons.clock, currentSortOption),
           buildSortMenuItem(context, SortOption.dateCreatedDesc,
               'Ngày tạo (Mới nhất trước)', EvaIcons.clock, currentSortOption),
-          const PopupMenuDivider(),
           buildSortMenuItem(
               context,
               SortOption.sizeAsc,
@@ -307,14 +437,109 @@ class SharedActionBar {
       );
     }
 
+    // Thêm nút điều chỉnh hiển thị cột nếu đang ở chế độ chi tiết
+    if (viewMode == ViewMode.details && onColumnSettingsPressed != null) {
+      actions.add(
+        IconButton(
+          icon: const Icon(EvaIcons.layoutOutline),
+          tooltip: 'Thiết lập hiển thị cột',
+          onPressed: onColumnSettingsPressed,
+        ),
+      );
+    }
+
     // Thêm nút chuyển đổi chế độ xem
     actions.add(
-      IconButton(
-        icon: Icon(viewMode == ViewMode.grid
-            ? EvaIcons.listOutline
-            : EvaIcons.gridOutline),
-        tooltip: viewMode == ViewMode.grid ? 'Chế độ danh sách' : 'Chế độ lưới',
-        onPressed: onViewModeToggled,
+      PopupMenuButton<ViewMode>(
+        icon: const Icon(EvaIcons.eyeOutline),
+        tooltip: 'Chế độ xem',
+        initialValue: viewMode,
+        itemBuilder: (context) => [
+          PopupMenuItem<ViewMode>(
+            value: ViewMode.list,
+            child: Row(
+              children: [
+                Icon(
+                  EvaIcons.listOutline,
+                  size: 20,
+                  color: viewMode == ViewMode.list ? Colors.blue : null,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'Danh sách',
+                  style: TextStyle(
+                    fontWeight: viewMode == ViewMode.list
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                    color: viewMode == ViewMode.list ? Colors.blue : null,
+                  ),
+                ),
+                const Spacer(),
+                if (viewMode == ViewMode.list)
+                  const Icon(EvaIcons.checkmark, color: Colors.blue, size: 20),
+              ],
+            ),
+          ),
+          PopupMenuItem<ViewMode>(
+            value: ViewMode.grid,
+            child: Row(
+              children: [
+                Icon(
+                  EvaIcons.gridOutline,
+                  size: 20,
+                  color: viewMode == ViewMode.grid ? Colors.blue : null,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'Lưới',
+                  style: TextStyle(
+                    fontWeight: viewMode == ViewMode.grid
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                    color: viewMode == ViewMode.grid ? Colors.blue : null,
+                  ),
+                ),
+                const Spacer(),
+                if (viewMode == ViewMode.grid)
+                  const Icon(EvaIcons.checkmark, color: Colors.blue, size: 20),
+              ],
+            ),
+          ),
+          PopupMenuItem<ViewMode>(
+            value: ViewMode.details,
+            child: Row(
+              children: [
+                Icon(
+                  EvaIcons.listOutline,
+                  size: 20,
+                  color: viewMode == ViewMode.details ? Colors.blue : null,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'Chi tiết',
+                  style: TextStyle(
+                    fontWeight: viewMode == ViewMode.details
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                    color: viewMode == ViewMode.details ? Colors.blue : null,
+                  ),
+                ),
+                const Spacer(),
+                if (viewMode == ViewMode.details)
+                  const Icon(EvaIcons.checkmark, color: Colors.blue, size: 20),
+              ],
+            ),
+          ),
+        ],
+        onSelected: (ViewMode selectedMode) {
+          if (selectedMode != viewMode) {
+            if (onViewModeSelected != null) {
+              onViewModeSelected(selectedMode);
+            } else {
+              onViewModeToggled();
+            }
+          }
+        },
       ),
     );
 

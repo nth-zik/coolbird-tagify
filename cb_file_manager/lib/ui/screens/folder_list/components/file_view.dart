@@ -4,13 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/helpers/frame_timing_optimizer.dart';
-import 'package:flutter/gestures.dart'; // Thêm import cho PointerSignalEvent
-import 'package:flutter/services.dart'; // Thêm import cho RawKeyboard
+import 'package:flutter/gestures.dart'; // Import for PointerSignalEvent
+import 'package:flutter/services.dart'; // Import for RawKeyboard
 
 import 'file_item.dart';
 import 'file_grid_item.dart';
 import 'folder_item.dart';
 import 'folder_grid_item.dart';
+import 'file_details_item.dart';
+import 'folder_details_item.dart';
 
 class FileView extends StatelessWidget {
   final List<File> files;
@@ -30,6 +32,7 @@ class FileView extends StatelessWidget {
   final Function(int)? onZoomChanged; // Thêm callback mới cho thay đổi zoom
   final bool isDesktopMode;
   final String? lastSelectedPath;
+  final ColumnVisibility columnVisibility;
 
   const FileView({
     Key? key,
@@ -49,6 +52,7 @@ class FileView extends StatelessWidget {
     this.onZoomChanged, // Thêm parameter
     this.isDesktopMode = false,
     this.lastSelectedPath,
+    this.columnVisibility = const ColumnVisibility(),
   }) : super(key: key);
 
   @override
@@ -58,6 +62,8 @@ class FileView extends StatelessWidget {
 
     if (isGridView) {
       return _buildGridView();
+    } else if (state.viewMode == ViewMode.details) {
+      return _buildDetailsView();
     } else {
       return _buildListView();
     }
@@ -74,6 +80,7 @@ class FileView extends StatelessWidget {
       ),
       // Add caching for better performance during scrolling
       cacheExtent: 500,
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
       itemCount: folders.length + files.length,
       itemBuilder: (context, index) {
         // Use RepaintBoundary to reduce rendering load during scrolling
@@ -98,6 +105,198 @@ class FileView extends StatelessWidget {
     );
   }
 
+  Widget _buildDetailsView() {
+    // Optimize scrolling with frame timing
+    FrameTimingOptimizer().optimizeScrolling();
+
+    // Define text style for headers once to be reused
+    const TextStyle headerStyle = TextStyle(
+      fontWeight: FontWeight.bold,
+      color: Colors.black87,
+    );
+
+    // Debug selection count
+    print(
+        "FileView _buildDetailsView - Selected files count: ${selectedFiles.length}");
+
+    return Column(
+      children: [
+        // Column headers for details view with info tooltip
+        Stack(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+              ),
+              child: Row(
+                children: [
+                  // Name column (always visible)
+                  Expanded(
+                    flex: 3,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 10.0, horizontal: 12.0),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Tên',
+                            style: headerStyle,
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.arrow_downward,
+                              size: 16, color: Colors.black87),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Type column
+                  if (columnVisibility.type)
+                    Expanded(
+                      flex: 2,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 10.0, horizontal: 12.0),
+                        child: Text(
+                          'Loại',
+                          style: headerStyle,
+                        ),
+                      ),
+                    ),
+
+                  // Size column
+                  if (columnVisibility.size)
+                    Expanded(
+                      flex: 1,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 10.0, horizontal: 12.0),
+                        child: Text(
+                          'Kích thước',
+                          style: headerStyle,
+                        ),
+                      ),
+                    ),
+
+                  // Date modified column
+                  if (columnVisibility.dateModified)
+                    Expanded(
+                      flex: 2,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 10.0, horizontal: 12.0),
+                        child: Text(
+                          'Ngày sửa đổi',
+                          style: headerStyle,
+                        ),
+                      ),
+                    ),
+
+                  // Date created column
+                  if (columnVisibility.dateCreated)
+                    Expanded(
+                      flex: 2,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 10.0, horizontal: 12.0),
+                        child: Text(
+                          'Ngày tạo',
+                          style: headerStyle,
+                        ),
+                      ),
+                    ),
+
+                  // Attributes column
+                  if (columnVisibility.attributes)
+                    Expanded(
+                      flex: 1,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 10.0, horizontal: 12.0),
+                        child: Text(
+                          'Thuộc tính',
+                          style: headerStyle,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+            // Add info button with tooltip about customizing columns
+            Positioned(
+              right: 8,
+              top: 8,
+              child: Tooltip(
+                message:
+                    'Nhấn nút cài đặt cột ở thanh công cụ trên cùng để tùy chỉnh các cột hiển thị',
+                child: Icon(
+                  Icons.info_outline,
+                  size: 16,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        // List of files and folders
+        Expanded(
+          child: ListView.builder(
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
+            cacheExtent: 500,
+            padding: const EdgeInsets.symmetric(vertical: 4.0),
+            itemCount: folders.length + files.length,
+            itemBuilder: (context, index) {
+              // Add alternating row colors to make it look more like a details table
+              final bool isEvenRow = index % 2 == 0;
+              final Color rowColor = isEvenRow
+                  ? Colors.transparent
+                  : Colors.grey.withOpacity(0.03);
+
+              return Container(
+                padding:
+                    const EdgeInsets.symmetric(vertical: 2.0, horizontal: 12.0),
+                decoration: BoxDecoration(
+                  color: rowColor,
+                ),
+                child: RepaintBoundary(
+                  child: index < folders.length
+                      ? FolderDetailsItem(
+                          folder: folders[index],
+                          onTap: onFolderTap,
+                          isSelected:
+                              selectedFiles.contains(folders[index].path),
+                          columnVisibility: columnVisibility,
+                          toggleFolderSelection: toggleFileSelection,
+                          isDesktopMode: isDesktopMode,
+                          lastSelectedPath: lastSelectedPath,
+                        )
+                      : FileDetailsItem(
+                          file: files[index - folders.length],
+                          state: state,
+                          isSelected: selectedFiles
+                              .contains(files[index - folders.length].path),
+                          columnVisibility: columnVisibility,
+                          toggleFileSelection: toggleFileSelection,
+                          showDeleteTagDialog: showDeleteTagDialog,
+                          showAddTagToFileDialog: showAddTagToFileDialog,
+                          onTap: onFileTap,
+                          isDesktopMode: isDesktopMode,
+                          lastSelectedPath: lastSelectedPath,
+                        ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildGridView() {
     // Optimize scrolling with frame timing
     FrameTimingOptimizer().optimizeScrolling();
@@ -105,62 +304,60 @@ class FileView extends StatelessWidget {
     // Wrap the GridView with a Listener to detect mouse wheel events
     return Listener(
       onPointerSignal: (PointerSignalEvent event) {
-        // Chỉ xử lý khi ở chế độ lưới và có onZoomChanged callback
-        if (!isGridView || onZoomChanged == null) return;
+        // Only process if we have a zoom handler
+        if (onZoomChanged == null) return;
 
-        // Xử lý sự kiện cuộn chuột kết hợp với phím Ctrl
+        // Handle mouse wheel events with Ctrl key
         if (event is PointerScrollEvent) {
-          // Kiểm tra xem phím Ctrl có được nhấn không
           if (RawKeyboard.instance.keysPressed
                   .contains(LogicalKeyboardKey.controlLeft) ||
               RawKeyboard.instance.keysPressed
                   .contains(LogicalKeyboardKey.controlRight)) {
-            // Xác định hướng cuộn (lên = -1, xuống = 1)
-            final int direction = event.scrollDelta.dy < 0 ? 1 : -1;
-
-            // Gọi callback để thay đổi mức zoom (đảo ngược chiều)
+            final int direction = event.scrollDelta.dy > 0 ? 1 : -1;
             onZoomChanged!(direction);
-
-            // Ngăn chặn sự kiện mặc định
             GestureBinding.instance.pointerSignalResolver.resolve(event);
           }
         }
       },
       child: GridView.builder(
-        padding: const EdgeInsets.all(8.0),
-        // Add physics for better scrolling performance
+        // Add better scrolling physics for smoother scrolling
         physics: const BouncingScrollPhysics(
           parent: AlwaysScrollableScrollPhysics(),
         ),
         // Add caching for better scroll performance
-        cacheExtent:
-            500, // Cache more items to reduce loading during fast scrolling
+        cacheExtent: 1000,
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: state.gridZoomLevel,
-          childAspectRatio: 0.75,
+          childAspectRatio: 0.8,
           crossAxisSpacing: 8.0,
           mainAxisSpacing: 8.0,
         ),
+        padding: const EdgeInsets.all(8.0),
         itemCount: folders.length + files.length,
         itemBuilder: (context, index) {
           // Use RepaintBoundary for better rendering performance
           return RepaintBoundary(
             child: index < folders.length
-                // Render folder item
-                ? FolderGridItem(folder: folders[index], onTap: onFolderTap)
-                // Render file item
+                ? FolderGridItem(
+                    folder: folders[index],
+                    onNavigate: onFolderTap ?? (_) {},
+                    isSelected: selectedFiles.contains(folders[index].path),
+                    toggleFolderSelection: toggleFileSelection,
+                    isDesktopMode: isDesktopMode,
+                    lastSelectedPath: lastSelectedPath,
+                  )
                 : FileGridItem(
                     file: files[index - folders.length],
                     state: state,
-                    isSelectionMode: isSelectionMode,
                     isSelected: selectedFiles
                         .contains(files[index - folders.length].path),
                     toggleFileSelection: toggleFileSelection,
                     toggleSelectionMode: toggleSelectionMode,
+                    isSelectionMode: isSelectionMode,
                     onFileTap: onFileTap,
-                    onThumbnailGenerated: onThumbnailGenerated,
                     isDesktopMode: isDesktopMode,
                     lastSelectedPath: lastSelectedPath,
+                    onThumbnailGenerated: onThumbnailGenerated,
                   ),
           );
         },

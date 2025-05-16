@@ -36,6 +36,33 @@ import 'package:cb_file_manager/helpers/trash_manager.dart'; // Import for Trash
 import 'package:flutter/rendering.dart' show RendererBinding;
 import 'package:flutter/scheduler.dart'
     show SchedulerBinding; // For scheduler and timeDilation
+// Add import for value listenable builder
+import 'package:flutter/foundation.dart';
+
+// Add this class to cache thumbnails
+class ThumbnailCache {
+  static final ThumbnailCache _instance = ThumbnailCache._internal();
+
+  factory ThumbnailCache() {
+    return _instance;
+  }
+
+  ThumbnailCache._internal();
+
+  final Map<String, Image> _cache = {};
+
+  Image? getFromCache(String path) {
+    return _cache[path];
+  }
+
+  void addToCache(String path, Image image) {
+    _cache[path] = image;
+  }
+
+  void clearCache() {
+    _cache.clear();
+  }
+}
 
 // Helper function to determine if we're on desktop
 bool get isDesktopPlatform =>
@@ -65,8 +92,12 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
   String? _currentFilter;
   String? _currentSearchTag;
   bool _isSelectionMode = false;
-  final Set<String> _selectedFilePaths = {};
-  final Set<String> _selectedFolderPaths = {}; // Add set for selected folders
+
+  // Use ValueNotifier for selection state
+  final ValueNotifier<Set<String>> _selectedFilePaths =
+      ValueNotifier<Set<String>>({});
+  final ValueNotifier<Set<String>> _selectedFolderPaths =
+      ValueNotifier<Set<String>>({});
 
   // Trạng thái hiển thị thanh tìm kiếm
   bool _showSearchBar = false;
@@ -80,6 +111,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
   late ViewMode _viewMode;
   late SortOption _sortOption;
   late int _gridZoomLevel;
+  late ColumnVisibility _columnVisibility;
 
   // Create the bloc instance at the class level
   late FolderListBloc _folderListBloc;
@@ -156,6 +188,9 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
 
   @override
   void dispose() {
+    _selectedFilePaths.dispose();
+    _selectedFolderPaths.dispose();
+
     // Restore default settings
     WidgetsBinding.instance.renderView.automaticSystemUiAdjustment = true;
 
@@ -188,12 +223,14 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
       final viewMode = await prefs.getViewMode();
       final sortOption = await prefs.getSortOption();
       final gridZoomLevel = await prefs.getGridZoomLevel();
+      final columnVisibility = await prefs.getColumnVisibility();
 
       if (mounted) {
         setState(() {
           _viewMode = viewMode;
           _sortOption = sortOption;
           _gridZoomLevel = gridZoomLevel;
+          _columnVisibility = columnVisibility;
         });
 
         _folderListBloc.add(SetViewMode(viewMode));
@@ -239,103 +276,109 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
   }
 
   void _toggleSelectionMode() {
-    setState(() {
-      _isSelectionMode = !_isSelectionMode;
-      if (!_isSelectionMode) {
-        _selectedFilePaths.clear();
-        _selectedFolderPaths.clear();
-        _lastSelectedFilePath = null;
-      }
-    });
+    // This method toggles the overall selection mode, often shown in AppBar.
+    // It might clear selections too.
+    final newIsSelectionMode = !_isSelectionMode;
+    if (!newIsSelectionMode) {
+      // If turning selection mode OFF, clear selections.
+      _selectedFilePaths.value = {};
+      _selectedFolderPaths.value = {};
+      _lastSelectedFilePath = null;
+    }
+    // This setState is for UI elements that depend on `_isSelectionMode` (like AppBar).
+    // Individual item updates are handled by ValueListenableBuilder.
+    if (_isSelectionMode != newIsSelectionMode) {
+      setState(() {
+        _isSelectionMode = newIsSelectionMode;
+      });
+    }
   }
 
   // Completely rewritten selection method to fix issues with both files and folders
   void _toggleItemSelection(String itemPath, bool isFolder,
       {bool shiftSelect = false, bool ctrlSelect = false}) {
+    // Create new sets from the current selection to avoid direct modification
+    final Set<String> currentSelectedFiles =
+        Set<String>.from(_selectedFilePaths.value);
+    final Set<String> currentSelectedFolders =
+        Set<String>.from(_selectedFolderPaths.value);
+
     if (!shiftSelect) {
       // SINGLE ITEM SELECTION LOGIC
-      final isAlreadySelected = isFolder
-          ? _selectedFolderPaths.contains(itemPath)
-          : _selectedFilePaths.contains(itemPath);
+      final Set<String> targetSet =
+          isFolder ? currentSelectedFolders : currentSelectedFiles;
+      final bool isAlreadySelected = targetSet.contains(itemPath);
 
       if (isAlreadySelected && ctrlSelect) {
         // Ctrl+click on selected item should deselect it
-        if (isFolder) {
-          _selectedFolderPaths.remove(itemPath);
-        } else {
-          _selectedFilePaths.remove(itemPath);
-        }
+        targetSet.remove(itemPath);
+      } else if (ctrlSelect) {
+        // Ctrl+click on unselected item adds it to selection
+        targetSet.add(itemPath);
       } else {
-        // Clear previous selections if not Ctrl+click
-        if (!ctrlSelect) {
-          _selectedFilePaths.clear();
-          _selectedFolderPaths.clear();
-        }
-
-        // Add new selection (if using Ctrl+click on an already selected item, do nothing)
-        if (!isAlreadySelected) {
-          if (isFolder) {
-            _selectedFolderPaths.add(itemPath);
-          } else {
-            _selectedFilePaths.add(itemPath);
-          }
+        // Simple click without modifiers: clear all other selections, select this one
+        currentSelectedFiles.clear();
+        currentSelectedFolders.clear();
+        if (isFolder) {
+          currentSelectedFolders.add(itemPath);
+        } else {
+          currentSelectedFiles.add(itemPath);
         }
       }
-
-      // Store as last selected for Shift+click
-      _lastSelectedFilePath = itemPath;
+      _lastSelectedFilePath =
+          itemPath; // Always update last selected for non-shift clicks
     } else if (_lastSelectedFilePath != null) {
       // SHIFT+CLICK RANGE SELECTION LOGIC
-
-      // Create list of all paths in same order as displayed in UI
       final List<String> allFolderPaths =
           _folderListBloc.state.folders.map((f) => f.path).toList();
       final List<String> allFilePaths =
           _folderListBloc.state.files.map((f) => f.path).toList();
       final List<String> allPaths = [...allFolderPaths, ...allFilePaths];
 
-      // Find indices of current and last-selected items
       final int currentIndex = allPaths.indexOf(itemPath);
       final int lastIndex = allPaths.indexOf(_lastSelectedFilePath!);
 
-      if (currentIndex >= 0 && lastIndex >= 0) {
-        // Clear previous selections if not Ctrl+click
+      if (currentIndex != -1 && lastIndex != -1) {
         if (!ctrlSelect) {
-          _selectedFilePaths.clear();
-          _selectedFolderPaths.clear();
+          // If Shift is pressed WITHOUT Ctrl, clear previous selection
+          currentSelectedFiles.clear();
+          currentSelectedFolders.clear();
         }
 
-        // Determine range boundaries (inclusive)
         final int startIndex = min(currentIndex, lastIndex);
         final int endIndex = max(currentIndex, lastIndex);
 
-        // Process all items in range
         for (int i = startIndex; i <= endIndex; i++) {
-          final String path = allPaths[i];
-
-          // Determine whether path is a folder or file
-          if (allFolderPaths.contains(path)) {
-            _selectedFolderPaths.add(path);
+          final String pathInRange = allPaths[i];
+          if (allFolderPaths.contains(pathInRange)) {
+            currentSelectedFolders.add(pathInRange);
           } else {
-            _selectedFilePaths.add(path);
+            currentSelectedFiles.add(pathInRange);
           }
         }
       }
     }
 
-    // Update selection mode
-    _isSelectionMode =
-        _selectedFilePaths.isNotEmpty || _selectedFolderPaths.isNotEmpty;
+    // Update ValueNotifiers with new selections
+    _selectedFilePaths.value = currentSelectedFiles;
+    _selectedFolderPaths.value = currentSelectedFolders;
 
-    // Trigger UI update
-    if (!_selectionUpdatePending) {
-      _selectionUpdatePending = true;
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          setState(() {
-            _selectionUpdatePending = false;
-          });
-        }
+    // For debugging - print detailed selection counts
+    final int totalSelected =
+        currentSelectedFiles.length + currentSelectedFolders.length;
+    print("===== SELECTION UPDATE =====");
+    print("Selected files: ${currentSelectedFiles.length}");
+    print("Selected folders: ${currentSelectedFolders.length}");
+    print("Total selected: $totalSelected");
+    print("Files: ${currentSelectedFiles.join(', ')}");
+    print("Folders: ${currentSelectedFolders.join(', ')}");
+    print("===========================");
+
+    // Update overall selection mode state if needed (for AppBar etc.)
+    final bool newIsSelectionMode = totalSelected > 0;
+    if (_isSelectionMode != newIsSelectionMode) {
+      setState(() {
+        _isSelectionMode = newIsSelectionMode;
       });
     }
   }
@@ -355,21 +398,40 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
   }
 
   void _clearSelection() {
-    setState(() {
-      _isSelectionMode = false;
-      _selectedFilePaths.clear();
-      _selectedFolderPaths.clear();
-      _lastSelectedFilePath = null;
-    });
+    _selectedFilePaths.value = {};
+    _selectedFolderPaths.value = {};
+    _lastSelectedFilePath = null;
+    if (_isSelectionMode) {
+      setState(() {
+        _isSelectionMode = false; // This will update AppBar etc.
+      });
+    }
   }
 
   void _toggleViewMode() {
-    final newMode = _viewMode == ViewMode.list ? ViewMode.grid : ViewMode.list;
-    _folderListBloc.add(SetViewMode(newMode));
-    _saveViewModeSetting(newMode);
     setState(() {
-      _viewMode = newMode;
+      // Cycle through view modes: list -> grid -> details -> list
+      if (_viewMode == ViewMode.list) {
+        _viewMode = ViewMode.grid;
+      } else if (_viewMode == ViewMode.grid) {
+        _viewMode = ViewMode.details;
+      } else {
+        _viewMode = ViewMode.list;
+      }
     });
+
+    _folderListBloc.add(SetViewMode(_viewMode));
+    _saveViewModeSetting(_viewMode);
+  }
+
+  // Add new method to switch directly to a specific view mode
+  void _setViewMode(ViewMode mode) {
+    setState(() {
+      _viewMode = mode;
+    });
+
+    _folderListBloc.add(SetViewMode(_viewMode));
+    _saveViewModeSetting(_viewMode);
   }
 
   void _refreshFileList() {
@@ -703,6 +765,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                         currentSortOption: state.sortOption,
                         viewMode: state.viewMode,
                         onViewModeToggled: _toggleViewMode,
+                        onViewModeSelected: _setViewMode,
                         onRefresh: _refreshFileList,
                         onGridSizePressed: state.viewMode == ViewMode.grid
                             ? () => SharedActionBar.showGridSizeDialog(
@@ -711,6 +774,12 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                                   onApply: _handleGridZoomChange,
                                 )
                             : null,
+                        onColumnSettingsPressed:
+                            state.viewMode == ViewMode.details
+                                ? () {
+                                    _showColumnVisibilityDialog(context);
+                                  }
+                                : null,
                         onSelectionModeToggled: _toggleSelectionMode,
                         onManageTagsPressed: () {
                           tab_components.showManageTagsDialog(context,
@@ -744,27 +813,49 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
 
                 // If we're in selection mode, show a custom app bar
                 if (_isSelectionMode) {
-                  return Scaffold(
-                    appBar: tab_components.SelectionAppBar(
-                      selectedCount: _selectedFilePaths.length +
-                          _selectedFolderPaths.length,
-                      onClearSelection: _clearSelection,
-                      selectedFilePaths: _selectedFilePaths.toList(),
-                      selectedFolderPaths: _selectedFolderPaths.toList(),
-                      showRemoveTagsDialog: _showRemoveTagsDialog,
-                      showManageAllTagsDialog: (context) =>
-                          _showManageAllTagsDialog(context),
-                      showDeleteConfirmationDialog: (context) =>
-                          _showDeleteConfirmationDialog(context),
-                    ),
-                    body: _buildBody(context, state),
-                    floatingActionButton: FloatingActionButton(
-                      onPressed: () {
-                        tab_components.showBatchAddTagDialog(
-                            context, _selectedFilePaths.toList());
-                      },
-                      child: const Icon(EvaIcons.shoppingBag),
-                    ),
+                  // Use ValueListenableBuilder to rebuild when selection changes
+                  return ValueListenableBuilder<Set<String>>(
+                    valueListenable: _selectedFilePaths,
+                    builder: (context, selectedFiles, _) {
+                      return ValueListenableBuilder<Set<String>>(
+                        valueListenable: _selectedFolderPaths,
+                        builder: (context, selectedFolders, _) {
+                          final int fileCount = selectedFiles.length;
+                          final int folderCount = selectedFolders.length;
+                          final int totalSelectedCount =
+                              fileCount + folderCount;
+
+                          // Add debug logs for selection counts
+                          print("Selection mode active");
+                          print("Files selected: $fileCount");
+                          print("Folders selected: $folderCount");
+                          print("Total selected: $totalSelectedCount");
+
+                          return Scaffold(
+                            appBar: tab_components.SelectionAppBar(
+                              // Pass the explicit count to ensure consistency
+                              selectedCount: totalSelectedCount,
+                              onClearSelection: _clearSelection,
+                              selectedFilePaths: selectedFiles.toList(),
+                              selectedFolderPaths: selectedFolders.toList(),
+                              showRemoveTagsDialog: _showRemoveTagsDialog,
+                              showManageAllTagsDialog: (context) =>
+                                  _showManageAllTagsDialog(context),
+                              showDeleteConfirmationDialog: (context) =>
+                                  _showDeleteConfirmationDialog(context),
+                            ),
+                            body: _buildBody(context, state),
+                            floatingActionButton: FloatingActionButton(
+                              onPressed: () {
+                                tab_components.showBatchAddTagDialog(
+                                    context, selectedFiles.toList());
+                              },
+                              child: const Icon(EvaIcons.shoppingBag),
+                            ),
+                          );
+                        },
+                      );
+                    },
                   );
                 }
 
@@ -852,7 +943,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
         return tab_components.SearchResultsView(
           state: state,
           isSelectionMode: _isSelectionMode,
-          selectedFiles: _selectedFilePaths.toList(),
+          selectedFiles: _selectedFilePaths.value.toList(),
           toggleFileSelection: _toggleFileSelection,
           toggleSelectionMode: _toggleSelectionMode,
           showDeleteTagDialog: _showDeleteTagDialog,
@@ -931,7 +1022,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
         state: state,
         isSelectionMode: _isSelectionMode,
         isGridView: state.viewMode == ViewMode.grid,
-        selectedFiles: _selectedFilePaths.toList(),
+        selectedFiles: _selectedFilePaths.value.toList(),
         toggleFileSelection: _toggleFileSelection,
         toggleSelectionMode: _toggleSelectionMode,
         showDeleteTagDialog: _showDeleteTagDialog,
@@ -1048,7 +1139,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                   // Wrap with LayoutBuilder to capture item positions
                   return LayoutBuilder(builder:
                       (BuildContext context, BoxConstraints constraints) {
-                    // Perform post-layout callback to store item position
+                    // Register item position code...
                     WidgetsBinding.instance.addPostFrameCallback((_) {
                       final RenderBox? renderBox =
                           context.findRenderObject() as RenderBox?;
@@ -1061,35 +1152,48 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                       }
                     });
 
-                    // Build the actual item
-                    return RepaintBoundary(
-                      child: index < state.folders.length
-                          ? tab_components.FolderGridItem(
-                              folder: state.folders[index] as Directory,
-                              onNavigate: _navigateToPath,
-                              isSelected: _selectedFolderPaths
-                                  .contains(state.folders[index].path),
-                              toggleFolderSelection: _toggleFolderSelection,
-                              isDesktopMode: isDesktopPlatform,
-                              lastSelectedPath: _lastSelectedFilePath,
-                            )
-                          : folder_list_components.FileGridItem(
-                              file: state.files[index - state.folders.length]
-                                  as File,
-                              state: state,
-                              isSelectionMode: _isSelectionMode,
-                              isSelected: _selectedFilePaths.contains(state
-                                  .files[index - state.folders.length].path),
-                              toggleFileSelection: _toggleFileSelection,
-                              toggleSelectionMode: _toggleSelectionMode,
-                              onFileTap: _onFileTap,
-                              // Add tag management callbacks to enable context menu functionality
-                              showAddTagToFileDialog: _showAddTagToFileDialog,
-                              showDeleteTagDialog: _showDeleteTagDialog,
-                              isDesktopMode: isDesktopPlatform,
-                              lastSelectedPath: _lastSelectedFilePath,
-                            ),
-                    );
+                    if (index < state.folders.length) {
+                      final folder = state.folders[index] as Directory;
+                      return ValueListenableBuilder<Set<String>>(
+                          valueListenable: _selectedFolderPaths,
+                          builder: (context, selectedFolders, _) {
+                            return RepaintBoundary(
+                              key: ValueKey('folder-${folder.path}'),
+                              child: folder_list_components.FolderGridItem(
+                                folder: folder,
+                                onNavigate: _navigateToPath,
+                                isSelected:
+                                    selectedFolders.contains(folder.path),
+                                toggleFolderSelection: _toggleFolderSelection,
+                                isDesktopMode: isDesktopPlatform,
+                                lastSelectedPath: _lastSelectedFilePath,
+                              ),
+                            );
+                          });
+                    } else {
+                      final file =
+                          state.files[index - state.folders.length] as File;
+                      return ValueListenableBuilder<Set<String>>(
+                          valueListenable: _selectedFilePaths,
+                          builder: (context, selectedFiles, _) {
+                            return RepaintBoundary(
+                              key: ValueKey('file-${file.path}'),
+                              child: folder_list_components.FileGridItem(
+                                file: file,
+                                state: state,
+                                isSelectionMode: _isSelectionMode,
+                                isSelected: selectedFiles.contains(file.path),
+                                toggleFileSelection: _toggleFileSelection,
+                                toggleSelectionMode: _toggleSelectionMode,
+                                onFileTap: _onFileTap,
+                                showAddTagToFileDialog: _showAddTagToFileDialog,
+                                showDeleteTagDialog: _showDeleteTagDialog,
+                                isDesktopMode: isDesktopPlatform,
+                                lastSelectedPath: _lastSelectedFilePath,
+                              ),
+                            );
+                          });
+                    }
                   });
                 },
               ),
@@ -1099,7 +1203,43 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
           _buildDragSelectionOverlay(),
         ],
       );
+    } else if (state.viewMode == ViewMode.details) {
+      // Debug the actual selection counts
+      print(
+          "Details view - File count: ${_selectedFilePaths.value.length}, Folder count: ${_selectedFolderPaths.value.length}");
+
+      // Create a combined list of selected paths for details view
+      final List<String> allSelectedPaths = [
+        ..._selectedFilePaths.value,
+        ..._selectedFolderPaths.value
+      ];
+
+      // Explicitly use details view
+      return Stack(
+        children: [
+          folder_list_components.FileView(
+            files: state.files.whereType<File>().toList(),
+            folders: state.folders.whereType<Directory>().toList(),
+            state: state,
+            isSelectionMode: _isSelectionMode,
+            isGridView: false, // Not grid view
+            selectedFiles: allSelectedPaths,
+            toggleFileSelection: _toggleFileSelection,
+            toggleSelectionMode: _toggleSelectionMode,
+            showDeleteTagDialog: _showDeleteTagDialog,
+            showAddTagToFileDialog: _showAddTagToFileDialog,
+            onFolderTap: _navigateToPath,
+            onFileTap: _onFileTap,
+            isDesktopMode: isDesktopPlatform,
+            lastSelectedPath: _lastSelectedFilePath,
+            columnVisibility: _columnVisibility,
+          ),
+          // Add the selection rectangle overlay
+          _buildDragSelectionOverlay(),
+        ],
+      );
     } else {
+      // List view
       return Stack(
         children: [
           GestureDetector(
@@ -1137,7 +1277,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                 // Wrap with LayoutBuilder to capture item positions
                 return LayoutBuilder(builder:
                     (BuildContext context, BoxConstraints constraints) {
-                  // Perform post-layout callback to store item position
+                  // Register item position code...
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     final RenderBox? renderBox =
                         context.findRenderObject() as RenderBox?;
@@ -1150,33 +1290,46 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                     }
                   });
 
-                  // Build the actual item
-                  return RepaintBoundary(
-                    child: index < state.folders.length
-                        ? tab_components.FolderListItem(
-                            folder: state.folders[index] as Directory,
-                            onNavigate: _navigateToPath,
-                            isSelected: _selectedFolderPaths
-                                .contains(state.folders[index].path),
-                            toggleFolderSelection: _toggleFolderSelection,
-                            isDesktopMode: isDesktopPlatform,
-                            lastSelectedPath: _lastSelectedFilePath,
-                          )
-                        : folder_list_components.FileItem(
-                            file: state.files[index - state.folders.length]
-                                as File,
-                            state: state,
-                            isSelectionMode: _isSelectionMode,
-                            isSelected: _selectedFilePaths.contains(
-                                state.files[index - state.folders.length].path),
-                            toggleFileSelection: _toggleFileSelection,
-                            showDeleteTagDialog: _showDeleteTagDialog,
-                            showAddTagToFileDialog: _showAddTagToFileDialog,
-                            onFileTap: _onFileTap,
-                            isDesktopMode: isDesktopPlatform,
-                            lastSelectedPath: _lastSelectedFilePath,
-                          ),
-                  );
+                  if (index < state.folders.length) {
+                    final folder = state.folders[index] as Directory;
+                    return ValueListenableBuilder<Set<String>>(
+                        valueListenable: _selectedFolderPaths,
+                        builder: (context, selectedFolders, _) {
+                          return RepaintBoundary(
+                            key: ValueKey("folder-${folder.path}"),
+                            child: folder_list_components.FolderItem(
+                              folder: folder,
+                              onTap: _navigateToPath,
+                              isSelected: selectedFolders.contains(folder.path),
+                              toggleFolderSelection: _toggleFolderSelection,
+                              isDesktopMode: isDesktopPlatform,
+                              lastSelectedPath: _lastSelectedFilePath,
+                            ),
+                          );
+                        });
+                  } else {
+                    final file =
+                        state.files[index - state.folders.length] as File;
+                    return ValueListenableBuilder<Set<String>>(
+                        valueListenable: _selectedFilePaths,
+                        builder: (context, selectedFiles, _) {
+                          return RepaintBoundary(
+                            key: ValueKey("file-${file.path}"),
+                            child: folder_list_components.FileItem(
+                              file: file,
+                              state: state,
+                              isSelectionMode: _isSelectionMode,
+                              isSelected: selectedFiles.contains(file.path),
+                              toggleFileSelection: _toggleFileSelection,
+                              showDeleteTagDialog: _showDeleteTagDialog,
+                              showAddTagToFileDialog: _showAddTagToFileDialog,
+                              onFileTap: _onFileTap,
+                              isDesktopMode: isDesktopPlatform,
+                              lastSelectedPath: _lastSelectedFilePath,
+                            ),
+                          );
+                        });
+                  }
                 });
               },
             ),
@@ -1199,22 +1352,20 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
   }
 
   void _showRemoveTagsDialog(BuildContext context, List<String> filePaths) {
-    tab_components.showRemoveTagsDialog(context, filePaths);
+    // Ensure we pass the current list of selected file paths
+    tab_components.showRemoveTagsDialog(
+        context, _selectedFilePaths.value.toList());
   }
 
   void _showManageAllTagsDialog(BuildContext context) {
-    // Nếu đang ở chế độ chọn file và có file được chọn,
-    // truyền danh sách file đã chọn vào dialog quản lý tag
-    if (_isSelectionMode && _selectedFilePaths.isNotEmpty) {
+    if (_isSelectionMode && _selectedFilePaths.value.isNotEmpty) {
       tab_components.showManageTagsDialog(
         context,
         _folderListBloc.state.allTags.toList(),
         _currentPath,
-        selectedFiles: _selectedFilePaths.toList(),
+        selectedFiles: _selectedFilePaths.value.toList(),
       );
     } else {
-      // Nếu không trong chế độ chọn file, hoặc không có file nào được chọn,
-      // sử dụng phương thức cũ
       tab_components.showManageTagsDialog(
         context,
         _folderListBloc.state.allTags.toList(),
@@ -1229,8 +1380,8 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
   }
 
   void _showDeleteConfirmationDialog(BuildContext context) {
-    final int fileCount = _selectedFilePaths.length;
-    final int folderCount = _selectedFolderPaths.length;
+    final int fileCount = _selectedFilePaths.value.length;
+    final int folderCount = _selectedFolderPaths.value.length;
     final int totalCount = fileCount + folderCount;
     final String itemType = fileCount > 0 && folderCount > 0
         ? 'items'
@@ -1255,15 +1406,13 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
             onPressed: () {
               // Delete files
               if (fileCount > 0) {
-                BlocProvider.of<FolderListBloc>(context)
-                    .add(FolderListDeleteFiles(_selectedFilePaths.toList()));
+                BlocProvider.of<FolderListBloc>(context).add(
+                    FolderListDeleteFiles(_selectedFilePaths.value.toList()));
               }
 
               // Delete folders
               if (folderCount > 0) {
-                // For now, handle folder deletion as multiple file deletions
-                // In the future, implement a specific event for folder deletion
-                for (final folderPath in _selectedFolderPaths) {
+                for (final folderPath in _selectedFolderPaths.value) {
                   final folder = Directory(folderPath);
                   try {
                     // Check if folder exists and move to trash
@@ -1503,107 +1652,86 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
             keyboard.keysPressed.contains(LogicalKeyboardKey.shiftLeft) ||
             keyboard.keysPressed.contains(LogicalKeyboardKey.shiftRight);
 
-    // Create sets for newly selected items
-    final Set<String> newSelectedFolderPaths = {};
-    final Set<String> newSelectedFilePaths = {};
+    // Create temporary sets for new selections in this drag operation
+    final Set<String> newlySelectedFoldersInDrag = {};
+    final Set<String> newlySelectedFilesInDrag = {};
 
-    // Check which items are inside the selection rect
     _itemPositions.forEach((path, itemRect) {
       if (selectionRect.overlaps(itemRect)) {
-        // Check if it's a folder or file
         if (_folderListBloc.state.folders
             .any((folder) => folder.path == path)) {
-          newSelectedFolderPaths.add(path);
+          newlySelectedFoldersInDrag.add(path);
         } else {
-          newSelectedFilePaths.add(path);
+          newlySelectedFilesInDrag.add(path);
         }
       }
     });
 
-    // Handle selection based on keyboard modifiers
-    if (isShiftPressed && _lastSelectedFilePath != null) {
-      // With Shift, maintain existing selection and add the current range
-      // Only clear previous selection if Ctrl is not pressed
-      if (!isCtrlPressed) {
-        _selectedFilePaths.clear();
-        _selectedFolderPaths.clear();
-      }
+    Set<String> finalSelectedFiles = Set<String>.from(_selectedFilePaths.value);
+    Set<String> finalSelectedFolders =
+        Set<String>.from(_selectedFolderPaths.value);
 
-      // If we have a last selected path, try to add range selection logic
-      // We'll need a list of all paths in UI order
+    if (isShiftPressed && _lastSelectedFilePath != null) {
       final List<String> allFolderPaths =
           _folderListBloc.state.folders.map((f) => f.path).toList();
       final List<String> allFilePaths =
           _folderListBloc.state.files.map((f) => f.path).toList();
       final List<String> allPaths = [...allFolderPaths, ...allFilePaths];
+      final int lastIdx = allPaths.indexOf(_lastSelectedFilePath!);
 
-      // Find indices
-      final int lastIndex = allPaths.indexOf(_lastSelectedFilePath!);
-
-      // For each item in the drag selection, find the range between it and last selected
-      if (lastIndex >= 0) {
-        // For each selected item, find its index and select the range
-        final Set<String> pathsToSelect = {};
-
-        for (final String path in [
-          ...newSelectedFolderPaths,
-          ...newSelectedFilePaths
+      if (lastIdx != -1) {
+        Set<String> rangeSelectionPaths = {};
+        for (String path in [
+          ...newlySelectedFoldersInDrag,
+          ...newlySelectedFilesInDrag
         ]) {
-          final int currentIndex = allPaths.indexOf(path);
-          if (currentIndex >= 0) {
-            // Determine range boundaries (inclusive)
-            final int startIndex = min(currentIndex, lastIndex);
-            final int endIndex = max(currentIndex, lastIndex);
-
-            // Add all paths in range
-            for (int i = startIndex; i <= endIndex; i++) {
-              pathsToSelect.add(allPaths[i]);
+          int currentIdx = allPaths.indexOf(path);
+          if (currentIdx != -1) {
+            int start = min(lastIdx, currentIdx);
+            int end = max(lastIdx, currentIdx);
+            for (int i = start; i <= end; i++) {
+              rangeSelectionPaths.add(allPaths[i]);
             }
           }
         }
-
-        // Add all paths from the range to the appropriate collections
-        for (final String path in pathsToSelect) {
-          if (allFolderPaths.contains(path)) {
-            _selectedFolderPaths.add(path);
-          } else {
-            _selectedFilePaths.add(path);
-          }
+        if (!isCtrlPressed) {
+          finalSelectedFiles.clear();
+          finalSelectedFolders.clear();
+        }
+        for (String path in rangeSelectionPaths) {
+          if (allFolderPaths.contains(path))
+            finalSelectedFolders.add(path);
+          else
+            finalSelectedFiles.add(path);
         }
       }
     } else {
-      // Normal selection behavior (no Shift key)
       if (!isCtrlPressed) {
-        // If not holding Ctrl, clear previous selection
-        _selectedFilePaths.clear();
-        _selectedFolderPaths.clear();
+        finalSelectedFiles.clear();
+        finalSelectedFolders.clear();
       }
-
-      // Update selection sets
-      _selectedFolderPaths.addAll(newSelectedFolderPaths);
-      _selectedFilePaths.addAll(newSelectedFilePaths);
-
-      // If something was selected, update last selected path
-      if (newSelectedFilePaths.isNotEmpty) {
-        _lastSelectedFilePath = newSelectedFilePaths.last;
-      } else if (newSelectedFolderPaths.isNotEmpty) {
-        _lastSelectedFilePath = newSelectedFolderPaths.last;
+      for (String path in newlySelectedFilesInDrag) {
+        if (isCtrlPressed && finalSelectedFiles.contains(path))
+          finalSelectedFiles.remove(path);
+        else
+          finalSelectedFiles.add(path);
+      }
+      for (String path in newlySelectedFoldersInDrag) {
+        if (isCtrlPressed && finalSelectedFolders.contains(path))
+          finalSelectedFolders.remove(path);
+        else
+          finalSelectedFolders.add(path);
       }
     }
 
-    // Update selection mode
-    _isSelectionMode =
-        _selectedFilePaths.isNotEmpty || _selectedFolderPaths.isNotEmpty;
+    _selectedFilePaths.value = finalSelectedFiles;
+    _selectedFolderPaths.value = finalSelectedFolders;
 
-    // Force UI update
-    if (!_selectionUpdatePending) {
-      _selectionUpdatePending = true;
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          setState(() {
-            _selectionUpdatePending = false;
-          });
-        }
+    final bool newIsSelectionMode =
+        finalSelectedFiles.isNotEmpty || finalSelectedFolders.isNotEmpty;
+    if (_isSelectionMode != newIsSelectionMode) {
+      setState(() {
+        _isSelectionMode = newIsSelectionMode;
       });
     }
   }
@@ -1635,6 +1763,27 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  // Method to show column visibility dialog
+  void _showColumnVisibilityDialog(BuildContext context) {
+    SharedActionBar.showColumnVisibilityDialog(
+      context,
+      currentVisibility: _columnVisibility,
+      onApply: (ColumnVisibility visibility) async {
+        setState(() {
+          _columnVisibility = visibility;
+        });
+
+        try {
+          final UserPreferences prefs = UserPreferences.instance;
+          await prefs.init();
+          await prefs.setColumnVisibility(visibility);
+        } catch (e) {
+          print('Error saving column visibility: $e');
+        }
+      },
     );
   }
 }

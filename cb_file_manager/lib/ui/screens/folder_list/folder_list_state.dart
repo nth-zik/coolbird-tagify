@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:equatable/equatable.dart';
 
 // Define view modes
-enum ViewMode { list, grid }
+enum ViewMode { list, grid, details }
 
 // Define sort options
 enum SortOption {
@@ -21,6 +21,68 @@ enum SortOption {
   extensionDesc, // Added extension descending
   attributesAsc, // Added file attributes
   attributesDesc // Added file attributes descending
+}
+
+// Define column visibility options for details view
+class ColumnVisibility {
+  final bool name;
+  final bool size;
+  final bool type;
+  final bool dateModified;
+  final bool dateCreated;
+  final bool attributes;
+
+  const ColumnVisibility({
+    this.name = true, // Name is always visible by default
+    this.size = true,
+    this.type = true,
+    this.dateModified = true,
+    this.dateCreated = false,
+    this.attributes = false,
+  });
+
+  // Create a copy with modified values
+  ColumnVisibility copyWith({
+    bool? name,
+    bool? size,
+    bool? type,
+    bool? dateModified,
+    bool? dateCreated,
+    bool? attributes,
+  }) {
+    return ColumnVisibility(
+      name: name ?? this.name,
+      size: size ?? this.size,
+      type: type ?? this.type,
+      dateModified: dateModified ?? this.dateModified,
+      dateCreated: dateCreated ?? this.dateCreated,
+      attributes: attributes ?? this.attributes,
+    );
+  }
+
+  // Convert to map for storage
+  Map<String, bool> toMap() {
+    return {
+      'name': name,
+      'size': size,
+      'type': type,
+      'dateModified': dateModified,
+      'dateCreated': dateCreated,
+      'attributes': attributes,
+    };
+  }
+
+  // Create from map
+  factory ColumnVisibility.fromMap(Map<String, dynamic> map) {
+    return ColumnVisibility(
+      name: map['name'] ?? true,
+      size: map['size'] ?? true,
+      type: map['type'] ?? true,
+      dateModified: map['dateModified'] ?? true,
+      dateCreated: map['dateCreated'] ?? false,
+      attributes: map['attributes'] ?? false,
+    );
+  }
 }
 
 // Define media types for search

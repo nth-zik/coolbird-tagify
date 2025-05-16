@@ -1,18 +1,16 @@
 import 'dart:io';
 import 'dart:async';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 
-import 'package:cb_file_manager/ui/screens/folder_list/file_details_screen.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/video_gallery_screen.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/image_viewer_screen.dart';
 import 'package:cb_file_manager/helpers/frame_timing_optimizer.dart';
-import 'package:cb_file_manager/helpers/trash_manager.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:cb_file_manager/widgets/lazy_video_thumbnail.dart';
-import 'package:path/path.dart' as pathlib;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
@@ -24,6 +22,59 @@ import 'package:cb_file_manager/widgets/tag_chip.dart';
 import 'package:cb_file_manager/ui/components/shared_file_context_menu.dart';
 import 'package:flutter/services.dart'; // Import for keyboard key detection
 
+// Top-level helper functions for _MemoizedFileContent stability
+String _topLevelBasename(File file) {
+  return file.path.split(Platform.pathSeparator).last;
+}
+
+String _topLevelFormatFileSize(int size) {
+  if (size < 1024) {
+    return '$size B';
+  } else if (size < 1024 * 1024) {
+    return '${(size / 1024).toStringAsFixed(1)} KB';
+  } else if (size < 1024 * 1024 * 1024) {
+    return '${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
+  } else {
+    return '${(size / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
+  }
+}
+
+// Global singleton để quản lý và cache dữ liệu thumbnail
+class ThumbnailCache {
+  static final ThumbnailCache _instance = ThumbnailCache._internal();
+  factory ThumbnailCache() => _instance;
+  ThumbnailCache._internal();
+
+  final Map<String, Widget> _thumbnailWidgets = {};
+  // Removed _thumbnailBytes and _generatingThumbnails as they are not directly used by FileGridItem's ThumbnailCache instance strategy
+
+  Widget? getCachedThumbnailWidget(String path) => _thumbnailWidgets[path];
+  void cacheWidgetThumbnail(String path, Widget thumbnailWidget) {
+    _thumbnailWidgets[path] = thumbnailWidget;
+  }
+
+  // These methods might be used by LazyVideoThumbnail or other parts, keep them if necessary for those.
+  // For _ThumbnailWidget's direct caching, we only need get and cache for the Widget itself.
+  final Set<String> _generatingThumbnails =
+      {}; // Keep if LazyVideoThumbnail or other parts use it
+  bool isGeneratingThumbnail(String path) =>
+      _generatingThumbnails.contains(path);
+  void markGeneratingThumbnail(String path) => _generatingThumbnails.add(path);
+  void markThumbnailGenerated(String path) =>
+      _generatingThumbnails.remove(path);
+
+  void removeThumbnail(String path) {
+    // Used if an item is deleted, for example
+    _thumbnailWidgets.remove(path);
+    _generatingThumbnails.remove(path);
+  }
+
+  void clearCache() {
+    _thumbnailWidgets.clear();
+    _generatingThumbnails.clear();
+  }
+}
+
 class FileGridItem extends StatefulWidget {
   final File file;
   final FolderListState state;
@@ -33,12 +84,11 @@ class FileGridItem extends StatefulWidget {
       toggleFileSelection;
   final Function() toggleSelectionMode;
   final Function(File, bool)? onFileTap;
-  final Function()? onThumbnailGenerated;
+  final Function()? onThumbnailGenerated; // Callback when thumbnail is ready
   final Function(BuildContext, String)? showAddTagToFileDialog;
   final Function(BuildContext, String, List<String>)? showDeleteTagDialog;
   final bool isDesktopMode;
-  final String?
-      lastSelectedPath; // Add parameter to track last selected file for shift-selection
+  final String? lastSelectedPath;
 
   const FileGridItem({
     Key? key,
@@ -60,19 +110,19 @@ class FileGridItem extends StatefulWidget {
   State<FileGridItem> createState() => _FileGridItemState();
 }
 
-class _FileGridItemState extends State<FileGridItem> {
+class _FileGridItemState extends State<FileGridItem>
+    with AutomaticKeepAliveClientMixin {
   late List<String> _fileTags;
   StreamSubscription? _tagChangeSubscription;
   bool _isHovering = false;
-  bool _isVisuallySelected = false;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
-    _isVisuallySelected = widget.isSelected;
     _fileTags = widget.state.getTagsForFile(widget.file.path);
-
-    // Setup tag change subscription
     _tagChangeSubscription = TagManager.onTagChanged.listen(_onTagChanged);
   }
 
@@ -80,8 +130,7 @@ class _FileGridItemState extends State<FileGridItem> {
     if (changedFilePath == widget.file.path ||
         changedFilePath == "global:tag_deleted") {
       final newTags = widget.state.getTagsForFile(widget.file.path);
-
-      if (!_areTagListsEqual(newTags, _fileTags)) {
+      if (mounted && !_areTagListsEqual(newTags, _fileTags)) {
         setState(() {
           _fileTags = newTags;
         });
@@ -98,16 +147,8 @@ class _FileGridItemState extends State<FileGridItem> {
   @override
   void didUpdateWidget(FileGridItem oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Update visual selection state when isSelected changes
-    if (widget.isSelected != oldWidget.isSelected) {
-      setState(() {
-        _isVisuallySelected = widget.isSelected;
-      });
-    }
-
-    // Update tags if they've changed
     final newTags = widget.state.getTagsForFile(widget.file.path);
-    if (!_areTagListsEqual(newTags, _fileTags)) {
+    if (mounted && !_areTagListsEqual(newTags, _fileTags)) {
       setState(() {
         _fileTags = newTags;
       });
@@ -116,368 +157,118 @@ class _FileGridItemState extends State<FileGridItem> {
 
   bool _areTagListsEqual(List<String> list1, List<String> list2) {
     if (list1.length != list2.length) return false;
-    for (int i = 0; i < list1.length; i++) {
-      if (!list2.contains(list1[i])) return false;
+    final sortedList1 = List<String>.from(list1)..sort();
+    final sortedList2 = List<String>.from(list2)..sort();
+    for (int i = 0; i < sortedList1.length; i++) {
+      if (sortedList1[i] != sortedList2[i]) return false;
     }
     return true;
   }
 
-  // Handle file selection based on keyboard modifiers
-  void _handleFileSelection() {
-    // Get keyboard state
-    final RawKeyboard keyboard = RawKeyboard.instance;
-
-    // Check for Shift key
-    final bool isShiftPressed =
-        keyboard.keysPressed.contains(LogicalKeyboardKey.shift) ||
-            keyboard.keysPressed.contains(LogicalKeyboardKey.shiftLeft) ||
-            keyboard.keysPressed.contains(LogicalKeyboardKey.shiftRight);
-
-    // Check for Ctrl key (Control on Windows/Linux, Command on Mac)
+  void _handleFileSelectionTap() {
+    final HardwareKeyboard keyboard = HardwareKeyboard.instance;
+    final bool isShiftPressed = keyboard.isShiftPressed;
     final bool isCtrlPressed =
-        keyboard.keysPressed.contains(LogicalKeyboardKey.control) ||
-            keyboard.keysPressed.contains(LogicalKeyboardKey.controlLeft) ||
-            keyboard.keysPressed.contains(LogicalKeyboardKey.controlRight) ||
-            keyboard.keysPressed
-                .contains(LogicalKeyboardKey.meta) || // Command key on Mac
-            keyboard.keysPressed.contains(LogicalKeyboardKey.metaLeft) ||
-            keyboard.keysPressed.contains(LogicalKeyboardKey.metaRight);
-
-    // Visual update for immediate feedback
-    if (!isShiftPressed) {
-      setState(() {
-        if (!isCtrlPressed) {
-          // Single selection without Ctrl: this item will be selected, others will be deselected
-          _isVisuallySelected = true;
-        } else {
-          // Ctrl+click: toggle this item's selection
-          _isVisuallySelected = !_isVisuallySelected;
-        }
-      });
-    }
-    // For Shift+click, we don't update visually here since the parent will handle
-    // the range selection and update all items in the range
-
-    // Call the selection handler with the appropriate modifiers
+        keyboard.isControlPressed || keyboard.isMetaPressed;
     widget.toggleFileSelection(widget.file.path,
         shiftSelect: isShiftPressed, ctrlSelect: isCtrlPressed);
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     FrameTimingOptimizer().optimizeImageRendering();
 
     final extension = widget.file.path.split('.').last.toLowerCase();
-    final bool isVideo = [
-      'mp4',
-      'avi',
-      'mov',
-      'mkv',
-      'webm',
-      'flv',
-      'wmv',
-    ].contains(extension);
-    final bool isImage = [
-      'jpg',
-      'jpeg',
-      'png',
-      'gif',
-      'webp',
-      'bmp',
-    ].contains(extension);
+    final bool isVideo =
+        ['mp4', 'avi', 'mov', 'mkv', 'webm', 'flv', 'wmv'].contains(extension);
+    final bool isImage =
+        ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(extension);
+    final bool isPreviewable = isImage || isVideo;
 
-    IconData icon;
-    Color? iconColor;
-    bool isPreviewable = false;
-
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(extension)) {
-      icon = EvaIcons.imageOutline;
-      iconColor = Colors.blue;
-      isPreviewable = true;
-    } else if (['mp4', 'mov', 'avi', 'mkv', 'flv', 'wmv'].contains(extension)) {
-      icon = EvaIcons.videoOutline;
-      iconColor = Colors.red;
-    } else if ([
-      'mp3',
-      'wav',
-      'ogg',
-      'm4a',
-      'aac',
-      'flac',
-    ].contains(extension)) {
-      icon = EvaIcons.musicOutline;
-      iconColor = Colors.purple;
-    } else if ([
-      'pdf',
-      'doc',
-      'docx',
-      'txt',
-      'xls',
-      'xlsx',
-      'ppt',
-      'pptx',
-    ].contains(extension)) {
-      icon = EvaIcons.fileTextOutline;
-      iconColor = Colors.indigo;
-    } else {
-      icon = EvaIcons.fileOutline;
-      iconColor = Colors.grey;
-    }
-
-    // Màu sắc và hiệu ứng giống Windows Explorer
-    final Color itemBackgroundColor = _isVisuallySelected
+    final Color cardColor = widget.isSelected
         ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.7)
         : _isHovering && widget.isDesktopMode
             ? Theme.of(context).hoverColor
             : Theme.of(context).cardColor;
 
-    // Border mặc định hoặc khi hover/chọn
-    final Border itemBorder = _isVisuallySelected
-        ? Border.all(color: Theme.of(context).primaryColor, width: 1.5)
+    final BoxShadow? shadow = widget.isSelected
+        ? const BoxShadow(
+            color: Color(0x4D0000FF), blurRadius: 4, offset: Offset(0, 1))
         : _isHovering && widget.isDesktopMode
-            ? Border.all(
-                color: Theme.of(context).primaryColor.withOpacity(0.5),
-                width: 1.0)
-            : Border.all(color: Colors.grey.shade300);
+            ? const BoxShadow(
+                color: Color(0x1A000000), blurRadius: 4, offset: Offset(0, 1))
+            : null;
 
-    return GestureDetector(
-      onSecondaryTap: () => _showFileContextMenu(context, isVideo),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _isHovering = true),
-        onExit: (_) => setState(() => _isHovering = false),
-        cursor: SystemMouseCursors.click,
-        child: Container(
-          decoration: BoxDecoration(
-            color: itemBackgroundColor,
-            border: itemBorder,
-            borderRadius: BorderRadius.circular(8.0),
-            boxShadow: _isVisuallySelected
-                ? [
-                    BoxShadow(
-                      color: Theme.of(context).primaryColor.withOpacity(0.3),
-                      blurRadius: 4,
-                      offset: Offset(0, 1),
-                    )
-                  ]
-                : _isHovering && widget.isDesktopMode
-                    ? [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: Offset(0, 1),
-                        )
-                      ]
-                    : null,
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: () {
-              if (widget.isSelectionMode) {
-                // Kiểm tra phím bấm khi ở chế độ selection
-                final RawKeyboard keyboard = RawKeyboard.instance;
-
-                final bool isShiftPressed =
-                    keyboard.keysPressed.contains(LogicalKeyboardKey.shift) ||
-                        keyboard.keysPressed
-                            .contains(LogicalKeyboardKey.shiftLeft) ||
-                        keyboard.keysPressed
-                            .contains(LogicalKeyboardKey.shiftRight);
-
-                final bool isCtrlPressed = keyboard.keysPressed
-                        .contains(LogicalKeyboardKey.control) ||
-                    keyboard.keysPressed
-                        .contains(LogicalKeyboardKey.controlLeft) ||
-                    keyboard.keysPressed
-                        .contains(LogicalKeyboardKey.controlRight) ||
-                    keyboard.keysPressed.contains(LogicalKeyboardKey.meta) ||
-                    keyboard.keysPressed
-                        .contains(LogicalKeyboardKey.metaLeft) ||
-                    keyboard.keysPressed.contains(LogicalKeyboardKey.metaRight);
-
-                // Gọi toggleFileSelection với các modifier
-                widget.toggleFileSelection(widget.file.path,
-                    shiftSelect: isShiftPressed, ctrlSelect: isCtrlPressed);
-
-                // Cập nhật trạng thái hiển thị ngay lập tức
-                if (!isShiftPressed) {
-                  setState(() {
-                    if (!isCtrlPressed) {
-                      _isVisuallySelected = true;
-                    } else {
-                      _isVisuallySelected = !_isVisuallySelected;
-                    }
-                  });
-                }
-              } else if (widget.isDesktopMode) {
-                // On desktop, use keyboard modifiers for selection
-                _handleFileSelection();
-              } else {
-                // On mobile, single click opens the file
-                _openFile(isVideo, isImage);
-              }
-            },
-            onDoubleTap: () {
-              if (widget.isDesktopMode && !widget.isSelectionMode) {
-                // On desktop, double click opens the file
-                _openFile(isVideo, isImage);
-              }
-            },
-            onLongPress: () {
-              if (!widget.isSelectionMode) {
-                widget.toggleSelectionMode();
-                widget.toggleFileSelection(widget.file.path);
-              } else {
-                // Kiểm tra phím bấm khi ở chế độ selection
-                final RawKeyboard keyboard = RawKeyboard.instance;
-
-                final bool isShiftPressed =
-                    keyboard.keysPressed.contains(LogicalKeyboardKey.shift) ||
-                        keyboard.keysPressed
-                            .contains(LogicalKeyboardKey.shiftLeft) ||
-                        keyboard.keysPressed
-                            .contains(LogicalKeyboardKey.shiftRight);
-
-                final bool isCtrlPressed = keyboard.keysPressed
-                        .contains(LogicalKeyboardKey.control) ||
-                    keyboard.keysPressed
-                        .contains(LogicalKeyboardKey.controlLeft) ||
-                    keyboard.keysPressed
-                        .contains(LogicalKeyboardKey.controlRight) ||
-                    keyboard.keysPressed.contains(LogicalKeyboardKey.meta) ||
-                    keyboard.keysPressed
-                        .contains(LogicalKeyboardKey.metaLeft) ||
-                    keyboard.keysPressed.contains(LogicalKeyboardKey.metaRight);
-
-                widget.toggleFileSelection(widget.file.path,
-                    shiftSelect: isShiftPressed, ctrlSelect: isCtrlPressed);
-              }
-            },
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return RepaintBoundary(
+      child: GestureDetector(
+        onSecondaryTap: () => _showFileContextMenu(context, isVideo),
+        child: MouseRegion(
+          onEnter: (_) {
+            if (mounted) setState(() => _isHovering = true);
+          },
+          onExit: (_) {
+            if (mounted) setState(() => _isHovering = false);
+          },
+          cursor: SystemMouseCursors.click,
+          child: Container(
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(8.0),
+              boxShadow: shadow != null ? [shadow] : null,
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Stack(
               children: [
-                Expanded(
-                  flex: 3,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Container(
-                        decoration: _isVisuallySelected
-                            ? BoxDecoration(
-                                border: Border.all(
-                                  color: Theme.of(context).primaryColor,
-                                  width: 2,
-                                ),
-                              )
-                            : null,
-                        child: isPreviewable || isVideo
-                            ? _buildThumbnail(widget.file)
-                            : Center(
-                                child: FutureBuilder<Widget>(
-                                  future: FileIconHelper.getIconForFile(
-                                    widget.file,
-                                    size: 48,
-                                  ),
-                                  builder: (context, snapshot) {
-                                    if (snapshot.connectionState ==
-                                        ConnectionState.waiting) {
-                                      // Return a generic icon while loading
-                                      return Icon(icon,
-                                          size: 48, color: iconColor);
-                                    }
-
-                                    if (snapshot.hasData) {
-                                      return snapshot.data!;
-                                    }
-
-                                    // Fallback to generic icon
-                                    return Icon(icon,
-                                        size: 48, color: iconColor);
-                                  },
-                                ),
-                              ),
-                      ),
-                    ],
+                _MemoizedFileContent(
+                  key: ValueKey('content_${widget.file.path}'),
+                  file: widget.file,
+                  isVideo: isVideo,
+                  isImage: isImage,
+                  isPreviewable: isPreviewable,
+                  fileTags: _fileTags,
+                  onThumbnailGenerated: widget.onThumbnailGenerated,
+                  getFileSize: _topLevelFormatFileSize,
+                  basename: _topLevelBasename,
+                ),
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      if (widget.isSelectionMode || widget.isDesktopMode) {
+                        _handleFileSelectionTap();
+                      } else {
+                        _openFile(isVideo, isImage);
+                      }
+                    },
+                    onDoubleTap: () {
+                      if (widget.isDesktopMode && !widget.isSelectionMode) {
+                        _openFile(isVideo, isImage);
+                      }
+                    },
+                    onLongPress: () {
+                      if (!widget.isSelectionMode) {
+                        widget.toggleSelectionMode();
+                        widget.toggleFileSelection(widget.file.path,
+                            shiftSelect: false, ctrlSelect: false);
+                      } else {
+                        _handleFileSelectionTap();
+                      }
+                    },
                   ),
                 ),
-                Flexible(
-                  flex: 2,
-                  child: Container(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _basename(widget.file),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: _isVisuallySelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                          ),
+                if (widget.isSelected)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                              color: Theme.of(context).primaryColor, width: 2),
+                          borderRadius: BorderRadius.circular(7.0),
                         ),
-                        const SizedBox(height: 2),
-                        FutureBuilder<FileStat>(
-                          future: widget.file.stat(),
-                          builder: (context, snapshot) {
-                            if (snapshot.hasData) {
-                              return Text(
-                                _formatFileSize(snapshot.data!.size),
-                                style: const TextStyle(fontSize: 10),
-                              );
-                            }
-                            return const Text(
-                              'Loading...',
-                              style: TextStyle(fontSize: 10),
-                            );
-                          },
-                        ),
-                        if (_fileTags.isNotEmpty)
-                          Flexible(
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  EvaIcons.bookmarkOutline,
-                                  size: 12,
-                                  color: AppTheme.primaryBlue,
-                                ),
-                                const SizedBox(width: 4),
-                                Flexible(
-                                  child: _fileTags.length == 1
-                                      ? TagChip(
-                                          tag: _fileTags.first,
-                                          isCompact: true,
-                                          onTap: () {
-                                            // Search by tag functionality
-                                            final bloc =
-                                                BlocProvider.of<FolderListBloc>(
-                                              context,
-                                            );
-                                            bloc.add(
-                                              SearchByTag(_fileTags.first),
-                                            );
-                                          },
-                                        )
-                                      : Text(
-                                          '${_fileTags.length} ${_fileTags.length == 1 ? 'tag' : 'tags'}',
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            color: AppTheme.primaryBlue,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ),
@@ -487,13 +278,13 @@ class _FileGridItemState extends State<FileGridItem> {
   }
 
   void _showFileContextMenu(BuildContext context, bool isVideo) {
-    bool isImage = widget.file.path.toLowerCase().endsWith('.jpg') ||
+    final bool isImage = widget.file.path.toLowerCase().endsWith('.jpg') ||
         widget.file.path.toLowerCase().endsWith('.jpeg') ||
         widget.file.path.toLowerCase().endsWith('.png') ||
         widget.file.path.toLowerCase().endsWith('.gif') ||
-        widget.file.path.toLowerCase().endsWith('.webp');
+        widget.file.path.toLowerCase().endsWith('.webp') ||
+        widget.file.path.toLowerCase().endsWith('.bmp');
 
-    // Use the shared file context menu
     showFileContextMenu(
       context: context,
       file: widget.file,
@@ -504,208 +295,367 @@ class _FileGridItemState extends State<FileGridItem> {
     );
   }
 
-  Widget _buildThumbnail(File file) {
-    FrameTimingOptimizer().optimizeImageRendering();
-
-    final String extension = _getFileExtension(file);
-    final bool isVideo = [
-      'mp4',
-      'mov',
-      'avi',
-      'mkv',
-      'flv',
-      'wmv',
-    ].contains(extension);
-
-    if (isVideo) {
-      return RepaintBoundary(
-        child: Hero(
-          tag: file.path,
-          child: LazyVideoThumbnail(
-            videoPath: file.path,
-            width: double.infinity,
-            height: double.infinity,
-            keepAlive: true,
-            onThumbnailGenerated: (path) {
-              if (widget.onThumbnailGenerated != null) {
-                widget.onThumbnailGenerated!();
-              }
-            },
-            fallbackBuilder: () => Container(
-              color: Colors.black12,
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      EvaIcons.videoOutline,
-                      size: 36,
-                      color: Colors.red[400],
-                    ),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.5),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'Video',
-                        style: TextStyle(fontSize: 10, color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
+  void _openFile(bool isVideo, bool isImage) {
+    if (widget.onFileTap != null) {
+      widget.onFileTap!(widget.file, isVideo);
+    } else if (isVideo) {
+      if (!context.mounted) return;
+      Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => VideoPlayerFullScreen(file: widget.file)));
+    } else if (isImage) {
+      if (!context.mounted) return;
+      Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => ImageViewerScreen(file: widget.file)));
     } else {
-      return RepaintBoundary(
-        child: Hero(
-          tag: file.path,
-          child: Image.file(
-            file,
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.medium,
-            errorBuilder: (context, error, stackTrace) {
-              return Center(
-                child: Icon(
-                  EvaIcons.alertTriangleOutline,
-                  size: 48,
-                  color: Colors.grey[400],
-                ),
-              );
-            },
-          ),
-        ),
-      );
+      ExternalAppHelper.openFileWithApp(widget.file.path, 'shell_open')
+          .then((success) {
+        if (!success && context.mounted) {
+          showDialog(
+              context: context,
+              builder: (context) => OpenWithDialog(filePath: widget.file.path));
+        }
+      });
+    }
+  }
+}
+
+class _MemoizedFileContent extends StatefulWidget {
+  final File file;
+  final bool isVideo;
+  final bool isImage;
+  final bool isPreviewable;
+  final List<String> fileTags;
+  final Function()? onThumbnailGenerated;
+  final String Function(int) getFileSize;
+  final String Function(File) basename;
+
+  const _MemoizedFileContent({
+    Key? key,
+    required this.file,
+    required this.isVideo,
+    required this.isImage,
+    required this.isPreviewable,
+    required this.fileTags,
+    this.onThumbnailGenerated,
+    required this.getFileSize,
+    required this.basename,
+  }) : super(key: key);
+
+  @override
+  State<_MemoizedFileContent> createState() => _MemoizedFileContentState();
+}
+
+class _MemoizedFileContentState extends State<_MemoizedFileContent>
+    with AutomaticKeepAliveClientMixin {
+  Future<FileStat>? _fileStatFuture;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fileStatFuture = widget.file.stat();
+  }
+
+  @override
+  void didUpdateWidget(_MemoizedFileContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.file.path != oldWidget.file.path) {
+      _fileStatFuture = widget.file.stat();
     }
   }
 
-  String _basename(File file) {
-    return file.path.split(Platform.pathSeparator).last;
-  }
-
-  String _getFileExtension(File file) {
-    return file.path.split('.').last.toLowerCase();
-  }
-
-  String _formatFileSize(int size) {
-    if (size < 1024) {
-      return '$size B';
-    } else if (size < 1024 * 1024) {
-      return '${(size / 1024).toStringAsFixed(1)} KB';
-    } else if (size < 1024 * 1024 * 1024) {
-      return '${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
-    } else {
-      return '${(size / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
-    }
-  }
-
-  void _showRenameDialog(BuildContext context) {
-    final TextEditingController nameController = TextEditingController(
-      text: _basename(widget.file),
-    );
-    final String fileName = _basename(widget.file);
-    final String extension = pathlib.extension(widget.file.path);
-    final String fileNameWithoutExt = pathlib.basenameWithoutExtension(
-      widget.file.path,
-    );
-
-    // Pre-fill with current name without extension
-    nameController.text = fileNameWithoutExt;
-    nameController.selection = TextSelection(
-      baseOffset: 0,
-      extentOffset: fileNameWithoutExt.length,
-    );
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Rename File'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Current name: $fileName'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'New name',
-                border: OutlineInputBorder(),
-              ),
-              autofocus: true,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL'),
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 3,
+          child: _ThumbnailWidget(
+            key: ValueKey(
+                'thumb_${widget.file.path}'), // Key for _ThumbnailWidget itself
+            file: widget.file,
+            isVideo: widget.isVideo,
+            isImage: widget.isImage,
+            isPreviewable: widget.isPreviewable,
+            onThumbnailGenerated: widget.onThumbnailGenerated,
           ),
-          TextButton(
-            onPressed: () {
-              final String newName = nameController.text.trim() + extension;
-              if (newName.isEmpty || newName == fileName) {
-                Navigator.pop(context);
-                return;
-              }
+        ),
+        Flexible(
+          flex: 2,
+          child: Container(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.basename(widget.file),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12),
+                ),
+                const SizedBox(height: 2),
+                _buildFileSizeInfo(),
+                if (widget.fileTags.isNotEmpty) _buildTagsInfo(context),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
-              // Dispatch rename event with correct event type
-              context.read<FolderListBloc>().add(
-                    RenameFileOrFolder(widget.file, newName),
-                  );
-              Navigator.pop(context);
+  Widget _buildFileSizeInfo() {
+    return FutureBuilder<FileStat>(
+      future: _fileStatFuture, // Use the memoized future
+      builder: (context, snapshot) {
+        if (snapshot.hasData) {
+          return Text(widget.getFileSize(snapshot.data!.size),
+              style: const TextStyle(fontSize: 10));
+        }
+        return const Text('Loading...', style: TextStyle(fontSize: 10));
+      },
+    );
+  }
 
-              // Show confirmation
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Renamed file to "$newName"')),
-              );
-            },
-            child: const Text('RENAME'),
+  Widget _buildTagsInfo(BuildContext context) {
+    return Flexible(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(EvaIcons.bookmarkOutline,
+              size: 12, color: AppTheme.primaryBlue),
+          const SizedBox(width: 4),
+          Flexible(
+            child: widget.fileTags.length == 1
+                ? TagChip(
+                    tag: widget.fileTags.first,
+                    isCompact: true,
+                    onTap: () {
+                      final bloc = BlocProvider.of<FolderListBloc>(context,
+                          listen: false);
+                      bloc.add(SearchByTag(widget.fileTags.first));
+                    },
+                  )
+                : Text(
+                    '${widget.fileTags.length} ${widget.fileTags.length == 1 ? 'tag' : 'tags'}',
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontSize: 10, color: AppTheme.primaryBlue),
+                  ),
           ),
         ],
       ),
     );
   }
+}
 
-  // Function to open file
-  void _openFile(bool isVideo, bool isImage) {
-    if (widget.onFileTap != null) {
-      widget.onFileTap!(widget.file, isVideo);
-    } else if (isVideo) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => VideoPlayerFullScreen(file: widget.file),
-        ),
-      );
-    } else if (isImage) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ImageViewerScreen(file: widget.file),
-        ),
-      );
-    } else {
-      // Open other file types with external app
-      ExternalAppHelper.openFileWithApp(
-        widget.file.path,
-        'shell_open',
-      ).then((success) {
-        if (!success && context.mounted) {
-          // If that fails, show the open with dialog
-          showDialog(
-            context: context,
-            builder: (context) => OpenWithDialog(filePath: widget.file.path),
-          );
+class _ThumbnailWidget extends StatefulWidget {
+  final File file;
+  final bool isVideo;
+  final bool isImage;
+  final bool isPreviewable;
+  final VoidCallback? onThumbnailGenerated;
+
+  const _ThumbnailWidget({
+    Key? key,
+    required this.file,
+    required this.isVideo,
+    required this.isImage,
+    required this.isPreviewable,
+    this.onThumbnailGenerated,
+  }) : super(key: key);
+
+  @override
+  State<_ThumbnailWidget> createState() => _ThumbnailWidgetState();
+}
+
+class _ThumbnailWidgetState extends State<_ThumbnailWidget>
+    with AutomaticKeepAliveClientMixin {
+  final ThumbnailCache _thumbnailCache = ThumbnailCache();
+  Widget?
+      _builtThumbnailWidget; // Stores the actual built widget for this state instance
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _initOrUpdateThumbnail();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ThumbnailWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.file.path != oldWidget.file.path ||
+        widget.isPreviewable != oldWidget.isPreviewable ||
+        widget.isImage != oldWidget.isImage ||
+        widget.isVideo != oldWidget.isVideo) {
+      _initOrUpdateThumbnail();
+    }
+  }
+
+  void _initOrUpdateThumbnail() {
+    _builtThumbnailWidget =
+        _thumbnailCache.getCachedThumbnailWidget(widget.file.path);
+    if (_builtThumbnailWidget != null) {
+      _notifyThumbnailGenerated(); // Already cached, notify if callback exists
+    }
+    // If null, build() method will construct it and call _notifyThumbnailGenerated after caching.
+  }
+
+  void _notifyThumbnailGenerated() {
+    if (widget.onThumbnailGenerated != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          widget.onThumbnailGenerated!();
         }
       });
     }
+  }
+
+  Widget _constructAndCacheThumbnail() {
+    IconData icon;
+    Color? iconColor;
+    final extension = widget.file.path.split('.').last.toLowerCase();
+
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(extension)) {
+      icon = EvaIcons.imageOutline;
+      iconColor = Colors.blue;
+    } else if (['mp4', 'mov', 'avi', 'mkv', 'flv', 'wmv'].contains(extension)) {
+      icon = EvaIcons.videoOutline;
+      iconColor = Colors.red;
+    } else if (['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac']
+        .contains(extension)) {
+      icon = EvaIcons.musicOutline;
+      iconColor = Colors.purple;
+    } else if (['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx', 'ppt', 'pptx']
+        .contains(extension)) {
+      icon = EvaIcons.fileTextOutline;
+      iconColor = Colors.indigo;
+    } else {
+      icon = EvaIcons.fileOutline;
+      iconColor = Colors.grey;
+    }
+
+    Widget thumbnailContent;
+    if (widget.isPreviewable) {
+      if (widget.isVideo) {
+        thumbnailContent =
+            _buildVideoThumbnailWidget(widget.file, icon, iconColor);
+      } else {
+        thumbnailContent =
+            _buildImageThumbnailWidget(widget.file, icon, iconColor);
+      }
+    } else {
+      thumbnailContent = _buildGenericThumbnailWidget(icon, iconColor);
+    }
+
+    _thumbnailCache.cacheWidgetThumbnail(widget.file.path, thumbnailContent);
+    _notifyThumbnailGenerated();
+    return thumbnailContent;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    if (_builtThumbnailWidget == null) {
+      _builtThumbnailWidget = _constructAndCacheThumbnail();
+    }
+    return _builtThumbnailWidget!;
+  }
+
+  Widget _buildGenericThumbnailWidget(IconData icon, Color? iconColor) {
+    return RepaintBoundary(
+      child: Center(
+        child: FutureBuilder<Widget>(
+          future: FileIconHelper.getIconForFile(widget.file, size: 48),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting ||
+                !snapshot.hasData ||
+                snapshot.hasError) {
+              return Icon(icon, size: 48, color: iconColor);
+            }
+            return snapshot.data!;
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageThumbnailWidget(
+      File file, IconData fallbackIcon, Color? fallbackColor) {
+    return RepaintBoundary(
+      child: Hero(
+        tag:
+            'grid_thumb_img_${file.path}', // Ensure Hero tags are unique for grid view
+        child: Image.file(
+          file,
+          key: ValueKey('image_display_grid_${file.path}'),
+          fit: BoxFit.cover,
+          filterQuality: FilterQuality.medium,
+          cacheHeight: 200,
+          cacheWidth: 200,
+          errorBuilder: (context, error, stackTrace) {
+            return Center(
+                child: Icon(fallbackIcon, size: 48, color: fallbackColor));
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVideoThumbnailWidget(
+      File file, IconData fallbackIcon, Color? fallbackColor) {
+    return RepaintBoundary(
+      child: Hero(
+        tag:
+            'grid_thumb_vid_${file.path}', // Ensure Hero tags are unique for grid view
+        child: LazyVideoThumbnail(
+          key: ValueKey('video_display_grid_${file.path}'),
+          videoPath: file.path,
+          width: double.infinity,
+          height: double.infinity,
+          onThumbnailGenerated: (path) {
+            // This specific callback from LazyVideoThumbnail might still be useful for its internal state if needed,
+            // but the primary notification to FileGridItem comes from _ThumbnailWidgetState._notifyThumbnailGenerated.
+            _thumbnailCache.markThumbnailGenerated(file
+                .path); // Let the cache know this specific path is done by LazyVideo.
+          },
+          fallbackBuilder: () => Container(
+            color: Colors.black12,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(EvaIcons.videoOutline, size: 36, color: Colors.red),
+                  SizedBox(height: 4),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Color(0x80000000),
+                      borderRadius: BorderRadius.all(Radius.circular(4)),
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      child: Text('Video',
+                          style: TextStyle(fontSize: 10, color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

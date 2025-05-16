@@ -32,23 +32,43 @@ class SelectionAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasSelectedItems = selectedCount > 0;
-    final hasSelectedFiles = selectedFilePaths.isNotEmpty;
-    final hasSelectedFolders = selectedFolderPaths.isNotEmpty;
+    // Always calculate the actual count from the lists to ensure accuracy
+    final int fileCount = selectedFilePaths.length;
+    final int folderCount = selectedFolderPaths.length;
+    final int actualCount = fileCount + folderCount;
+
+    // Debug warning if passed count doesn't match actual count
+    if (actualCount != selectedCount) {
+      print(
+          "⚠️ SelectionAppBar - Count mismatch: passed=$selectedCount, actual=$actualCount (files=$fileCount, folders=$folderCount)");
+    }
+
+    // Build display text with file and folder counts
+    String selectionText;
+    if (fileCount > 0 && folderCount > 0) {
+      selectionText =
+          'Đã chọn: $actualCount (${fileCount} tệp, ${folderCount} thư mục)';
+    } else if (fileCount > 0) {
+      selectionText = 'Đã chọn: $actualCount tệp';
+    } else if (folderCount > 0) {
+      selectionText = 'Đã chọn: $actualCount thư mục';
+    } else {
+      selectionText = 'Đã chọn: $actualCount';
+    }
 
     return AppBar(
       leading: IconButton(
         icon: const Icon(EvaIcons.close),
         onPressed: onClearSelection,
       ),
-      title: Text('Selected: $selectedCount'),
+      title: Text(selectionText),
       actions: [
         // Show tag management for files only
-        if (hasSelectedFiles) ...[
+        if (fileCount > 0) ...[
           // Tag management dropdown menu
           PopupMenuButton<String>(
             icon: const Icon(EvaIcons.shoppingBag),
-            tooltip: 'Manage Tags',
+            tooltip: 'Quản lý Tag',
             onSelected: (value) {
               if (value == 'add_tag') {
                 showBatchAddTagDialog(context, selectedFilePaths);
@@ -65,7 +85,7 @@ class SelectionAppBar extends StatelessWidget implements PreferredSizeWidget {
                   children: [
                     Icon(EvaIcons.plusCircleOutline),
                     SizedBox(width: 8),
-                    Text('Add Tags'),
+                    Text('Thêm Tag'),
                   ],
                 ),
               ),
@@ -75,7 +95,7 @@ class SelectionAppBar extends StatelessWidget implements PreferredSizeWidget {
                   children: [
                     Icon(EvaIcons.minusCircleOutline),
                     SizedBox(width: 8),
-                    Text('Remove Tags'),
+                    Text('Xóa Tag'),
                   ],
                 ),
               )
@@ -84,10 +104,10 @@ class SelectionAppBar extends StatelessWidget implements PreferredSizeWidget {
         ],
 
         // Delete option (works for both files and folders)
-        if (hasSelectedItems)
+        if (actualCount > 0)
           IconButton(
             icon: const Icon(EvaIcons.trash2Outline),
-            tooltip: 'Move to Trash',
+            tooltip: 'Chuyển vào Thùng rác',
             onPressed: () {
               showDeleteConfirmationDialog(context);
             },
