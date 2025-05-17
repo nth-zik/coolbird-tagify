@@ -197,6 +197,10 @@ class VideoThumbnailHelper {
     _cacheChangedController.add(null);
   }
 
+  // Track which paths have been logged to avoid spamming logs
+  static final Set<String> _loggedPaths = {};
+  static DateTime _lastLogCleanup = DateTime.now();
+
   static final LinkedHashMap<String, String> _fileCache =
       LinkedHashMap<String, String>();
 
@@ -274,6 +278,31 @@ class VideoThumbnailHelper {
     if (_verboseLogging || forceShow) {
       debugPrint(message);
     }
+  }
+
+  // Log with path throttling (private implementation)
+  static void _logWithPathThrottle(String message, String path,
+      {bool forceShow = false}) {
+    // Clean up logged paths every 60 seconds
+    final now = DateTime.now();
+    if (now.difference(_lastLogCleanup).inSeconds > 60) {
+      _loggedPaths.clear();
+      _lastLogCleanup = now;
+    }
+
+    // Track more specific message types by using a composite key
+    final logKey = '${message.split(":")[0]}:$path';
+
+    // Only log if we haven't logged this path recently
+    if (!_loggedPaths.contains(logKey)) {
+      _loggedPaths.add(logKey);
+      _log(message, forceShow: forceShow);
+    }
+  }
+
+  // Public log throttling method for use by other classes
+  static void logWithThrottle(String message, String path) {
+    _logWithPathThrottle(message, path);
   }
 
   static Future<void> initializeCache() async {
@@ -887,10 +916,10 @@ class VideoThumbnailHelper {
 
     // Kiểm tra cache trong bộ nhớ trước
     if (_inMemoryPathCache.containsKey(videoPath)) {
-      final cachedPath = _inMemoryPathCache[videoPath]!;
-      try {
-        final file = File(cachedPath);
-        if (await file.exists() && await file.length() > 0) {
+      final cachedPath = _inMemoryPathCache[videoPath];
+      if (cachedPath != null) {
+        final cacheFile = File(cachedPath);
+        if (await cacheFile.exists()) {
           // Đưa lại lên đầu cache nếu tồn tại
           final value = _inMemoryPathCache.remove(videoPath)!;
           _inMemoryPathCache[videoPath] = value;
@@ -899,8 +928,6 @@ class VideoThumbnailHelper {
           // Xóa khỏi cache nếu không hợp lệ
           _inMemoryPathCache.remove(videoPath);
         }
-      } catch (e) {
-        _inMemoryPathCache.remove(videoPath);
       }
     }
 
@@ -1138,8 +1165,9 @@ class VideoThumbnailHelper {
               deletedCount++;
             }
           } catch (e) {
-            _log(
-                'VideoThumbnail: Error deleting thumbnail file ${file.path}: $e');
+            // Use throttled logging for individual file errors
+            _logWithPathThrottle(
+                'VideoThumbnail: Error deleting thumbnail file: $e', file.path);
           }
         }
         _log('VideoThumbnail: Deleted $deletedCount physical thumbnail files.');
@@ -1175,11 +1203,15 @@ class VideoThumbnailHelper {
     if (_fileCache.length > _maxFileCacheSize / 2) {
       final keysToRemoveCount = _fileCache.length - (_maxFileCacheSize ~/ 2);
       final keysToRemove = _fileCache.keys.take(keysToRemoveCount).toList();
+
+      int removedCount = 0;
       for (final key in keysToRemove) {
         _fileCache.remove(key);
+        removedCount++;
       }
+
       _log(
-          'VideoThumbnail: Trimmed in-memory cache to ${_fileCache.length} items.');
+          'VideoThumbnail: Trimmed in-memory cache, removed $removedCount items.');
       _saveCacheToDiskThrottled();
     }
 
@@ -1411,6 +1443,65 @@ class VideoThumbnailHelper {
   /// This can be called from other classes to check if they should stop processing
   static bool shouldStopProcessing() {
     return _shouldStopProcessing;
+  }
+
+  /// Tìm thumbnail trong cache hoặc tạo mới nếu cần
+  static Future<String?> getThumbnail(
+    String videoPath, {
+    bool forceRegenerate = false,
+    bool isPriority = false,
+    double? thumbnailPercentage,
+  }) async {
+    if (!_cacheInitialized) {
+      await initializeCache();
+    }
+
+    if (videoPath.isEmpty || !await File(videoPath).exists()) {
+      _logWithPathThrottle(
+          'VideoThumbnail: Invalid video path: $videoPath', videoPath);
+      return null;
+    }
+
+    // Check in memory cache first for faster response
+    if (!forceRegenerate && _inMemoryPathCache.containsKey(videoPath)) {
+      final cachedPath = _inMemoryPathCache[videoPath];
+      if (cachedPath != null) {
+        final cacheFile = File(cachedPath);
+        if (await cacheFile.exists()) {
+          _logWithPathThrottle(
+              'VideoThumbnail: Using in-memory cached thumbnail for $videoPath',
+              videoPath);
+          return cachedPath;
+        } else {
+          // Remove invalid cache entry
+          _inMemoryPathCache.remove(videoPath);
+        }
+      }
+    }
+
+    // Next check permanent file cache
+    if (!forceRegenerate) {
+      final cachedPath = await getFromCache(videoPath);
+      if (cachedPath != null) {
+        _logWithPathThrottle(
+            'VideoThumbnail: Using file-cached thumbnail for $videoPath',
+            videoPath);
+        // Also update in-memory cache
+        _inMemoryPathCache[videoPath] = cachedPath;
+        return cachedPath;
+      }
+    }
+
+    // No valid cache entry, generate a new thumbnail
+    _logWithPathThrottle(
+        'VideoThumbnail: No cache found or regenerate requested for $videoPath',
+        videoPath);
+    // Note: thumbnailPercentage is stored globally but not used directly in generateThumbnail
+    return generateThumbnail(
+      videoPath,
+      forceRegenerate: forceRegenerate,
+      isPriority: isPriority,
+    );
   }
 }
 

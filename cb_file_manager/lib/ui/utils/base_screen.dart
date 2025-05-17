@@ -147,18 +147,18 @@ class _BaseScreenState extends State<BaseScreen> {
               ? _buildLeadingIcon(context)
               : null,
           actions: <Widget>[
-            // Always add the menu button as the first action
-            IconButton(
-              icon: const Icon(EvaIcons.menu2Outline),
-              onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-            ),
+            // // Always add the menu button as the first action
+            // IconButton(
+            //   icon: const Icon(EvaIcons.menu2Outline),
+            //   onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+            // ),
 
-            // Home button for emergency navigation
-            IconButton(
-              icon: const Icon(EvaIcons.homeOutline),
-              tooltip: context.tr.home,
-              onPressed: () => goHome(context),
-            ),
+            // // Home button for emergency navigation
+            // IconButton(
+            //   icon: const Icon(EvaIcons.homeOutline),
+            //   tooltip: context.tr.home,
+            //   onPressed: () => goHome(context),
+            // ),
 
             // Add any additional actions
             if (widget.actions != null) ...widget.actions!,

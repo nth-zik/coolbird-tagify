@@ -16,6 +16,7 @@ import 'package:flutter/gestures.dart'; // Import for mouse scrolling
 import 'scrollable_tab_bar.dart'; // Import our custom ScrollableTabBar
 import 'mobile_tab_view.dart'; // Import giao diện mobile kiểu Chrome
 import 'package:cb_file_manager/config/translation_helper.dart'; // Import translation helper
+import 'package:cb_file_manager/ui/screens/system_screen_router.dart'; // Import system screen router
 
 // Create a custom scroll behavior that supports mouse wheel scrolling
 class TabBarMouseScrollBehavior extends MaterialScrollBehavior {
@@ -502,6 +503,19 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
     final activeTab = state.activeTab;
     if (activeTab == null) return Container();
 
+    // Check if this is a system path (starting with #)
+    if (activeTab.path.startsWith('#')) {
+      // Use the SystemScreenRouter to route to the appropriate system screen
+      final systemScreen = SystemScreenRouter.routeSystemPath(
+          context, activeTab.path, activeTab.id);
+
+      // If we have a system screen, return it
+      if (systemScreen != null) {
+        return systemScreen;
+      }
+    }
+
+    // Default to normal folder list for regular file paths
     return TabbedFolderListScreen(
       key: ValueKey(activeTab.id),
       path: activeTab.path,

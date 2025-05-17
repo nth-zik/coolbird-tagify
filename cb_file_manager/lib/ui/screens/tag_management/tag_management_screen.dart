@@ -10,13 +10,21 @@ import 'package:cb_file_manager/ui/widgets/tag_chip.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:path/path.dart' as pathlib;
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cb_file_manager/ui/tab_manager/tab_manager.dart';
+import 'package:cb_file_manager/ui/tab_manager/tab_data.dart';
+import 'package:cb_file_manager/config/languages/app_localizations.dart';
 
 class TagManagementScreen extends StatefulWidget {
   final String startingDirectory;
 
+  /// Callback when a tag is selected, used for opening in a new tab
+  final Function(String)? onTagSelected;
+
   const TagManagementScreen({
     Key? key,
     this.startingDirectory = '',
+    this.onTagSelected,
   }) : super(key: key);
 
   @override
@@ -235,14 +243,32 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
     });
   }
 
-  // Thay thế hàm _selectTag bằng _directTagSearch
+  // Modified selection method to support tab integration
   Future<void> _selectTag(String tag) async {
-    // Chuyển tiếp đến _directTagSearch đã hoạt động tốt
-    await _directTagSearch(tag);
+    // Check if we have an onTagSelected callback from the parent
+    if (widget.onTagSelected != null) {
+      // Call the callback to open in a new tab
+      widget.onTagSelected!(tag);
+    } else {
+      // Fall back to the direct search if no callback is provided
+      await _directTagSearch(tag);
+    }
   }
 
   // Phương thức tìm kiếm tag trực tiếp - đã được chứng minh hoạt động tốt
   Future<void> _directTagSearch(String tag) async {
+    // When in a tab environment, prefer opening a new tab for tag search
+    final bool isInTabContext =
+        context.findAncestorWidgetOfExactType<BlocProvider<TabManagerBloc>>() !=
+            null;
+
+    if (isInTabContext) {
+      // Use the tab system for search instead of loading directly in this screen
+      _openTagSearchInNewTab(tag);
+      return;
+    }
+
+    // Traditional direct search for non-tab environments
     setState(() {
       _isLoading = true;
       _selectedTag = tag;
@@ -312,6 +338,54 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
     }
   }
 
+  // Opens a global search in a new tab via the TabManager
+  void _openTagSearchInNewTab(String tag) {
+    try {
+      // Get the TabManagerBloc
+      final tabManagerBloc = BlocProvider.of<TabManagerBloc>(context);
+
+      // Create a unique path for this tag search
+      final tagSearchPath = '#tag:$tag';
+
+      // Check if a tab with this tag search already exists
+      final existingTab = tabManagerBloc.state.tabs.firstWhere(
+        (tab) => tab.path == tagSearchPath,
+        orElse: () => TabData(id: '', name: '', path: ''),
+      );
+
+      if (existingTab.id.isNotEmpty) {
+        // If the tab exists, switch to it
+        tabManagerBloc.add(SwitchToTab(existingTab.id));
+      } else {
+        // Otherwise, create a new tab
+        tabManagerBloc.add(
+          AddTab(
+            path: tagSearchPath,
+            name: 'Tag: $tag',
+            switchToTab: true,
+          ),
+        );
+      }
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Opened tag "$tag" in a new tab'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      // Handle error if the TabManagerBloc is not found
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error opening tag in new tab: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
   // Clear tag selection and return to tag list
   void _clearTagSelection() {
     setState(() {
@@ -320,24 +394,25 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
     });
   }
 
-  // Show confirmation dialog for deleting a tag
-  Future<void> _showDeleteTagConfirmation(
-      BuildContext context, String tag) async {
-    final result = await showDialog<bool>(
+  // Show confirm dialog before deleting a tag
+  Future<void> _confirmDeleteTag(String tag) async {
+    final AppLocalizations localizations = AppLocalizations.of(context)!;
+    final bool result = await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Delete tag "$tag"?'),
-        content: const Text(
-          'This will remove the tag from all files. This action cannot be undone.',
+        title: Text(localizations.deleteTagConfirmation.replaceAll('%s', tag)),
+        content: Text(
+          localizations.tagDeleteConfirmationText,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('CANCEL'),
+            child: Text(localizations.cancel.toUpperCase()),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('DELETE', style: TextStyle(color: Colors.red)),
+            child: Text(localizations.delete.toUpperCase(),
+                style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -350,6 +425,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
 
   // Delete a tag from all files
   Future<void> _deleteTag(String tag) async {
+    final AppLocalizations localizations = AppLocalizations.of(context)!;
     setState(() {
       _isLoading = true;
     });
@@ -362,7 +438,8 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Tag "$tag" deleted successfully')),
+          SnackBar(
+              content: Text(localizations.tagDeleted.replaceAll('%s', tag))),
         );
       }
 
@@ -376,7 +453,9 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error deleting tag: $e')),
+          SnackBar(
+              content: Text(localizations.errorDeletingTag
+                  .replaceAll('%s', e.toString()))),
         );
       }
     } finally {
@@ -390,6 +469,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
 
   // Hiển thị color picker để chọn màu cho tag
   void _showColorPickerDialog(String tag) {
+    final AppLocalizations localizations = AppLocalizations.of(context)!;
     // Màu hiện tại của tag hoặc màu mặc định
     Color currentColor = _tagColorManager.getTagColor(tag);
 
@@ -397,7 +477,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Choose Color for "$tag"'),
+          title: Text(localizations.chooseTagColor.replaceAll('%s', tag)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -431,7 +511,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: const Text('Cancel'),
+              child: Text(localizations.cancel),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -445,13 +525,14 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                   // Thông báo thành công
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Color for tag "$tag" updated'),
+                      content: Text(
+                          localizations.tagColorUpdated.replaceAll('%s', tag)),
                       duration: const Duration(seconds: 2),
                     ),
                   );
                 }
               },
-              child: const Text('Save'),
+              child: Text(localizations.save),
             ),
           ],
         );
@@ -460,38 +541,34 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
   }
 
   Future<void> _showAboutDialog(BuildContext context) async {
+    final AppLocalizations localizations = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Tag Management'),
-        content: const Column(
+        title: Text(localizations.aboutTags),
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'About Tag Management:',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              localizations.aboutTagsTitle,
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
+            Text(localizations.aboutTagsDescription),
+            const SizedBox(height: 16),
             Text(
-              'Tags help you organize your files by adding custom labels. '
-              'You can add or remove tags from files, and find all files with a specific tag.',
+              localizations.aboutTagsScreenDescription,
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 16),
-            Text(
-              'This screen shows:',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 8),
-            Text('• All tags in your library\n'
-                '• Files tagged with a selected tag\n'
-                '• Options to delete tags'),
+            const SizedBox(height: 8),
+            Text(localizations.aboutTagsScreenDescription),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('CLOSE'),
+            child: Text(localizations.close.toUpperCase()),
           ),
         ],
       ),
@@ -510,77 +587,118 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Tạo tiêu đề phù hợp
+    final AppLocalizations localizations = AppLocalizations.of(context)!;
+    // Check if we're in a tab environment
+    final bool isInTabContext =
+        context.findAncestorWidgetOfExactType<BlocProvider<TabManagerBloc>>() !=
+            null;
+
+    // Create appropriate title
     String title;
     if (_selectedTag != null) {
-      title = 'Files with tag "$_selectedTag"';
+      title = localizations.filesWithTag.replaceAll('%s', _selectedTag!);
     } else if (widget.startingDirectory.isNotEmpty) {
       final dirName = pathlib.basename(widget.startingDirectory);
-      title = 'Tags in "$dirName"';
+      title = localizations.tagsInDirectory.replaceAll('%s', dirName);
     } else {
-      title = 'All Tags';
-    }
-
-    // Create custom actions list based on search state
-    List<Widget> actionWidgets = [];
-
-    // Add search button
-    if (!_isSearching) {
-      actionWidgets.add(
-        IconButton(
-          icon: const Icon(Icons.search),
-          onPressed: _toggleSearch,
-          tooltip: 'Search tags',
-        ),
-      );
-    }
-
-    // Add other action buttons when not searching
-    if (_selectedTag != null && !_isSearching) {
-      actionWidgets.add(
-        IconButton(
-          icon: const Icon(Icons.delete),
-          onPressed: () => _showDeleteTagConfirmation(context, _selectedTag!),
-          tooltip: 'Delete this tag from all files',
-        ),
-      );
-
-      actionWidgets.add(
-        IconButton(
-          icon: const Icon(Icons.color_lens),
-          onPressed: () => _showColorPickerDialog(_selectedTag!),
-          tooltip: 'Change tag color',
-        ),
-      );
-    }
-
-    if (!_isSearching) {
-      actionWidgets.add(
-        IconButton(
-          icon: const Icon(Icons.refresh),
-          onPressed: () async {
-            await _loadAllTags();
-            if (_selectedTag != null) {
-              await _selectTag(_selectedTag!);
-            }
-          },
-          tooltip: 'Refresh',
-        ),
-      );
-
-      actionWidgets.add(
-        IconButton(
-          icon: const Icon(Icons.info_outline),
-          onPressed: () => _showAboutDialog(context),
-          tooltip: 'About tag management',
-        ),
-      );
+      title = localizations.allTags;
     }
 
     return BaseScreen(
-      title: _isSearching ? 'Search Tags' : title,
-      automaticallyImplyLeading: !_isSearching,
-      actions: actionWidgets,
+      title: title,
+      actions: [
+        // Show search icon
+        IconButton(
+          icon: Icon(_isSearching ? Icons.search_off : Icons.search),
+          onPressed: _toggleSearch,
+          tooltip: localizations.search,
+        ),
+        // Show about icon
+        IconButton(
+          icon: const Icon(Icons.info_outline),
+          onPressed: () => _showAboutDialog(context),
+          tooltip: localizations.aboutTags,
+        ),
+        // Show sort menu
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.sort),
+          tooltip: localizations.sort,
+          onSelected: (value) {
+            setState(() {
+              if (_sortCriteria == value) {
+                // Toggle sort direction
+                _sortAscending = !_sortAscending;
+              } else {
+                // Change sort criteria
+                _sortCriteria = value;
+                _sortAscending = true;
+              }
+              _sortTags();
+              _updatePagination();
+            });
+          },
+          itemBuilder: (context) => [
+            PopupMenuItem<String>(
+              value: 'name',
+              child: Row(
+                children: [
+                  Icon(
+                    _sortCriteria == 'name'
+                        ? (_sortAscending
+                            ? Icons.arrow_upward
+                            : Icons.arrow_downward)
+                        : Icons.sort_by_alpha,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(localizations.sortByName),
+                ],
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'popularity',
+              child: Row(
+                children: [
+                  Icon(
+                    _sortCriteria == 'popularity'
+                        ? (_sortAscending
+                            ? Icons.arrow_upward
+                            : Icons.arrow_downward)
+                        : Icons.trending_up,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(localizations.sortByPopularity),
+                ],
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'recent',
+              child: Row(
+                children: [
+                  Icon(
+                    _sortCriteria == 'recent'
+                        ? (_sortAscending
+                            ? Icons.arrow_upward
+                            : Icons.arrow_downward)
+                        : Icons.history,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(localizations.sortByRecent),
+                ],
+              ),
+            ),
+          ],
+        ),
+        // Show delete button if a tag is selected
+        if (_selectedTag != null)
+          IconButton(
+            icon: const Icon(Icons.delete),
+            onPressed: () => _confirmDeleteTag(_selectedTag!),
+            tooltip: localizations.deleteTag,
+          ),
+      ],
       body: Builder(
         builder: (context) {
           if (_isSearching) {
@@ -593,7 +711,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                   child: TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
-                      hintText: 'Search tags...',
+                      hintText: 'Tìm kiếm thẻ...',
                       prefixIcon: const Icon(Icons.search),
                       suffixIcon: IconButton(
                         icon: const Icon(Icons.close),
@@ -632,6 +750,11 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
   }
 
   void _showTagOptions(String tag) {
+    // Check if we're in a tab environment
+    final bool isInTabContext =
+        context.findAncestorWidgetOfExactType<BlocProvider<TabManagerBloc>>() !=
+            null;
+
     showModalBottomSheet(
       context: context,
       builder: (context) {
@@ -641,19 +764,29 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
             children: [
               ListTile(
                 leading: const Icon(Icons.color_lens),
-                title: const Text('Change Color'),
+                title: const Text('Thay đổi màu sắc'),
                 onTap: () {
                   Navigator.pop(context);
                   _showColorPickerDialog(tag);
                 },
               ),
+              // Only show the "Open in New Tab" option if we're in a tab context
+              if (isInTabContext && widget.onTagSelected == null)
+                ListTile(
+                  leading: const Icon(Icons.tab),
+                  title: const Text('Mở trong tab mới'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _openTagSearchInNewTab(tag);
+                  },
+                ),
               ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Delete Tag',
-                    style: TextStyle(color: Colors.red)),
+                title:
+                    const Text('Xóa thẻ', style: TextStyle(color: Colors.red)),
                 onTap: () {
                   Navigator.pop(context);
-                  _showDeleteTagConfirmation(context, tag);
+                  _confirmDeleteTag(tag);
                 },
               ),
             ],
@@ -679,12 +812,12 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
             ),
             const SizedBox(height: 24),
             const Text(
-              'No tags found',
+              'Không tìm thấy thẻ nào',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 16),
             const Text(
-              'Tags added to files will appear here',
+              'Các thẻ được thêm vào tệp sẽ xuất hiện ở đây',
               style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
           ],
@@ -704,7 +837,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
             ),
             const SizedBox(height: 24),
             Text(
-              'No tags matching "${_searchController.text}"',
+              'Không có thẻ nào phù hợp với "${_searchController.text}"',
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
               textAlign: TextAlign.center,
             ),
@@ -714,7 +847,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                 _searchController.clear();
               },
               icon: const Icon(Icons.clear, size: 20),
-              label: const Text('Clear search', style: TextStyle(fontSize: 16)),
+              label: const Text('Xóa tìm kiếm', style: TextStyle(fontSize: 16)),
               style: OutlinedButton.styleFrom(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -757,7 +890,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        'All Tags (${_filteredTags.length})',
+                        'Tất cả thẻ (${_filteredTags.length})',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -777,7 +910,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                           ),
                         ),
                         child: PopupMenuButton<String>(
-                          tooltip: 'Sort tags',
+                          tooltip: 'Sắp xếp thẻ',
                           onSelected: _changeSortCriteria,
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
@@ -794,7 +927,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  'Sort',
+                                  'Sắp xếp',
                                   style: TextStyle(
                                     fontSize: 16,
                                     color: isDarkMode
@@ -819,7 +952,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                                   ),
                                   const SizedBox(width: 12),
                                   const Text(
-                                    'Alphabetical',
+                                    'Theo bảng chữ cái',
                                     style: TextStyle(fontSize: 16),
                                   ),
                                   if (_sortCriteria == 'name')
@@ -848,7 +981,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                                   ),
                                   const SizedBox(width: 12),
                                   const Text(
-                                    'Popularity',
+                                    'Theo phổ biến',
                                     style: TextStyle(fontSize: 16),
                                   ),
                                   if (_sortCriteria == 'popularity')
@@ -877,7 +1010,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                                   ),
                                   const SizedBox(width: 12),
                                   const Text(
-                                    'Recently Used',
+                                    'Sử dụng gần đây',
                                     style: TextStyle(fontSize: 16),
                                   ),
                                   if (_sortCriteria == 'recent')
@@ -900,7 +1033,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'Tap on a tag to see all files with that tag. Long press for more options.',
+                    'Nhấn vào thẻ để xem tất cả tệp có gắn thẻ đó. Nhấn giữ để hiện thêm tùy chọn.',
                     style: TextStyle(color: Colors.grey, fontSize: 15),
                   ),
                 ],
@@ -927,10 +1060,10 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                       icon: const Icon(Icons.navigate_before),
                       iconSize: 24,
                       onPressed: _currentPage > 0 ? _previousPage : null,
-                      tooltip: 'Previous page',
+                      tooltip: 'Trang trước',
                     ),
                     Text(
-                      'Page ${_currentPage + 1} of $_totalPages',
+                      'Trang ${_currentPage + 1} / $_totalPages',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -941,7 +1074,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                       iconSize: 24,
                       onPressed:
                           _currentPage < _totalPages - 1 ? _nextPage : null,
-                      tooltip: 'Next page',
+                      tooltip: 'Trang sau',
                     ),
                   ],
                 ),
@@ -977,13 +1110,13 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                       icon: const Icon(Icons.first_page),
                       iconSize: 22,
                       onPressed: _currentPage > 0 ? () => _goToPage(0) : null,
-                      tooltip: 'First page',
+                      tooltip: 'Trang đầu',
                     ),
                     IconButton(
                       icon: const Icon(Icons.navigate_before),
                       iconSize: 22,
                       onPressed: _currentPage > 0 ? _previousPage : null,
-                      tooltip: 'Previous page',
+                      tooltip: 'Trang trước',
                     ),
                     ..._buildPageIndicators(),
                     IconButton(
@@ -991,7 +1124,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                       iconSize: 22,
                       onPressed:
                           _currentPage < _totalPages - 1 ? _nextPage : null,
-                      tooltip: 'Next page',
+                      tooltip: 'Trang sau',
                     ),
                     IconButton(
                       icon: const Icon(Icons.last_page),
@@ -999,7 +1132,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                       onPressed: _currentPage < _totalPages - 1
                           ? () => _goToPage(_totalPages - 1)
                           : null,
-                      tooltip: 'Last page',
+                      tooltip: 'Trang cuối',
                     ),
                   ],
                 ),
@@ -1102,90 +1235,98 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
         // Get current tag color
         final tagColor = TagColorManager.instance.getTagColor(tag);
 
-        return Card(
-          elevation: 3,
-          shadowColor: isDarkMode ? Colors.black54 : Colors.black38,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(
-              color: tagColor.withOpacity(0.4),
-              width: 1.5,
+        return MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: Card(
+            elevation: 3,
+            shadowColor: isDarkMode ? Colors.black54 : Colors.black38,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: tagColor.withOpacity(0.4),
+                width: 1.5,
+              ),
             ),
-          ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () => _directTagSearch(tag),
-            onLongPress: () => _showTagOptions(tag),
-            child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-              child: Row(
-                mainAxisSize: MainAxisSize.max,
-                children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        // Color indicator dot
-                        Container(
-                          width: 14,
-                          height: 14,
-                          decoration: BoxDecoration(
-                            color: tagColor,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: tagColor.withOpacity(0.5),
-                                blurRadius: 4,
-                                spreadRadius: 1,
-                              )
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        // Tag text
-                        Expanded(
-                          child: Text(
-                            tag,
-                            style: TextStyle(
-                              fontSize: 16, // Larger text
-                              fontWeight: FontWeight.w500,
-                              color: isDarkMode ? Colors.white : Colors.black87,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Actions
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
+            child: GestureDetector(
+              onSecondaryTap: () => _showTagOptions(tag),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => _directTagSearch(tag),
+                onLongPress: () => _showTagOptions(tag),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12.0, vertical: 8.0),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.max,
                     children: [
-                      IconButton(
-                        icon: Icon(
-                          Icons.color_lens_outlined,
-                          size: 22, // Larger icon
-                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                      Expanded(
+                        child: Row(
+                          children: [
+                            // Color indicator dot
+                            Container(
+                              width: 14,
+                              height: 14,
+                              decoration: BoxDecoration(
+                                color: tagColor,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: tagColor.withOpacity(0.5),
+                                    blurRadius: 4,
+                                    spreadRadius: 1,
+                                  )
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            // Tag text
+                            Expanded(
+                              child: Text(
+                                tag,
+                                style: TextStyle(
+                                  fontSize: 16, // Larger text
+                                  fontWeight: FontWeight.w500,
+                                  color: isDarkMode
+                                      ? Colors.white
+                                      : Colors.black87,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
-                        onPressed: () => _showColorPickerDialog(tag),
-                        tooltip: 'Change tag color',
-                        splashRadius: 24,
                       ),
-                      IconButton(
-                        icon: Icon(
-                          Icons.delete_outline,
-                          size: 22, // Larger icon
-                          color: Colors.redAccent
-                              .withOpacity(isDarkMode ? 0.8 : 0.7),
-                        ),
-                        onPressed: () =>
-                            _showDeleteTagConfirmation(context, tag),
-                        tooltip: 'Delete tag',
-                        splashRadius: 24,
+                      // Actions
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              Icons.color_lens_outlined,
+                              size: 22, // Larger icon
+                              color:
+                                  isDarkMode ? Colors.white70 : Colors.black54,
+                            ),
+                            onPressed: () => _showColorPickerDialog(tag),
+                            tooltip: 'Thay đổi màu thẻ',
+                            splashRadius: 24,
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              Icons.delete_outline,
+                              size: 22, // Larger icon
+                              color: Colors.redAccent
+                                  .withOpacity(isDarkMode ? 0.8 : 0.7),
+                            ),
+                            onPressed: () => _confirmDeleteTag(tag),
+                            tooltip: 'Xóa thẻ này khỏi tất cả tệp',
+                            splashRadius: 24,
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -1214,12 +1355,12 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
             ),
             const SizedBox(height: 24),
             const Text(
-              'No files found with this tag',
+              'Không tìm thấy tệp nào có thẻ này',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 16),
             Text(
-              'Debugging info: searching for tag "${_selectedTag ?? 'none'}"',
+              'Thông tin gỡ lỗi: đang tìm thẻ "${_selectedTag ?? 'none'}"',
               style: const TextStyle(fontSize: 14, color: Colors.grey),
             ),
             const SizedBox(height: 24),
@@ -1229,7 +1370,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                 ElevatedButton.icon(
                   icon: const Icon(Icons.arrow_back,
                       size: 22, color: Colors.white),
-                  label: const Text('Back to all tags',
+                  label: const Text('Quay về tất cả thẻ',
                       style: TextStyle(
                           fontSize: 16,
                           color: Colors.white,
@@ -1247,7 +1388,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                 ElevatedButton.icon(
                   icon:
                       const Icon(Icons.refresh, size: 22, color: Colors.white),
-                  label: const Text('Try Again',
+                  label: const Text('Thử lại',
                       style: TextStyle(
                           fontSize: 16,
                           color: Colors.white,
@@ -1295,7 +1436,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                     ElevatedButton.icon(
                       icon: const Icon(Icons.arrow_back,
                           size: 22, color: Colors.white),
-                      label: const Text('Back to all tags',
+                      label: const Text('Quay về tất cả thẻ',
                           style: TextStyle(
                               fontSize: 16,
                               color: Colors.white,
@@ -1315,7 +1456,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                         icon: const Icon(Icons.color_lens,
                             size: 20, color: Colors.white),
                         label: const Text(
-                          'Change Color',
+                          'Thay đổi màu',
                           style: TextStyle(
                               fontSize: 15,
                               color: Colors.white,
@@ -1357,7 +1498,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        '${_filesBySelectedTag.length} ${_filesBySelectedTag.length == 1 ? 'file' : 'files'}',
+                        '${_filesBySelectedTag.length} ${_filesBySelectedTag.length == 1 ? 'tệp' : 'tệp'}',
                         style: TextStyle(
                           fontSize: 16,
                           color: isDarkMode ? Colors.white70 : Colors.black54,
@@ -1382,65 +1523,75 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                 final String fileName = pathlib.basename(path);
                 final String dirName = pathlib.dirname(path);
 
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8.0),
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(
-                      color: isDarkMode ? Colors.white12 : Colors.black12,
-                      width: 1,
-                    ),
-                  ),
-                  child: ListTile(
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: isDarkMode
-                            ? Theme.of(context).primaryColor.withOpacity(0.2)
-                            : Theme.of(context).primaryColor.withOpacity(0.1),
-                        shape: BoxShape.circle,
+                return MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onSecondaryTap: () => _showFileOptions(path),
+                    child: Card(
+                      margin: const EdgeInsets.only(bottom: 8.0),
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(
+                          color: isDarkMode ? Colors.white12 : Colors.black12,
+                          width: 1,
+                        ),
                       ),
-                      child: Icon(
-                        Icons.description,
-                        color: Theme.of(context).primaryColor,
-                        size: 24,
-                      ),
-                    ),
-                    title: Text(
-                      fileName,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      dirName,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: isDarkMode ? Colors.white60 : Colors.black54,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: Icon(
-                      Icons.chevron_right,
-                      color: isDarkMode ? Colors.white60 : Colors.black54,
-                    ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => FileDetailsScreen(
-                            file: File(path),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: isDarkMode
+                                ? Theme.of(context)
+                                    .primaryColor
+                                    .withOpacity(0.2)
+                                : Theme.of(context)
+                                    .primaryColor
+                                    .withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.description,
+                            color: Theme.of(context).primaryColor,
+                            size: 24,
                           ),
                         ),
-                      );
-                    },
+                        title: Text(
+                          fileName,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          dirName,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: isDarkMode ? Colors.white60 : Colors.black54,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: Icon(
+                          Icons.chevron_right,
+                          color: isDarkMode ? Colors.white60 : Colors.black54,
+                        ),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => FileDetailsScreen(
+                                file: File(path),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   ),
                 );
               },
@@ -1449,5 +1600,160 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
         ],
       ),
     );
+  }
+
+  // Hiển thị menu tùy chọn khi nhấp chuột phải vào tệp
+  void _showFileOptions(String filePath) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final File file = File(filePath);
+    final String fileName = pathlib.basename(filePath);
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                color: isDarkMode
+                    ? Theme.of(context).primaryColor.withOpacity(0.1)
+                    : Theme.of(context).primaryColor.withOpacity(0.05),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      fileName,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      filePath,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: isDarkMode ? Colors.white60 : Colors.black54,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: const Text('Xem chi tiết'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => FileDetailsScreen(
+                        file: file,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.folder_open),
+                title: const Text('Mở thư mục chứa'),
+                onTap: () {
+                  Navigator.pop(context);
+                  final directory = pathlib.dirname(filePath);
+                  _openContainingFolder(directory);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.edit),
+                title: const Text('Chỉnh sửa thẻ'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => FileDetailsScreen(
+                        file: file,
+                        initialTab: 1, // Giả sử tab 1 là tab Tags
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Mở thư mục chứa tệp tin
+  void _openContainingFolder(String folderPath) {
+    // Kiểm tra xem thư mục có tồn tại không
+    if (Directory(folderPath).existsSync()) {
+      try {
+        // Hiển thị thông báo
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Opening folder: $folderPath')),
+        );
+
+        // Nếu trong môi trường tab, thêm tab mới hoặc chuyển đến tab đã mở
+        final bool isInTabContext = context.findAncestorWidgetOfExactType<
+                BlocProvider<TabManagerBloc>>() !=
+            null;
+
+        if (isInTabContext) {
+          try {
+            // Lấy TabManagerBloc
+            final tabManagerBloc = BlocProvider.of<TabManagerBloc>(context);
+
+            // Kiểm tra xem đã có tab này chưa
+            final existingTab = tabManagerBloc.state.tabs.firstWhere(
+              (tab) => tab.path == folderPath,
+              orElse: () => TabData(id: '', name: '', path: ''),
+            );
+
+            if (existingTab.id.isNotEmpty) {
+              // Nếu tab đã tồn tại, chuyển đến tab đó
+              tabManagerBloc.add(SwitchToTab(existingTab.id));
+            } else {
+              // Nếu chưa có, tạo tab mới
+              final folderName = pathlib.basename(folderPath);
+              tabManagerBloc.add(
+                AddTab(
+                  path: folderPath,
+                  name: folderName,
+                  switchToTab: true,
+                ),
+              );
+            }
+          } catch (e) {
+            debugPrint('Error opening folder in tab: $e');
+            // Nếu không thể mở trong tab, có thể thực hiện xử lý fallback ở đây
+          }
+        } else {
+          // Xử lý khi không trong môi trường tab
+          // Điều này phụ thuộc vào cách ứng dụng của bạn điều hướng
+          // Ví dụ: bạn có thể pop màn hình hiện tại và mở thư mục
+          Navigator.of(context).pop();
+        }
+      } catch (e) {
+        debugPrint('Error opening folder: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error opening folder: $e')),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Folder not found: $folderPath')),
+      );
+    }
   }
 }

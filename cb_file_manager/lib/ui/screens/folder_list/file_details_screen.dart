@@ -5,15 +5,24 @@ import 'package:cb_file_manager/helpers/thumbnail_helper.dart';
 import 'package:cb_file_manager/ui/dialogs/open_with_dialog.dart';
 import 'package:cb_file_manager/ui/utils/base_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:path/path.dart' as pathlib;
 import 'package:cb_file_manager/ui/components/video_player/custom_video_player.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:cb_file_manager/ui/widgets/tag_management_section.dart';
+import 'package:cb_file_manager/config/languages/app_localizations.dart';
 
 class FileDetailsScreen extends StatefulWidget {
   final File file;
 
-  const FileDetailsScreen({Key? key, required this.file}) : super(key: key);
+  /// Tab index to show initially (0 = default details tab)
+  final int initialTab;
+
+  const FileDetailsScreen({
+    Key? key,
+    required this.file,
+    this.initialTab = 0,
+  }) : super(key: key);
 
   @override
   State<FileDetailsScreen> createState() => _FileDetailsScreenState();
@@ -27,10 +36,31 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
   void initState() {
     super.initState();
     _fileStatFuture = widget.file.stat();
+
+    // Set initial tab if specified
+    if (widget.initialTab > 0) {
+      // We'll switch to the specified tab after the build is complete
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // For now, just scroll to the Tags section if initialTab = 1
+        if (widget.initialTab == 1) {
+          // Find a simpler way to scroll to the Tags section
+          final scrollController = PrimaryScrollController.of(context);
+          if (scrollController != null) {
+            // Scroll to the estimated position of the Tags section (value based on UI height)
+            scrollController.animateTo(
+              500, // Estimated position of the Tags section
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+            );
+          }
+        }
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     final String extension = widget.file.extension().toLowerCase();
     final bool isImage =
         ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(extension);
@@ -47,11 +77,11 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
         isDarkMode ? Colors.grey[400]! : Colors.grey[700]!;
 
     return BaseScreen(
-      title: 'File Properties',
+      title: localizations.properties,
       actions: [
         IconButton(
           icon: const Icon(EvaIcons.externalLinkOutline),
-          tooltip: 'Open with external app',
+          tooltip: localizations.openWith,
           onPressed: () {
             _showOpenWithDialog();
           },
@@ -60,8 +90,8 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
           icon: const Icon(EvaIcons.shareOutline),
           onPressed: () {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Share functionality not implemented yet'),
+              SnackBar(
+                content: Text(localizations.operationFailed),
               ),
             );
           },
@@ -146,7 +176,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'Tags',
+                              localizations.tags,
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -188,7 +218,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
                         ListTile(
                           leading: Icon(EvaIcons.externalLinkOutline,
                               color: textColor),
-                          title: Text('Open with...',
+                          title: Text(localizations.openWith,
                               style: TextStyle(color: textColor)),
                           onTap: _showOpenWithDialog,
                         ),
@@ -196,14 +226,13 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
                         ListTile(
                           leading:
                               Icon(EvaIcons.fileTextOutline, color: textColor),
-                          title: Text('Make a copy',
+                          title: Text(localizations.createCopy,
                               style: TextStyle(color: textColor)),
                           onTap: () {
                             // Make a copy functionality
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text(
-                                      'Copy functionality not implemented yet')),
+                              SnackBar(
+                                  content: Text(localizations.operationFailed)),
                             );
                           },
                         ),
@@ -211,14 +240,13 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
                         ListTile(
                           leading: Icon(EvaIcons.trash2Outline,
                               color: Colors.red[300]),
-                          title: Text('Delete file',
+                          title: Text(localizations.deleteFile,
                               style: TextStyle(color: Colors.red[300])),
                           onTap: () {
                             // Delete functionality
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content:
-                                      Text('Delete functionality coming soon')),
+                              SnackBar(
+                                  content: Text(localizations.operationFailed)),
                             );
                           },
                         ),
@@ -237,6 +265,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
   }
 
   Widget _buildHeaderSection() {
+    final localizations = AppLocalizations.of(context)!;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final extension = widget.file.extension().toLowerCase();
     final Color textColor = isDarkMode ? Colors.white : Colors.black87;
@@ -313,6 +342,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
   }
 
   Widget _buildImagePreview() {
+    final localizations = AppLocalizations.of(context)!;
     return Container(
       width: double.infinity,
       height: 300,
@@ -323,16 +353,16 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
           widget.file,
           fit: BoxFit.contain,
           errorBuilder: (context, error, stackTrace) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.broken_image,
+                  const Icon(Icons.broken_image,
                       size: 64, color: Colors.white54),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   Text(
-                    'Error loading image',
-                    style: TextStyle(color: Colors.white70),
+                    localizations.errorLoadingImage,
+                    style: const TextStyle(color: Colors.white70),
                   ),
                 ],
               ),
@@ -344,6 +374,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
   }
 
   Widget _buildVideoPreview() {
+    final localizations = AppLocalizations.of(context)!;
     return Container(
       width: double.infinity,
       height: 300,
@@ -361,15 +392,16 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
                 height: 300,
                 isVisible: true,
                 onThumbnailGenerated: (_) {},
-                fallbackBuilder: () => const Center(
+                fallbackBuilder: () => Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.videocam, size: 64, color: Colors.white54),
-                      SizedBox(height: 8),
+                      const Icon(Icons.videocam,
+                          size: 64, color: Colors.white54),
+                      const SizedBox(height: 8),
                       Text(
-                        'Loading video...',
-                        style: TextStyle(color: Colors.white70),
+                        localizations.loadingVideo,
+                        style: const TextStyle(color: Colors.white70),
                       ),
                     ],
                   ),
@@ -394,7 +426,8 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
               onError: (errorMessage) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Error playing video: $errorMessage'),
+                    content:
+                        Text('${localizations.operationFailed}: $errorMessage'),
                   ),
                 );
               },
@@ -406,6 +439,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
   }
 
   Widget _buildAudioPreview() {
+    final localizations = AppLocalizations.of(context)!;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
@@ -440,9 +474,8 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
               ElevatedButton(
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                          'Audio playback not implemented in this preview version'),
+                    SnackBar(
+                      content: Text(localizations.operationFailed),
                     ),
                   );
                 },
@@ -467,6 +500,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
   }
 
   Widget _buildFileDetails(Color textColor, Color secondaryTextColor) {
+    final localizations = AppLocalizations.of(context)!;
     return FutureBuilder<FileStat>(
       future: _fileStatFuture,
       builder: (context, snapshot) {
@@ -482,7 +516,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
         if (!snapshot.hasData) {
           return Center(
             child: Text(
-              'Error loading file details',
+              localizations.operationFailed,
               style: TextStyle(color: textColor),
             ),
           );
@@ -494,16 +528,24 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
 
         return Column(
           children: [
-            _buildDetailRow('Size', fileSize, Icons.storage_outlined, textColor,
+            _buildDetailRow(localizations.fileSize, fileSize,
+                Icons.storage_outlined, textColor, secondaryTextColor),
+            const Divider(height: 24),
+            _buildDetailRow(
+                localizations.fileLocation,
+                pathlib.dirname(widget.file.path),
+                Icons.folder_outlined,
+                textColor,
                 secondaryTextColor),
             const Divider(height: 24),
-            _buildDetailRow('Location', pathlib.dirname(widget.file.path),
-                Icons.folder_outlined, textColor, secondaryTextColor),
+            _buildDetailRow(
+                localizations.fileCreated,
+                stat.changed.toString().split('.')[0],
+                Icons.date_range_outlined,
+                textColor,
+                secondaryTextColor),
             const Divider(height: 24),
-            _buildDetailRow('Created', stat.changed.toString().split('.')[0],
-                Icons.date_range_outlined, textColor, secondaryTextColor),
-            const Divider(height: 24),
-            _buildDetailRow('Modified', formattedDate,
+            _buildDetailRow(localizations.fileModified, formattedDate,
                 Icons.edit_calendar_outlined, textColor, secondaryTextColor),
           ],
         );

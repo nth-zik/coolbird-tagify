@@ -39,6 +39,7 @@ import 'package:flutter/rendering.dart' show RendererBinding;
 // For scheduler and timeDilation
 // Add import for value listenable builder
 import 'package:flutter/foundation.dart';
+import 'package:cb_file_manager/config/languages/app_localizations.dart';
 
 // Add this class to cache thumbnails
 class ThumbnailCache {
@@ -114,12 +115,16 @@ class TabbedFolderListScreen extends StatefulWidget {
   final String path;
   final String tabId;
   final bool showAppBar; // Thêm tham số để kiểm soát việc hiển thị AppBar
+  final String? searchTag; // Add parameter for tag search
+  final bool globalTagSearch; // Add parameter to control global vs local search
 
   const TabbedFolderListScreen({
     Key? key,
     required this.path,
     required this.tabId,
     this.showAppBar = true, // Mặc định là hiển thị AppBar
+    this.searchTag, // Optional tag to search for
+    this.globalTagSearch = false, // Default to local search
   }) : super(key: key);
 
   @override
@@ -175,6 +180,12 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
     _tagController = TextEditingController();
     _pathController = TextEditingController(text: _currentPath);
 
+    // Set current search tag if provided
+    _currentSearchTag = widget.searchTag;
+
+    // Set global search flag if specified
+    isGlobalSearch = widget.globalTagSearch;
+
     // Enable hardware acceleration for smoother animations
     WidgetsBinding.instance.renderView.automaticSystemUiAdjustment = false;
     // Replace with platform-optimized settings
@@ -182,7 +193,24 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
 
     // Initialize the blocs
     _folderListBloc = FolderListBloc();
-    _folderListBloc.add(FolderListLoad(widget.path));
+
+    // Handle tag search initialization
+    if (widget.searchTag != null) {
+      // Initialize with tag search
+      if (widget.globalTagSearch) {
+        // Global tag search
+        _folderListBloc.add(SearchByTagGlobally(widget.searchTag!));
+      } else {
+        // Local tag search within current directory
+        _folderListBloc
+            .add(FolderListLoad(widget.path)); // First load the directory
+        _folderListBloc
+            .add(SearchByTag(widget.searchTag!)); // Then search within it
+      }
+    } else {
+      // Normal directory loading
+      _folderListBloc.add(FolderListLoad(widget.path));
+    }
 
     // Initialize selection bloc
     _selectionBloc = SelectionBloc();
@@ -999,7 +1027,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                 ],
               ),
             ),
-            const Expanded(
+            Expanded(
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1007,7 +1035,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                     Icon(EvaIcons.search, size: 64, color: Colors.grey),
                     SizedBox(height: 16),
                     Text(
-                      'Không tìm thấy tệp nào phù hợp',
+                      AppLocalizations.of(context)!.emptyFolder,
                       style: TextStyle(fontSize: 18),
                     ),
                   ],
@@ -1039,8 +1067,9 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
 
     // Empty directory check
     if (state.folders.isEmpty && state.files.isEmpty) {
-      return const Center(
-        child: Text('Thư mục trống', style: TextStyle(fontSize: 18)),
+      return Center(
+        child: Text(AppLocalizations.of(context)!.emptyFolder,
+            style: TextStyle(fontSize: 18)),
       );
     }
 

@@ -77,6 +77,23 @@ class EnglishLocalizations implements AppLocalizations {
   String get lightMode => 'Light Mode';
   @override
   String get systemMode => 'System Mode';
+  @override
+  String get selectLanguage => 'Select the language you want to use';
+  @override
+  String get selectTheme => 'Choose the display theme for the app';
+  @override
+  String get selectThumbnailPosition =>
+      'Choose the video thumbnail extraction position';
+  @override
+  String get systemThemeDescription => 'Follow the system theme settings';
+  @override
+  String get lightThemeDescription => 'Light interface for all screens';
+  @override
+  String get darkThemeDescription => 'Dark interface for all screens';
+  @override
+  String get vietnameseLanguage => 'Vietnamese';
+  @override
+  String get englishLanguage => 'English';
 
   // Messages
   @override
@@ -101,6 +118,39 @@ class EnglishLocalizations implements AppLocalizations {
   String get removeTag => 'Remove Tag';
   @override
   String get tagManagement => 'Tag Management';
+  @override
+  String get deleteTagConfirmation => 'Delete tag "%s"?';
+  @override
+  String get tagDeleteConfirmationText =>
+      'This will remove the tag from all files. This action cannot be undone.';
+  @override
+  String get tagDeleted => 'Tag "%s" deleted successfully';
+  @override
+  String get errorDeletingTag => 'Error deleting tag: %s';
+  @override
+  String get chooseTagColor => 'Choose Color for "%s"';
+  @override
+  String get tagColorUpdated => 'Color for tag "%s" has been updated';
+  @override
+  String get allTags => 'All Tags';
+  @override
+  String get filesWithTag => 'Files with tag "%s"';
+  @override
+  String get tagsInDirectory => 'Tags in "%s"';
+  @override
+  String get aboutTags => 'About Tag Management';
+  @override
+  String get aboutTagsTitle => 'Introduction to tag management:';
+  @override
+  String get aboutTagsDescription =>
+      'Tags help you organize files by adding custom labels. '
+      'You can add or remove tags from files, and find all files with specific tags.';
+  @override
+  String get aboutTagsScreenDescription => '• All tags in your library\n'
+      '• Files tagged with selected tag\n'
+      '• Options to delete tags';
+  @override
+  String get deleteTag => 'Delete this tag from all files';
 
   // Gallery
   @override
@@ -250,24 +300,65 @@ class EnglishLocalizations implements AppLocalizations {
 
   // About app
   @override
-  String get aboutApp => 'About';
+  String get aboutApp => 'About App';
   @override
-  String get appDescription =>
-      'A powerful file manager with tagging capabilities';
+  String get appDescription => 'An advanced file management solution';
   @override
-  String get version => 'Version: 1.0.0';
+  String get version => 'Version';
   @override
-  String get developer => 'Developed by CoolBird Team';
+  String get developer => 'Developer';
+
+  // Empty state
+  @override
+  String get emptyFolder => 'Empty folder';
+  @override
+  String get noImagesFound => 'No images found in this folder';
+  @override
+  String get noVideosFound => 'No videos found in this folder';
+  @override
+  String get loading => 'Loading...';
 
   // File picker dialogs
   @override
-  String get chooseBackupLocation => 'Choose location to save backup';
+  String get chooseBackupLocation => 'Choose Backup Location';
   @override
-  String get chooseRestoreLocation => 'Choose backup to restore';
+  String get chooseRestoreLocation => 'Choose Restore File';
   @override
   String get saveSettingsExport => 'Save Settings Export';
   @override
   String get saveDatabaseExport => 'Save Database Export';
   @override
-  String get selectBackupFolder => 'Select backup folder to import';
+  String get selectBackupFolder => 'Select Backup Folder';
+
+  // File details
+  @override
+  String get fileSize => 'Size';
+  @override
+  String get fileLocation => 'Location';
+  @override
+  String get fileCreated => 'Created';
+  @override
+  String get fileModified => 'Modified';
+  @override
+  String get loadingVideo => 'Loading video...';
+  @override
+  String get errorLoadingImage => 'Error loading image';
+  @override
+  String get createCopy => 'Create copy';
+  @override
+  String get deleteFile => 'Delete file';
+
+  // Sorting
+  @override
+  String get sort => 'Sort';
+  @override
+  String get sortByName => 'Sort by name';
+  @override
+  String get sortByPopularity => 'Sort by popularity';
+  @override
+  String get sortByRecent => 'Sort by recent';
+  @override
+  String get sortBySize => 'Sort by size';
+  @override
+  String get sortByDate => 'Sort by date';
 }

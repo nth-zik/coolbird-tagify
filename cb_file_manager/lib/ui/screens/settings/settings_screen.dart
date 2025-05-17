@@ -253,11 +253,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
             child: Text(
-              'Chọn ngôn ngữ bạn muốn sử dụng',
-              style: TextStyle(
+              context.tr.selectLanguage,
+              style: const TextStyle(
                 fontSize: 14,
                 color: Colors.grey,
               ),
@@ -265,13 +265,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 8),
           _buildLanguageOption(
-            title: 'Tiếng Việt',
+            title: context.tr.vietnameseLanguage,
             value: LanguageController.vietnamese,
             icon: Icons.language,
             flagEmoji: '🇻🇳',
           ),
           _buildLanguageOption(
-            title: 'English',
+            title: context.tr.englishLanguage,
             value: LanguageController.english,
             icon: Icons.language,
             flagEmoji: '🇬🇧',
@@ -296,11 +296,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
         ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Text(
-            'Chọn giao diện hiển thị cho ứng dụng',
-            style: TextStyle(
+            context.tr.selectTheme,
+            style: const TextStyle(
               fontSize: 14,
               color: Colors.grey,
             ),
@@ -308,19 +308,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         _buildThemeOption(
           title: context.tr.systemMode,
-          subtitle: 'Theo cài đặt giao diện của hệ thống',
+          subtitle: context.tr.systemThemeDescription,
           value: ThemePreference.system,
           icon: Icons.brightness_auto,
         ),
         _buildThemeOption(
           title: context.tr.lightMode,
-          subtitle: 'Giao diện sáng cho tất cả màn hình',
+          subtitle: context.tr.lightThemeDescription,
           value: ThemePreference.light,
           icon: Icons.light_mode,
         ),
         _buildThemeOption(
           title: context.tr.darkMode,
-          subtitle: 'Giao diện tối cho tất cả màn hình',
+          subtitle: context.tr.darkThemeDescription,
           value: ThemePreference.dark,
           icon: Icons.dark_mode,
         ),
@@ -350,11 +350,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
             child: Text(
-              'Chọn vị trí trích xuất hình thu nhỏ video',
-              style: TextStyle(
+              context.tr.selectThumbnailPosition,
+              style: const TextStyle(
                 fontSize: 14,
                 color: Colors.grey,
               ),

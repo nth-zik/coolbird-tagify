@@ -11,6 +11,7 @@ import 'dart:math';
 import 'package:share_plus/share_plus.dart'; // Add import for Share Plus
 // Add import for XFile
 import 'package:cb_file_manager/helpers/folder_sort_manager.dart';
+import 'package:cb_file_manager/config/languages/app_localizations.dart';
 
 class ImageGalleryScreen extends StatefulWidget {
   final String path;
@@ -416,10 +417,10 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
 
   Widget _buildImageContent() {
     if (_imageFiles.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
-          'Không tìm thấy hình ảnh trong thư mục này',
-          style: TextStyle(fontSize: 16),
+          AppLocalizations.of(context)!.noImagesFound,
+          style: const TextStyle(fontSize: 16),
         ),
       );
     }
@@ -597,8 +598,33 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
             subtitle: FutureBuilder<FileStat>(
               future: file.stat(),
               builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(
+                    child: Text(
+                      AppLocalizations.of(context)!.loading,
+                    ),
+                  );
+                }
+
                 if (!snapshot.hasData) {
-                  return const Text('Đang tải thông tin...');
+                  return Center(
+                    child: Text(
+                      AppLocalizations.of(context)!.loading,
+                    ),
+                  );
+                }
+
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, size: 48),
+                        const SizedBox(height: 16),
+                        Text(snapshot.error.toString()),
+                      ],
+                    ),
+                  );
                 }
 
                 final fileStat = snapshot.data!;

@@ -73,6 +73,23 @@ class VietnameseLocalizations implements AppLocalizations {
   String get lightMode => 'Chế độ sáng';
   @override
   String get systemMode => 'Theo hệ thống';
+  @override
+  String get selectLanguage => 'Chọn ngôn ngữ bạn muốn sử dụng';
+  @override
+  String get selectTheme => 'Chọn giao diện hiển thị cho ứng dụng';
+  @override
+  String get selectThumbnailPosition =>
+      'Chọn vị trí trích xuất hình thu nhỏ video';
+  @override
+  String get systemThemeDescription => 'Theo cài đặt giao diện của hệ thống';
+  @override
+  String get lightThemeDescription => 'Giao diện sáng cho tất cả màn hình';
+  @override
+  String get darkThemeDescription => 'Giao diện tối cho tất cả màn hình';
+  @override
+  String get vietnameseLanguage => 'Tiếng Việt';
+  @override
+  String get englishLanguage => 'Tiếng Anh';
 
   // Messages
   @override
@@ -97,6 +114,40 @@ class VietnameseLocalizations implements AppLocalizations {
   String get removeTag => 'Xóa thẻ';
   @override
   String get tagManagement => 'Quản lý thẻ đánh dấu';
+  @override
+  String get deleteTagConfirmation => 'Xóa thẻ "%s"?';
+  @override
+  String get tagDeleteConfirmationText =>
+      'Thao tác này sẽ xóa thẻ khỏi tất cả các tệp. Hành động này không thể hoàn tác.';
+  @override
+  String get tagDeleted => 'Thẻ "%s" đã được xóa thành công';
+  @override
+  String get errorDeletingTag => 'Lỗi khi xóa thẻ: %s';
+  @override
+  String get chooseTagColor => 'Chọn màu cho thẻ "%s"';
+  @override
+  String get tagColorUpdated => 'Màu cho thẻ "%s" đã được cập nhật';
+  @override
+  String get allTags => 'Tất cả thẻ';
+  @override
+  String get filesWithTag => 'Tệp có thẻ "%s"';
+  @override
+  String get tagsInDirectory => 'Thẻ trong "%s"';
+  @override
+  String get aboutTags => 'Về quản lý thẻ';
+  @override
+  String get aboutTagsTitle => 'Giới thiệu về quản lý thẻ:';
+  @override
+  String get aboutTagsDescription =>
+      'Thẻ giúp bạn tổ chức tệp bằng cách thêm nhãn tùy chỉnh. '
+      'Bạn có thể thêm hoặc xóa thẻ khỏi các tệp, và tìm tất cả các tệp có thẻ cụ thể.';
+  @override
+  String get aboutTagsScreenDescription =>
+      '• Tất cả thẻ trong thư viện của bạn\n'
+      '• Các tệp được gắn thẻ đã chọn\n'
+      '• Tùy chọn để xóa thẻ';
+  @override
+  String get deleteTag => 'Xóa thẻ này khỏi tất cả tệp';
 
   // Gallery
   @override
@@ -251,24 +302,65 @@ class VietnameseLocalizations implements AppLocalizations {
 
   // About app
   @override
-  String get aboutApp => 'Giới thiệu';
+  String get aboutApp => 'Thông tin ứng dụng';
   @override
-  String get appDescription =>
-      'Trình quản lý tệp tin mạnh mẽ với khả năng gắn thẻ.';
+  String get appDescription => 'Trình quản lý tệp mạnh mẽ với khả năng gắn thẻ';
   @override
   String get version => 'Phiên bản: 1.0.0';
   @override
   String get developer => 'Phát triển bởi CoolBird Team';
 
+  // Empty state
+  @override
+  String get emptyFolder => 'Thư mục trống';
+  @override
+  String get noImagesFound => 'Không tìm thấy hình ảnh trong thư mục này';
+  @override
+  String get noVideosFound => 'Không tìm thấy video trong thư mục này';
+  @override
+  String get loading => 'Đang tải thông tin...';
+
+  // File details
+  @override
+  String get fileSize => 'Kích thước';
+  @override
+  String get fileLocation => 'Vị trí';
+  @override
+  String get fileCreated => 'Tạo lúc';
+  @override
+  String get fileModified => 'Sửa lúc';
+  @override
+  String get loadingVideo => 'Đang tải video...';
+  @override
+  String get errorLoadingImage => 'Lỗi khi tải hình ảnh';
+  @override
+  String get createCopy => 'Tạo bản sao';
+  @override
+  String get deleteFile => 'Xóa tệp';
+
   // File picker dialogs
   @override
   String get chooseBackupLocation => 'Chọn vị trí lưu bản sao lưu';
   @override
-  String get chooseRestoreLocation => 'Chọn bản sao lưu để khôi phục';
+  String get chooseRestoreLocation => 'Chọn tệp sao lưu để khôi phục';
   @override
   String get saveSettingsExport => 'Lưu xuất cài đặt';
   @override
   String get saveDatabaseExport => 'Lưu xuất cơ sở dữ liệu';
   @override
   String get selectBackupFolder => 'Chọn thư mục sao lưu để nhập';
+
+  // Sorting
+  @override
+  String get sort => 'Sắp xếp';
+  @override
+  String get sortByName => 'Sắp xếp theo tên';
+  @override
+  String get sortByPopularity => 'Sắp xếp theo độ phổ biến';
+  @override
+  String get sortByRecent => 'Sắp xếp theo gần đây';
+  @override
+  String get sortBySize => 'Sắp xếp theo kích thước';
+  @override
+  String get sortByDate => 'Sắp xếp theo ngày';
 }

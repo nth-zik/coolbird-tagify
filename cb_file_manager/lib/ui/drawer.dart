@@ -12,6 +12,7 @@ import 'package:cb_file_manager/helpers/io_extensions.dart'; // Add import for D
 // Import TrashManager
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/tab_manager/tab_manager.dart';
+import 'package:cb_file_manager/ui/tab_manager/tab_data.dart'; // Import TabData
 // Add UserPreferences import
 import 'package:cb_file_manager/config/app_theme.dart'; // Import theme configuration
 import 'package:cb_file_manager/config/translation_helper.dart'; // Import translation helper
@@ -167,18 +168,28 @@ class _CBDrawerState extends State<CBDrawer> {
           ListTile(
             leading: const Icon(EvaIcons.shoppingBag),
             title: Text(context.tr.tags),
-            onTap: () async {
+            onTap: () {
               Navigator.pop(context);
-              // Get documents directory as starting directory
-              final directory = await getApplicationDocumentsDirectory();
-              // Navigate to the Tag Management screen
-              if (context.mounted) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => TagManagementScreen(
-                      startingDirectory: directory.path,
-                    ),
+
+              // Open tag management in a new tab
+              final tabBloc = BlocProvider.of<TabManagerBloc>(context);
+
+              // Check if a tags tab already exists
+              final existingTab = tabBloc.state.tabs.firstWhere(
+                (tab) => tab.path == '#tags',
+                orElse: () => TabData(id: '', name: '', path: ''),
+              );
+
+              if (existingTab.id.isNotEmpty) {
+                // If tab exists, switch to it
+                tabBloc.add(SwitchToTab(existingTab.id));
+              } else {
+                // Otherwise, create a new tab
+                tabBloc.add(
+                  AddTab(
+                    path: '#tags',
+                    name: 'Tags',
+                    switchToTab: true,
                   ),
                 );
               }
@@ -653,26 +664,28 @@ class _AppDrawerState extends State<AppDrawer> {
           ListTile(
             leading: const Icon(EvaIcons.shoppingBag),
             title: Text(context.tr.tags),
-            onTap: () async {
+            onTap: () {
               Navigator.pop(context);
-              try {
-                // Get documents directory as starting directory
-                final directory = await getApplicationDocumentsDirectory();
-                // Navigate to the Tag Management screen
-                if (context.mounted) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => TagManagementScreen(
-                        startingDirectory: directory.path,
-                      ),
-                    ),
-                  );
-                }
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error opening tag manager: $e'),
+
+              // Open tag management in a new tab
+              final tabBloc = BlocProvider.of<TabManagerBloc>(context);
+
+              // Check if a tags tab already exists
+              final existingTab = tabBloc.state.tabs.firstWhere(
+                (tab) => tab.path == '#tags',
+                orElse: () => TabData(id: '', name: '', path: ''),
+              );
+
+              if (existingTab.id.isNotEmpty) {
+                // If tab exists, switch to it
+                tabBloc.add(SwitchToTab(existingTab.id));
+              } else {
+                // Otherwise, create a new tab
+                tabBloc.add(
+                  AddTab(
+                    path: '#tags',
+                    name: 'Tags',
+                    switchToTab: true,
                   ),
                 );
               }

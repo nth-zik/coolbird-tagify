@@ -47,6 +47,14 @@ abstract class AppLocalizations {
   String get darkMode;
   String get lightMode;
   String get systemMode;
+  String get selectLanguage;
+  String get selectTheme;
+  String get selectThumbnailPosition;
+  String get systemThemeDescription;
+  String get lightThemeDescription;
+  String get darkThemeDescription;
+  String get vietnameseLanguage;
+  String get englishLanguage;
 
   // Messages
   String get fileDeleteConfirmation;
@@ -60,6 +68,28 @@ abstract class AppLocalizations {
   String get addTag;
   String get removeTag;
   String get tagManagement;
+  String get deleteTagConfirmation;
+  String get tagDeleteConfirmationText;
+  String get tagDeleted;
+  String get errorDeletingTag;
+  String get chooseTagColor;
+  String get tagColorUpdated;
+  String get allTags;
+  String get filesWithTag;
+  String get tagsInDirectory;
+  String get aboutTags;
+  String get aboutTagsTitle;
+  String get aboutTagsDescription;
+  String get aboutTagsScreenDescription;
+  String get deleteTag;
+
+  // Sorting
+  String get sort;
+  String get sortByName;
+  String get sortByPopularity;
+  String get sortByRecent;
+  String get sortBySize;
+  String get sortByDate;
 
   // Gallery
   String get imageGallery;
@@ -145,11 +175,15 @@ abstract class AppLocalizations {
   String get settingsData;
   String get viewManageSettings;
 
-  // About app
-  String get aboutApp;
-  String get appDescription;
-  String get version;
-  String get developer;
+  // File details
+  String get fileSize;
+  String get fileLocation;
+  String get fileCreated;
+  String get fileModified;
+  String get loadingVideo;
+  String get errorLoadingImage;
+  String get createCopy;
+  String get deleteFile;
 
   // File picker dialogs
   String get chooseBackupLocation;
@@ -157,4 +191,16 @@ abstract class AppLocalizations {
   String get saveSettingsExport;
   String get saveDatabaseExport;
   String get selectBackupFolder;
+
+  // About app
+  String get aboutApp;
+  String get appDescription;
+  String get version;
+  String get developer;
+
+  // Empty state
+  String get emptyFolder;
+  String get noImagesFound;
+  String get noVideosFound;
+  String get loading;
 }

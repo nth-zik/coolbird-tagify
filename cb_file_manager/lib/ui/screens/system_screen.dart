@@ -1,0 +1,98 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cb_file_manager/ui/tab_manager/tab_manager.dart';
+import 'package:cb_file_manager/ui/tab_manager/tab_data.dart';
+
+/// A base class for all system screens in the application
+/// System screens are screens that are not tied to a file system path
+/// but represent system functionality like tags, trash, settings, etc.
+class SystemScreen extends StatelessWidget {
+  /// The title of the system screen
+  final String title;
+
+  /// The system ID (used for routing, e.g. #tags, #trash)
+  final String systemId;
+
+  /// The icon to display in the tab
+  final IconData icon;
+
+  /// The actual content of the system screen
+  final Widget child;
+
+  /// Whether to show the app bar (default: true)
+  final bool showAppBar;
+
+  /// Additional actions to display in the app bar
+  final List<Widget>? actions;
+
+  /// Constructor
+  const SystemScreen({
+    Key? key,
+    required this.title,
+    required this.systemId,
+    required this.icon,
+    required this.child,
+    this.showAppBar = false,
+    this.actions,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: showAppBar
+          ? AppBar(
+              title: Text(title),
+              actions: actions,
+              // Add a button to close the tab
+              leading: IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () {
+                  // Get the current tab ID from the parent tab system
+                  final tabId = (ModalRoute.of(context)?.settings.arguments
+                      as Map<String, dynamic>?)?['tabId'];
+                  if (tabId != null) {
+                    // Close the tab
+                    BlocProvider.of<TabManagerBloc>(context)
+                        .add(CloseTab(tabId));
+                  } else {
+                    // If no tab ID, just pop the route
+                    Navigator.of(context).pop();
+                  }
+                },
+              ),
+            )
+          : null,
+      body: child,
+    );
+  }
+
+  /// Factory method to create a system screen tab
+  /// This can be used to programmatically add a system screen tab to the tab manager
+  static void openInTab(
+    BuildContext context, {
+    required String systemId,
+    required String title,
+    required IconData icon,
+  }) {
+    // Check if a tab with this systemId already exists
+    final tabBloc = BlocProvider.of<TabManagerBloc>(context);
+    final existingTab = tabBloc.state.tabs.firstWhere(
+      (tab) => tab.path == systemId,
+      orElse: () => TabData(id: '', name: '', path: ''),
+    );
+
+    if (existingTab.id.isNotEmpty) {
+      // If tab exists, switch to it
+      tabBloc.add(SwitchToTab(existingTab.id));
+    } else {
+      // Otherwise, create a new tab
+      tabBloc.add(
+        AddTab(
+          path: systemId,
+          name: title,
+          switchToTab: true,
+        ),
+      );
+    }
+  }
+}
