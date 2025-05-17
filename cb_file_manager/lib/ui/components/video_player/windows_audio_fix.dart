@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:media_kit/media_kit.dart';
-import 'package:cb_file_manager/helpers/media_kit_audio_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// A utility class to help diagnose and fix Windows audio issues with MediaKit

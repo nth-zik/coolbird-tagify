@@ -193,7 +193,7 @@ class DriveView extends StatelessWidget {
 
   Future<Map<String, dynamic>> _getDriveSpaceInfo(String drivePath) async {
     try {
-      final drive = drivePath.endsWith('\\') ? drivePath : drivePath + '\\';
+      final drive = drivePath.endsWith('\\') ? drivePath : '$drivePath\\';
       final lpFreeBytesAvailable = calloc.allocate<Uint64>(sizeOf<Uint64>());
       final lpTotalNumberOfBytes = calloc.allocate<Uint64>(sizeOf<Uint64>());
       final lpTotalNumberOfFreeBytes =
@@ -240,7 +240,7 @@ class DriveView extends StatelessWidget {
         'usageRatio': usageRatio,
       };
     } catch (e) {
-      print('Error getting drive space info: $e');
+      debugPrint('Error getting drive space info: $e');
       return {
         'totalStr': '',
         'freeStr': '',
@@ -256,8 +256,9 @@ class DriveView extends StatelessWidget {
   String _formatSize(int bytes) {
     if (bytes < 1024) return '$bytes B';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    if (bytes < 1024 * 1024 * 1024)
+    if (bytes < 1024 * 1024 * 1024) {
       return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    }
     return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
 }

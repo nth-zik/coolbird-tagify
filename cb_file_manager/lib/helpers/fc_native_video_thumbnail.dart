@@ -25,9 +25,6 @@ class FcNativeVideoThumbnail {
   /// Maximum time to wait for a native operation
   static const Duration _operationTimeout = Duration(seconds: 5);
 
-  /// Flag to track if this is running in an isolate context
-  static bool _isInIsolate = false;
-
   /// Initialize the plugin
   /// This is automatically called by [generateThumbnail]
   static Future<bool> initialize() async {
@@ -234,7 +231,6 @@ class FcNativeVideoThumbnail {
   }) async {
     // For safety in isolates, first try to use this class's standard method
     try {
-      _isInIsolate = true;
       return await generateThumbnail(
         videoPath: videoPath,
         outputPath: outputPath,
@@ -263,8 +259,6 @@ class FcNativeVideoThumbnail {
         return null;
       } catch (e) {
         return null;
-      } finally {
-        _isInIsolate = false;
       }
     }
   }

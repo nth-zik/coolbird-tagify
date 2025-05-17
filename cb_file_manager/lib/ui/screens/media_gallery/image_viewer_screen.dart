@@ -1,16 +1,14 @@
 import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as pathlib;
-import 'package:cb_file_manager/ui/utils/base_screen.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:cb_file_manager/helpers/frame_timing_optimizer.dart';
 import 'package:cb_file_manager/ui/components/thumbnail_strip.dart';
 import 'package:cb_file_manager/helpers/trash_manager.dart';
 import 'package:share_plus/share_plus.dart'; // Add import for Share Plus
-import 'package:cross_file/cross_file.dart'; // Add import for XFile
+// Add import for XFile
 
 class ImageViewerScreen extends StatefulWidget {
   final File file;
@@ -44,7 +42,6 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
   double _brightness = 0.0;
   double _contrast = 0.0;
   bool _isEditMode = false;
-  List<File>? _loadedImageFiles;
 
   // Thêm map để cache dữ liệu ảnh đã tải
   final Map<String, Uint8List> _imageCache = {};
@@ -153,7 +150,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
               } else {
                 // If we somehow can't find the image in the directory
                 // Just use the original file passed in constructor
-                print(
+                debugPrint(
                     'Warning: Could not find current image in directory. Path: $currentPath');
                 _allImages = [widget.file];
                 _currentIndex = 0;
@@ -165,7 +162,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
         }
       }
     } catch (e) {
-      print('Error loading images from directory: $e');
+      debugPrint('Error loading images from directory: $e');
     }
   }
 
@@ -196,7 +193,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
       final position = details.localPosition;
 
       // Calculate the focal point for zooming (centered on the tap position)
-      final double scale = 2.5;
+      const double scale = 2.5;
 
       // Create a transformation matrix that zooms to a scale of 2.5x
       // centered on the position that was double-tapped
@@ -314,7 +311,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
         },
       );
     } catch (e) {
-      print('Error showing image info: $e');
+      debugPrint('Error showing image info: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to display image information: $e')),
       );
@@ -394,7 +391,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
       // Chờ đợi cho đến khi ảnh được tải và cache
       int attempts = 0;
       while (_loadingImages.contains(path) && attempts < 100) {
-        await Future.delayed(Duration(milliseconds: 50));
+        await Future.delayed(const Duration(milliseconds: 50));
         attempts++;
       }
       return _imageCache[path];
@@ -423,7 +420,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
 
       return bytes;
     } catch (e) {
-      print('Error loading image $path: $e');
+      debugPrint('Error loading image $path: $e');
       return null;
     } finally {
       _loadingImages.remove(path);
@@ -492,7 +489,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
           backgroundColor: Colors.black,
           appBar: _controlsVisible
               ? AppBar(
-                  backgroundColor: Colors.black.withOpacity(0.7),
+                  backgroundColor: Colors.black.withAlpha(179),
                   title: Text(pathlib.basename(_allImages[_currentIndex].path)),
                   elevation: 0,
                   actions: [
@@ -585,15 +582,15 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                                           if (snapshot.connectionState ==
                                               ConnectionState.waiting) {
                                             // Show loading indicator while image is being loaded
-                                            return Center(
+                                            return const Center(
                                               child: Column(
                                                 mainAxisAlignment:
                                                     MainAxisAlignment.center,
                                                 children: [
-                                                  const CircularProgressIndicator(
+                                                  CircularProgressIndicator(
                                                     color: Colors.white70,
                                                   ),
-                                                  const SizedBox(height: 16),
+                                                  SizedBox(height: 16),
                                                   Text(
                                                     'Loading image...',
                                                     style: TextStyle(
@@ -612,21 +609,21 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                                                   Icons.broken_image,
                                                   size: 80,
                                                   color: Colors.white
-                                                      .withOpacity(0.7),
+                                                      .withAlpha(179),
                                                 ),
                                                 const SizedBox(height: 16),
                                                 Text(
                                                   'Failed to load image',
                                                   style: TextStyle(
                                                       color: Colors.white
-                                                          .withOpacity(0.7)),
+                                                          .withAlpha(179)),
                                                 ),
                                                 const SizedBox(height: 8),
                                                 Text(
                                                   snapshot.error.toString(),
                                                   style: TextStyle(
                                                     color: Colors.white
-                                                        .withOpacity(0.5),
+                                                        .withAlpha(128),
                                                     fontSize: 12,
                                                   ),
                                                   textAlign: TextAlign.center,
@@ -648,15 +645,14 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                                                       Icons.broken_image,
                                                       size: 80,
                                                       color: Colors.white
-                                                          .withOpacity(0.7),
+                                                          .withAlpha(179),
                                                     ),
                                                     const SizedBox(height: 16),
                                                     Text(
                                                       'Failed to decode image',
                                                       style: TextStyle(
                                                           color: Colors.white
-                                                              .withOpacity(
-                                                                  0.7)),
+                                                              .withAlpha(179)),
                                                     ),
                                                   ],
                                                 );
@@ -694,8 +690,8 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                     height: 70,
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.7),
-                      border: Border(
+                      color: Colors.black.withAlpha(179),
+                      border: const Border(
                         top: BorderSide(
                           color: Colors.white24,
                           width: 1,
@@ -719,7 +715,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
           ),
           bottomNavigationBar: _controlsVisible
               ? BottomAppBar(
-                  color: Colors.black.withOpacity(0.7),
+                  color: Colors.black.withAlpha(179),
                   height: 48, // Giảm chiều cao để gọn hơn
                   padding: EdgeInsets.zero, // Loại bỏ padding mặc định
                   child: Row(
@@ -786,7 +782,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                       padding: const EdgeInsets.only(left: 24.0),
                       child: FloatingActionButton(
                         heroTag: "prevBtn",
-                        backgroundColor: Colors.black.withOpacity(0.7),
+                        backgroundColor: Colors.black.withAlpha(179),
                         mini: true,
                         onPressed: _currentIndex > 0
                             ? () {
@@ -807,7 +803,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                       padding: const EdgeInsets.only(right: 24.0),
                       child: FloatingActionButton(
                         heroTag: "nextBtn",
-                        backgroundColor: Colors.black.withOpacity(0.7),
+                        backgroundColor: Colors.black.withAlpha(179),
                         mini: true,
                         onPressed: _currentIndex < _allImages.length - 1
                             ? () {
@@ -836,7 +832,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
       return Scaffold(
         backgroundColor: Colors.black,
         appBar: AppBar(
-          backgroundColor: Colors.black.withOpacity(0.7),
+          backgroundColor: Colors.black.withAlpha(179),
           title: const Text('Edit Image'),
           elevation: 0,
           actions: [
@@ -859,13 +855,13 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         // Show loading indicator
-                        return Column(
+                        return const Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const CircularProgressIndicator(
+                            CircularProgressIndicator(
                               color: Colors.white70,
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: 16),
                             Text(
                               'Loading image for editing...',
                               style: TextStyle(color: Colors.white70),
@@ -880,13 +876,13 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                             Icon(
                               Icons.broken_image,
                               size: 80,
-                              color: Colors.white.withOpacity(0.7),
+                              color: Colors.white.withAlpha(179),
                             ),
                             const SizedBox(height: 16),
                             Text(
                               'Failed to load image',
-                              style: TextStyle(
-                                  color: Colors.white.withOpacity(0.7)),
+                              style:
+                                  TextStyle(color: Colors.white.withAlpha(179)),
                             ),
                           ],
                         );
@@ -911,7 +907,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
               ),
             ),
             Container(
-              color: Colors.black.withOpacity(0.7),
+              color: Colors.black.withAlpha(179),
               padding:
                   const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
               child: Column(

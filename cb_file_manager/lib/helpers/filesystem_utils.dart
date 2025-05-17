@@ -14,7 +14,7 @@ import 'io_extensions.dart';
 
 String storageRootPath = "/storage/emulated/0/";
 
-enum Sorting { Type, Size, Date, Alpha, TypeDate, TypeSize }
+enum Sorting { type, size, date, alpha, typeDate, typeSize }
 
 /// Return all **paths**
 Future<List<Directory>> getStorageList() async {
@@ -33,13 +33,10 @@ Future<List<Directory>> getStorageList() async {
 Future<Directory> getExternalStorageWithoutDataDir(
     String unfilteredPath) async {
   PackageInfo packageInfo = await PackageInfo.fromPlatform();
-  print("storage_helper->getExternalStorageWithoutDataDir: " +
-      packageInfo.packageName);
   String subPath =
       pathlib.join("Android", "data", packageInfo.packageName, "files");
   if (unfilteredPath.contains(subPath)) {
     String filteredPath = unfilteredPath.split(subPath).first;
-    print("storage_helper->getExternalStorageWithoutDataDir: " + filteredPath);
     return Directory(filteredPath);
   } else {
     return Directory(unfilteredPath);
@@ -49,81 +46,79 @@ Future<Directory> getExternalStorageWithoutDataDir(
 /// keepHidden: show files that start with .
 Future<List<FileSystemEntity>> getFoldersAndFiles(String path,
     {changeCurrentPath = true,
-    Sorting sortedBy = Sorting.Type,
+    Sorting sortedBy = Sorting.type,
     reverse = false,
     recursive = false,
     keepHidden = false}) async {
-  Directory _path = Directory(path);
-  List<FileSystemEntity> _files = [];
+  Directory dir = Directory(path);
+  List<FileSystemEntity> files = [];
   try {
-    _files = await _path.list(recursive: recursive).toList();
+    files = await dir.list(recursive: recursive).toList();
 
     // Create a new list to avoid type issues
-    List<FileSystemEntity> _typedFiles = [];
+    List<FileSystemEntity> typedFiles = [];
 
-    for (var fsEntity in _files) {
+    for (var fsEntity in files) {
       String fsPath = fsEntity.path.toString();
       if (FileSystemEntity.isDirectorySync(fsPath)) {
-        _typedFiles.add(Directory(fsEntity.absolute.path.toString()));
+        typedFiles.add(Directory(fsEntity.absolute.path.toString()));
       } else {
-        _typedFiles.add(File(fsEntity.absolute.path.toString()));
+        typedFiles.add(File(fsEntity.absolute.path.toString()));
       }
     }
 
-    _files = _typedFiles;
+    files = typedFiles;
 
     // Removing hidden files & folders from the list
     if (!keepHidden) {
-      print("filesystem->getFoldersAndFiles: excluding hidden");
-      _files.removeWhere((FileSystemEntity test) {
+      debugPrint("filesystem->getFoldersAndFiles: excluding hidden");
+      files.removeWhere((FileSystemEntity test) {
         return test.basename().startsWith('.') == true;
       });
     }
-  } on FileSystemException catch (e) {
-    print(e);
+  } on FileSystemException {
     return [];
   }
-  return sort(_files, sortedBy, reverse: reverse);
+  return sort(files, sortedBy, reverse: reverse);
 }
 
 /// keepHidden: show files that start with .
 Stream<List<FileSystemEntity>> fileStream(String path,
     {changeCurrentPath = true,
-    Sorting sortedBy = Sorting.Type,
+    Sorting sortedBy = Sorting.type,
     reverse = false,
     recursive = false,
     keepHidden = false}) async* {
-  Directory _path = Directory(path);
-  List<FileSystemEntity> _files = []; // Use list literal
+  Directory path0 = Directory(path);
+  List<FileSystemEntity> files = []; // Use list literal
   try {
     // Checking if the target directory contains files inside or not!
     // so that [StreamBuilder] won't emit the same old data if there are
     // no elements inside that directory.
-    if (_path.listSync(recursive: recursive).length != 0) {
+    if (path0.listSync(recursive: recursive).isNotEmpty) {
       if (!keepHidden) {
-        yield* _path.list(recursive: recursive).transform(
+        yield* path0.list(recursive: recursive).transform(
             StreamTransformer.fromHandlers(
                 handleData: (FileSystemEntity data, sink) {
           debugPrint("filsytem_utils -> fileStream: $data");
-          _files.add(data);
-          sink.add(_files);
+          files.add(data);
+          sink.add(files);
         }));
       } else {
-        yield* _path.list(recursive: recursive).transform(
+        yield* path0.list(recursive: recursive).transform(
             StreamTransformer.fromHandlers(
                 handleData: (FileSystemEntity data, sink) {
           debugPrint("filsytem_utils -> fileStream: $data");
           if (data.basename().startsWith('.')) {
-            _files.add(data);
-            sink.add(_files);
+            files.add(data);
+            sink.add(files);
           }
         }));
       }
     } else {
       yield [];
     }
-  } on FileSystemException catch (e) {
-    print(e);
+  } on FileSystemException {
     yield [];
   }
 }
@@ -152,7 +147,7 @@ Future<List<FileSystemEntity>> search(String path, String query,
 
     // Log kết quả tìm kiếm để dễ debug
     if (matches) {
-      print(
+      debugPrint(
           "Found matching entity: ${entity.path}, type: ${entity is Directory ? 'Directory' : 'File'}");
     }
 
@@ -160,8 +155,8 @@ Future<List<FileSystemEntity>> search(String path, String query,
   }).toList();
 
   int end = DateTime.now().millisecondsSinceEpoch;
-  print(
-      "Search completed in ${end - start} ms, found ${results.length} items (${results.where((e) => e is Directory).length} directories)");
+  debugPrint(
+      "Search completed in ${end - start} ms, found ${results.length} items (${results.whereType<Directory>().length} directories)");
 
   return results;
 }
@@ -194,18 +189,18 @@ Future<int> getFreeSpace(String path) async {
 /// Supply path alone to create by already combined path, or path + filename
 /// to be combined
 Future<Directory> createFolderByPath(String path, {String? folderName}) async {
-  print("filesystem_utils->createFolderByPath: $folderName @ $path");
-  var _directory;
+  debugPrint("filesystem_utils->createFolderByPath: $folderName @ $path");
+  Directory directory;
 
-  _directory = Directory(pathlib.join(path, folderName ?? ''));
+  directory = Directory(pathlib.join(path, folderName ?? ''));
 
   try {
-    if (!_directory.existsSync()) {
-      _directory.create();
+    if (!directory.existsSync()) {
+      directory.create();
     } else {
-      throw FileSystemException("File already exists");
+      throw const FileSystemException("File already exists");
     }
-    return _directory;
+    return directory;
   } catch (e) {
     throw FileSystemException(e.toString());
   }
@@ -227,8 +222,8 @@ Future<List<FileSystemEntity>> sort(List<FileSystemEntity> elements, Sorting by,
     {bool reverse = false}) async {
   try {
     switch (by) {
-      case Sorting.Type:
-        if (!reverse)
+      case Sorting.type:
+        if (!reverse) {
           return elements
             ..sort((f1, f2) {
               bool isDir1 =
@@ -237,13 +232,13 @@ Future<List<FileSystemEntity>> sort(List<FileSystemEntity> elements, Sorting by,
                   FileSystemEntity.isDirectorySync(f2.path.toString());
               return isDir1 == isDir2 ? 0 : (isDir1 ? -1 : 1);
             });
-        else
+        } else {
           return (elements..sort()).reversed.toList();
+        }
       default:
         return elements..sort();
     }
   } catch (e) {
-    print(e);
     return [];
   }
 }
@@ -280,7 +275,7 @@ Future<List<Directory>> getAllWindowsDrives() async {
 
           // If we reach here, we have access
           drives.add(drive);
-          print('Found accessible drive: $drivePath');
+          debugPrint('Found accessible drive: $drivePath');
         } catch (permissionError) {
           // Drive exists but we don't have permission
           // Create a special metadata property to mark as protected
@@ -288,12 +283,12 @@ Future<List<Directory>> getAllWindowsDrives() async {
           drives.add(drive);
           // Add a "tag" to mark this as a protected drive
           drive.setProperty('requiresAdmin', true);
-          print('Found protected drive: $drivePath (requires admin)');
+          debugPrint('Found protected drive: $drivePath (requires admin)');
         }
       }
     } catch (e) {
       // Ignore drives that can't be accessed or don't exist
-      print('Drive not found or cannot be accessed: $drivePath - $e');
+      debugPrint('Drive not found or cannot be accessed: $drivePath - $e');
     }
   }
 
@@ -345,7 +340,7 @@ Future<List<Directory>> getAdditionalAndroidPaths() async {
       }
     }
   } catch (e) {
-    print('Error listing /storage directory: $e');
+    debugPrint('Error listing /storage directory: $e');
   }
 
   // Check if each path exists and is accessible
@@ -364,15 +359,15 @@ Future<List<Directory>> getAdditionalAndroidPaths() async {
 
           // If we got here, the directory exists and is accessible
           additionalPaths.add(dir);
-          print('Found additional storage location: ${dir.path}');
+          debugPrint('Found additional storage location: ${dir.path}');
         } catch (accessError) {
           // Path exists but we can't list files (no permission)
-          print('Storage path exists but not accessible: $path');
+          debugPrint('Storage path exists but not accessible: $path');
         }
       }
     } catch (e) {
       // Path doesn't exist or other error
-      print('Storage path not found or error: $path - $e');
+      debugPrint('Storage path not found or error: $path - $e');
     }
   }
 
@@ -396,14 +391,14 @@ Future<List<Directory>> getAllStorageLocations() async {
         List<Directory> standardPaths = await getStorageList();
         storageLocations.addAll(standardPaths);
       } catch (e) {
-        print('Error getting standard Android storage: $e');
+        debugPrint('Error getting standard Android storage: $e');
       }
 
       // Try to add additional Android paths
       try {
         storageLocations.addAll(await getAdditionalAndroidPaths());
       } catch (e) {
-        print('Error getting additional Android paths: $e');
+        debugPrint('Error getting additional Android paths: $e');
       }
     } else {
       // For other platforms, fallback to application documents directory
@@ -411,13 +406,13 @@ Future<List<Directory>> getAllStorageLocations() async {
       storageLocations.add(appDocDir);
     }
   } catch (e) {
-    print('Error getting storage locations: $e');
+    debugPrint('Error getting storage locations: $e');
     // Fallback to app documents directory
     try {
       Directory appDocDir = await getApplicationDocumentsDirectory();
       storageLocations.add(appDocDir);
     } catch (e) {
-      print('Error getting application documents directory: $e');
+      debugPrint('Error getting application documents directory: $e');
     }
   }
 
@@ -552,7 +547,7 @@ class FileOperations {
 
         // Find a unique name
         while (exists) {
-          String newName = '${baseName}_${counter}${extension}';
+          String newName = '${baseName}_$counter$extension';
           uniquePath = pathlib.join(destinationPath, newName);
           exists = await File(uniquePath).exists() ||
               await Directory(uniquePath).exists();
@@ -617,7 +612,7 @@ class FileOperations {
 
       return result;
     } catch (e) {
-      print('Error during paste operation: $e');
+      debugPrint('Error during paste operation: $e');
       return null;
     }
   }
@@ -634,14 +629,14 @@ class FileOperations {
           await File(newPath).exists() || await Directory(newPath).exists();
 
       if (exists) {
-        throw FileSystemException(
+        throw const FileSystemException(
             'A file or folder with this name already exists');
       }
 
       // Perform rename operation
       return await entity.rename(newPath);
     } catch (e) {
-      print('Error during rename operation: $e');
+      debugPrint('Error during rename operation: $e');
       return null;
     }
   }

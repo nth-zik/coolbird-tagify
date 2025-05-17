@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cb_file_manager/helpers/filesystem_utils.dart';
-import 'package:cb_file_manager/helpers/tag_manager.dart';
 import 'package:path/path.dart' as pathlib;
 import 'package:cb_file_manager/helpers/thumbnail_helper.dart';
 import 'package:cb_file_manager/helpers/user_preferences.dart';
@@ -14,7 +13,6 @@ import 'package:cb_file_manager/helpers/thumbnail_isolate_manager.dart';
 import 'package:cb_file_manager/helpers/frame_timing_optimizer.dart';
 import 'dart:async';
 import 'dart:math';
-import 'package:flutter/services.dart';
 import 'package:cb_file_manager/helpers/folder_sort_manager.dart';
 
 // Extension to provide Vietnamese display names for SortOption enum
@@ -450,7 +448,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
           try {
             await _preferences.setVideoGalleryThumbnailSize(size.toDouble());
           } catch (e) {
-            print('Error saving thumbnail size: $e');
+            debugPrint('Error saving thumbnail size: $e');
           }
         },
       ),
@@ -496,7 +494,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
               decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
+                color: Colors.blue.withAlpha(26),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -535,10 +533,10 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.6),
+                color: Colors.black.withAlpha(153),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Row(
+              child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SizedBox(
@@ -546,11 +544,12 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
                     height: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  const Text(
+                  SizedBox(width: 8),
+                  Text(
                     'Đang tải thumbnail',
                     style: TextStyle(color: Colors.white, fontSize: 12),
                   ),
@@ -624,7 +623,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
                 right: 8,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.5),
+                    color: Colors.black.withAlpha(128),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -678,7 +677,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
                     child: Container(
                       padding: const EdgeInsets.all(2),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.5),
+                        color: Colors.black.withAlpha(128),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -878,7 +877,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
         },
       );
     } catch (e) {
-      print('Error showing video info: $e');
+      debugPrint('Error showing video info: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Không thể hiển thị thông tin video: $e')),
       );
@@ -939,7 +938,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
                   await file.delete();
                   successCount++;
                 } catch (e) {
-                  print('Error deleting file $path: $e');
+                  debugPrint('Error deleting file $path: $e');
                   failedPaths.add(path);
                 }
               }
@@ -1040,23 +1039,24 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
       await prefs.init();
       await prefs.setViewMode(mode);
     } catch (e) {
-      print('Error saving view mode: $e');
+      debugPrint('Error saving view mode: $e');
     }
   }
 
-  // Tag management methods
+  // TODO: These methods are currently unused but may be needed for future tag management functionality
+  /*
   void _showRemoveTagsDialog(
-      BuildContext context, List<String> filePaths) async {
-    // ... keep existing implementation ...
+    // ... existing code ...
   }
 
   void _showManageAllTagsDialog(BuildContext context) {
-    // ... keep existing implementation ...
+    // ... existing code ...
   }
 
   Future<void> _addTags(List<String> filePaths, String tag) async {
-    // ... keep existing implementation ...
+    // ... existing code ...
   }
+  */
 }
 
 class OptimizedVideoThumbnailItem extends StatelessWidget {
@@ -1108,7 +1108,7 @@ class OptimizedVideoThumbnailItem extends StatelessWidget {
                     child: Container(
                       padding: EdgeInsets.all(width > 100 ? 8 : 6),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.5),
+                        color: Colors.black.withAlpha(128),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -1155,7 +1155,7 @@ class OptimizedVideoThumbnailItem extends StatelessWidget {
         child: Icon(
           _getVideoTypeIcon(ext),
           size: width > 100 ? 48 : 32,
-          color: Colors.white.withOpacity(0.7),
+          color: Colors.white.withAlpha(179),
         ),
       ),
     );

@@ -1,7 +1,5 @@
 import 'dart:io';
 import 'dart:async';
-import 'dart:typed_data';
-import 'package:flutter/foundation.dart';
 
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/video_gallery_screen.dart';
@@ -10,7 +8,6 @@ import 'package:cb_file_manager/helpers/frame_timing_optimizer.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
-import 'package:cb_file_manager/ui/widgets/lazy_video_thumbnail.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
@@ -195,16 +192,26 @@ class _FileGridItemState extends State<FileGridItem>
       valueListenable: _isHoveringNotifier,
       builder: (context, isHovering, _) {
         final Color cardColor = widget.isSelected
-            ? Theme.of(context).primaryColor.withOpacity(0.15)
+            ? Theme.of(context).primaryColor.withValues(
+                  red: Theme.of(context).primaryColor.r.toDouble(),
+                  green: Theme.of(context).primaryColor.g.toDouble(),
+                  blue: Theme.of(context).primaryColor.b.toDouble(),
+                  alpha: 0.15 * 255,
+                )
             : isHovering && widget.isDesktopMode
                 ? Theme.of(context).hoverColor
                 : Theme.of(context).cardColor;
 
         final BoxShadow? shadow = widget.isSelected
             ? BoxShadow(
-                color: Theme.of(context).primaryColor.withOpacity(0.4),
+                color: Theme.of(context).primaryColor.withValues(
+                      red: Theme.of(context).primaryColor.r.toDouble(),
+                      green: Theme.of(context).primaryColor.g.toDouble(),
+                      blue: Theme.of(context).primaryColor.b.toDouble(),
+                      alpha: 0.4 * 255,
+                    ),
                 blurRadius: 4,
-                offset: Offset(0, 1))
+                offset: const Offset(0, 1))
             : isHovering && widget.isDesktopMode
                 ? const BoxShadow(
                     color: Color(0x1A000000),
@@ -300,6 +307,8 @@ class _FileGridItemState extends State<FileGridItem>
         widget.file.path.toLowerCase().endsWith('.webp') ||
         widget.file.path.toLowerCase().endsWith('.bmp');
 
+    if (!mounted) return;
+
     showFileContextMenu(
       context: context,
       file: widget.file,
@@ -328,7 +337,7 @@ class _FileGridItemState extends State<FileGridItem>
     } else {
       ExternalAppHelper.openFileWithApp(widget.file.path, 'shell_open')
           .then((success) {
-        if (!success && context.mounted) {
+        if (!success && mounted && context.mounted) {
           showDialog(
               context: context,
               builder: (context) => OpenWithDialog(filePath: widget.file.path));
@@ -518,16 +527,10 @@ class _ThumbnailWidget extends StatefulWidget {
 
 class _ThumbnailWidgetState extends State<_ThumbnailWidget>
     with AutomaticKeepAliveClientMixin {
-  final ThumbnailWidgetCache _thumbnailCache = ThumbnailWidgetCache();
   bool _hasNotifiedGeneration = false;
 
   @override
   bool get wantKeepAlive => true;
-
-  @override
-  void initState() {
-    super.initState();
-  }
 
   @override
   void didUpdateWidget(covariant _ThumbnailWidget oldWidget) {

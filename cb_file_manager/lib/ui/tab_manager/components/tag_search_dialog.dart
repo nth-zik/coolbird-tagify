@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
-import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 
 /// Dialog for searching files by tag
 class TagSearchDialog extends StatefulWidget {

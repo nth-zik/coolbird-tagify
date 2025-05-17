@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:cb_file_manager/helpers/video_thumbnail_helper.dart';
 import 'package:cb_file_manager/helpers/frame_timing_optimizer.dart';
@@ -343,7 +342,7 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
     if (widget.isVideo) {
       return Container(
         color: Colors.black12,
-        child: Center(
+        child: const Center(
           child: Icon(
             EvaIcons.videoOutline,
             size: 36,
@@ -354,7 +353,7 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
     } else if (widget.isImage) {
       return Container(
         color: Colors.black12,
-        child: Center(
+        child: const Center(
           child: Icon(
             EvaIcons.imageOutline,
             size: 36,
@@ -365,7 +364,7 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
     } else {
       return Container(
         color: Colors.black12,
-        child: Center(
+        child: const Center(
           child: Icon(
             EvaIcons.fileOutline,
             size: 36,

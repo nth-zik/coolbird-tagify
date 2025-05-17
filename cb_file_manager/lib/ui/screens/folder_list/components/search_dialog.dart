@@ -32,7 +32,6 @@ class _SearchDialogState extends State<SearchDialog> {
   List<Directory> _filteredFolders = [];
   bool _isSearchingTags = false;
   List<String> _suggestedTags = [];
-  bool _showTagSuggestions = false;
 
   // Overlay entry for tag suggestions
   OverlayEntry? _overlayEntry;
@@ -221,7 +220,7 @@ class _SearchDialogState extends State<SearchDialog> {
       ),
     );
 
-    Overlay.of(context)?.insert(_overlayEntry!);
+    Overlay.of(context).insert(_overlayEntry!);
   }
 
   void _removeOverlay() {
@@ -249,7 +248,7 @@ class _SearchDialogState extends State<SearchDialog> {
           ),
         ),
       );
-      Overlay.of(context)?.insert(loadingOverlay);
+      Overlay.of(context).insert(loadingOverlay);
 
       // Clear TagManager cache trước khi tìm kiếm
       TagManager.clearCache();
@@ -289,7 +288,7 @@ class _SearchDialogState extends State<SearchDialog> {
         );
       }
     } catch (e) {
-      print('Lỗi khi tìm kiếm tag: $e');
+      debugPrint('Lỗi khi tìm kiếm tag: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Lỗi khi tìm kiếm: $e'),

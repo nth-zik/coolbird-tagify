@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:cb_file_manager/helpers/io_extensions.dart';
 import 'package:cb_file_manager/ui/components/shared_file_context_menu.dart';
 
@@ -110,7 +109,7 @@ class _FolderItemState extends State<FolderItem> {
           child: ListTile(
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 12.0, vertical: 0),
-            leading: Icon(Icons.folder, color: Colors.amber),
+            leading: const Icon(Icons.folder, color: Colors.amber),
             title: Text(
               widget.folder.basename(),
               style: TextStyle(
@@ -123,7 +122,7 @@ class _FolderItemState extends State<FolderItem> {
               builder: (context, snapshot) {
                 if (snapshot.hasData) {
                   return Text(
-                    '${snapshot.data!.modified.toString().split('.')[0]}',
+                    snapshot.data!.modified.toString().split('.')[0],
                   );
                 }
                 return const Text('Loading...');

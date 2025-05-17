@@ -57,7 +57,7 @@ class TagColorManager {
         });
       }
     } catch (e) {
-      print('Error loading tag colors: $e');
+      debugPrint('Error loading tag colors: $e');
       _tagColors = {};
     }
   }
@@ -78,7 +78,7 @@ class TagColorManager {
       // Thông báo cho listeners
       _notifyListeners();
     } catch (e) {
-      print('Error saving tag colors: $e');
+      debugPrint('Error saving tag colors: $e');
     }
   }
 

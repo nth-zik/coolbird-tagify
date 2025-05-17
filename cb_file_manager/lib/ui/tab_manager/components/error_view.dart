@@ -43,14 +43,14 @@ class ErrorView extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           if (isAdminError)
-            Column(
+            const Column(
               children: [
-                const Text(
+                Text(
                   'To access this drive, you need to:',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 8),
-                const Padding(
+                SizedBox(height: 8),
+                Padding(
                   padding: EdgeInsets.symmetric(horizontal: 32.0),
                   child: Text(
                     '1. Close the app\n'
@@ -60,7 +60,7 @@ class ErrorView extends StatelessWidget {
                     textAlign: TextAlign.left,
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
               ],
             ),
           ElevatedButton(

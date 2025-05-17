@@ -113,92 +113,151 @@ class VietnameseLocalizations implements AppLocalizations {
   // Additional translations for database settings
   @override
   String get databaseSettings => 'Cài đặt cơ sở dữ liệu';
+  @override
   String get databaseStorage => 'Lưu trữ cơ sở dữ liệu';
+  @override
   String get useObjectBox => 'Sử dụng cơ sở dữ liệu ObjectBox';
+  @override
   String get databaseDescription =>
       'Lưu trữ thẻ và tùy chọn trong cơ sở dữ liệu cục bộ';
+  @override
   String get jsonStorage => 'Đang sử dụng tệp JSON cho lưu trữ cơ bản';
+  @override
   String get objectBoxStorage =>
       'Đang sử dụng ObjectBox cho lưu trữ cơ sở dữ liệu hiệu quả';
 
   // Cloud sync
+  @override
   String get cloudSync => 'Đồng bộ hóa đám mây';
+  @override
   String get enableCloudSync => 'Bật đồng bộ hóa đám mây';
+  @override
   String get cloudSyncDescription => 'Đồng bộ hóa thẻ và tùy chọn lên đám mây';
+  @override
   String get syncToCloud => 'Đồng bộ lên đám mây';
+  @override
   String get syncFromCloud => 'Đồng bộ từ đám mây';
+  @override
   String get cloudSyncEnabled => 'Thẻ và tùy chọn sẽ được đồng bộ lên đám mây';
+  @override
   String get cloudSyncDisabled => 'Đồng bộ hóa đám mây đang tắt';
+  @override
   String get enableObjectBoxForCloud =>
       'Bật cơ sở dữ liệu ObjectBox để sử dụng đồng bộ đám mây';
 
   // Database statistics
+  @override
   String get databaseStatistics => 'Thống kê cơ sở dữ liệu';
+  @override
   String get totalUniqueTags => 'Tổng số thẻ duy nhất';
+  @override
   String get taggedFiles => 'Tệp tin được gắn thẻ';
+  @override
   String get popularTags => 'Thẻ phổ biến nhất';
+  @override
   String get noTagsFound => 'Không tìm thấy thẻ nào';
+  @override
   String get refreshStatistics => 'Làm mới thống kê';
 
   // Import/Export
+  @override
   String get importExportDatabase => 'Nhập/Xuất cơ sở dữ liệu';
+  @override
   String get backupRestoreDescription =>
       'Sao lưu và khôi phục thẻ và mối quan hệ tệp tin';
+  @override
   String get exportDatabase => 'Xuất cơ sở dữ liệu';
+  @override
   String get exportSettings => 'Xuất cài đặt';
+  @override
   String get importDatabase => 'Nhập cơ sở dữ liệu';
+  @override
   String get importSettings => 'Nhập cài đặt';
+  @override
   String get exportDescription => 'Lưu thẻ của bạn vào một tệp tin';
+  @override
   String get importDescription => 'Khôi phục thẻ của bạn từ một tệp tin';
+  @override
   String get completeBackup => 'Sao lưu toàn bộ';
+  @override
   String get completeRestore => 'Khôi phục toàn bộ';
+  @override
   String get exportAllData => 'Xuất tất cả cài đặt và dữ liệu cơ sở dữ liệu';
+  @override
   String get importAllData => 'Nhập tất cả cài đặt và dữ liệu cơ sở dữ liệu';
 
   // Export/Import messages
+  @override
   String get exportSuccess => 'Đã xuất thành công đến: ';
+  @override
   String get exportFailed => 'Xuất không thành công';
+  @override
   String get importSuccess => 'Đã nhập thành công';
+  @override
   String get importFailed => 'Nhập không thành công hoặc đã hủy';
+  @override
   String get importCancelled => 'Đã hủy nhập';
+  @override
   String get errorExporting => 'Lỗi khi xuất: ';
+  @override
   String get errorImporting => 'Lỗi khi nhập: ';
 
   // Video thumbnails
+  @override
   String get videoThumbnails => 'Hình thu nhỏ video';
+  @override
   String get thumbnailPosition => 'Vị trí hình thu nhỏ:';
+  @override
   String get percentOfVideo => 'phần trăm của video';
+  @override
   String get thumbnailDescription =>
       'Đặt vị trí trong video (tính bằng phần trăm tổng thời lượng) nơi hình thu nhỏ sẽ được trích xuất';
+  @override
   String get thumbnailCache => 'Bộ nhớ đệm hình thu nhỏ';
+  @override
   String get thumbnailCacheDescription =>
       'Hình thu nhỏ video được lưu trong bộ nhớ đệm để cải thiện hiệu suất. Nếu hình thu nhỏ xuất hiện lỗi thời hoặc bạn muốn giải phóng dung lượng, bạn có thể xóa bộ nhớ đệm.';
+  @override
   String get clearThumbnailCache => 'Xóa bộ nhớ đệm hình thu nhỏ';
+  @override
   String get clearing => 'Đang xóa...';
+  @override
   String get thumbnailCleared => 'Đã xóa tất cả hình thu nhỏ video';
+  @override
   String get errorClearingThumbnail => 'Lỗi khi xóa hình thu nhỏ: ';
 
   // New tab
+  @override
   String get newTab => 'Thẻ mới';
 
   // Admin access
+  @override
   String get adminAccess => 'Yêu cầu quyền quản trị';
+  @override
   String get adminAccessRequired =>
       'Ổ đĩa này yêu cầu quyền quản trị để truy cập';
 
   // File system
+  @override
   String get drives => 'Ổ đĩa';
+  @override
   String get system => 'Hệ thống';
 
   // Settings data
+  @override
   String get settingsData => 'Dữ liệu cài đặt';
+  @override
   String get viewManageSettings => 'Xem và quản lý dữ liệu cài đặt';
 
   // About app
+  @override
   String get aboutApp => 'Giới thiệu';
+  @override
   String get appDescription =>
       'Trình quản lý tệp tin mạnh mẽ với khả năng gắn thẻ.';
+  @override
   String get version => 'Phiên bản: 1.0.0';
+  @override
   String get developer => 'Phát triển bởi CoolBird Team';
 
   // File picker dialogs

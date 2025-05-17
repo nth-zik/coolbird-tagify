@@ -66,7 +66,7 @@ class _FolderDetailsItemState extends State<FolderDetailsItem> {
         });
       }
     } catch (e) {
-      print('Error loading folder stats: $e');
+      debugPrint('Error loading folder stats: $e');
     }
   }
 
@@ -80,8 +80,8 @@ class _FolderDetailsItemState extends State<FolderDetailsItem> {
         keyboard.isControlPressed || keyboard.isMetaPressed;
 
     // Log selection attempt
-    print("Folder selection: ${widget.folder.path}");
-    print("Shift: $isShiftPressed, Ctrl: $isCtrlPressed");
+    debugPrint("Folder selection: ${widget.folder.path}");
+    debugPrint("Shift: $isShiftPressed, Ctrl: $isCtrlPressed");
 
     // Visual update for immediate feedback
     if (!isShiftPressed) {

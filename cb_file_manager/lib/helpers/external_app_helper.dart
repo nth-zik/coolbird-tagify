@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'windows_app_icon.dart';
-import 'package:flutter/foundation.dart';
 import 'dart:ui' as ui;
 
 class AppInfo {
@@ -79,7 +78,7 @@ class ExternalAppHelper {
           appName: app['appName'],
           icon: app['iconBytes'] != null
               ? Image.memory(app['iconBytes'], width: 36, height: 36)
-              : Icon(Icons.android, size: 36),
+              : const Icon(Icons.android, size: 36),
         );
       }).toList();
     } catch (e) {

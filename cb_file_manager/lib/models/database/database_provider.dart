@@ -1,5 +1,3 @@
-import 'package:cb_file_manager/models/objectbox/file_tag.dart';
-import 'package:cb_file_manager/models/objectbox/user_preference.dart';
 import 'package:cb_file_manager/models/objectbox/objectbox_database_provider.dart';
 
 /// Interface for database providers

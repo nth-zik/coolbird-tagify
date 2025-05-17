@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:cb_file_manager/helpers/io_extensions.dart';
-import 'package:cb_file_manager/helpers/tag_manager.dart';
 import 'package:cb_file_manager/helpers/thumbnail_helper.dart';
 import 'package:cb_file_manager/ui/dialogs/open_with_dialog.dart';
 import 'package:cb_file_manager/ui/utils/base_screen.dart';
@@ -324,13 +323,13 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
           widget.file,
           fit: BoxFit.contain,
           errorBuilder: (context, error, stackTrace) {
-            return Center(
+            return const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.broken_image,
+                  Icon(Icons.broken_image,
                       size: 64, color: Colors.white54),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   Text(
                     'Error loading image',
                     style: TextStyle(color: Colors.white70),
@@ -362,13 +361,13 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
                 height: 300,
                 isVisible: true,
                 onThumbnailGenerated: (_) {},
-                fallbackBuilder: () => Center(
+                fallbackBuilder: () => const Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.videocam, size: 64, color: Colors.white54),
-                      const SizedBox(height: 8),
-                      const Text(
+                      SizedBox(height: 8),
+                      Text(
                         'Loading video...',
                         style: TextStyle(color: Colors.white70),
                       ),
@@ -407,8 +406,6 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
   }
 
   Widget _buildAudioPreview() {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),

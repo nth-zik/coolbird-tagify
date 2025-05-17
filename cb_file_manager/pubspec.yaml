@@ -66,6 +66,7 @@ dependencies:
   flutter_chips_input: ^2.0.0
   flutter_colorpicker: ^1.1.0
 
+  ffi: any
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -7,7 +7,6 @@ import 'package:cb_file_manager/ui/screens/tag_management/tag_management_screen.
 import 'package:cb_file_manager/ui/screens/settings/settings_screen.dart';
 import 'package:cb_file_manager/ui/screens/trash_bin/trash_bin_screen.dart'; // Import TrashBinScreen
 import 'package:path_provider/path_provider.dart';
-import 'package:cb_file_manager/helpers/tag_manager.dart';
 import 'package:cb_file_manager/helpers/filesystem_utils.dart';
 import 'package:cb_file_manager/helpers/io_extensions.dart'; // Add import for DirectoryProperties extension
 // Import TrashManager
@@ -86,7 +85,7 @@ class _CBDrawerState extends State<CBDrawer> {
             child: DrawerHeader(
               margin: EdgeInsets.zero,
               padding: const EdgeInsets.fromLTRB(16, 16, 8, 16),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppTheme.primaryBlue, // Using color from global AppTheme
               ),
               child: Row(
@@ -275,62 +274,6 @@ class _CBDrawerState extends State<CBDrawer> {
     }).toList();
   }
 
-  List<Widget> _buildWindowsDrivesList() {
-    if (_isLoadingStorages) {
-      return [
-        const ListTile(
-          contentPadding: EdgeInsets.only(left: 30),
-          title: Center(
-            child: SizedBox(
-              height: 20,
-              width: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          ),
-        )
-      ];
-    }
-
-    if (_storageLocations.isEmpty) {
-      return [
-        ListTile(
-          contentPadding: const EdgeInsets.only(left: 30),
-          title: const Text('No storage locations found'),
-          trailing: IconButton(
-            icon: const Icon(EvaIcons.refresh),
-            onPressed: _loadStorageLocations,
-          ),
-        )
-      ];
-    }
-
-    return _storageLocations.map((storage) {
-      String displayName = _getStorageDisplayName(storage);
-      IconData icon = _getStorageIcon(storage);
-      bool requiresAdmin = storage.requiresAdmin;
-
-      return ListTile(
-        contentPadding: const EdgeInsets.only(left: 30),
-        leading: Icon(icon, color: requiresAdmin ? Colors.orange : null),
-        title: Text(displayName),
-        subtitle: requiresAdmin
-            ? const Text('Requires administrator privileges',
-                style: TextStyle(fontSize: 12, color: Colors.orange))
-            : null,
-        onTap: () {
-          if (requiresAdmin) {
-            // Show warning dialog for protected drives
-            _showAdminAccessDialog(context, storage);
-          } else {
-            // Regular drive access
-            Navigator.pop(context);
-            _openInCurrentTab(storage.path, displayName);
-          }
-        },
-      );
-    }).toList();
-  }
-
   void _openInCurrentTab(String path, String name) {
     // Check if we're already in a tab system
     TabManagerBloc? tabBloc;
@@ -354,8 +297,6 @@ class _CBDrawerState extends State<CBDrawer> {
         // Cập nhật tên tab để phản ánh thư mục mới
         final tabName = _getNameFromPath(path);
         tabBloc.add(UpdateTabName(activeTab.id, tabName));
-
-        print("Drawer: Navigating to path: $path");
       } else {
         // Nếu không có tab nào đang mở, tạo tab mới
         tabBloc.add(AddTab(path: path, name: _getNameFromPath(path)));
@@ -368,16 +309,11 @@ class _CBDrawerState extends State<CBDrawer> {
               (route) => false)
           .then((_) {
         // Thêm độ trễ nhỏ để đảm bảo TabManagerBloc được khởi tạo đúng cách
-        Future.delayed(Duration(milliseconds: 100), () {
+        Future.delayed(const Duration(milliseconds: 100), () {
           TabMainScreen.openPath(context, path);
         });
       });
     }
-  }
-
-  void _showOpenOptions(BuildContext context, String path, String name) {
-    // Trực tiếp cập nhật tab hiện tại với đường dẫn mới thay vì hiển thị dialog
-    _openInCurrentTab(path, name);
   }
 
   String _getNameFromPath(String path) {
@@ -427,104 +363,6 @@ class _CBDrawerState extends State<CBDrawer> {
             child: Text(context.tr.ok),
           ),
         ],
-      ),
-    );
-  }
-
-  void _showTagMigrationDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Migrate Tags'),
-        content: const Text(
-          'This will migrate all your existing tags from individual directories to the new global tag system. '
-          'This allows your tags to be accessible from anywhere in the app.\n\n'
-          'Do you want to continue?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-
-              // Show progress dialog
-              _showProgressDialog(context);
-
-              try {
-                // Get the root storage path
-                final directory = await getExternalStorageDirectory() ??
-                    await getApplicationDocumentsDirectory();
-
-                // Start migration process
-                final migratedCount =
-                    await TagManager.migrateToGlobalTags(directory.path);
-
-                // Hide progress dialog
-                if (context.mounted) Navigator.of(context).pop();
-
-                // Show result dialog
-                if (context.mounted) {
-                  showDialog(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Migration Complete'),
-                      content: Text(
-                          'Successfully migrated $migratedCount tagged files to the global tag system.'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          child: const Text('OK'),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-              } catch (e) {
-                // Hide progress dialog
-                if (context.mounted) Navigator.of(context).pop();
-
-                // Show error dialog
-                if (context.mounted) {
-                  showDialog(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Migration Error'),
-                      content: Text('An error occurred during migration: $e'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          child: const Text('OK'),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text('Migrate'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showProgressDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const AlertDialog(
-        title: Text('Migrating Tags'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Please wait while your tags are being migrated...'),
-          ],
-        ),
       ),
     );
   }
@@ -918,62 +756,6 @@ class _AppDrawerState extends State<AppDrawer> {
     }).toList();
   }
 
-  List<Widget> _buildWindowsDrivesList() {
-    if (_isLoadingStorages) {
-      return [
-        const ListTile(
-          contentPadding: EdgeInsets.only(left: 30),
-          title: Center(
-            child: SizedBox(
-              height: 20,
-              width: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          ),
-        )
-      ];
-    }
-
-    if (_storageLocations.isEmpty) {
-      return [
-        ListTile(
-          contentPadding: const EdgeInsets.only(left: 30),
-          title: const Text('No storage locations found'),
-          trailing: IconButton(
-            icon: const Icon(EvaIcons.refresh),
-            onPressed: _loadStorageLocations,
-          ),
-        )
-      ];
-    }
-
-    return _storageLocations.map((storage) {
-      String displayName = _getStorageDisplayName(storage);
-      IconData icon = _getStorageIcon(storage);
-      bool requiresAdmin = storage.requiresAdmin;
-
-      return ListTile(
-        contentPadding: const EdgeInsets.only(left: 30),
-        leading: Icon(icon, color: requiresAdmin ? Colors.orange : null),
-        title: Text(displayName),
-        subtitle: requiresAdmin
-            ? const Text('Requires administrator privileges',
-                style: TextStyle(fontSize: 12, color: Colors.orange))
-            : null,
-        onTap: () {
-          if (requiresAdmin) {
-            // Show warning dialog for protected drives
-            _showAdminAccessDialog(context, storage);
-          } else {
-            // Regular drive access
-            Navigator.pop(context);
-            _openInCurrentTab(storage.path, displayName);
-          }
-        },
-      );
-    }).toList();
-  }
-
   void _openInCurrentTab(String path, String name) {
     // Check if we're already in a tab system
     TabManagerBloc? tabBloc;
@@ -997,8 +779,6 @@ class _AppDrawerState extends State<AppDrawer> {
         // Cập nhật tên tab để phản ánh thư mục mới
         final tabName = _getNameFromPath(path);
         tabBloc.add(UpdateTabName(activeTab.id, tabName));
-
-        print("Drawer: Navigating to path: $path");
       } else {
         // Nếu không có tab nào đang mở, tạo tab mới
         tabBloc.add(AddTab(path: path, name: _getNameFromPath(path)));
@@ -1011,16 +791,11 @@ class _AppDrawerState extends State<AppDrawer> {
               (route) => false)
           .then((_) {
         // Thêm độ trễ nhỏ để đảm bảo TabManagerBloc được khởi tạo đúng cách
-        Future.delayed(Duration(milliseconds: 100), () {
+        Future.delayed(const Duration(milliseconds: 100), () {
           TabMainScreen.openPath(context, path);
         });
       });
     }
-  }
-
-  void _showOpenOptions(BuildContext context, String path, String name) {
-    // Trực tiếp cập nhật tab hiện tại với đường dẫn mới thay vì hiển thị dialog
-    _openInCurrentTab(path, name);
   }
 
   String _getNameFromPath(String path) {

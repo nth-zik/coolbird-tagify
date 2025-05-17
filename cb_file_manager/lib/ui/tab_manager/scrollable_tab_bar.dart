@@ -60,11 +60,11 @@ class _ScrollableTabBarState extends State<ScrollableTabBar> {
 
     // Chrome-like colors
     final tabBackgroundColor =
-        isDarkMode ? Color(0xFF292A2D) : Color(0xFFDEE1E6);
-    final activeTabColor = isDarkMode ? Color(0xFF3C4043) : Colors.white;
+        isDarkMode ? const Color(0xFF292A2D) : const Color(0xFFDEE1E6);
+    final activeTabColor = isDarkMode ? const Color(0xFF3C4043) : Colors.white;
     final hoverColor = isDarkMode
-        ? Color(0xFF3C4043).withOpacity(0.7)
-        : Color(0xFFDEE1E6).withOpacity(0.7);
+        ? const Color(0xFF3C4043).withOpacity(0.7)
+        : const Color(0xFFDEE1E6).withOpacity(0.7);
 
     return Container(
       decoration: BoxDecoration(
@@ -287,7 +287,7 @@ class _ChromeTabState extends State<_ChromeTab>
 
   @override
   Widget build(BuildContext context) {
-    final tabWidth = 220.0;
+    const tabWidth = 220.0;
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
 

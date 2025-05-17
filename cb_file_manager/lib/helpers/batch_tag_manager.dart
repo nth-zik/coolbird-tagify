@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:cb_file_manager/models/database/database_manager.dart';
 import 'package:cb_file_manager/helpers/user_preferences.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
+import 'package:flutter/material.dart';
 
 /// Manages batch operations on file tags
 class BatchTagManager {
@@ -27,9 +28,9 @@ class BatchTagManager {
       _databaseManager = DatabaseManager.getInstance();
       await _databaseManager!.initialize();
 
-      print('BatchTagManager initialized successfully');
+      debugPrint('BatchTagManager initialized successfully');
     } catch (e) {
-      print('Error initializing BatchTagManager: $e');
+      debugPrint('Error initializing BatchTagManager: $e');
     }
   }
 
@@ -57,7 +58,7 @@ class BatchTagManager {
 
       return results;
     } catch (e) {
-      print('Error in batch tag add: $e');
+      debugPrint('Error in batch tag add: $e');
 
       // Fill remaining files with failure
       for (final filePath in filePaths) {
@@ -89,7 +90,7 @@ class BatchTagManager {
 
       return results;
     } catch (e) {
-      print('Error in batch tag remove: $e');
+      debugPrint('Error in batch tag remove: $e');
 
       // Fill remaining files with failure
       for (final filePath in filePaths) {
@@ -120,7 +121,7 @@ class BatchTagManager {
 
       return results;
     } catch (e) {
-      print('Error getting tags for multiple files: $e');
+      debugPrint('Error getting tags for multiple files: $e');
 
       // Fill remaining files with empty lists
       for (final filePath in filePaths) {
@@ -152,7 +153,7 @@ class BatchTagManager {
 
       return results;
     } catch (e) {
-      print('Error setting tags for multiple files: $e');
+      debugPrint('Error setting tags for multiple files: $e');
 
       // Fill remaining files with failure
       for (final filePath in fileTagsMap.keys) {
@@ -200,7 +201,7 @@ class BatchTagManager {
 
       return commonTags?.toList() ?? [];
     } catch (e) {
-      print('Error finding common tags: $e');
+      debugPrint('Error finding common tags: $e');
       return [];
     }
   }
@@ -243,7 +244,7 @@ class BatchTagManager {
 
       return count;
     } catch (e) {
-      print('Error tagging directory: $e');
+      debugPrint('Error tagging directory: $e');
       return count;
     }
   }
@@ -257,7 +258,7 @@ class BatchTagManager {
       // Set tags on target file
       return await _databaseManager!.setTagsForFile(targetFilePath, tags);
     } catch (e) {
-      print('Error copying tags: $e');
+      debugPrint('Error copying tags: $e');
       return false;
     }
   }
@@ -284,7 +285,7 @@ class BatchTagManager {
 
       return results;
     } catch (e) {
-      print('Error copying tags to multiple files: $e');
+      debugPrint('Error copying tags to multiple files: $e');
 
       // Fill remaining files with failure
       for (final filePath in targetFilePaths) {
@@ -352,7 +353,7 @@ class BatchTagManager {
           break;
 
         default:
-          print('Invalid tag operation: $operation');
+          debugPrint('Invalid tag operation: $operation');
           for (final filePath in filePaths) {
             results[filePath] = false;
           }
@@ -360,7 +361,7 @@ class BatchTagManager {
 
       return results;
     } catch (e) {
-      print('Error applying tag operation: $e');
+      debugPrint('Error applying tag operation: $e');
 
       // Fill remaining files with failure
       for (final filePath in filePaths) {

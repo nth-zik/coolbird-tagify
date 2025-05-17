@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:async'; // Add this import for Completer
-import 'dart:async' show scheduleMicrotask;
 import 'dart:math'; // For math operations with drag selection and min/max functions
 
 import 'package:cb_file_manager/helpers/frame_timing_optimizer.dart';
@@ -37,8 +36,7 @@ import 'package:cb_file_manager/helpers/trash_manager.dart'; // Import for Trash
 
 // Add imports for hardware acceleration
 import 'package:flutter/rendering.dart' show RendererBinding;
-import 'package:flutter/scheduler.dart'
-    show SchedulerBinding; // For scheduler and timeDilation
+// For scheduler and timeDilation
 // Add import for value listenable builder
 import 'package:flutter/foundation.dart';
 
@@ -144,11 +142,9 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
   // Current path displayed in this tab
   String _currentPath = '';
   // Flag to indicate whether we're in path editing mode
-  bool _isEditingPath = false;
 
   // View and sort preferences
   late ViewMode _viewMode;
-  late SortOption _sortOption;
   late int _gridZoomLevel;
   late ColumnVisibility _columnVisibility;
 
@@ -162,10 +158,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
   bool _isHandlingPathUpdate = false;
 
   // Variables for drag selection
-  bool _isDragging = false;
-  Offset? _dragStartPosition;
-  Offset? _dragCurrentPosition;
-  Map<String, Rect> _itemPositions = {};
+  final Map<String, Rect> _itemPositions = {};
 
   // Use ValueNotifier for drag selection state to avoid rebuilding the whole screen
   final ValueNotifier<bool> _isDraggingNotifier = ValueNotifier<bool>(false);
@@ -257,7 +250,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
         await prefs.setLastAccessedFolder(_currentPath);
       }
     } catch (e) {
-      print('Error saving last accessed folder: $e');
+      debugPrint('Error saving last accessed folder: $e');
     }
   }
 
@@ -274,7 +267,6 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
       if (mounted) {
         setState(() {
           _viewMode = viewMode;
-          _sortOption = sortOption;
           _gridZoomLevel = gridZoomLevel;
           _columnVisibility = columnVisibility;
         });
@@ -294,7 +286,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
       await prefs.init();
       await prefs.setViewMode(mode);
     } catch (e) {
-      print('Error saving view mode: $e');
+      debugPrint('Error saving view mode: $e');
     }
   }
 
@@ -304,7 +296,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
       await prefs.init();
       await prefs.setSortOption(option);
     } catch (e) {
-      print('Error saving sort option: $e');
+      debugPrint('Error saving sort option: $e');
     }
   }
 
@@ -317,7 +309,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
         _gridZoomLevel = zoomLevel;
       });
     } catch (e) {
-      print('Error saving grid zoom level: $e');
+      debugPrint('Error saving grid zoom level: $e');
     }
   }
 
@@ -540,28 +532,6 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
     });
   }
 
-  void _showSearchScreen(BuildContext context, FolderListState state) {
-    showDialog(
-      context: context,
-      builder: (context) => folder_list_components.SearchDialog(
-        currentPath: _currentPath,
-        files: state.files.whereType<File>().toList(),
-        folders: state.folders.whereType<Directory>().toList(),
-        onFolderSelected: (path) {
-          // Khi người dùng chọn thư mục, chuyển đến thư mục đó trong tab hiện tại
-          _navigateToPath(path);
-        },
-        onFileSelected: (file) {
-          // Khi người dùng chọn file, mở file đó
-          final extension = file.path.split('.').last.toLowerCase();
-          final isVideo =
-              ['mp4', 'mov', 'avi', 'mkv', 'flv', 'wmv'].contains(extension);
-          _onFileTap(file, isVideo);
-        },
-      ),
-    );
-  }
-
   // Hiển thị tooltip hướng dẫn sử dụng tìm kiếm tag khi người dùng nhấn vào icon tìm kiếm lần đầu
   void _showSearchTip(BuildContext context) {
     final UserPreferences prefs = UserPreferences.instance;
@@ -625,7 +595,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
 
     // Clear any search or filter state when navigating
     if (_currentFilter != null || _currentSearchTag != null) {
-      _folderListBloc.add(ClearSearchAndFilters());
+      _folderListBloc.add(const ClearSearchAndFilters());
     }
 
     // Update the tab's path in the TabManager
@@ -657,7 +627,6 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
       setState(() {
         _currentPath = '';
         _pathController.text = '';
-        _isEditingPath = false;
       });
       return;
     }
@@ -667,9 +636,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
     directory.exists().then((exists) {
       if (exists) {
         _navigateToPath(path);
-        setState(() {
-          _isEditingPath = false;
-        });
+        setState(() {});
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -736,7 +703,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
 
     // Clear any search or filter state when navigating
     if (_currentFilter != null || _currentSearchTag != null) {
-      _folderListBloc.add(ClearSearchAndFilters());
+      _folderListBloc.add(const ClearSearchAndFilters());
     }
 
     // Load the folder contents with the new path
@@ -780,7 +747,8 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
 
           // If the tab's path has changed and is different from our current path, update it
           if (currentTab.id.isNotEmpty && currentTab.path != _currentPath) {
-            print('Tab path updated from $_currentPath to ${currentTab.path}');
+            debugPrint(
+                'Tab path updated from $_currentPath to ${currentTab.path}');
             // Use updatePath method to update our state and folder list
             _updatePath(currentTab.path);
           }
@@ -943,14 +911,6 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
     });
   }
 
-  String _extractFolderName(String path) {
-    // Use platform-specific path separator
-    final pathParts = path.split(Platform.pathSeparator);
-    return pathParts.isEmpty || pathParts.last.isEmpty
-        ? 'Root'
-        : pathParts.last;
-  }
-
   Widget _buildBody(BuildContext context, FolderListState state,
       SelectionState selectionState) {
     // Apply frame timing optimization before heavy UI operations
@@ -1065,7 +1025,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
         state.filteredFiles.isNotEmpty) {
       return folder_list_components.FileView(
         files: state.filteredFiles.whereType<File>().toList(),
-        folders: [], // No folders in filtered view
+        folders: const [], // No folders in filtered view
         state: state,
         isSelectionMode: selectionState.isSelectionMode,
         isGridView: state.viewMode == ViewMode.grid,
@@ -1531,7 +1491,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                       trashManager.moveToTrash(folderPath);
                     }
                   } catch (e) {
-                    print('Error moving folder to trash: $e');
+                    debugPrint('Error moving folder to trash: $e');
                   }
                 }
 
@@ -1654,8 +1614,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
         }
 
         // Use direct method call instead of BLoC event
-        final String? actualPath =
-            tabManagerBloc.backNavigationToPath(widget.tabId);
+        tabManagerBloc.backNavigationToPath(widget.tabId);
 
         // Load the folder content
         _folderListBloc.add(FolderListLoad(previousPath));
@@ -1800,7 +1759,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
           await prefs.init();
           await prefs.setColumnVisibility(visibility);
         } catch (e) {
-          print('Error saving column visibility: $e');
+          debugPrint('Error saving column visibility: $e');
         }
       },
     );

@@ -485,7 +485,7 @@ class TrashManager {
             pathlib.basenameWithoutExtension(originalPath);
         final directory = pathlib.dirname(originalPath);
         targetPath = pathlib.join(
-            directory, '${nameWithoutExtension} (recovered)$extension');
+            directory, '$nameWithoutExtension (recovered)$extension');
       }
 
       // Restore the file

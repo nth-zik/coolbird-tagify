@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
 import 'package:cb_file_manager/helpers/tag_color_manager.dart';
 import 'package:cb_file_manager/models/database/database_manager.dart';
-import 'package:cb_file_manager/helpers/user_preferences.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/file_details_screen.dart';
 import 'package:cb_file_manager/ui/utils/base_screen.dart';
 import 'package:cb_file_manager/ui/widgets/tag_chip.dart';
@@ -28,9 +27,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
   // Database manager instance
   final DatabaseManager _database = DatabaseManager.getInstance();
   // Tag manager instance
-  final TagManager _tagManager = TagManager.instance;
   // User preferences singleton instance
-  final UserPreferences _preferences = UserPreferences.instance;
   // Tag color manager
   late TagColorManager _tagColorManager;
 
@@ -607,34 +604,6 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
     );
   }
 
-  Widget _buildTagItem(String tag) {
-    return InkWell(
-      onTap: () => _selectTag(tag),
-      onLongPress: () => _showTagOptions(tag),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4.0),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TagChip(
-              tag: tag,
-              onTap: () => _selectTag(tag),
-              onDeleted: () => _showDeleteTagConfirmation(context, tag),
-            ),
-            IconButton(
-              icon: const Icon(Icons.color_lens, size: 16),
-              onPressed: () => _showColorPickerDialog(tag),
-              tooltip: 'Change tag color',
-              visualDensity: VisualDensity.compact,
-              constraints: const BoxConstraints(),
-              padding: const EdgeInsets.all(4),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _showTagOptions(String tag) {
     showModalBottomSheet(
       context: context,
@@ -1091,7 +1060,6 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
 
   Widget _buildTagsGrid() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDarkMode ? Colors.grey[850] : Colors.grey[100];
 
     return GridView.builder(
       padding: const EdgeInsets.all(12),

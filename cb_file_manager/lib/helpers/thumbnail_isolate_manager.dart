@@ -1,14 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import 'package:video_thumbnail/video_thumbnail.dart';
-import 'package:flutter/services.dart';
 import '../helpers/fc_native_video_thumbnail.dart';
 
 /// A manager for efficient video thumbnail generation using isolates
@@ -326,16 +324,6 @@ class ThumbnailIsolateManager {
         _pendingRequests[videoPath]!.complete(null);
       }
     }
-  }
-
-  /// Find an available worker
-  _IsolateWorker? _findAvailableWorker() {
-    for (final worker in _workers) {
-      if (!worker.isBusy) {
-        return worker;
-      }
-    }
-    return null;
   }
 
   /// Create cache filename from video path

@@ -68,7 +68,7 @@ extension DirectoryExtension on Directory {
   Future<int> fileCount() async {
     try {
       final files =
-          await this.list().where((entity) => entity is File).toList();
+          await list().where((entity) => entity is File).toList();
       return files.length;
     } catch (e) {
       return 0;
@@ -78,7 +78,7 @@ extension DirectoryExtension on Directory {
   /// Count all entities (files and directories) in the directory (non-recursive)
   Future<int> entityCount() async {
     try {
-      final entities = await this.list().toList();
+      final entities = await list().toList();
       return entities.length;
     } catch (e) {
       return 0;

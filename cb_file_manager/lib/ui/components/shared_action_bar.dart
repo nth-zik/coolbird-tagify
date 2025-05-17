@@ -114,11 +114,11 @@ class SharedActionBar {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: Row(
+              title: const Row(
                 children: [
-                  const Icon(Icons.view_column, size: 24),
-                  const SizedBox(width: 8),
-                  const Text('Tùy chỉnh hiển thị cột'),
+                  Icon(Icons.view_column, size: 24),
+                  SizedBox(width: 8),
+                  Text('Tùy chỉnh hiển thị cột'),
                 ],
               ),
               content: SingleChildScrollView(
@@ -253,13 +253,13 @@ class SharedActionBar {
       tooltip: 'Thêm tùy chọn',
       itemBuilder: (context) {
         List<PopupMenuEntry<String>> items = [
-          PopupMenuItem<String>(
+          const PopupMenuItem<String>(
             value: 'selection_mode',
             child: Row(
               children: [
                 Icon(EvaIcons.checkmarkSquare2Outline, size: 20),
-                const SizedBox(width: 10),
-                const Text('Chọn nhiều file'),
+                SizedBox(width: 10),
+                Text('Chọn nhiều file'),
               ],
             ),
           ),
@@ -268,13 +268,13 @@ class SharedActionBar {
         // Only show tag management if the callback is provided
         if (onManageTagsPressed != null) {
           items.add(
-            PopupMenuItem<String>(
+            const PopupMenuItem<String>(
               value: 'manage_tags',
               child: Row(
                 children: [
-                  const Icon(EvaIcons.bookmarkOutline, size: 20),
-                  const SizedBox(width: 10),
-                  const Text('Quản lý thẻ'),
+                  Icon(EvaIcons.bookmarkOutline, size: 20),
+                  SizedBox(width: 10),
+                  Text('Quản lý thẻ'),
                 ],
               ),
             ),
@@ -285,25 +285,25 @@ class SharedActionBar {
         if (onGallerySelected != null && currentPath != null) {
           items.add(const PopupMenuDivider());
           items.add(
-            PopupMenuItem<String>(
+            const PopupMenuItem<String>(
               value: 'image_gallery',
               child: Row(
                 children: [
-                  const Icon(EvaIcons.imageOutline, size: 20),
-                  const SizedBox(width: 10),
-                  const Text('Xem thư viện ảnh'),
+                  Icon(EvaIcons.imageOutline, size: 20),
+                  SizedBox(width: 10),
+                  Text('Xem thư viện ảnh'),
                 ],
               ),
             ),
           );
           items.add(
-            PopupMenuItem<String>(
+            const PopupMenuItem<String>(
               value: 'video_gallery',
               child: Row(
                 children: [
-                  const Icon(EvaIcons.videoOutline, size: 20),
-                  const SizedBox(width: 10),
-                  const Text('Xem thư viện video'),
+                  Icon(EvaIcons.videoOutline, size: 20),
+                  SizedBox(width: 10),
+                  Text('Xem thư viện video'),
                 ],
               ),
             ),

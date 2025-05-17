@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
-import '../../screens/folder_list/folder_list_bloc.dart';
-import '../../screens/folder_list/folder_list_event.dart';
 import 'tag_dialogs.dart';
-import 'package:cb_file_manager/ui/tab_manager/components/tag_dialogs.dart';
 
 /// AppBar component displayed when in selection mode
 class SelectionAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -43,7 +39,7 @@ class SelectionAppBar extends StatelessWidget implements PreferredSizeWidget {
 
     // Debug warning if passed count doesn't match actual count
     if (actualCount != selectedCount) {
-      print(
+      debugPrint(
           "⚠️ SelectionAppBar - Count mismatch: passed=$selectedCount, actual=$actualCount (files=$fileCount, folders=$folderCount)");
     }
 

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cb_file_manager/main.dart' show goHome;
 import 'package:cb_file_manager/ui/drawer.dart';
-import 'package:cb_file_manager/ui/utils/route.dart';
 import 'package:cb_file_manager/helpers/user_preferences.dart'; // Add UserPreferences import
 import 'package:cb_file_manager/config/translation_helper.dart'; // Import translation helper
 import 'package:eva_icons_flutter/eva_icons_flutter.dart'; // Import EvaIcons
-import 'dart:io'; // For Platform check
+// For Platform check
 
 /// A base screen widget that handles common functionality across all screens
 /// including drawer, back button, and home button navigation.
@@ -88,7 +87,7 @@ class _BaseScreenState extends State<BaseScreen> {
         });
       }
     } catch (e) {
-      print('Error loading drawer preferences: $e');
+      debugPrint('Error loading drawer preferences: $e');
     }
   }
 
@@ -99,7 +98,7 @@ class _BaseScreenState extends State<BaseScreen> {
       await prefs.init();
       await prefs.setDrawerPinned(isPinned);
     } catch (e) {
-      print('Error saving drawer pinned state: $e');
+      debugPrint('Error saving drawer pinned state: $e');
     }
   }
 

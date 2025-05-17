@@ -53,8 +53,6 @@ class SwitchToTabIntent extends Intent {
 }
 
 class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
-  bool _initialTabAdded = false;
-
   // Drawer state variables
   bool _isDrawerPinned = false;
 
@@ -133,7 +131,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
         });
       }
     } catch (e) {
-      print('Error loading drawer preferences: $e');
+      debugPrint('Error loading drawer preferences: $e');
     }
   }
 
@@ -144,7 +142,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
       final UserPreferences prefs = UserPreferences.instance;
       await prefs.setDrawerPinned(isPinned);
     } catch (e) {
-      print('Error saving drawer pinned state: $e');
+      debugPrint('Error saving drawer pinned state: $e');
     }
   }
 
@@ -180,29 +178,6 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
   bool _isTablet(BuildContext context) {
     // Coi rộng > 600dp là tablet, theo Material Design guidelines
     return MediaQuery.of(context).size.shortestSide >= 600;
-  }
-
-  Future<void> _openDefaultTab() async {
-    if (_initialTabAdded) return;
-
-    try {
-      // Get default directory (documents folder)
-      final directory = await getApplicationDocumentsDirectory();
-
-      // Add a new tab with this directory
-      if (mounted) {
-        context
-            .read<TabManagerBloc>()
-            .add(AddTab(path: directory.path, name: 'Documents'));
-        _initialTabAdded = true;
-      }
-    } catch (e) {
-      // Show error if directory can't be accessed
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error accessing directory: $e')));
-      }
-    }
   }
 
   // Method to close the current active tab
@@ -344,8 +319,8 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                           elevation: 0,
                           backgroundColor:
                               Theme.of(context).brightness == Brightness.dark
-                                  ? Color(0xFF292A2D)
-                                  : Color(0xFFDEE1E6),
+                                  ? const Color(0xFF292A2D)
+                                  : const Color(0xFFDEE1E6),
                           // Move TabBar to the title area instead of using bottom
                           title: state.tabs.isEmpty
                               ? Text(context.tr.appTitle)
@@ -503,14 +478,14 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
             color: Colors.grey,
           ),
           const SizedBox(height: 16),
-          Text(
+          const Text(
             'No tabs open',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          Text(
+          const Text(
             'Open a new tab to get started',
-            style: const TextStyle(color: Colors.grey),
+            style: TextStyle(color: Colors.grey),
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
@@ -536,56 +511,55 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
 
   Future<void> _handleAddNewTab() async {
     try {
-      print("Attempting to add new tab...");
+      debugPrint("Attempting to add new tab...");
       // Nếu là Windows, tạo tab với path rỗng để hiển thị drive picker trong view
       if (Platform.isWindows) {
-        print("Adding Drives tab for Windows");
+        debugPrint("Adding Drives tab for Windows");
         context.read<TabManagerBloc>().add(AddTab(path: '', name: 'Drives'));
         return;
       }
 
       // Xử lý cho các hệ điều hành khác
       try {
-        print("Getting documents directory...");
+        debugPrint("Getting documents directory...");
         final directory = await getApplicationDocumentsDirectory();
-        print("Got directory: ${directory.path}");
+        debugPrint("Got directory: ${directory.path}");
 
         if (mounted) {
-          print("Adding tab with Documents path");
+          debugPrint("Adding tab with Documents path");
           final bloc = context.read<TabManagerBloc>();
           bloc.add(AddTab(path: directory.path, name: 'Documents'));
 
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
               setState(() {
-                _initialTabAdded = true;
-                print("Tab added successfully");
+                debugPrint("Tab added successfully");
               });
             }
           });
         } else {
-          print("Context is not mounted");
+          debugPrint("Context is not mounted");
         }
       } catch (e) {
-        print("Error accessing directory: $e");
+        debugPrint("Error accessing directory: $e");
 
         // Fallback - try to use current directory
         if (mounted) {
           final fallbackPath = Directory.current.path;
-          print("Using fallback path: $fallbackPath");
+          debugPrint("Using fallback path: $fallbackPath");
           context
               .read<TabManagerBloc>()
               .add(AddTab(path: fallbackPath, name: 'Home'));
         }
       }
     } catch (e) {
-      print("Critical error in _handleAddNewTab: $e");
+      debugPrint("Critical error in _handleAddNewTab: $e");
       // Last resort - try to display something
       if (mounted) {
         try {
           context.read<TabManagerBloc>().add(AddTab(path: '', name: 'Browse'));
         } catch (e) {
-          print("Failed to create fallback tab: $e");
+          debugPrint("Failed to create fallback tab: $e");
         }
       }
     }
@@ -594,7 +568,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
   void _showTabOptions(BuildContext context) {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
-    final backgroundColor = isDarkMode ? Color(0xFF292A2D) : Colors.white;
+    final backgroundColor = isDarkMode ? const Color(0xFF292A2D) : Colors.white;
     final textColor = isDarkMode ? Colors.white70 : Colors.black87;
 
     showDialog(

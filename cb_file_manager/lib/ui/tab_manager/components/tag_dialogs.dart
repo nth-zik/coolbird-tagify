@@ -1,17 +1,12 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
-import 'package:path/path.dart' as p;
-import 'package:cb_file_manager/ui/widgets/tag_chip.dart';
 import 'package:cb_file_manager/ui/widgets/chips_input.dart';
 import 'package:cb_file_manager/helpers/batch_tag_manager.dart';
 import 'dart:ui' as ui; // Import for ImageFilter
-import 'package:flutter/rendering.dart';
 import 'package:cb_file_manager/ui/widgets/tag_management_section.dart';
-import 'package:cb_file_manager/models/database/database_manager.dart';
 import 'package:cb_file_manager/helpers/tag_color_manager.dart';
 
 /// Dialog for adding a tag to a file
@@ -22,7 +17,7 @@ void showAddTagToFileDialog(BuildContext context, String filePath) {
   final double dialogHeight = screenSize.height * 0.6; // 60% of screen height
 
   // Function to directly refresh the UI in parent components
-  void _refreshParentUI(BuildContext dialogContext, String filePath,
+  void refreshParentUI(BuildContext dialogContext, String filePath,
       {bool preserveScroll = true}) {
     // Clear tag cache immediately
     TagManager.clearCache();
@@ -30,7 +25,7 @@ void showAddTagToFileDialog(BuildContext context, String filePath) {
     // Notify the application about tag changes so any listening components can update
     // Add a special prefix if we need to preserve scroll position
     if (preserveScroll) {
-      TagManager.instance.notifyTagChanged("preserve_scroll:" + filePath);
+      TagManager.instance.notifyTagChanged("preserve_scroll:$filePath");
     } else {
       TagManager.instance.notifyTagChanged(filePath);
     }
@@ -47,7 +42,7 @@ void showAddTagToFileDialog(BuildContext context, String filePath) {
           return BackdropFilter(
             filter: ui.ImageFilter.blur(sigmaX: 5, sigmaY: 5),
             child: AlertDialog(
-              title: Text(
+              title: const Text(
                 'Add Tag',
                 style: TextStyle(
                   fontSize: 24,
@@ -72,7 +67,7 @@ void showAddTagToFileDialog(BuildContext context, String filePath) {
                       tagManagementSection = TagManagementSection(
                         filePath: filePath,
                         onTagsUpdated: () {
-                          _refreshParentUI(context, filePath);
+                          refreshParentUI(context, filePath);
                         },
                       );
                       return tagManagementSection;
@@ -100,7 +95,7 @@ void showAddTagToFileDialog(BuildContext context, String filePath) {
                     tagManagementSection.saveChanges();
 
                     // Make sure to notify the parent UI of changes
-                    _refreshParentUI(context, filePath);
+                    refreshParentUI(context, filePath);
 
                     // Close the dialog
                     Navigator.of(context).pop();
@@ -119,70 +114,6 @@ void showAddTagToFileDialog(BuildContext context, String filePath) {
       );
     },
   );
-}
-
-// Helper function to add a tag to a file
-void _addTagToFile(BuildContext context, String filePath, String tag) async {
-  try {
-    // Add tag to file
-    await TagManager.addTag(filePath, tag);
-
-    // Clear tag cache to ensure fresh data
-    TagManager.clearCache();
-
-    if (context.mounted) {
-      try {
-        // Try to notify the bloc to update the UI if available
-        if (BlocProvider.of<FolderListBloc>(context, listen: false) != null) {
-          final bloc = BlocProvider.of<FolderListBloc>(context, listen: false);
-          bloc.add(AddTagToFile(filePath, tag));
-
-          // Force refresh the UI to show changes immediately
-          final currentPath = Directory(filePath).parent.path;
-          bloc.add(FolderListRefresh(currentPath));
-        }
-      } catch (e) {
-        // Bloc not available in this context - it's okay, just continue
-        print('FolderListBloc not available in this context: $e');
-      }
-
-      // Show a snackbar to confirm the tag was added
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Tag "$tag" added successfully'),
-          duration: const Duration(seconds: 1),
-        ),
-      );
-
-      // Dialog closing is now handled by the caller
-    }
-  } catch (e) {
-    // Show error if tag couldn't be added
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error adding tag: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-}
-
-// Helper function to add a tag to a file without notifications
-Future<void> _addTagToFileQuiet(
-    BuildContext context, String filePath, String tag) async {
-  try {
-    // Clear cache first
-    TagManager.clearCache();
-
-    // Add tag to file
-    await TagManager.addTag(filePath, tag);
-
-    // No need to update UI here as we'll do it after all operations are complete
-  } catch (e) {
-    print('Error adding tag: $e');
-  }
 }
 
 /// Dialog for deleting a tag from a file
@@ -257,28 +188,23 @@ void showDeleteTagDialog(
                         if (context.mounted) {
                           try {
                             // Try to notify bloc to update UI if available
-                            if (BlocProvider.of<FolderListBloc>(context,
-                                    listen: false) !=
-                                null) {
-                              final bloc = BlocProvider.of<FolderListBloc>(
-                                  context,
-                                  listen: false);
+                            final bloc = BlocProvider.of<FolderListBloc>(
+                                context,
+                                listen: false);
 
-                              // Only notify about the specific tag removal
-                              // Do NOT refresh the entire list
-                              bloc.add(
-                                  RemoveTagFromFile(filePath, selectedTag!));
-                            }
+                            // Only notify about the specific tag removal
+                            // Do NOT refresh the entire list
+                            bloc.add(RemoveTagFromFile(filePath, selectedTag!));
                           } catch (e) {
                             // Bloc not available in this context - it's okay, just continue
-                            print(
+                            debugPrint(
                                 'FolderListBloc not available in this context: $e');
                           }
 
                           // Directly notify with a special prefix to indicate
                           // this is just a tag change and shouldn't trigger a full reload
                           TagManager.instance
-                              .notifyTagChanged("tag_only:" + filePath);
+                              .notifyTagChanged("tag_only:$filePath");
 
                           // Show confirmation
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -350,7 +276,7 @@ void showBatchAddTagDialog(BuildContext context, List<String> selectedFiles) {
   }
 
   // Function to directly refresh the UI in parent components
-  void _refreshParentUIBatch() {
+  void refreshParentUIBatch() {
     // Clear tag cache immediately
     TagManager.clearCache();
 
@@ -358,11 +284,11 @@ void showBatchAddTagDialog(BuildContext context, List<String> selectedFiles) {
       if (context.mounted && selectedFiles.isNotEmpty) {
         // Notify tag changes for each file with preserve_scroll prefix
         for (final file in selectedFiles) {
-          TagManager.instance.notifyTagChanged("preserve_scroll:" + file);
+          TagManager.instance.notifyTagChanged("preserve_scroll:$file");
         }
       }
     } catch (e) {
-      print('Error refreshing parent UI: $e');
+      debugPrint('Error refreshing parent UI: $e');
     }
   }
 
@@ -401,7 +327,7 @@ void showBatchAddTagDialog(BuildContext context, List<String> selectedFiles) {
               child: AlertDialog(
                 title: Text(
                   'Thêm thẻ cho ${selectedFiles.length} tệp',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
@@ -508,7 +434,7 @@ void showBatchAddTagDialog(BuildContext context, List<String> selectedFiles) {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
+                              const Text(
                                 'Thẻ đã chọn:',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
@@ -527,7 +453,8 @@ void showBatchAddTagDialog(BuildContext context, List<String> selectedFiles) {
                                         selectedTags.remove(tag);
                                       });
                                     },
-                                    deleteIcon: Icon(Icons.close, size: 16),
+                                    deleteIcon:
+                                        const Icon(Icons.close, size: 16),
                                   );
                                 }).toList(),
                               ),
@@ -618,10 +545,7 @@ void showBatchAddTagDialog(BuildContext context, List<String> selectedFiles) {
 
                             // Try to notify the bloc about changes, with proper error handling
                             try {
-                              if (context.mounted &&
-                                  BlocProvider.of<FolderListBloc>(context,
-                                          listen: false) !=
-                                      null) {
+                              if (context.mounted) {
                                 final bloc = BlocProvider.of<FolderListBloc>(
                                     context,
                                     listen: false);
@@ -634,13 +558,13 @@ void showBatchAddTagDialog(BuildContext context, List<String> selectedFiles) {
                               }
                             } catch (e) {
                               // Bloc not available in this context - it's okay, just continue
-                              print(
+                              debugPrint(
                                   'FolderListBloc not available in batch tag dialog: $e');
                             }
                           }
 
                           // Make sure to notify the parent UI of changes
-                          _refreshParentUIBatch();
+                          refreshParentUIBatch();
 
                           // Hiển thị thông báo tổng kết
                           if (context.mounted) {
@@ -668,7 +592,7 @@ void showBatchAddTagDialog(BuildContext context, List<String> selectedFiles) {
                           // Close the dialog
                           Navigator.of(context).pop();
                         } catch (e) {
-                          print('Error processing batch tags: $e');
+                          debugPrint('Error processing batch tags: $e');
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
@@ -711,8 +635,9 @@ class PopularTagsWidget extends StatelessWidget {
     return FutureBuilder<Map<String, int>>(
       future: TagManager.instance.getPopularTags(limit: limit),
       builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.data!.isEmpty)
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const SizedBox.shrink();
+        }
 
         final popularTags = snapshot.data ?? {};
 
@@ -729,7 +654,7 @@ class PopularTagsWidget extends StatelessWidget {
                       : Colors.amber,
                 ),
                 const SizedBox(width: 8),
-                Text(
+                const Text(
                   'Thẻ phổ biến:',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
@@ -767,8 +692,9 @@ class RecentTagsWidget extends StatelessWidget {
     return FutureBuilder<List<String>>(
       future: TagManager.getRecentTags(limit: limit),
       builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.data!.isEmpty)
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const SizedBox.shrink();
+        }
 
         final recentTags = snapshot.data ?? [];
 
@@ -785,7 +711,7 @@ class RecentTagsWidget extends StatelessWidget {
                       : Colors.grey[700],
                 ),
                 const SizedBox(width: 8),
-                Text(
+                const Text(
                   'Thẻ gần đây:',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
@@ -895,11 +821,12 @@ class _AnimatedTagChipState extends State<AnimatedTagChip>
     final tagColor = _colorManager.getTagColor(widget.tag);
 
     // If tag has a custom color, use it; otherwise use theme colors
+    // ignore: unnecessary_null_comparison
     final bool hasCustomColor = tagColor != null;
 
     // Dynamic colors based on hover state and tag color
     final Color backgroundColor = hasCustomColor
-        ? (tagColor!.withOpacity(_isHovered ? 0.3 : 0.2))
+        ? (tagColor.withOpacity(_isHovered ? 0.3 : 0.2))
         : (_isHovered
             ? (isDark
                 ? Colors.blue.withOpacity(0.3)
@@ -907,19 +834,19 @@ class _AnimatedTagChipState extends State<AnimatedTagChip>
             : (isDark ? Colors.grey[700]! : Colors.grey[200]!));
 
     final Color textColor = hasCustomColor
-        ? (tagColor!)
+        ? (tagColor)
         : (_isHovered
             ? (isDark ? Colors.white : theme.colorScheme.primary)
             : (isDark ? Colors.grey[200]! : Colors.grey[800]!));
 
     final Color iconColor = hasCustomColor
-        ? (tagColor!)
+        ? (tagColor)
         : (_isHovered
             ? (isDark ? Colors.white : theme.colorScheme.primary)
             : (isDark ? Colors.grey[400]! : Colors.grey[600]!));
 
     final Color borderColor = hasCustomColor
-        ? (tagColor!.withOpacity(_isHovered ? 0.8 : 0.3))
+        ? (tagColor.withOpacity(_isHovered ? 0.8 : 0.3))
         : (_isHovered
             ? theme.colorScheme.primary.withOpacity(0.5)
             : Colors.transparent);
@@ -999,75 +926,8 @@ class _AnimatedTagChipState extends State<AnimatedTagChip>
 }
 
 // Helper function to add a tag to multiple files
-void _addTagToBatchFiles(
-  BuildContext context,
-  List<String> filePaths,
-  String tag,
-) async {
-  try {
-    // Add tag to multiple files
-    await TagManager.addTagToFiles(filePaths, tag);
-
-    // Clear tag cache to ensure fresh data
-    TagManager.clearCache();
-
-    if (context.mounted) {
-      try {
-        // Try to notify the bloc to update UI if available
-        if (BlocProvider.of<FolderListBloc>(context, listen: false) != null) {
-          final bloc = BlocProvider.of<FolderListBloc>(context, listen: false);
-          bloc.add(FolderListBatchAddTag(filePaths, tag));
-
-          // Refresh the file list to show changes immediately
-          final currentPath = Directory(filePaths.first).parent.path;
-          bloc.add(FolderListRefresh(currentPath));
-        }
-      } catch (e) {
-        // Bloc not available in this context - it's okay, just continue
-        print('FolderListBloc not available in this context: $e');
-      }
-
-      // Show confirmation
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Tag "$tag" added to ${filePaths.length} files'),
-          duration: const Duration(seconds: 1),
-        ),
-      );
-
-      // Dialog closing is now handled by the caller
-    }
-  } catch (e) {
-    // Show error if tag couldn't be added
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error adding tag: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-}
 
 // Helper function to add a tag to multiple files without notifications
-Future<void> _addTagToBatchFilesQuiet(
-  BuildContext context,
-  List<String> filePaths,
-  String tag,
-) async {
-  try {
-    // Clear cache first
-    TagManager.clearCache();
-
-    // Add tag to multiple files
-    await TagManager.addTagToFiles(filePaths, tag);
-
-    // No need to notify here, as we'll do it after all operations are complete
-  } catch (e) {
-    print('Error adding tag: $e');
-  }
-}
 
 /// Dialog for managing all tags
 void showManageTagsDialog(
@@ -1081,9 +941,9 @@ void showManageTagsDialog(
 
   // If no files are selected, show a notification
   ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
+    const SnackBar(
       content: Text('Vui lòng chọn các file để xóa thẻ'),
-      duration: const Duration(seconds: 2),
+      duration: Duration(seconds: 2),
     ),
   );
 }
@@ -1091,7 +951,7 @@ void showManageTagsDialog(
 /// Shows dialog to remove tags from multiple files
 void showRemoveTagsDialog(BuildContext context, List<String> filePaths) {
   // Function to directly refresh the UI in parent components
-  void _refreshParentUIRemoveTags() {
+  void refreshParentUIRemoveTags() {
     // Clear tag cache immediately
     TagManager.clearCache();
 
@@ -1099,11 +959,11 @@ void showRemoveTagsDialog(BuildContext context, List<String> filePaths) {
       if (context.mounted && filePaths.isNotEmpty) {
         // Notify tag changes for each file with preserve_scroll prefix
         for (final file in filePaths) {
-          TagManager.instance.notifyTagChanged("preserve_scroll:" + file);
+          TagManager.instance.notifyTagChanged("preserve_scroll:$file");
         }
       }
     } catch (e) {
-      print('Error refreshing parent UI: $e');
+      debugPrint('Error refreshing parent UI: $e');
     }
   }
 
@@ -1112,7 +972,7 @@ void showRemoveTagsDialog(BuildContext context, List<String> filePaths) {
     builder: (context) => RemoveTagsChipDialog(
       filePaths: filePaths,
       onTagsRemoved: () {
-        _refreshParentUIRemoveTags();
+        refreshParentUIRemoveTags();
       },
     ),
   );
@@ -1164,7 +1024,7 @@ class _RemoveTagsChipDialogState extends State<RemoveTagsChipDialog> {
 
       setState(() => _isLoading = false);
     } catch (e) {
-      print('Error loading tags for multiple files: $e');
+      debugPrint('Error loading tags for multiple files: $e');
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -1210,17 +1070,14 @@ class _RemoveTagsChipDialogState extends State<RemoveTagsChipDialog> {
         if (mounted) {
           try {
             // Check if BlocProvider is available before trying to access it
-            if (BlocProvider.of<FolderListBloc>(context, listen: false) !=
-                null) {
-              final bloc =
-                  BlocProvider.of<FolderListBloc>(context, listen: false);
-              for (final filePath in widget.filePaths) {
-                bloc.add(RemoveTagFromFile(filePath, tagToRemove));
-              }
+            final bloc =
+                BlocProvider.of<FolderListBloc>(context, listen: false);
+            for (final filePath in widget.filePaths) {
+              bloc.add(RemoveTagFromFile(filePath, tagToRemove));
             }
           } catch (e) {
             // Bloc not available in this context - it's okay, just continue
-            print(
+            debugPrint(
                 'FolderListBloc not available in this context for tag removal: $e');
           }
         }
@@ -1241,14 +1098,14 @@ class _RemoveTagsChipDialogState extends State<RemoveTagsChipDialog> {
 
         // Notify about tag changes to refresh UI
         for (final file in widget.filePaths) {
-          TagManager.instance.notifyTagChanged("preserve_scroll:" + file);
+          TagManager.instance.notifyTagChanged("preserve_scroll:$file");
         }
 
         // Call the callback so parent components know about the changes
         widget.onTagsRemoved();
       }
     } catch (e) {
-      print('Error removing tags: $e');
+      debugPrint('Error removing tags: $e');
       if (mounted) {
         setState(() => _isRemoving = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1279,7 +1136,7 @@ class _RemoveTagsChipDialogState extends State<RemoveTagsChipDialog> {
       child: AlertDialog(
         title: Text(
           'Xóa thẻ cho ${widget.filePaths.length} tệp',
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
           ),
@@ -1415,7 +1272,7 @@ class _RemoveTagsChipDialogState extends State<RemoveTagsChipDialog> {
               foregroundColor: Colors.white,
             ),
             child: _isRemoving
-                ? SizedBox(
+                ? const SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path_provider/path_provider.dart';
-import 'dart:io';
 import 'tab_manager.dart';
 import 'tab_screen.dart';
 
@@ -38,23 +37,6 @@ class _TabMainScreenState extends State<TabMainScreen> {
   void initState() {
     super.initState();
     _tabManagerBloc = TabManagerBloc();
-    // Mở tab mặc định ngay khi khởi tạo
-    // _openDefaultTab();
-  }
-
-  Future<void> _openDefaultTab() async {
-    try {
-      if (Platform.isWindows) {
-        // Trên Windows, mở tab với drives view
-        _tabManagerBloc.add(AddTab(path: '', name: 'Drives'));
-      } else {
-        // Trên các nền tảng khác, mở thư mục Documents
-        final directory = await getApplicationDocumentsDirectory();
-        _tabManagerBloc.add(AddTab(path: directory.path, name: 'Documents'));
-      }
-    } catch (e) {
-      debugPrint('Error opening default tab: $e');
-    }
   }
 
   @override

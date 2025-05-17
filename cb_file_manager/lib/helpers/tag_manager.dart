@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:path/path.dart' as pathlib;
 import 'package:path_provider/path_provider.dart';
 import 'package:cb_file_manager/models/database/database_manager.dart';
 import 'package:cb_file_manager/helpers/user_preferences.dart';
-import 'package:cb_file_manager/models/objectbox/file_tag.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 
@@ -20,7 +20,7 @@ class TagManager {
   static final Map<String, List<String>> _tagsCache = {};
 
   // Global tags file name
-  static const String GLOBAL_TAGS_FILENAME = 'coolbird_global_tags.json';
+  static const String globalTagsFilename = 'coolbird_global_tags.json';
 
   // Path to the global tags file (initialized lazily)
   static String? _globalTagsPath;
@@ -42,8 +42,7 @@ class TagManager {
   static Stream<String> get onTagChanged => _tagChangeController.stream;
 
   // Cache for tags to avoid constantly reading from files
-  static Map<String, List<String>> _tagCache = {};
-  static bool _isCacheInitialized = false;
+  static final Map<String, List<String>> _tagCache = {};
 
   // Add a stream controller to notify tag changes globally
   final _tagChangesController = StreamController<String>.broadcast();
@@ -146,7 +145,6 @@ class TagManager {
         if (!_databaseManager!.isInitialized()) {
           await _databaseManager!.initialize();
         }
-        print('TagManager initialized with ObjectBox database');
       } else {
         if (_globalTagsPath != null) return; // Already initialized
 
@@ -159,18 +157,15 @@ class TagManager {
           await coolbirdDir.create(recursive: true);
         }
 
-        _globalTagsPath = '${coolbirdDir.path}/$GLOBAL_TAGS_FILENAME';
-        print('Global tags path: $_globalTagsPath (JSON storage)');
+        _globalTagsPath = '${coolbirdDir.path}/$globalTagsFilename';
       }
     } catch (e) {
-      print('Error initializing TagManager: $e');
       _useObjectBox = false;
 
       // Fallback to a location in the user's home directory
       final home =
           Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
-      _globalTagsPath = '$home/$GLOBAL_TAGS_FILENAME';
-      print('Using fallback global tags path: $_globalTagsPath');
+      _globalTagsPath = '$home/$globalTagsFilename';
     }
   }
 
@@ -193,7 +188,6 @@ class TagManager {
       final content = await file.readAsString();
       return json.decode(content);
     } catch (e) {
-      print('Error loading global tags: $e');
       return {};
     }
   }
@@ -207,7 +201,6 @@ class TagManager {
       await file.writeAsString(json.encode(tagsData));
       return true;
     } catch (e) {
-      print('Error saving global tags: $e');
       return false;
     }
   }
@@ -243,7 +236,6 @@ class TagManager {
         return [];
       }
     } catch (e) {
-      print('Error reading tags for $filePath: $e');
       return [];
     }
   }
@@ -276,9 +268,7 @@ class TagManager {
       final prefs = await SharedPreferences.getInstance();
       final jsonString = json.encode(_recentTags);
       await prefs.setString('recent_tags', jsonString);
-    } catch (e) {
-      print('Error saving recent tags: $e');
-    }
+    } catch (e) {}
   }
 
   /// Load recent tags from SharedPreferences
@@ -293,7 +283,6 @@ class TagManager {
             decoded.map((item) => Map<String, dynamic>.from(item)).toList();
       }
     } catch (e) {
-      print('Error loading recent tags: $e');
       _recentTags = [];
     }
   }
@@ -363,7 +352,6 @@ class TagManager {
         return true;
       }
     } catch (e) {
-      print('Error adding tag to $filePath: $e');
       return false;
     }
   }
@@ -406,7 +394,7 @@ class TagManager {
         return true;
       }
     } catch (e) {
-      print('Error removing tag from $filePath: $e');
+      debugPrint('Error removing tag from $filePath: $e');
       return false;
     }
   }
@@ -492,7 +480,7 @@ class TagManager {
         return success;
       }
     } catch (e) {
-      print('Error setting tags for $filePath: $e');
+      debugPrint('Error setting tags for $filePath: $e');
       return false;
     }
   }
@@ -529,7 +517,7 @@ class TagManager {
 
       return allTags;
     } catch (e) {
-      print('Error getting all tags: $e');
+      debugPrint('Error getting all tags: $e');
       return allTags;
     }
   }
@@ -543,13 +531,13 @@ class TagManager {
     final String normalizedTag = tag.toLowerCase().trim();
 
     if (normalizedTag.isEmpty) {
-      print('Tag is empty, returning empty results');
+      debugPrint('Tag is empty, returning empty results');
       return results;
     }
 
     try {
       await initialize();
-      print(
+      debugPrint(
           'Finding files and folders with tag: "$normalizedTag" in directory: "$directoryPath"');
 
       // Chuẩn hóa đường dẫn thư mục
@@ -558,12 +546,12 @@ class TagManager {
         normalizedDirPath += Platform.pathSeparator;
       }
 
-      print('Normalized directory path: $normalizedDirPath');
+      debugPrint('Normalized directory path: $normalizedDirPath');
 
       if (_useObjectBox && _databaseManager != null) {
         // Use ObjectBox to find files by tag - chỉ lấy kết quả chính xác với tag
         final filePaths = await _databaseManager!.findFilesByTag(normalizedTag);
-        print(
+        debugPrint(
             'Found ${filePaths.length} file paths with tag: "$normalizedTag"');
 
         // Chỉ lấy các đường dẫn thuộc thư mục hiện tại
@@ -578,7 +566,7 @@ class TagManager {
               if (isDirectory) {
                 // It's a directory
                 results.add(directory);
-                print('Added directory to results: $path');
+                debugPrint('Added directory to results: $path');
               } else {
                 // Check if it's a file
                 final file = File(path);
@@ -587,18 +575,18 @@ class TagManager {
                 if (isFile) {
                   // It's a file
                   results.add(file);
-                  print('Added file to results: $path');
+                  debugPrint('Added file to results: $path');
                 }
               }
             } catch (e) {
-              print('Error checking entity type for $path: $e');
+              debugPrint('Error checking entity type for $path: $e');
             }
           }
         }
       } else {
         // Use original implementation for JSON file
         final tagsData = await _loadGlobalTags();
-        print('Loaded ${tagsData.length} entries with tags');
+        debugPrint('Loaded ${tagsData.length} entries with tags');
 
         // For each path in the global tags data
         for (final entityPath in tagsData.keys) {
@@ -623,7 +611,7 @@ class TagManager {
                 if (isDirectory) {
                   // It's a directory
                   results.add(directory);
-                  print('Added directory to results: $entityPath');
+                  debugPrint('Added directory to results: $entityPath');
                 } else {
                   // Check if it's a file
                   final file = File(entityPath);
@@ -632,21 +620,21 @@ class TagManager {
                   if (isFile) {
                     // It's a file
                     results.add(file);
-                    print('Added file to results: $entityPath');
+                    debugPrint('Added file to results: $entityPath');
                   }
                 }
               } catch (e) {
-                print('Error checking entity type for $entityPath: $e');
+                debugPrint('Error checking entity type for $entityPath: $e');
               }
             }
           }
         }
       }
 
-      print('Found ${results.length} entities with tag: "$normalizedTag"');
+      debugPrint('Found ${results.length} entities with tag: "$normalizedTag"');
       return results;
     } catch (e) {
-      print('Error finding entities by tag: $e');
+      debugPrint('Error finding entities by tag: $e');
       return results;
     }
   }
@@ -660,13 +648,14 @@ class TagManager {
     final String normalizedTag = tag.toLowerCase().trim();
 
     if (normalizedTag.isEmpty) {
-      print('Tag is empty, returning empty results');
+      debugPrint('Tag is empty, returning empty results');
       return results;
     }
 
     try {
       await initialize();
-      print('Finding files and folders with tag: "$normalizedTag" globally');
+      debugPrint(
+          'Finding files and folders with tag: "$normalizedTag" globally');
 
       // Xóa cache để đảm bảo dữ liệu mới nhất
       clearCache();
@@ -674,7 +663,7 @@ class TagManager {
       if (_useObjectBox && _databaseManager != null) {
         // Use ObjectBox to find files by tag - QUAN TRỌNG: Tìm kiếm chính xác dựa trên tag
         final filePaths = await _databaseManager!.findFilesByTag(normalizedTag);
-        print(
+        debugPrint(
             'Found ${filePaths.length} file paths with tag: "$normalizedTag"');
 
         // Convert paths to FileSystemEntity objects
@@ -687,7 +676,7 @@ class TagManager {
             if (isDirectory) {
               // It's a directory
               results.add(directory);
-              print('Added directory to results: $path');
+              debugPrint('Added directory to results: $path');
             } else {
               // Check if it's a file
               final file = File(path);
@@ -696,17 +685,17 @@ class TagManager {
               if (isFile) {
                 // It's a file
                 results.add(file);
-                print('Added file to results: $path');
+                debugPrint('Added file to results: $path');
               }
             }
           } catch (e) {
-            print('Error checking entity type for $path: $e');
+            debugPrint('Error checking entity type for $path: $e');
           }
         }
       } else {
         // Use original implementation for JSON file
         final tagsData = await _loadGlobalTags();
-        print('Loaded ${tagsData.length} entries with tags');
+        debugPrint('Loaded ${tagsData.length} entries with tags');
 
         // For each path in the global tags data
         for (final entityPath in tagsData.keys) {
@@ -728,7 +717,7 @@ class TagManager {
               if (isDirectory) {
                 // It's a directory
                 results.add(directory);
-                print('Added directory to results: $entityPath');
+                debugPrint('Added directory to results: $entityPath');
               } else {
                 // Check if it's a file
                 final file = File(entityPath);
@@ -737,35 +726,33 @@ class TagManager {
                 if (isFile) {
                   // It's a file
                   results.add(file);
-                  print('Added file to results: $entityPath');
+                  debugPrint('Added file to results: $entityPath');
                 }
               }
             } catch (e) {
-              print('Error checking entity type for $entityPath: $e');
+              debugPrint('Error checking entity type for $entityPath: $e');
             }
           }
         }
       }
 
-      print(
+      debugPrint(
           'Found ${results.length} entities with tag: "$normalizedTag" globally');
       return results;
     } catch (e) {
-      print('Error finding entities by tag globally: $e');
+      debugPrint('Error finding entities by tag globally: $e');
       return results;
     }
   }
 
   /// Clears the tags cache to free memory
   static void clearCache() {
-    print("Clearing all tag caches...");
+    debugPrint("Clearing all tag caches...");
     // Clear all caches - make sure to clear all possible caches
     _tagsCache.clear();
     _tagCache.clear();
-    _isCacheInitialized = false;
-
     // Debugging output
-    print("Tag caches cleared!");
+    debugPrint("Tag caches cleared!");
   }
 
   /// Migrate from directory-based tags to global tags
@@ -820,7 +807,7 @@ class TagManager {
             // Delete the old .tags file after migration
             await entity.delete();
           } catch (e) {
-            print('Error migrating tags from ${entity.path}: $e');
+            debugPrint('Error migrating tags from ${entity.path}: $e');
           }
         }
       }
@@ -832,7 +819,7 @@ class TagManager {
 
       return migratedFileCount;
     } catch (e) {
-      print('Error during tags migration: $e');
+      debugPrint('Error during tags migration: $e');
       return migratedFileCount;
     }
   }
@@ -866,10 +853,10 @@ class TagManager {
         }
       }
 
-      print('Migrated $migratedFileCount files to ObjectBox database');
+      debugPrint('Migrated $migratedFileCount files to ObjectBox database');
       return migratedFileCount;
     } catch (e) {
-      print('Error migrating from JSON to ObjectBox: $e');
+      debugPrint('Error migrating from JSON to ObjectBox: $e');
       return migratedFileCount;
     }
   }
@@ -896,7 +883,7 @@ class TagManager {
       // Also notify through the static stream if anyone is still using it
       _tagChangeController.add("global:tag_deleted");
     } catch (e) {
-      print('Error deleting tag globally: $e');
+      debugPrint('Error deleting tag globally: $e');
       rethrow;
     }
   }
@@ -915,7 +902,7 @@ class TagManager {
         return await _searchByTag(tag);
       }
     } catch (e) {
-      print('Error finding files by tag: $e');
+      debugPrint('Error finding files by tag: $e');
       return [];
     }
   }
@@ -938,7 +925,7 @@ class TagManager {
         });
       }
     } catch (e) {
-      print('Error searching for tag: $e');
+      debugPrint('Error searching for tag: $e');
     }
 
     return results;

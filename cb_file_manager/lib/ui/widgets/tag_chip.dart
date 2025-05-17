@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cb_file_manager/config/app_theme.dart';
 import 'package:cb_file_manager/helpers/tag_color_manager.dart';
 
 /// A reusable tag chip widget for consistent tag styling across the app

@@ -157,8 +157,7 @@ void main() async {
 
     runApp(const CBFileApp());
   }, (error, stackTrace) {
-    print('Error during app initialization: $error');
-    print(stackTrace);
+    debugPrint('Error during app initialization: $error');
   });
 }
 
@@ -167,7 +166,7 @@ void goHome(BuildContext context) {
   try {
     // Check if the context is mounted before navigating
     if (!context.mounted) {
-      print('Context not mounted, cannot navigate');
+      debugPrint('Context not mounted, cannot navigate');
       return;
     }
 
@@ -180,7 +179,7 @@ void goHome(BuildContext context) {
     Navigator.of(context, rootNavigator: true)
         .pushAndRemoveUntil(route, (r) => false);
   } catch (e) {
-    print('Error navigating home: $e');
+    debugPrint('Error navigating home: $e');
     // Last resort fallback
     runApp(const CBFileApp());
   }
@@ -195,11 +194,11 @@ Future<void> _requestPermissions() async {
     try {
       await Permission.manageExternalStorage.request();
     } catch (e) {
-      print('Manage external storage permission not available: $e');
+      debugPrint('Manage external storage permission not available: $e');
     }
   }
 
-  print('Storage permission status: $storageStatus');
+  debugPrint('Storage permission status: $storageStatus');
 }
 
 class CBFileApp extends StatefulWidget {

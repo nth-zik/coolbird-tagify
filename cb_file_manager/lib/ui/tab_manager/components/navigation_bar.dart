@@ -37,7 +37,7 @@ class _PathNavigationBarState extends State<PathNavigationBar> {
       _tabBloc = context.read<TabManagerBloc>();
       _updateNavigationState();
     } catch (e) {
-      print('Error accessing TabManagerBloc: $e');
+      debugPrint('Error accessing TabManagerBloc: $e');
       _tabBloc = null;
     }
   }
@@ -171,12 +171,12 @@ class _PathNavigationBarState extends State<PathNavigationBar> {
             }
           } catch (e) {
             // Skip directories we don't have access to
-            print('Error accessing directory: $e');
+            debugPrint('Error accessing directory: $e');
           }
         }
       }
     } catch (e) {
-      print('Error generating directory suggestions: $e');
+      debugPrint('Error generating directory suggestions: $e');
     }
 
     return suggestions;

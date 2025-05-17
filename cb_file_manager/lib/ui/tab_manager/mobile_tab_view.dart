@@ -253,7 +253,7 @@ class MobileTabView extends StatelessWidget {
               ),
             ),
 
-            Divider(height: 1),
+            const Divider(height: 1),
 
             // Danh sách các tùy chọn
             Flexible(
@@ -382,7 +382,7 @@ class MobileTabView extends StatelessWidget {
             const SizedBox(height: 4),
             Text('ID: ${tab.id}'),
             const SizedBox(height: 16),
-            Text(
+            const Text(
               'Lịch sử điều hướng:',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
@@ -838,7 +838,7 @@ class MobileTabView extends StatelessWidget {
                           tabBloc.add(UpdateTabName(tab.id, tabName));
 
                           // Debug print to track path updates
-                          print('Navigating to path: $currentPath');
+                          debugPrint('Navigating to path: $currentPath');
                         },
                       );
                     },
@@ -889,7 +889,7 @@ class MobileTabView extends StatelessWidget {
                                 tabBloc.add(UpdateTabPath(tab.id, historyPath));
 
                                 // Debug print
-                                print(
+                                debugPrint(
                                     'Navigating to history path: $historyPath');
                               }
                             },

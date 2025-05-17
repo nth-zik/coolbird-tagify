@@ -59,8 +59,7 @@ class AppTheme {
     cardTheme: const CardTheme(
       elevation: 2,
       color: Colors.white, // Pure white card background
-    ),
-    dialogBackgroundColor: Colors.white, // Pure white dialog background
+    ), // Pure white dialog background
     popupMenuTheme: const PopupMenuThemeData(
       color: Colors.white, // Pure white popup menu background
     ),
@@ -71,7 +70,7 @@ class AppTheme {
       primaryContainer: lightBlue.withOpacity(0.3),
       surface: Colors.white,
       onSurface: darkBlue,
-    ),
+    ), dialogTheme: const DialogThemeData(backgroundColor: Colors.white),
   );
 
   // Theme tối cho ứng dụng

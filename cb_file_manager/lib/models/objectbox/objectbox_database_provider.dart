@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:cb_file_manager/models/database/database_provider.dart';
 import 'package:cb_file_manager/models/objectbox/file_tag.dart';
 import 'package:cb_file_manager/models/objectbox/user_preference.dart';
-import 'package:objectbox/objectbox.dart';
+import 'package:flutter/material.dart';
 import '../../objectbox.g.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
@@ -49,9 +49,9 @@ class ObjectBoxDatabaseProvider implements IDatabaseProvider {
       _preferenceBox = _store!.box<UserPreference>();
 
       _isInitialized = true;
-      print('ObjectBox provider initialized successfully');
+      debugPrint('ObjectBox provider initialized successfully');
     } catch (e) {
-      print('Error initializing ObjectBox: $e');
+      debugPrint('Error initializing ObjectBox: $e');
       _isInitialized = false;
       rethrow;
     }
@@ -70,7 +70,7 @@ class ObjectBoxDatabaseProvider implements IDatabaseProvider {
       // Check if shared store is already available
       if (_sharedStore != null) {
         _store = _sharedStore;
-        print('Using existing shared ObjectBox store');
+        debugPrint('Using existing shared ObjectBox store');
         return;
       }
 
@@ -108,15 +108,17 @@ class ObjectBoxDatabaseProvider implements IDatabaseProvider {
           // Open new store with increased timeout
           _sharedStore = await openStore(directory: dbPath);
           _store = _sharedStore;
-          print('ObjectBox store initialized successfully at: $dbPath');
+          debugPrint('ObjectBox store initialized successfully at: $dbPath');
           _openingStores[storeKey] = false;
           return;
         } catch (e) {
-          print('Error opening ObjectBox store (attempt ${retries + 1}): $e');
+          debugPrint(
+              'Error opening ObjectBox store (attempt ${retries + 1}): $e');
           _openingStores[storeKey] = false;
           retries++;
           if (retries >= maxRetries) {
-            print('Failed to initialize ObjectBox after $maxRetries attempts');
+            debugPrint(
+                'Failed to initialize ObjectBox after $maxRetries attempts');
             rethrow;
           }
 
@@ -125,7 +127,7 @@ class ObjectBoxDatabaseProvider implements IDatabaseProvider {
         }
       } else {
         // Wait a bit if someone else is opening the store
-        await Future.delayed(Duration(milliseconds: 300));
+        await Future.delayed(const Duration(milliseconds: 300));
         retries++;
       }
     }
@@ -136,11 +138,11 @@ class ObjectBoxDatabaseProvider implements IDatabaseProvider {
     try {
       final lockFile = File('$dbPath/data.mdb.lock');
       if (lockFile.existsSync()) {
-        print('Found stale lock file, removing: ${lockFile.path}');
+        debugPrint('Found stale lock file, removing: ${lockFile.path}');
         lockFile.deleteSync();
       }
     } catch (e) {
-      print('Error clearing lock files: $e');
+      debugPrint('Error clearing lock files: $e');
     }
   }
 
@@ -195,7 +197,7 @@ class ObjectBoxDatabaseProvider implements IDatabaseProvider {
       _fileTagBox!.put(fileTag);
       return true;
     } catch (e) {
-      print('Error adding tag to file: $e');
+      debugPrint('Error adding tag to file: $e');
       return false;
     }
   }
@@ -225,7 +227,7 @@ class ObjectBoxDatabaseProvider implements IDatabaseProvider {
 
       return true;
     } catch (e) {
-      print('Error removing tag from file: $e');
+      debugPrint('Error removing tag from file: $e');
       return false;
     }
   }
@@ -243,7 +245,7 @@ class ObjectBoxDatabaseProvider implements IDatabaseProvider {
 
       return fileTags.map((tag) => tag.tag).toList();
     } catch (e) {
-      print('Error getting tags for file: $e');
+      debugPrint('Error getting tags for file: $e');
       return [];
     }
   }
@@ -277,7 +279,7 @@ class ObjectBoxDatabaseProvider implements IDatabaseProvider {
 
         return true;
       } catch (e) {
-        print('Error setting tags for file: $e');
+        debugPrint('Error setting tags for file: $e');
         return false;
       }
     });
@@ -303,11 +305,11 @@ class ObjectBoxDatabaseProvider implements IDatabaseProvider {
           .toList();
 
       if (matchingTags.isEmpty) {
-        print('No matching tags found for query: $normalizedTag');
+        debugPrint('No matching tags found for query: $normalizedTag');
         return [];
       }
 
-      print('Found ${matchingTags.length} matching tags: $matchingTags');
+      debugPrint('Found ${matchingTags.length} matching tags: $matchingTags');
 
       // Tạo một tập hợp để lưu trữ các đường dẫn file duy nhất
       final Set<String> filePaths = {};
@@ -325,10 +327,10 @@ class ObjectBoxDatabaseProvider implements IDatabaseProvider {
         }
       }
 
-      print('Found ${filePaths.length} unique files with matching tags');
+      debugPrint('Found ${filePaths.length} unique files with matching tags');
       return filePaths.toList();
     } catch (e) {
-      print('Error finding files by tag: $e');
+      debugPrint('Error finding files by tag: $e');
       return [];
     }
   }
@@ -348,7 +350,7 @@ class ObjectBoxDatabaseProvider implements IDatabaseProvider {
 
       return uniqueTags;
     } catch (e) {
-      print('Error getting all unique tags: $e');
+      debugPrint('Error getting all unique tags: $e');
       return {};
     }
   }
@@ -371,7 +373,7 @@ class ObjectBoxDatabaseProvider implements IDatabaseProvider {
         return defaultValue;
       }
     } catch (e) {
-      print('Error getting string preference: $e');
+      debugPrint('Error getting string preference: $e');
       return defaultValue;
     }
   }
@@ -409,7 +411,7 @@ class ObjectBoxDatabaseProvider implements IDatabaseProvider {
       _preferenceBox!.put(preference);
       return true;
     } catch (e) {
-      print('Error saving string preference: $e');
+      debugPrint('Error saving string preference: $e');
       return false;
     }
   }
@@ -431,7 +433,7 @@ class ObjectBoxDatabaseProvider implements IDatabaseProvider {
         return defaultValue;
       }
     } catch (e) {
-      print('Error getting int preference: $e');
+      debugPrint('Error getting int preference: $e');
       return defaultValue;
     }
   }
@@ -469,7 +471,7 @@ class ObjectBoxDatabaseProvider implements IDatabaseProvider {
       _preferenceBox!.put(preference);
       return true;
     } catch (e) {
-      print('Error saving int preference: $e');
+      debugPrint('Error saving int preference: $e');
       return false;
     }
   }
@@ -492,7 +494,7 @@ class ObjectBoxDatabaseProvider implements IDatabaseProvider {
         return defaultValue;
       }
     } catch (e) {
-      print('Error getting double preference: $e');
+      debugPrint('Error getting double preference: $e');
       return defaultValue;
     }
   }
@@ -530,7 +532,7 @@ class ObjectBoxDatabaseProvider implements IDatabaseProvider {
       _preferenceBox!.put(preference);
       return true;
     } catch (e) {
-      print('Error saving double preference: $e');
+      debugPrint('Error saving double preference: $e');
       return false;
     }
   }
@@ -552,7 +554,7 @@ class ObjectBoxDatabaseProvider implements IDatabaseProvider {
         return defaultValue;
       }
     } catch (e) {
-      print('Error getting bool preference: $e');
+      debugPrint('Error getting bool preference: $e');
       return defaultValue;
     }
   }
@@ -590,7 +592,7 @@ class ObjectBoxDatabaseProvider implements IDatabaseProvider {
       _preferenceBox!.put(preference);
       return true;
     } catch (e) {
-      print('Error saving bool preference: $e');
+      debugPrint('Error saving bool preference: $e');
       return false;
     }
   }
@@ -613,7 +615,7 @@ class ObjectBoxDatabaseProvider implements IDatabaseProvider {
 
       return true; // Key didn't exist, so it's already "deleted"
     } catch (e) {
-      print('Error deleting preference: $e');
+      debugPrint('Error deleting preference: $e');
       return false;
     }
   }
@@ -634,14 +636,14 @@ class ObjectBoxDatabaseProvider implements IDatabaseProvider {
 
     try {
       // Mock implementation - in real app, this would sync to a cloud service
-      print('Syncing to cloud...');
+      debugPrint('Syncing to cloud...');
 
       // Simulate some network delay
       await Future.delayed(const Duration(seconds: 1));
 
       return true;
     } catch (e) {
-      print('Error syncing to cloud: $e');
+      debugPrint('Error syncing to cloud: $e');
       return false;
     }
   }
@@ -652,14 +654,14 @@ class ObjectBoxDatabaseProvider implements IDatabaseProvider {
 
     try {
       // Mock implementation - in real app, this would sync from a cloud service
-      print('Syncing from cloud...');
+      debugPrint('Syncing from cloud...');
 
       // Simulate some network delay
       await Future.delayed(const Duration(seconds: 1));
 
       return true;
     } catch (e) {
-      print('Error syncing from cloud: $e');
+      debugPrint('Error syncing from cloud: $e');
       return false;
     }
   }

@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Thêm import để xử lý sự kiện bàn phím
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -37,7 +36,6 @@ class _SearchBarState extends State<SearchBar> {
   List<String> _currentTags = [];
 
   // Key để bọc KeyboardListener
-  final _keyListenerKey = GlobalKey();
 
   @override
   void initState() {
@@ -60,7 +58,7 @@ class _SearchBarState extends State<SearchBar> {
         _suggestedTags = popularTags.keys.toList();
       });
     } catch (e) {
-      print('Error loading popular tags: $e');
+      debugPrint('Error loading popular tags: $e');
     }
   }
 
@@ -283,7 +281,7 @@ class _SearchBarState extends State<SearchBar> {
   void _applySelectedTag(String tag) {
     if (!mounted) return;
 
-    print('Applying selected tag: $tag');
+    debugPrint('Applying selected tag: $tag');
 
     // Cập nhật text input với tag đã chọn
     final text = _searchController.text;
@@ -306,7 +304,8 @@ class _SearchBarState extends State<SearchBar> {
       _performSearch();
     });
 
-    print('Applied tag. New text: $newText - Performing search automatically');
+    debugPrint(
+        'Applied tag. New text: $newText - Performing search automatically');
   }
 
   void _performSearch() {
@@ -317,14 +316,14 @@ class _SearchBarState extends State<SearchBar> {
     }
 
     final folderListBloc = BlocProvider.of<FolderListBloc>(context);
-    print('Performing search with query: "$query"');
+    debugPrint('Performing search with query: "$query"');
 
     // Kiểm tra xem có đang tìm kiếm theo tag không
     if (query.contains('#')) {
       final int hashPosition = query.lastIndexOf('#');
       String tagQuery = query.substring(hashPosition + 1).trim();
 
-      print('Detected tag search. Tag query: "$tagQuery"');
+      debugPrint('Detected tag search. Tag query: "$tagQuery"');
 
       // Xóa cache để đảm bảo dữ liệu mới nhất
       TagManager.clearCache();
@@ -341,62 +340,21 @@ class _SearchBarState extends State<SearchBar> {
         );
 
         if (_isGlobalSearch) {
-          print('Searching for tag globally: "$tagQuery"');
+          debugPrint('Searching for tag globally: "$tagQuery"');
           folderListBloc.add(SearchByTagGlobally(tagQuery));
         } else {
-          print('Searching for tag in current directory: "$tagQuery"');
+          debugPrint('Searching for tag in current directory: "$tagQuery"');
           folderListBloc.add(SearchByTag(tagQuery));
         }
       }
     } else {
       // Tìm kiếm theo tên file
-      print('Searching by filename: "$query"');
+      debugPrint('Searching by filename: "$query"');
       folderListBloc.add(SearchByFileName(query));
     }
   }
 
   // Phương thức xử lý phím mũi tên để điều hướng trong danh sách gợi ý
-  void _handleKeyEvent(RawKeyEvent event) {
-    // Chỉ xử lý phím khi overlay đang hiển thị
-    if (_overlayEntry == null || _currentTags.isEmpty) return;
-
-    if (event is RawKeyDownEvent) {
-      if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-        // Di chuyển xuống trong danh sách
-        setState(() {
-          if (_selectedTagIndex < _currentTags.length - 1) {
-            _selectedTagIndex++;
-          } else {
-            _selectedTagIndex = 0; // Quay lại đầu danh sách
-          }
-        });
-        // Cập nhật overlay với lựa chọn mới
-        _updateOverlay();
-      } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-        // Di chuyển lên trong danh sách
-        setState(() {
-          if (_selectedTagIndex > 0) {
-            _selectedTagIndex--;
-          } else {
-            _selectedTagIndex =
-                _currentTags.length - 1; // Chuyển đến cuối danh sách
-          }
-        });
-        // Cập nhật overlay với lựa chọn mới
-        _updateOverlay();
-      } else if (event.logicalKey == LogicalKeyboardKey.enter ||
-          event.logicalKey == LogicalKeyboardKey.tab) {
-        // Chọn tag hiện tại nếu có tag được chọn
-        if (_selectedTagIndex >= 0 && _selectedTagIndex < _currentTags.length) {
-          _applySelectedTag(_currentTags[_selectedTagIndex]);
-          _removeOverlay();
-        }
-      } else if (event.logicalKey == LogicalKeyboardKey.escape) {
-        // Đóng overlay khi nhấn ESC
-        _removeOverlay();
-      }
-    }
-  }
 
   // Cập nhật overlay khi thay đổi lựa chọn
   void _updateOverlay() {

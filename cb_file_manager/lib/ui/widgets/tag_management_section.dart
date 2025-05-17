@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
-import 'package:cb_file_manager/ui/widgets/tag_chip.dart';
 import 'package:cb_file_manager/ui/widgets/chips_input.dart';
 import 'package:cb_file_manager/helpers/tag_color_manager.dart';
-import 'dart:ui' as ui;
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:cb_file_manager/ui/tab_manager/components/tag_dialogs.dart';
 
 /// A reusable tag management section that can be used in different places
@@ -70,9 +67,6 @@ class _TagManagementSectionState extends State<TagManagementSection> {
     return _states[widget];
   }
 
-  late Future<List<String>> _tagsFuture;
-  late Future<Map<String, int>> _popularTagsFuture;
-  late Future<List<String>> _recentTagsFuture;
   List<String> _tagSuggestions = [];
   List<String> _selectedTags = [];
   List<String> _originalTags = []; // Store original tags to detect changes
@@ -83,7 +77,6 @@ class _TagManagementSectionState extends State<TagManagementSection> {
   final GlobalKey _inputKey = GlobalKey();
 
   // Vị trí và kích thước của input field
-  double _inputHeight = 0;
   double _inputYPosition = 0;
 
   @override
@@ -115,7 +108,6 @@ class _TagManagementSectionState extends State<TagManagementSection> {
       if (stackBox != null) {
         final stackPosition = stackBox.localToGlobal(Offset.zero);
         setState(() {
-          _inputHeight = renderBox.size.height;
           // Tính toán vị trí tương đối so với Stack
           _inputYPosition =
               position.dy - stackPosition.dy + renderBox.size.height;
@@ -142,17 +134,7 @@ class _TagManagementSectionState extends State<TagManagementSection> {
     }
   }
 
-  void _loadTagData() {
-    _tagsFuture = TagManager.getTags(widget.filePath).then((tags) {
-      setState(() {
-        _selectedTags = widget.initialTags ?? List.from(tags);
-        _originalTags = List.from(tags); // Store a copy of original tags
-      });
-      return tags;
-    });
-    _popularTagsFuture = TagManager.instance.getPopularTags(limit: 10);
-    _recentTagsFuture = TagManager.getRecentTags(limit: 10);
-  }
+  void _loadTagData() {}
 
   // Save all changes to file
   Future<void> saveChanges() async {
@@ -197,15 +179,6 @@ class _TagManagementSectionState extends State<TagManagementSection> {
 
   Future<void> _refreshTags() async {
     setState(() {
-      _tagsFuture = TagManager.getTags(widget.filePath).then((tags) {
-        setState(() {
-          _selectedTags = tags;
-          _originalTags = List.from(tags); // Update original tags
-        });
-        return tags;
-      });
-      _popularTagsFuture = TagManager.instance.getPopularTags(limit: 10);
-      _recentTagsFuture = TagManager.getRecentTags(limit: 10);
       _tagSuggestions = [];
     });
 
@@ -215,33 +188,6 @@ class _TagManagementSectionState extends State<TagManagementSection> {
   }
 
   // Keep these methods for manual operations if needed, but not called from UI directly
-  Future<void> _addTag(String tag) async {
-    if (tag.trim().isEmpty) return;
-
-    try {
-      await TagManager.addTag(widget.filePath, tag.trim());
-      _refreshTags();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error adding tag: $e')),
-        );
-      }
-    }
-  }
-
-  Future<void> _removeTag(String tag) async {
-    try {
-      await TagManager.removeTag(widget.filePath, tag);
-      _refreshTags();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error removing tag: $e')),
-        );
-      }
-    }
-  }
 
   Future<void> _updateTagSuggestions(String text) async {
     if (text.isEmpty) {
@@ -267,7 +213,6 @@ class _TagManagementSectionState extends State<TagManagementSection> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final Color textColor = isDarkMode ? Colors.white : Colors.black87;
 
     return Stack(
       clipBehavior:
@@ -287,14 +232,14 @@ class _TagManagementSectionState extends State<TagManagementSection> {
                   decoration: InputDecoration(
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
+                      borderSide: const BorderSide(
                         color: Colors.transparent,
                         width: 0,
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
+                      borderSide: const BorderSide(
                         color: Colors.transparent,
                         width: 0,
                       ),
@@ -307,11 +252,11 @@ class _TagManagementSectionState extends State<TagManagementSection> {
                       ),
                     ),
                     labelText: 'Tag Name',
-                    labelStyle: TextStyle(
+                    labelStyle: const TextStyle(
                       fontSize: 18,
                     ),
                     hintText: 'Enter tag name',
-                    hintStyle: TextStyle(
+                    hintStyle: const TextStyle(
                       fontSize: 18,
                     ),
                     prefixIcon: const Icon(Icons.local_offer, size: 24),
@@ -320,7 +265,7 @@ class _TagManagementSectionState extends State<TagManagementSection> {
                         ? Colors.grey[800]!.withOpacity(0.7)
                         : Colors.grey[100]!.withOpacity(0.7),
                   ),
-                  style: TextStyle(fontSize: 18),
+                  style: const TextStyle(fontSize: 18),
                   onChanged: (updatedTags) async {
                     // Only update the local state, don't modify file yet
                     setState(() {
@@ -475,7 +420,7 @@ class _TagManagementSectionState extends State<TagManagementSection> {
                                       const Icon(Icons.local_offer, size: 20),
                                   title: Text(
                                     suggestion,
-                                    style: TextStyle(fontSize: 16),
+                                    style: const TextStyle(fontSize: 16),
                                   ),
                                 ),
                               ),

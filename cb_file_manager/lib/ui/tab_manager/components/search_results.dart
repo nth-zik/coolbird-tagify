@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart'; // Add this import for mouse buttons
+// Add this import for mouse buttons
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/components/index.dart'
     as folder_list_components;
@@ -159,6 +159,9 @@ class SearchResultsView extends StatelessWidget {
           break;
         case MediaType.document:
           mediaType = "tài liệu";
+          break;
+        default:
+          mediaType = "";
           break;
       }
       return 'Kết quả tìm kiếm cho $mediaType$countText';

@@ -66,7 +66,7 @@ class FileIconHelper {
         }
       }
     } catch (e) {
-      print('Error getting app icon: $e');
+      debugPrint('Error getting app icon: $e');
     }
 
     // Fallback to generic file type icons
@@ -122,7 +122,7 @@ class FileIconHelper {
         }
       }
     } catch (e) {
-      print('Error getting default app icon: $e');
+      debugPrint('Error getting default app icon: $e');
     }
 
     return null;

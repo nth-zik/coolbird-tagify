@@ -23,7 +23,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late bool _isLoading = true;
 
   // Video thumbnail timestamp value
-  late int _videoThumbnailTimestamp;
 
   // Video thumbnail percentage value (new setting)
   late int _videoThumbnailPercentage;
@@ -32,7 +31,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isClearingCache = false;
 
   // Add a state for ObjectBox usage preference
-  late bool _isUsingObjectBox;
 
   @override
   void initState() {
@@ -44,17 +42,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       await _preferences.init();
       final theme = await _preferences.getThemePreference();
-      final timestamp = await _preferences.getVideoThumbnailTimestamp();
       final percentage = await _preferences.getVideoThumbnailPercentage();
-      final useObjectBox = _preferences.isUsingObjectBox();
+      _preferences.isUsingObjectBox();
 
       if (mounted) {
         setState(() {
           _themePreference = theme;
           _currentLanguageCode = _languageController.currentLocale.languageCode;
-          _videoThumbnailTimestamp = timestamp;
           _videoThumbnailPercentage = percentage;
-          _isUsingObjectBox = useObjectBox;
           _isLoading = false;
         });
       }
@@ -101,28 +96,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(context.tr.language + ' ' + context.tr.save),
+        content: Text('${context.tr.language} ${context.tr.save}'),
         duration: const Duration(seconds: 1),
         behavior: SnackBarBehavior.floating,
         width: 200,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
-
-  Future<void> _updateVideoThumbnailTimestamp(int seconds) async {
-    await _preferences.setVideoThumbnailTimestamp(seconds);
-    setState(() {
-      _videoThumbnailTimestamp = seconds;
-    });
-
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Video thumbnail timestamp set to $seconds seconds'),
-        duration: const Duration(seconds: 1),
-        behavior: SnackBarBehavior.floating,
-        width: 280,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
@@ -197,7 +174,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Đã xoá tất cả thumbnail video'),
+            content: const Text('Đã xoá tất cả thumbnail video'),
             duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
             width: 320,
@@ -276,11 +253,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
             child: Text(
               'Chọn ngôn ngữ bạn muốn sử dụng',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey,
               ),
@@ -319,11 +296,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Text(
             'Chọn giao diện hiển thị cho ứng dụng',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               color: Colors.grey,
             ),
@@ -456,7 +433,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onPressed:
                         _isClearingCache ? null : _clearVideoThumbnailCache,
                     icon: _isClearingCache
-                        ? SizedBox(
+                        ? const SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(
@@ -535,7 +512,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListTile(
             title: Text(context.tr.settingsData),
             subtitle: Text(context.tr.viewManageSettings),
-            leading: Icon(Icons.data_usage),
+            leading: const Icon(Icons.data_usage),
             onTap: () {
               final settingsData = _preferences.getAllSettings();
               showDialog(

@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/helpers/frame_timing_optimizer.dart';
 import 'package:flutter/gestures.dart'; // Import for PointerSignalEvent
@@ -134,7 +133,7 @@ class FileView extends StatelessWidget {
     );
 
     // Debug selection count
-    print(
+    debugPrint(
         "FileView _buildDetailsView - Selected files count: ${selectedFiles.length}");
 
     return Column(
@@ -155,14 +154,14 @@ class FileView extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                           vertical: 10.0, horizontal: 12.0),
-                      child: Row(
+                      child: const Row(
                         children: [
                           Text(
                             'Tên',
                             style: headerStyle,
                           ),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.arrow_downward,
+                          SizedBox(width: 4),
+                          Icon(Icons.arrow_downward,
                               size: 16, color: Colors.black87),
                         ],
                       ),
@@ -176,7 +175,7 @@ class FileView extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             vertical: 10.0, horizontal: 12.0),
-                        child: Text(
+                        child: const Text(
                           'Loại',
                           style: headerStyle,
                         ),
@@ -190,7 +189,7 @@ class FileView extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             vertical: 10.0, horizontal: 12.0),
-                        child: Text(
+                        child: const Text(
                           'Kích thước',
                           style: headerStyle,
                         ),
@@ -204,7 +203,7 @@ class FileView extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             vertical: 10.0, horizontal: 12.0),
-                        child: Text(
+                        child: const Text(
                           'Ngày sửa đổi',
                           style: headerStyle,
                         ),
@@ -218,7 +217,7 @@ class FileView extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             vertical: 10.0, horizontal: 12.0),
-                        child: Text(
+                        child: const Text(
                           'Ngày tạo',
                           style: headerStyle,
                         ),
@@ -232,7 +231,7 @@ class FileView extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             vertical: 10.0, horizontal: 12.0),
-                        child: Text(
+                        child: const Text(
                           'Thuộc tính',
                           style: headerStyle,
                         ),

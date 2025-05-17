@@ -9,7 +9,7 @@ import 'package:cb_file_manager/ui/screens/media_gallery/image_viewer_screen.dar
 import 'package:path/path.dart' as pathlib;
 import 'dart:math';
 import 'package:share_plus/share_plus.dart'; // Add import for Share Plus
-import 'package:cross_file/cross_file.dart'; // Add import for XFile
+// Add import for XFile
 import 'package:cb_file_manager/helpers/folder_sort_manager.dart';
 
 class ImageGalleryScreen extends StatefulWidget {
@@ -23,10 +23,10 @@ class ImageGalleryScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _ImageGalleryScreenState createState() => _ImageGalleryScreenState();
+  ImageGalleryScreenState createState() => ImageGalleryScreenState();
 }
 
-class _ImageGalleryScreenState extends State<ImageGalleryScreen> {
+class ImageGalleryScreenState extends State<ImageGalleryScreen> {
   late Future<List<File>> _imageFilesFuture;
   late UserPreferences _preferences;
   late double _thumbnailSize = 150.0; // Default size
@@ -254,7 +254,7 @@ class _ImageGalleryScreenState extends State<ImageGalleryScreen> {
       await prefs.init();
       await prefs.setViewMode(mode);
     } catch (e) {
-      print('Error saving view mode: $e');
+      debugPrint('Error saving view mode: $e');
     }
   }
 
@@ -388,7 +388,7 @@ class _ImageGalleryScreenState extends State<ImageGalleryScreen> {
           try {
             await _preferences.setImageGalleryThumbnailSize(size.toDouble());
           } catch (e) {
-            print('Error saving thumbnail size: $e');
+            debugPrint('Error saving thumbnail size: $e');
           }
         },
       ),
@@ -759,7 +759,7 @@ class _ImageGalleryScreenState extends State<ImageGalleryScreen> {
         },
       );
     } catch (e) {
-      print('Error showing image info: $e');
+      debugPrint('Error showing image info: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Không thể hiển thị thông tin hình ảnh: $e')),
       );
@@ -818,7 +818,7 @@ class _ImageGalleryScreenState extends State<ImageGalleryScreen> {
                   await file.delete();
                   successCount++;
                 } catch (e) {
-                  print('Error deleting file $path: $e');
+                  debugPrint('Error deleting file $path: $e');
                   failedPaths.add(path);
                 }
               }
@@ -864,140 +864,6 @@ class _ImageGalleryScreenState extends State<ImageGalleryScreen> {
     } else {
       return '${date.day}/${date.month}/${date.year}';
     }
-  }
-
-  String _formatFileSize(int bytes) {
-    if (bytes <= 0) return "0 B";
-    const suffixes = ["B", "KB", "MB", "GB", "TB"];
-    var i = (log(bytes) / log(1024)).floor();
-    return '${(bytes / pow(1024, i)).toStringAsFixed(1)} ${suffixes[i]}';
-  }
-}
-
-class _ImageViewerScreen extends StatelessWidget {
-  final File file;
-
-  const _ImageViewerScreen({required this.file});
-
-  @override
-  Widget build(BuildContext context) {
-    return BaseScreen(
-      title: pathlib.basename(file.path),
-      backgroundColor: Colors.black,
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.share),
-          onPressed: () {
-            final XFile xFile = XFile(file.path);
-            Share.shareXFiles([xFile], text: 'Chia sẻ hình ảnh');
-          },
-        ),
-        IconButton(
-          icon: const Icon(Icons.info_outline),
-          onPressed: () => _showImageInfo(context),
-        ),
-      ],
-      body: Center(
-        child: Hero(
-          tag: file.path,
-          child: InteractiveViewer(
-            minScale: 0.5,
-            maxScale: 4.0,
-            child: Image.file(
-              file,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) {
-                return Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.broken_image,
-                      size: 80,
-                      color: Colors.white70,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Không thể tải hình ảnh',
-                      style: TextStyle(color: Colors.white70),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showImageInfo(BuildContext context) async {
-    try {
-      final fileStat = await file.stat();
-      final fileSize = _formatFileSize(fileStat.size);
-      final modified = fileStat.modified;
-
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('Thông tin hình ảnh'),
-            content: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _infoRow('Tên tập tin', pathlib.basename(file.path)),
-                  const Divider(),
-                  _infoRow('Đường dẫn', file.path),
-                  const Divider(),
-                  _infoRow('Kích thước', fileSize),
-                  const Divider(),
-                  _infoRow(
-                      'Loại tệp', pathlib.extension(file.path).toUpperCase()),
-                  const Divider(),
-                  _infoRow('Cập nhật lần cuối',
-                      '${modified.day}/${modified.month}/${modified.year} ${modified.hour}:${modified.minute}'),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Text('Đóng'),
-              ),
-            ],
-          );
-        },
-      );
-    } catch (e) {
-      print('Error showing image info: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không thể hiển thị thông tin hình ảnh: $e')),
-      );
-    }
-  }
-
-  Widget _infoRow(String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '$title: ',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontSize: 14),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   String _formatFileSize(int bytes) {

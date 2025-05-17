@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:flutter/material.dart';
@@ -103,17 +102,11 @@ class UserPreferences {
         if (_databaseManager != null && !_databaseManager!.isInitialized()) {
           // Đánh dấu đã khởi tạo trước để tránh vòng lặp
           _initialized = true;
-          print(
-              'UserPreferences marked as initialized before ObjectBox initialization');
         }
-      } else {
-        print('ObjectBox preferences disabled, using SharedPreferences only');
       }
 
       _initialized = true;
-      print('UserPreferences initialized successfully');
     } catch (e) {
-      print('Error initializing UserPreferences: $e');
       // Fallback to SharedPreferences nếu có lỗi
       _useObjectBox = false;
       await _preferences?.setBool(_useObjectBoxKey, false);
@@ -136,8 +129,6 @@ class UserPreferences {
       );
 
       if (migrationDone != true) {
-        print('Migrating preferences to ObjectBox...');
-
         // View mode
         final viewMode = await getViewMode();
         await _databaseManager!.saveIntPreference(_viewModeKey, viewMode.index);
@@ -207,11 +198,8 @@ class UserPreferences {
 
         // Mark migration as done
         await _databaseManager!.saveBoolPreference('migration_done', true);
-
-        print('Preferences migration completed successfully.');
       }
     } catch (e) {
-      print('Error migrating preferences to ObjectBox: $e');
       // Fallback to SharedPreferences
       _useObjectBox = false;
       await _preferences?.setBool(_useObjectBoxKey, false);
@@ -235,7 +223,6 @@ class UserPreferences {
       return await _preferences?.setBool(_useObjectBoxKey, useObjectBox) ??
           false;
     } catch (e) {
-      print('Error changing storage mode: $e');
       return false;
     }
   }
@@ -257,7 +244,6 @@ class UserPreferences {
       return await _preferences?.setBool(_useObjectBoxKey, useObjectBox) ??
           false;
     } catch (e) {
-      print('Error changing storage mode: $e');
       return false;
     }
   }
@@ -269,7 +255,6 @@ class UserPreferences {
       _databaseManager!.setCloudSyncEnabled(enabled);
       return true;
     } catch (e) {
-      print('Error enabling cloud sync: $e');
       return false;
     }
   }
@@ -367,7 +352,6 @@ class UserPreferences {
           return null;
         }
       } catch (e) {
-        print('Error validating last accessed folder: $e');
         // If there's an error, clear the preference
         if (_useObjectBox) {
           await _databaseManager!.deletePreference(_lastFolderKey);
@@ -398,7 +382,6 @@ class UserPreferences {
       }
       return false;
     } catch (e) {
-      print('Error saving last accessed folder: $e');
       return false;
     }
   }
@@ -743,7 +726,6 @@ class UserPreferences {
 
       return filePath;
     } catch (e) {
-      print('Error exporting preferences: $e');
       return null;
     }
   }
@@ -777,7 +759,6 @@ class UserPreferences {
       }
       return false;
     } catch (e) {
-      print('Error importing preferences: $e');
       return false;
     }
   }
@@ -854,7 +835,6 @@ class UserPreferences {
 
       return exportDir.path;
     } catch (e) {
-      print('Error exporting all data: $e');
       return null;
     }
   }
@@ -879,13 +859,11 @@ class UserPreferences {
       // Check for manifest file
       final manifestFile = File(path.join(importDirPath, 'manifest.json'));
       if (!await manifestFile.exists()) {
-        print('Manifest file not found in import directory');
         // Try to look for individual files even without manifest
       } else {
         // Read manifest to verify contents
         final String manifestContent = await manifestFile.readAsString();
-        final Map<String, dynamic> manifest = jsonDecode(manifestContent);
-        print('Found manifest: $manifest');
+        jsonDecode(manifestContent);
       }
 
       // Try to import preferences
@@ -913,9 +891,8 @@ class UserPreferences {
           }
 
           prefsImported = true;
-          print('Preferences imported successfully');
         } catch (e) {
-          print('Error importing preferences: $e');
+          debugPrint('Error importing preferences: $e');
         }
       }
 
@@ -952,16 +929,14 @@ class UserPreferences {
               }
             }
             dbImported = true;
-            print('Database imported successfully');
           }
         } catch (e) {
-          print('Error importing database: $e');
+          debugPrint('Error importing database: $e');
         }
       }
 
       return prefsImported || dbImported;
     } catch (e) {
-      print('Error importing all data: $e');
       return false;
     }
   }
@@ -1007,7 +982,6 @@ class UserPreferences {
           json.decode(columnVisibilityJson) as Map<String, dynamic>;
       return ColumnVisibility.fromMap(map);
     } catch (e) {
-      print('Error parsing column visibility settings: $e');
       return const ColumnVisibility(); // Use default on error
     }
   }

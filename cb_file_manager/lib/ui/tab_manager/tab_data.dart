@@ -50,7 +50,7 @@ class TabData {
     GlobalKey<NavigatorState>? navigatorKey,
   }) {
     return TabData(
-      id: this.id,
+      id: id,
       name: name ?? this.name,
       path: path ?? this.path,
       icon: icon ?? this.icon,

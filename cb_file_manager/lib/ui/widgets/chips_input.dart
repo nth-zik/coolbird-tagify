@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 
 class ChipsInput<T> extends StatefulWidget {
@@ -171,7 +170,7 @@ class ChipsInputEditingController<T> extends TextEditingController {
     // Determine if we need to add line breaks for better spacing
     int currentLineWidth = 0;
     int currentLineCount = 0;
-    final int maxLineWidth = 400; // Rough estimate of max line width
+    const int maxLineWidth = 400; // Rough estimate of max line width
 
     // Add each chip with proper spacing
     for (int i = 0; i < values.length; i++) {

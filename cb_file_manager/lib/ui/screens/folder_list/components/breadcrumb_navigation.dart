@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:cb_file_manager/helpers/filesystem_utils.dart';
 
 class BreadcrumbNavigation extends StatelessWidget {
   final String currentPath;

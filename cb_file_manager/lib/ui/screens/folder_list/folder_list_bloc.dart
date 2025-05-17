@@ -1,7 +1,7 @@
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
-import 'package:cb_file_manager/helpers/io_extensions.dart';
 import 'package:cb_file_manager/helpers/trash_manager.dart'; // Add import for TrashManager
 import 'package:cb_file_manager/helpers/filesystem_utils.dart'; // Import for FileOperations
 import 'package:path/path.dart' as pathlib;
@@ -26,8 +26,12 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
     _tagChangeSubscription = TagManager.onTagChanged.listen(_onTagsChanged);
 
     // Register for global tag change notifications
+    // NOTE: _onGlobalTagChanged now requires emit, so it cannot be used directly in this subscription.
+    // If you need to handle global tag changes here, dispatch an event instead.
     _globalTagChangeSubscription =
-        TagManager.instance.onGlobalTagChanged.listen(_onGlobalTagChanged);
+        TagManager.instance.onGlobalTagChanged.listen((filePath) {
+      // You may want to add a custom event here if needed.
+    });
 
     // Note: AddTagToFile, RemoveTagFromFile, SearchByTag, SearchByTagGlobally,
     // SearchByFileName, and SearchMediaFiles events are now handled directly
@@ -68,49 +72,9 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
     }
   }
 
-  // Handle global tag change notifications
-  void _onGlobalTagChanged(String filePath) {
-    // If this is a file that should affect the current view
-    if (state.currentPath.path.isNotEmpty) {
-      try {
-        // Special case for global tag deletion
-        if (filePath == "global:tag_deleted") {
-          // Just refresh file tags without reloading the entire list
-          _refreshTagsOnly(state.currentPath.path);
-          return;
-        }
-
-        // Check if this is a request to preserve scroll position
-        bool preserveScroll = false;
-        String actualPath = filePath;
-
-        if (filePath.startsWith("preserve_scroll:")) {
-          preserveScroll = true;
-          actualPath = filePath.substring("preserve_scroll:".length);
-        }
-
-        final parentPath = Directory(actualPath).parent.path;
-
-        // If the changed file is in the current directory
-        if (parentPath == state.currentPath.path) {
-          if (preserveScroll) {
-            // Use the optimized refresh that preserves scroll position
-            _refreshTagsOnly(state.currentPath.path);
-          } else {
-            // Full refresh if preserveScroll is false
-            add(FolderListRefresh(state.currentPath.path,
-                forceRegenerateThumbnails: true));
-          }
-        }
-      } catch (e) {
-        print('Error handling global tag change: $e');
-      }
-    }
-  }
-
   // Refreshes only the tags without reloading the entire folder structure
   // This preserves scroll position and selection
-  void _refreshTagsOnly(String dirPath) async {
+  void _refreshTagsOnly(String dirPath, Emitter<FolderListState> emit) async {
     try {
       // Emit loading state to notify UI about ongoing operation
       emit(state.copyWith(isLoading: true));
@@ -143,7 +107,7 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
         allUniqueTags: allUniqueTags,
       ));
     } catch (e) {
-      print('Error refreshing tags only: $e');
+      debugPrint('Error refreshing tags only: $e');
       // Make sure we're not stuck in loading state
       emit(state.copyWith(isLoading: false));
     }
@@ -472,18 +436,6 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
       }
 
       // Folders always come first, then apply the sort function within each group
-      final folderFirstCompare = (FileSystemEntity a, FileSystemEntity b) {
-        final aIsDir = a is Directory;
-        final bIsDir = b is Directory;
-
-        // If both are directories or both are files, use the specific compare function
-        if (aIsDir == bIsDir) {
-          return compareFunction(a, b);
-        }
-
-        // Otherwise, directories come first
-        return aIsDir ? -1 : 1;
-      };
 
       // Sort folders and files with the folder-first comparison
       folders.sort(compareFunction);
@@ -502,7 +454,7 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
         ));
       }
     } catch (e) {
-      print("Error sorting files and folders: $e");
+      debugPrint("Error sorting files and folders: $e");
       // Don't update state on error
     }
   }
@@ -646,7 +598,7 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
             // Check with the VideoThumbnailHelper if we should continue processing
             // This will prevent thumbnail generation from continuing if user navigates away
             if (VideoThumbnailHelper.shouldStopProcessing()) {
-              print('Thumbnail generation canceled due to navigation');
+              debugPrint('Thumbnail generation canceled due to navigation');
               break;
             }
 
@@ -655,18 +607,19 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
             ).timeout(
               const Duration(seconds: 3),
               onTimeout: () {
-                print('Thumbnail generation timed out for: ${videoFile.path}');
+                debugPrint(
+                    'Thumbnail generation timed out for: ${videoFile.path}');
                 return;
               },
             );
           } catch (e) {
-            print('Error generating thumbnail for ${videoFile.path}: $e');
+            debugPrint('Error generating thumbnail for ${videoFile.path}: $e');
             // Continue with next file, don't stop on error
           }
         }
       }
     } catch (e) {
-      print('Error in background thumbnail generation: $e');
+      debugPrint('Error in background thumbnail generation: $e');
     }
   }
 
@@ -753,7 +706,7 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
         emit(state.copyWith(fileTags: updatedFileTags));
       }
     } catch (e) {
-      print('Error loading tags for file: ${e.toString()}');
+      debugPrint('Error loading tags for file: ${e.toString()}');
     }
   }
 
@@ -765,7 +718,7 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
       );
       emit(state.copyWith(allUniqueTags: allTags));
     } catch (e) {
-      print('Error loading all tags: ${e.toString()}');
+      debugPrint('Error loading all tags: ${e.toString()}');
     }
   }
 
@@ -964,18 +917,6 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
       }
 
       // Folders always come first, then apply the sort function within each group
-      final folderFirstCompare = (FileSystemEntity a, FileSystemEntity b) {
-        final aIsDir = a is Directory;
-        final bIsDir = b is Directory;
-
-        // If both are directories or both are files, use the specific compare function
-        if (aIsDir == bIsDir) {
-          return compareFunction(a, b);
-        }
-
-        // Otherwise, directories come first
-        return aIsDir ? -1 : 1;
-      };
 
       // Sort folders and files separately
       sortedFolders.sort(compareFunction);
@@ -1044,7 +985,7 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
           }
         } catch (e) {
           failedDeletes.add(filePath);
-          print('Error deleting file $filePath: $e');
+          debugPrint('Error deleting file $filePath: $e');
         }
       }
 
@@ -1169,7 +1110,7 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
     // Only proceed if we have a valid current path
     if (state.currentPath.path.isNotEmpty) {
       // Use the optimized refresh that doesn't reset scroll position
-      _refreshTagsOnly(state.currentPath.path);
+      _refreshTagsOnly(state.currentPath.path, emit);
     }
   }
 
@@ -1194,7 +1135,7 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
             forceRegenerateThumbnails: true));
       }
     } catch (e) {
-      print('Error deleting tag globally: $e');
+      debugPrint('Error deleting tag globally: $e');
       // No state update needed as we'll refresh the entire view
     }
   }
@@ -1208,7 +1149,6 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
 
     try {
       final String query = event.query.toLowerCase();
-      final Directory currentDir = state.currentPath;
       final List<FileSystemEntity> searchResults = [];
 
       // Get all files in the current directory

@@ -86,7 +86,7 @@ class AddressBarWidget extends StatelessWidget {
         children: [
           Icon(EvaIcons.monitorOutline,
               size: 14, color: theme.colorScheme.primary),
-          SizedBox(width: 4),
+          const SizedBox(width: 4),
           Text(
             'Thiết bị lưu trữ',
             style: TextStyle(
@@ -123,7 +123,7 @@ class AddressBarWidget extends StatelessWidget {
         children: [
           Flexible(
             child: Text(
-              '.../${parentFolder}/',
+              '.../$parentFolder/',
               style: TextStyle(
                 color: isDarkMode ? Colors.grey[400] : Colors.grey[700],
                 fontSize: 13,

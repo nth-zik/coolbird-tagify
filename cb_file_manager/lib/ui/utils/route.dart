@@ -9,7 +9,7 @@ class RouteUtils {
     try {
       // First check if we can navigate at all
       if (!context.mounted) {
-        print('Context not mounted, cannot navigate');
+        debugPrint('Context not mounted, cannot navigate');
         return;
       }
 
@@ -23,7 +23,7 @@ class RouteUtils {
         Navigator.of(context).push(route);
       }
     } catch (e) {
-      print('Error in safeNavigate: $e');
+      debugPrint('Error in safeNavigate: $e');
       // Last resort fallback
       if (context.mounted) {
         goHome(context);

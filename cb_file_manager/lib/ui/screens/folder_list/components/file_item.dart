@@ -1,13 +1,11 @@
 import 'dart:io';
 import 'dart:async'; // Thêm import cho StreamSubscription
-import 'dart:ui'; // For lerpDouble
-import 'package:flutter/scheduler.dart'; // For more responsive animations
+// For lerpDouble
+// For more responsive animations
 
-import 'package:cb_file_manager/ui/screens/folder_list/file_details_screen.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/video_gallery_screen.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/image_viewer_screen.dart';
-import 'package:cb_file_manager/helpers/trash_manager.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart'; // Import TagManager để lắng nghe thay đổi
 import 'package:flutter/material.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
@@ -21,10 +19,9 @@ import 'package:cb_file_manager/helpers/file_icon_helper.dart';
 import 'package:cb_file_manager/config/app_theme.dart';
 import 'package:cb_file_manager/ui/widgets/tag_chip.dart'; // Import the new TagChip widget
 import 'package:cb_file_manager/ui/components/shared_file_context_menu.dart';
-import 'package:cb_file_manager/ui/widgets/lazy_video_thumbnail.dart';
 import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart'; // Import ThumbnailLoader
 import 'package:flutter/services.dart'; // Import for keyboard key detection
-import 'package:flutter/rendering.dart'; // Import for RepaintBoundary
+// Import for RepaintBoundary
 
 // Add this class to disable ripple effects
 class NoSplashFactory extends InteractiveInkFeatureFactory {
@@ -178,7 +175,7 @@ class _FileItemState extends State<FileItem> {
         setState(() {
           _fileTags.remove(tag);
         });
-        TagManager.instance.notifyTagChanged("tag_only:" + widget.file.path);
+        TagManager.instance.notifyTagChanged("tag_only:${widget.file.path}");
         final bloc = BlocProvider.of<FolderListBloc>(context, listen: false);
         bloc.add(RemoveTagFromFile(widget.file.path, tag));
         ScaffoldMessenger.of(context).showSnackBar(
@@ -501,7 +498,7 @@ class _FileItemContent extends StatelessWidget {
         ),
         if (fileTags.isNotEmpty) ...[
           const SizedBox(width: 16),
-          Icon(EvaIcons.bookmarkOutline, size: 14, color: AppTheme.primaryBlue),
+          const Icon(EvaIcons.bookmarkOutline, size: 14, color: AppTheme.primaryBlue),
           const SizedBox(width: 4),
           if (fileTags.length == 1)
             TagChip(
@@ -517,7 +514,7 @@ class _FileItemContent extends StatelessWidget {
           else
             Text(
               '${fileTags.length} tags',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 12,
                 color: AppTheme.primaryBlue,
               ),

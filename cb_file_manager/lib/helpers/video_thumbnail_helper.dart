@@ -36,12 +36,6 @@ Future<int> _calculateTimestampFromPercentageIsolate(
   return timestampSeconds;
 }
 
-String _createCacheFilenameIsolate(String videoPath) {
-  final bytes = utf8.encode(videoPath);
-  final digest = md5.convert(bytes);
-  return 'thumb_${digest.toString()}.jpg';
-}
-
 class _ThumbnailIsolateArgs {
   final String videoPath;
   final String cacheFilename;
@@ -213,8 +207,6 @@ class VideoThumbnailHelper {
   static const int _maxConcurrentProcesses = 1;
 
   // Add throttling for native Windows thumbnail operations
-  static bool _nativeOperationInProgress = false;
-  static const Duration _nativeOperationTimeout = Duration(seconds: 5);
 
   static bool _isProcessingQueue = false;
 
@@ -233,8 +225,6 @@ class VideoThumbnailHelper {
   static const int maxThumbnailSize = 300;
 
   static bool get _isWindows => Platform.isWindows;
-
-  static bool _ffmpegInitialized = false;
 
   static DateTime _lastCleanupTime = DateTime.now();
 
@@ -272,9 +262,6 @@ class VideoThumbnailHelper {
   /// A tracker to remember which items have had loading attempts
   /// This prevents items from being forgotten after scrolling
   static final Set<String> _attemptedPaths = {};
-
-  /// Flag to prevent items from being completely forgotten when scrolled out of viewport
-  static bool _preserveRequestsWhenScrolled = true;
 
   // Add a static flag to check if processing should continue
   static bool _shouldStopProcessing = false;
@@ -332,7 +319,7 @@ class VideoThumbnailHelper {
     if (_currentDirectory == dirPath) return;
 
     _log(
-        'VideoThumbnail: Changing directory from "${_currentDirectory}" to "$dirPath"',
+        'VideoThumbnail: Changing directory from "$_currentDirectory" to "$dirPath"',
         forceShow: true);
     _currentDirectory = dirPath;
 
@@ -775,7 +762,7 @@ class VideoThumbnailHelper {
         for (final entry in cacheData.entries) {
           final thumbnailPath = entry.value as String?;
           final videoPath = entry.key;
-          if (thumbnailPath != null && videoPath != null) {
+          if (thumbnailPath != null) {
             _fileCache[videoPath] = thumbnailPath;
             validCount++;
           } else {
@@ -996,7 +983,7 @@ class VideoThumbnailHelper {
     Key? key,
     void Function(String?)? onThumbnailGenerated,
   }) {
-    final defaultFallback = () => Container(
+    defaultFallback() => Container(
           color: Colors.grey[300],
           child: const Center(
             child: Icon(Icons.movie, size: 40, color: Colors.grey),
@@ -1113,7 +1100,6 @@ class VideoThumbnailHelper {
       // Reset initialization state
       _initializing = false;
       _initCompleter = Completer<void>();
-      _nativeOperationInProgress = false;
 
       // Clear Flutter's image cache to prevent memory leaks
       try {

@@ -299,13 +299,13 @@ class FolderSortManager {
             sections[currentSection] = '';
           } else if (currentSection.isNotEmpty) {
             sections[currentSection] =
-                (sections[currentSection] ?? '') + line + '\n';
+                '${sections[currentSection] ?? ''}$line\n';
           }
         }
       }
 
       // Update or add ViewState section
-      final viewStateSection = '[.ShellClassInfo]';
+      const viewStateSection = '[.ShellClassInfo]';
       String viewStateContent = sections[viewStateSection] ?? '';
 
       // Thêm các thuộc tính bổ sung nếu section mới

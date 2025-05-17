@@ -111,19 +111,6 @@ class ThumbnailHelper {
   }
 }
 
-/// Lớp giả cho các file đang cần tham chiếu ThumbnailTask
-class _ThumbnailTask {
-  final String videoPath;
-  Function(String?) onComplete;
-  final int priority;
-
-  _ThumbnailTask({
-    required this.videoPath,
-    required this.onComplete,
-    this.priority = 0,
-  });
-}
-
 // Lớp đơn giản để giữ tương thích với mã hiện tại
 class OptimizedLazyThumbnailWidget extends StatelessWidget {
   final String videoPath;

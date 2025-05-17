@@ -449,9 +449,7 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
   Future<void> _takeScreenshot() async {
     try {
       final path = widget.file.path;
-      final directory = Directory(pathlib.dirname(path));
-      final filename = pathlib.basenameWithoutExtension(path);
-      final screenshotFile = File('${directory.path}/$filename-screenshot.png');
+      pathlib.basenameWithoutExtension(path);
 
       // Implement actual screenshot capture logic here
       // This will depend on your video player implementation
@@ -460,7 +458,7 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
         const SnackBar(content: Text('Screenshot saved')),
       );
     } catch (e) {
-      print('Error taking screenshot: $e');
+      debugPrint('Error taking screenshot: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to save screenshot')),
       );
@@ -1029,7 +1027,7 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
 
         // Log current selected track
         final currentTrack = _player.state.track.audio;
-        debugPrint('Current audio track: ${currentTrack.id ?? "none"}');
+        debugPrint('Current audio track: ${currentTrack.id}');
 
         if (audioTracks.isEmpty) {
           debugPrint('No audio tracks available, hiding audio track button');

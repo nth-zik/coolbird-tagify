@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter/services.dart';
 import '../../helpers/video_thumbnail_helper.dart';
 import '../../helpers/thumbnail_isolate_manager.dart';
 import '../../helpers/frame_timing_optimizer.dart';
@@ -62,7 +61,6 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
   bool _isLoading = false;
   bool _isError = false;
   bool _wasAttempted = false;
-  bool _wasVisible = false;
   bool _isThumbnailGenerated = false;
   // Add a new flag to prevent regeneration when path hasn't changed
   bool _shouldRegenerateThumbnail = true;
@@ -286,7 +284,7 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
   /// Handle the thumbnail generation completion
   void _onThumbnailGenerated(String path) {
     // Notify parent about the thumbnail being generated
-    if (path != null && widget.onThumbnailGenerated != null) {
+    if (widget.onThumbnailGenerated != null) {
       // Use a post-frame callback to avoid calling during build
       SchedulerBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -298,7 +296,7 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
     }
 
     // Force an immediate UI update to show the thumbnail
-    if (mounted && path != null) {
+    if (mounted) {
       setState(() {});
     }
   }
@@ -311,7 +309,6 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
 
     if (isNowVisible) {
       _visibilityNotifier.value = true;
-      _wasVisible = true;
 
       // Load thumbnail if needed when widget becomes visible
       if (_thumbnailPathNotifier.value == null &&
@@ -332,7 +329,6 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
       }
     } else if (_visibilityNotifier.value) {
       _visibilityNotifier.value = false;
-      _wasVisible = false;
     }
   }
 
@@ -387,33 +383,6 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
             value: progress > 0 ? progress : null,
             valueColor: AlwaysStoppedAnimation<Color>(
               Theme.of(context).primaryColor.withOpacity(0.8),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  /// Build progress percentage label
-  Widget _buildProgressLabel() {
-    return ValueListenableBuilder<double>(
-      valueListenable: _progressNotifier,
-      builder: (context, progress, _) {
-        return Positioned(
-          bottom: 4,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.6),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              '${(progress * 100).toInt()}%',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
             ),
           ),
         );

@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:cb_file_manager/helpers/io_extensions.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:flutter/services.dart';
@@ -85,7 +84,7 @@ class _FileDetailsItemState extends State<FileDetailsItem> {
         });
       }
     } catch (e) {
-      print('Error loading file stats: $e');
+      debugPrint('Error loading file stats: $e');
     }
   }
 
@@ -103,8 +102,8 @@ class _FileDetailsItemState extends State<FileDetailsItem> {
         keyboard.isControlPressed || keyboard.isMetaPressed;
 
     // Log selection attempt
-    print("File selection: ${widget.file.path}");
-    print("Shift: $isShiftPressed, Ctrl: $isCtrlPressed");
+    debugPrint("File selection: ${widget.file.path}");
+    debugPrint("Shift: $isShiftPressed, Ctrl: $isCtrlPressed");
 
     // Visual update for immediate feedback
     if (!isShiftPressed) {
@@ -410,7 +409,6 @@ class _OptimizedFileIconState extends State<_OptimizedFileIcon>
   bool get wantKeepAlive => true;
 
   // Track if we've already drawn the thumbnail to prevent regeneration
-  bool _hasDrawnThumbnail = false;
 
   @override
   Widget build(BuildContext context) {
@@ -485,8 +483,6 @@ class _OptimizedFileIconState extends State<_OptimizedFileIcon>
     // This prevents rebuilds when only selection state changes in parent
     if (widget.file.path != oldWidget.file.path ||
         widget.isVideo != oldWidget.isVideo ||
-        widget.isImage != oldWidget.isImage) {
-      _hasDrawnThumbnail = false;
-    }
+        widget.isImage != oldWidget.isImage) {}
   }
 }

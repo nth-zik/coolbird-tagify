@@ -233,7 +233,7 @@ class SharedFileContextMenu extends StatelessWidget {
         // Move to trash
         ListTile(
           leading: const Icon(EvaIcons.trash2Outline, color: Colors.red),
-          title: Text(
+          title: const Text(
             'Move to Trash',
             style: TextStyle(color: Colors.red),
           ),
@@ -369,9 +369,6 @@ class SharedFileContextMenu extends StatelessWidget {
   }
 
   // Helper to get file extension
-  String _getFileExtension(File file) {
-    return file.path.split('.').last.toLowerCase();
-  }
 
   // Helper to get file basename
   String _basename(File file) {
@@ -588,15 +585,13 @@ class SharedFolderContextMenu extends StatelessWidget {
 
   // Helper to show folder details
   void _showFolderDetails(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
     folder.stat().then((stat) {
       if (!context.mounted) return;
 
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text('Folder Properties'),
+          title: const Text('Folder Properties'),
           content: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

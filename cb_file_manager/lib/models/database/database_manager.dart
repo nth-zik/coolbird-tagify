@@ -1,6 +1,5 @@
 import 'package:cb_file_manager/models/database/database_provider.dart';
 import 'package:cb_file_manager/models/objectbox/objectbox_database_provider.dart';
-import 'package:cb_file_manager/helpers/user_preferences.dart';
 import 'dart:async'; // Thêm import này để sử dụng Completer
 import 'dart:convert'; // Added for JSON encoding/decoding
 import 'dart:io'; // Added for File operations
@@ -20,7 +19,6 @@ class DatabaseManager implements IDatabaseProvider {
   late IDatabaseProvider _provider;
 
   // User preferences for checking if ObjectBox is enabled
-  final UserPreferences _preferences = UserPreferences.instance;
 
   // Flag to track if cloud sync is enabled
   bool _cloudSyncEnabled = false;
@@ -43,8 +41,6 @@ class DatabaseManager implements IDatabaseProvider {
     // Sử dụng semaphore để đảm bảo chỉ một lần khởi tạo được thực hiện
     return _initSemaphore.run(() async {
       if (_isInitialized) {
-        // Đã khởi tạo, không làm gì thêm
-        print('DatabaseManager already initialized, skipping initialization');
         return;
       }
 
@@ -62,12 +58,8 @@ class DatabaseManager implements IDatabaseProvider {
             // Initialize the provider
             await _provider.initialize();
             initSuccess = true;
-            print(
-                'Database provider initialized successfully on attempt ${retryCount + 1}');
           } catch (e) {
             retryCount++;
-            print(
-                'Error initializing database provider (attempt $retryCount): $e');
 
             // Nếu vẫn còn cơ hội thử lại, đợi một chút trước khi thử lại
             if (retryCount < maxRetries) {
@@ -80,12 +72,7 @@ class DatabaseManager implements IDatabaseProvider {
         }
 
         _isInitialized = true;
-        print('DatabaseManager initialized successfully');
       } catch (e) {
-        print('Error initializing DatabaseManager: $e');
-
-        // Nếu không khởi tạo được database, vẫn đánh dấu là đã khởi tạo
-        // để tránh app bị kẹt trong vòng lặp khởi tạo không thành công
         _isInitialized = true;
 
         // Rethrow để caller có thể xử lý theo cách riêng
@@ -298,7 +285,6 @@ class DatabaseManager implements IDatabaseProvider {
 
       return filePath;
     } catch (e) {
-      print('Error exporting database: $e');
       return null;
     }
   }
@@ -338,7 +324,6 @@ class DatabaseManager implements IDatabaseProvider {
 
       return true;
     } catch (e) {
-      print('Error importing database: $e');
       return false;
     }
   }

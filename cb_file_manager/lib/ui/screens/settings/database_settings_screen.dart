@@ -5,7 +5,6 @@ import 'package:cb_file_manager/helpers/tag_manager.dart';
 import 'package:cb_file_manager/ui/utils/base_screen.dart';
 import 'package:cb_file_manager/config/translation_helper.dart';
 import 'package:file_picker/file_picker.dart';
-import 'dart:io';
 import 'package:intl/intl.dart';
 
 /// A screen for managing database settings
@@ -24,8 +23,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
   bool _isCloudSyncEnabled = false;
   bool _isLoading = true;
   bool _isSyncing = false;
-  bool _isToggling = false;
-  bool _isUpdating = false; // Add this line
+// Add this line
 
   Set<String> _uniqueTags = {};
   Map<String, int> _popularTags = {};
@@ -57,7 +55,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading database settings: $e');
+      debugPrint('Error loading database settings: $e');
       setState(() {
         _isLoading = false;
       });
@@ -116,7 +114,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
 
       _totalFileCount = allFiles.length;
     } catch (e) {
-      print('Error loading database statistics: $e');
+      debugPrint('Error loading database statistics: $e');
     }
   }
 
@@ -147,7 +145,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error toggling ObjectBox: $e');
+      debugPrint('Error toggling ObjectBox: $e');
 
       // Revert the change
       await _preferences.setUsingObjectBox(!value);
@@ -177,7 +175,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error toggling cloud sync: $e');
+      debugPrint('Error toggling cloud sync: $e');
 
       // Revert the change
       _databaseManager.setCloudSyncEnabled(!value);
@@ -197,7 +195,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
   Future<void> _syncToCloud() async {
     if (!_isCloudSyncEnabled) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Cloud sync is not enabled')),
+        const SnackBar(content: Text('Cloud sync is not enabled')),
       );
       return;
     }
@@ -211,11 +209,11 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
 
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Data synced to cloud successfully')),
+          const SnackBar(content: Text('Data synced to cloud successfully')),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error syncing to cloud')),
+          const SnackBar(content: Text('Error syncing to cloud')),
         );
       }
 
@@ -223,7 +221,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
         _isSyncing = false;
       });
     } catch (e) {
-      print('Error syncing to cloud: $e');
+      debugPrint('Error syncing to cloud: $e');
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
@@ -238,7 +236,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
   Future<void> _syncFromCloud() async {
     if (!_isCloudSyncEnabled) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Cloud sync is not enabled')),
+        const SnackBar(content: Text('Cloud sync is not enabled')),
       );
       return;
     }
@@ -255,11 +253,11 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
         await _loadStatistics();
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Data synced from cloud successfully')),
+          const SnackBar(content: Text('Data synced from cloud successfully')),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error syncing from cloud')),
+          const SnackBar(content: Text('Error syncing from cloud')),
         );
       }
 
@@ -267,7 +265,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
         _isSyncing = false;
       });
     } catch (e) {
-      print('Error syncing from cloud: $e');
+      debugPrint('Error syncing from cloud: $e');
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
@@ -275,38 +273,6 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
 
       setState(() {
         _isSyncing = false;
-      });
-    }
-  }
-
-  Future<void> _updateUseObjectBox(bool value) async {
-    setState(() {
-      _isUpdating = true;
-    });
-
-    try {
-      await _preferences.setUseObjectBox(value);
-      setState(() {
-        _isUsingObjectBox = value;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              'Database setting updated. Using ${value ? 'ObjectBox' : 'JSON files'}.'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error updating database setting: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      setState(() {
-        _isUpdating = false;
       });
     }
   }
