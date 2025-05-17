@@ -60,7 +60,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   // Use the work area dimensions to ensure window fits properly
   Win32Window::Size size(screenWidth, screenHeight);
 
-  if (!window.Create(L"cb_file_manager", origin, size))
+  if (!window.Create(L"CoolBird Tagify - File Manager", origin, size))
   {
     return EXIT_FAILURE;
   }

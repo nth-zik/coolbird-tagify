@@ -2,7 +2,7 @@ import 'app_localizations.dart';
 
 class VietnameseLocalizations implements AppLocalizations {
   @override
-  String get appTitle => 'CoolBird - Trình Quản Lý Tệp';
+  String get appTitle => 'CoolBird Tagify - Trình Quản Lý Tệp';
 
   // Common actions
   @override

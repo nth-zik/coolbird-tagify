@@ -2,7 +2,7 @@ import 'app_localizations.dart';
 
 class EnglishLocalizations implements AppLocalizations {
   @override
-  String get appTitle => 'CoolBird - File Manager';
+  String get appTitle => 'CoolBird Tagify - File Manager';
 
   // Common actions
   @override
