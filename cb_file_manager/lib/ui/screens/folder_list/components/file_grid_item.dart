@@ -10,7 +10,7 @@ import 'package:cb_file_manager/helpers/frame_timing_optimizer.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
-import 'package:cb_file_manager/widgets/lazy_video_thumbnail.dart';
+import 'package:cb_file_manager/ui/widgets/lazy_video_thumbnail.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
@@ -18,9 +18,10 @@ import 'package:cb_file_manager/ui/dialogs/open_with_dialog.dart';
 import 'package:cb_file_manager/helpers/external_app_helper.dart';
 import 'package:cb_file_manager/helpers/file_icon_helper.dart';
 import 'package:cb_file_manager/config/app_theme.dart';
-import 'package:cb_file_manager/widgets/tag_chip.dart';
+import 'package:cb_file_manager/ui/widgets/tag_chip.dart';
 import 'package:cb_file_manager/ui/components/shared_file_context_menu.dart';
 import 'package:flutter/services.dart'; // Import for keyboard key detection
+import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart';
 
 // Top-level helper functions for _MemoizedFileContent stability
 String _topLevelBasename(File file) {
@@ -114,7 +115,9 @@ class _FileGridItemState extends State<FileGridItem>
     with AutomaticKeepAliveClientMixin {
   late List<String> _fileTags;
   StreamSubscription? _tagChangeSubscription;
-  bool _isHovering = false;
+
+  // Use a ValueNotifier for hovering state to avoid rebuilding the entire widget
+  final ValueNotifier<bool> _isHoveringNotifier = ValueNotifier<bool>(false);
 
   @override
   bool get wantKeepAlive => true;
@@ -141,6 +144,7 @@ class _FileGridItemState extends State<FileGridItem>
   @override
   void dispose() {
     _tagChangeSubscription?.cancel();
+    _isHoveringNotifier.dispose();
     super.dispose();
   }
 
@@ -186,94 +190,105 @@ class _FileGridItemState extends State<FileGridItem>
         ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(extension);
     final bool isPreviewable = isImage || isVideo;
 
-    final Color cardColor = widget.isSelected
-        ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.7)
-        : _isHovering && widget.isDesktopMode
-            ? Theme.of(context).hoverColor
-            : Theme.of(context).cardColor;
+    // Use ValueListenableBuilder for hover state to avoid rebuilding everything
+    return ValueListenableBuilder<bool>(
+      valueListenable: _isHoveringNotifier,
+      builder: (context, isHovering, _) {
+        final Color cardColor = widget.isSelected
+            ? Theme.of(context).primaryColor.withOpacity(0.15)
+            : isHovering && widget.isDesktopMode
+                ? Theme.of(context).hoverColor
+                : Theme.of(context).cardColor;
 
-    final BoxShadow? shadow = widget.isSelected
-        ? const BoxShadow(
-            color: Color(0x4D0000FF), blurRadius: 4, offset: Offset(0, 1))
-        : _isHovering && widget.isDesktopMode
-            ? const BoxShadow(
-                color: Color(0x1A000000), blurRadius: 4, offset: Offset(0, 1))
-            : null;
+        final BoxShadow? shadow = widget.isSelected
+            ? BoxShadow(
+                color: Theme.of(context).primaryColor.withOpacity(0.4),
+                blurRadius: 4,
+                offset: Offset(0, 1))
+            : isHovering && widget.isDesktopMode
+                ? const BoxShadow(
+                    color: Color(0x1A000000),
+                    blurRadius: 4,
+                    offset: Offset(0, 1))
+                : null;
 
-    return RepaintBoundary(
-      child: GestureDetector(
-        onSecondaryTap: () => _showFileContextMenu(context, isVideo),
-        child: MouseRegion(
-          onEnter: (_) {
-            if (mounted) setState(() => _isHovering = true);
-          },
-          onExit: (_) {
-            if (mounted) setState(() => _isHovering = false);
-          },
-          cursor: SystemMouseCursors.click,
-          child: Container(
-            decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: BorderRadius.circular(8.0),
-              boxShadow: shadow != null ? [shadow] : null,
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Stack(
-              children: [
-                _MemoizedFileContent(
-                  key: ValueKey('content_${widget.file.path}'),
-                  file: widget.file,
-                  isVideo: isVideo,
-                  isImage: isImage,
-                  isPreviewable: isPreviewable,
-                  fileTags: _fileTags,
-                  onThumbnailGenerated: widget.onThumbnailGenerated,
-                  getFileSize: _topLevelFormatFileSize,
-                  basename: _topLevelBasename,
+        return RepaintBoundary(
+          child: GestureDetector(
+            onSecondaryTap: () => _showFileContextMenu(context, isVideo),
+            child: MouseRegion(
+              onEnter: (_) => _isHoveringNotifier.value = true,
+              onExit: (_) => _isHoveringNotifier.value = false,
+              cursor: SystemMouseCursors.click,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(8.0),
+                  boxShadow: shadow != null ? [shadow] : null,
                 ),
-                Positioned.fill(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () {
-                      if (widget.isSelectionMode || widget.isDesktopMode) {
-                        _handleFileSelectionTap();
-                      } else {
-                        _openFile(isVideo, isImage);
-                      }
-                    },
-                    onDoubleTap: () {
-                      if (widget.isDesktopMode && !widget.isSelectionMode) {
-                        _openFile(isVideo, isImage);
-                      }
-                    },
-                    onLongPress: () {
-                      if (!widget.isSelectionMode) {
-                        widget.toggleSelectionMode();
-                        widget.toggleFileSelection(widget.file.path,
-                            shiftSelect: false, ctrlSelect: false);
-                      } else {
-                        _handleFileSelectionTap();
-                      }
-                    },
-                  ),
-                ),
-                if (widget.isSelected)
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                              color: Theme.of(context).primaryColor, width: 2),
-                          borderRadius: BorderRadius.circular(7.0),
-                        ),
+                clipBehavior: Clip.antiAlias,
+                child: Stack(
+                  children: [
+                    // Content doesn't need to be rebuilt when selection changes
+                    RepaintBoundary(
+                      child: _MemoizedFileContent(
+                        key: ValueKey('content_${widget.file.path}'),
+                        file: widget.file,
+                        isVideo: isVideo,
+                        isImage: isImage,
+                        isPreviewable: isPreviewable,
+                        fileTags: _fileTags,
+                        onThumbnailGenerated: widget.onThumbnailGenerated,
+                        getFileSize: _topLevelFormatFileSize,
+                        basename: _topLevelBasename,
                       ),
                     ),
-                  ),
-              ],
+                    // Interactive layer
+                    Positioned.fill(
+                      child: _FileInteractionLayer(
+                        onTap: () {
+                          if (widget.isSelectionMode || widget.isDesktopMode) {
+                            _handleFileSelectionTap();
+                          } else {
+                            _openFile(isVideo, isImage);
+                          }
+                        },
+                        onDoubleTap: () {
+                          if (widget.isDesktopMode && !widget.isSelectionMode) {
+                            _openFile(isVideo, isImage);
+                          }
+                        },
+                        onLongPress: () {
+                          if (!widget.isSelectionMode) {
+                            widget.toggleSelectionMode();
+                            widget.toggleFileSelection(widget.file.path,
+                                shiftSelect: false, ctrlSelect: false);
+                          } else {
+                            _handleFileSelectionTap();
+                          }
+                        },
+                      ),
+                    ),
+                    // Selection border - separate layer to avoid rebuilding content
+                    if (widget.isSelected)
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                  color: Theme.of(context).primaryColor,
+                                  width: 2),
+                              borderRadius: BorderRadius.circular(7.0),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -320,6 +335,29 @@ class _FileGridItemState extends State<FileGridItem>
         }
       });
     }
+  }
+}
+
+// Separate widget for interaction layer to avoid rebuilding content
+class _FileInteractionLayer extends StatelessWidget {
+  final VoidCallback onTap;
+  final VoidCallback onDoubleTap;
+  final VoidCallback onLongPress;
+
+  const _FileInteractionLayer({
+    required this.onTap,
+    required this.onDoubleTap,
+    required this.onLongPress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      onDoubleTap: onDoubleTap,
+      onLongPress: onLongPress,
+    );
   }
 }
 
@@ -480,9 +518,8 @@ class _ThumbnailWidget extends StatefulWidget {
 
 class _ThumbnailWidgetState extends State<_ThumbnailWidget>
     with AutomaticKeepAliveClientMixin {
-  final ThumbnailCache _thumbnailCache = ThumbnailCache();
-  Widget?
-      _builtThumbnailWidget; // Stores the actual built widget for this state instance
+  final ThumbnailWidgetCache _thumbnailCache = ThumbnailWidgetCache();
+  bool _hasNotifiedGeneration = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -490,7 +527,6 @@ class _ThumbnailWidgetState extends State<_ThumbnailWidget>
   @override
   void initState() {
     super.initState();
-    _initOrUpdateThumbnail();
   }
 
   @override
@@ -500,30 +536,64 @@ class _ThumbnailWidgetState extends State<_ThumbnailWidget>
         widget.isPreviewable != oldWidget.isPreviewable ||
         widget.isImage != oldWidget.isImage ||
         widget.isVideo != oldWidget.isVideo) {
-      _initOrUpdateThumbnail();
+      _hasNotifiedGeneration = false;
     }
-  }
-
-  void _initOrUpdateThumbnail() {
-    _builtThumbnailWidget =
-        _thumbnailCache.getCachedThumbnailWidget(widget.file.path);
-    if (_builtThumbnailWidget != null) {
-      _notifyThumbnailGenerated(); // Already cached, notify if callback exists
-    }
-    // If null, build() method will construct it and call _notifyThumbnailGenerated after caching.
   }
 
   void _notifyThumbnailGenerated() {
-    if (widget.onThumbnailGenerated != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          widget.onThumbnailGenerated!();
-        }
-      });
+    if (widget.onThumbnailGenerated != null && !_hasNotifiedGeneration) {
+      _hasNotifiedGeneration = true;
+      widget.onThumbnailGenerated!();
     }
   }
 
-  Widget _constructAndCacheThumbnail() {
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+
+    if (!widget.isPreviewable) {
+      return _buildGenericThumbnailWidget();
+    }
+
+    return RepaintBoundary(
+      child: ThumbnailLoader(
+        filePath: widget.file.path,
+        isVideo: widget.isVideo,
+        isImage: widget.isImage,
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.cover,
+        onThumbnailLoaded: _notifyThumbnailGenerated,
+        fallbackBuilder: () => _buildFallbackWidget(),
+      ),
+    );
+  }
+
+  Widget _buildGenericThumbnailWidget() {
+    // Get icon for non-media files
+    return RepaintBoundary(
+      child: Center(
+        child: FutureBuilder<Widget>(
+          future: FileIconHelper.getIconForFile(widget.file, size: 48),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting ||
+                !snapshot.hasData ||
+                snapshot.hasError) {
+              return _buildFallbackWidget();
+            }
+
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _notifyThumbnailGenerated();
+            });
+
+            return snapshot.data!;
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFallbackWidget() {
     IconData icon;
     Color? iconColor;
     final extension = widget.file.path.split('.').last.toLowerCase();
@@ -547,114 +617,10 @@ class _ThumbnailWidgetState extends State<_ThumbnailWidget>
       iconColor = Colors.grey;
     }
 
-    Widget thumbnailContent;
-    if (widget.isPreviewable) {
-      if (widget.isVideo) {
-        thumbnailContent =
-            _buildVideoThumbnailWidget(widget.file, icon, iconColor);
-      } else {
-        thumbnailContent =
-            _buildImageThumbnailWidget(widget.file, icon, iconColor);
-      }
-    } else {
-      thumbnailContent = _buildGenericThumbnailWidget(icon, iconColor);
-    }
-
-    _thumbnailCache.cacheWidgetThumbnail(widget.file.path, thumbnailContent);
-    _notifyThumbnailGenerated();
-    return thumbnailContent;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    if (_builtThumbnailWidget == null) {
-      _builtThumbnailWidget = _constructAndCacheThumbnail();
-    }
-    return _builtThumbnailWidget!;
-  }
-
-  Widget _buildGenericThumbnailWidget(IconData icon, Color? iconColor) {
-    return RepaintBoundary(
+    return Container(
+      color: Colors.black12,
       child: Center(
-        child: FutureBuilder<Widget>(
-          future: FileIconHelper.getIconForFile(widget.file, size: 48),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting ||
-                !snapshot.hasData ||
-                snapshot.hasError) {
-              return Icon(icon, size: 48, color: iconColor);
-            }
-            return snapshot.data!;
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildImageThumbnailWidget(
-      File file, IconData fallbackIcon, Color? fallbackColor) {
-    return RepaintBoundary(
-      child: Hero(
-        tag:
-            'grid_thumb_img_${file.path}', // Ensure Hero tags are unique for grid view
-        child: Image.file(
-          file,
-          key: ValueKey('image_display_grid_${file.path}'),
-          fit: BoxFit.cover,
-          filterQuality: FilterQuality.medium,
-          cacheHeight: 200,
-          cacheWidth: 200,
-          errorBuilder: (context, error, stackTrace) {
-            return Center(
-                child: Icon(fallbackIcon, size: 48, color: fallbackColor));
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVideoThumbnailWidget(
-      File file, IconData fallbackIcon, Color? fallbackColor) {
-    return RepaintBoundary(
-      child: Hero(
-        tag:
-            'grid_thumb_vid_${file.path}', // Ensure Hero tags are unique for grid view
-        child: LazyVideoThumbnail(
-          key: ValueKey('video_display_grid_${file.path}'),
-          videoPath: file.path,
-          width: double.infinity,
-          height: double.infinity,
-          onThumbnailGenerated: (path) {
-            // This specific callback from LazyVideoThumbnail might still be useful for its internal state if needed,
-            // but the primary notification to FileGridItem comes from _ThumbnailWidgetState._notifyThumbnailGenerated.
-            _thumbnailCache.markThumbnailGenerated(file
-                .path); // Let the cache know this specific path is done by LazyVideo.
-          },
-          fallbackBuilder: () => Container(
-            color: Colors.black12,
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(EvaIcons.videoOutline, size: 36, color: Colors.red),
-                  SizedBox(height: 4),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Color(0x80000000),
-                      borderRadius: BorderRadius.all(Radius.circular(4)),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      child: Text('Video',
-                          style: TextStyle(fontSize: 10, color: Colors.white)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+        child: Icon(icon, size: 48, color: iconColor),
       ),
     );
   }

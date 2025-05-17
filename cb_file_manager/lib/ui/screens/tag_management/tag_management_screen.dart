@@ -7,7 +7,7 @@ import 'package:cb_file_manager/models/database/database_manager.dart';
 import 'package:cb_file_manager/helpers/user_preferences.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/file_details_screen.dart';
 import 'package:cb_file_manager/ui/utils/base_screen.dart';
-import 'package:cb_file_manager/widgets/tag_chip.dart';
+import 'package:cb_file_manager/ui/widgets/tag_chip.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:path/path.dart' as pathlib;

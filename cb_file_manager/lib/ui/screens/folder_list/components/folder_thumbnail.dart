@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:cb_file_manager/helpers/folder_thumbnail_service.dart';
-import 'package:cb_file_manager/widgets/lazy_video_thumbnail.dart';
+import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart';
 
 /// Widget for displaying folder thumbnail
 class FolderThumbnail extends StatefulWidget {
@@ -26,17 +26,35 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
   bool _loadFailed = false;
   bool _disposed = false;
 
+  // Cache for this specific widget instance
+  static final Map<String, String> _folderThumbnailPathCache = {};
+
   @override
   void initState() {
     super.initState();
-    _loadThumbnail();
+    // Check if we have the thumbnail path in our cache
+    if (_folderThumbnailPathCache.containsKey(widget.folder.path)) {
+      _thumbnailPath = _folderThumbnailPathCache[widget.folder.path];
+      _isLoading = false;
+    } else {
+      _loadThumbnail();
+    }
   }
 
   @override
   void didUpdateWidget(FolderThumbnail oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.folder.path != widget.folder.path) {
-      _loadThumbnail();
+      // Check cache first before reloading
+      if (_folderThumbnailPathCache.containsKey(widget.folder.path)) {
+        setState(() {
+          _thumbnailPath = _folderThumbnailPathCache[widget.folder.path];
+          _isLoading = false;
+          _loadFailed = false;
+        });
+      } else {
+        _loadThumbnail();
+      }
     }
   }
 
@@ -60,15 +78,18 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
 
       if (_disposed) return;
 
+      // Cache the result for future use
+      if (path != null) {
+        _folderThumbnailPathCache[widget.folder.path] = path;
+      }
+
       setState(() {
         _thumbnailPath = path;
         _isLoading = false;
       });
-
-      debugPrint('Loaded thumbnail for folder: ${widget.folder.path}');
-      debugPrint('Thumbnail path: ${_thumbnailPath ?? "null"}');
     } catch (e) {
-      debugPrint('Error loading thumbnail: $e');
+      debugPrint(
+          'Error loading thumbnail for folder ${widget.folder.path}: $e');
       if (!_disposed) {
         setState(() {
           _thumbnailPath = null;
@@ -108,7 +129,7 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
   Widget build(BuildContext context) {
     // Use a RepaintBoundary with a key based on the folder path to prevent repainting
     return RepaintBoundary(
-      key: ValueKey('thumbnail-${widget.folder.path}'),
+      key: ValueKey('folder-thumbnail-${widget.folder.path}'),
       child: _buildThumbnailContent(),
     );
   }
@@ -138,20 +159,14 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
     }
 
     final bool isVideo = _isVideoPath(_thumbnailPath);
-    final String videoPath = _getVideoPath(_thumbnailPath!);
+    final String videoPath = isVideo ? _getVideoPath(_thumbnailPath!) : '';
     final String thumbnailPath = _getThumbnailPath(_thumbnailPath!);
 
     try {
       if (isVideo) {
         if (!File(videoPath).existsSync()) {
           debugPrint('Video file does not exist: $videoPath');
-          return Center(
-            child: Icon(
-              EvaIcons.folderOutline,
-              size: widget.size * 0.7,
-              color: Colors.amber[700],
-            ),
-          );
+          return _buildFolderIcon();
         }
 
         return Container(
@@ -164,28 +179,33 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
               width: 1.5,
             ),
           ),
-          // Use AspectRatio to maintain proper video aspect ratio
           child: Stack(
             fit: StackFit.expand,
             children: [
-              AspectRatio(
-                aspectRatio: 16 / 9, // Standard video aspect ratio
-                child: LazyVideoThumbnail(
-                  videoPath: videoPath,
-                  width: double.infinity,
-                  height: double.infinity,
-                  keepAlive: true,
-                  fallbackBuilder: () => Container(
-                    color: Colors.blueGrey[900],
-                    child: Center(
-                      child: Icon(
-                        EvaIcons.videoOutline,
-                        size: widget.size * 0.4,
-                        color: Colors.white70,
-                      ),
+              ThumbnailLoader(
+                filePath: videoPath,
+                isVideo: true,
+                isImage: false,
+                width: double.infinity,
+                height: double.infinity,
+                borderRadius: BorderRadius.circular(1),
+                fallbackBuilder: () => Container(
+                  color: Colors.blueGrey[900],
+                  child: Center(
+                    child: Icon(
+                      EvaIcons.videoOutline,
+                      size: widget.size * 0.4,
+                      color: Colors.white70,
                     ),
                   ),
                 ),
+                onThumbnailLoaded: () {
+                  if (mounted && _loadFailed) {
+                    setState(() {
+                      _loadFailed = false;
+                    });
+                  }
+                },
               ),
               Positioned(
                 right: 4,
@@ -210,13 +230,7 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
         final file = File(thumbnailPath);
         if (!file.existsSync()) {
           debugPrint('Image file does not exist: $thumbnailPath');
-          return Center(
-            child: Icon(
-              EvaIcons.folderOutline,
-              size: widget.size * 0.7,
-              color: Colors.amber[700],
-            ),
-          );
+          return _buildFolderIcon();
         }
 
         return Container(
@@ -229,38 +243,32 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
               width: 1.5,
             ),
           ),
-          child: AspectRatio(
-            aspectRatio: 1, // Square aspect ratio for images
-            child: Image.file(
-              file,
-              fit: BoxFit.contain, // Use contain to respect aspect ratio
-              width: double.infinity,
-              height: double.infinity,
-              filterQuality: FilterQuality.medium,
-              errorBuilder: (context, error, stackTrace) {
-                debugPrint('Image loading error: $error');
-                return Center(
-                  child: Icon(
-                    EvaIcons.folderOutline,
-                    size: widget.size * 0.7,
-                    color: Colors.amber[700],
-                  ),
-                );
-              },
-            ),
+          child: ThumbnailLoader(
+            filePath: thumbnailPath,
+            isVideo: false,
+            isImage: true,
+            width: double.infinity,
+            height: double.infinity,
+            borderRadius: BorderRadius.circular(1),
+            fit: BoxFit.contain,
+            fallbackBuilder: () => _buildFolderIcon(),
           ),
         );
       }
     } catch (e) {
-      debugPrint('Error creating image widget: $e');
-      return Center(
-        child: Icon(
-          EvaIcons.folderOutline,
-          size: widget.size * 0.7,
-          color: Colors.amber[700],
-        ),
-      );
+      debugPrint('Error rendering folder thumbnail: $e');
+      return _buildFolderIcon();
     }
+  }
+
+  Widget _buildFolderIcon() {
+    return Center(
+      child: Icon(
+        EvaIcons.folderOutline,
+        size: widget.size * 0.7,
+        color: Colors.amber[700],
+      ),
+    );
   }
 }
 

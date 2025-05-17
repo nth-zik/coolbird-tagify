@@ -1,0 +1,235 @@
+import 'dart:math';
+
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'selection_event.dart';
+import 'selection_state.dart';
+
+class SelectionBloc extends Bloc<SelectionEvent, SelectionState> {
+  SelectionBloc() : super(const SelectionState()) {
+    on<ToggleFileSelection>(_onToggleFileSelection);
+    on<ToggleFolderSelection>(_onToggleFolderSelection);
+    on<ClearSelection>(_onClearSelection);
+    on<ToggleSelectionMode>(_onToggleSelectionMode);
+    on<SelectItemsInRect>(_onSelectItemsInRect);
+    on<SelectAll>(_onSelectAll);
+  }
+
+  // Handler for file selection toggle
+  void _onToggleFileSelection(
+    ToggleFileSelection event,
+    Emitter<SelectionState> emit,
+  ) {
+    final filePath = event.filePath;
+    final shiftSelect = event.shiftSelect;
+    final ctrlSelect = event.ctrlSelect;
+
+    // Create copies of current selections to modify
+    final Set<String> selectedFiles = {...state.selectedFilePaths};
+    final Set<String> selectedFolders = {...state.selectedFolderPaths};
+
+    if (!shiftSelect) {
+      // SINGLE ITEM SELECTION
+      final bool isAlreadySelected = selectedFiles.contains(filePath);
+
+      if (isAlreadySelected && ctrlSelect) {
+        // Ctrl+click on selected item: deselect it
+        selectedFiles.remove(filePath);
+      } else if (ctrlSelect) {
+        // Ctrl+click on unselected item: add to selection
+        selectedFiles.add(filePath);
+      } else {
+        // Simple click: clear other selections, select only this one
+        selectedFiles.clear();
+        selectedFolders.clear();
+        selectedFiles.add(filePath);
+      }
+
+      // Emit new state with updated selections and last selected path
+      emit(state.copyWith(
+        selectedFilePaths: selectedFiles,
+        selectedFolderPaths: selectedFolders,
+        lastSelectedPath: filePath,
+        isSelectionMode: selectedFiles.isNotEmpty || selectedFolders.isNotEmpty,
+      ));
+    } else if (state.lastSelectedPath != null) {
+      // SHIFT+CLICK RANGE SELECTION
+      // This requires knowledge of all available file/folder paths in the current view
+      // Since we don't have that directly in the bloc, we'll implement this in the UI layer
+      // and use SelectItemsInRect event for that purpose
+    }
+  }
+
+  // Handler for folder selection toggle
+  void _onToggleFolderSelection(
+    ToggleFolderSelection event,
+    Emitter<SelectionState> emit,
+  ) {
+    final folderPath = event.folderPath;
+    final shiftSelect = event.shiftSelect;
+    final ctrlSelect = event.ctrlSelect;
+
+    // Create copies of current selections to modify
+    final Set<String> selectedFiles = {...state.selectedFilePaths};
+    final Set<String> selectedFolders = {...state.selectedFolderPaths};
+
+    if (!shiftSelect) {
+      // SINGLE ITEM SELECTION
+      final bool isAlreadySelected = selectedFolders.contains(folderPath);
+
+      if (isAlreadySelected && ctrlSelect) {
+        // Ctrl+click on selected folder: deselect it
+        selectedFolders.remove(folderPath);
+      } else if (ctrlSelect) {
+        // Ctrl+click on unselected folder: add to selection
+        selectedFolders.add(folderPath);
+      } else {
+        // Simple click: clear other selections, select only this one
+        selectedFiles.clear();
+        selectedFolders.clear();
+        selectedFolders.add(folderPath);
+      }
+
+      // Emit new state with updated selections and last selected path
+      emit(state.copyWith(
+        selectedFilePaths: selectedFiles,
+        selectedFolderPaths: selectedFolders,
+        lastSelectedPath: folderPath,
+        isSelectionMode: selectedFiles.isNotEmpty || selectedFolders.isNotEmpty,
+      ));
+    } else if (state.lastSelectedPath != null) {
+      // SHIFT+CLICK RANGE SELECTION
+      // This requires knowledge of all available file/folder paths in the current view
+      // We'll implement this through SelectItemsInRect event
+    }
+  }
+
+  // Handler for clearing all selections
+  void _onClearSelection(
+    ClearSelection event,
+    Emitter<SelectionState> emit,
+  ) {
+    emit(state.copyWith(
+      selectedFilePaths: {},
+      selectedFolderPaths: {},
+      isSelectionMode: false,
+      clearLastSelectedPath: true,
+    ));
+  }
+
+  // Handler for toggling selection mode
+  void _onToggleSelectionMode(
+    ToggleSelectionMode event,
+    Emitter<SelectionState> emit,
+  ) {
+    final bool newMode = event.forceValue ?? !state.isSelectionMode;
+
+    // If turning off selection mode, clear selections too
+    if (!newMode) {
+      emit(state.copyWith(
+        selectedFilePaths: {},
+        selectedFolderPaths: {},
+        isSelectionMode: false,
+        clearLastSelectedPath: true,
+      ));
+    } else {
+      emit(state.copyWith(isSelectionMode: true));
+    }
+  }
+
+  // Handler for rectangle/drag selection or shift-select
+  void _onSelectItemsInRect(
+    SelectItemsInRect event,
+    Emitter<SelectionState> emit,
+  ) {
+    if (event.isShiftPressed) {
+      // SHIFT+CLICK RANGE SELECTION
+      // With Shift selection, we want to:
+      // 1. If Ctrl is also pressed, toggle the selection within the range
+      // 2. If Ctrl is not pressed, replace the current selection with this range
+
+      // Create new sets based on whether CTRL is pressed
+      final Set<String> newSelectedFiles = event.isCtrlPressed
+          ? {
+              ...state.selectedFilePaths
+            } // Keep existing selections if CTRL is pressed
+          : {}; // Clear selections if CTRL is not pressed
+
+      final Set<String> newSelectedFolders = event.isCtrlPressed
+          ? {
+              ...state.selectedFolderPaths
+            } // Keep existing selections if CTRL is pressed
+          : {}; // Clear selections if CTRL is not pressed
+
+      // Add all files in the selection range
+      newSelectedFiles.addAll(event.filePaths);
+
+      // Add all folders in the selection range
+      newSelectedFolders.addAll(event.folderPaths);
+
+      // Save the last selected path if available
+      final lastSelectedPath = event.filePaths.isNotEmpty
+          ? event.filePaths.last
+          : (event.folderPaths.isNotEmpty ? event.folderPaths.last : null);
+
+      emit(state.copyWith(
+        selectedFilePaths: newSelectedFiles,
+        selectedFolderPaths: newSelectedFolders,
+        lastSelectedPath: lastSelectedPath ?? state.lastSelectedPath,
+        isSelectionMode:
+            newSelectedFiles.isNotEmpty || newSelectedFolders.isNotEmpty,
+      ));
+    } else {
+      // Handle CTRL or no modifier keys (regular drag selection)
+      final Set<String> newSelectedFiles;
+      final Set<String> newSelectedFolders;
+
+      if (event.isCtrlPressed) {
+        // With Ctrl: toggle selection of items in rect
+        newSelectedFiles = {...state.selectedFilePaths};
+        newSelectedFolders = {...state.selectedFolderPaths};
+
+        // Toggle files in the rect
+        for (final filePath in event.filePaths) {
+          if (newSelectedFiles.contains(filePath)) {
+            newSelectedFiles.remove(filePath);
+          } else {
+            newSelectedFiles.add(filePath);
+          }
+        }
+
+        // Toggle folders in the rect
+        for (final folderPath in event.folderPaths) {
+          if (newSelectedFolders.contains(folderPath)) {
+            newSelectedFolders.remove(folderPath);
+          } else {
+            newSelectedFolders.add(folderPath);
+          }
+        }
+      } else {
+        // Without Ctrl: clear selection and select only items in rect
+        newSelectedFiles = {...event.filePaths};
+        newSelectedFolders = {...event.folderPaths};
+      }
+
+      emit(state.copyWith(
+        selectedFilePaths: newSelectedFiles,
+        selectedFolderPaths: newSelectedFolders,
+        isSelectionMode:
+            newSelectedFiles.isNotEmpty || newSelectedFolders.isNotEmpty,
+      ));
+    }
+  }
+
+  // Handler for selecting all items
+  void _onSelectAll(
+    SelectAll event,
+    Emitter<SelectionState> emit,
+  ) {
+    emit(state.copyWith(
+      selectedFilePaths: event.allFilePaths.toSet(),
+      selectedFolderPaths: event.allFolderPaths.toSet(),
+      isSelectionMode:
+          event.allFilePaths.isNotEmpty || event.allFolderPaths.isNotEmpty,
+    ));
+  }
+}

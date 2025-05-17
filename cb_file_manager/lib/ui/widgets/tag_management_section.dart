@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
-import 'package:cb_file_manager/widgets/tag_chip.dart';
-import 'package:cb_file_manager/widgets/chips_input.dart';
+import 'package:cb_file_manager/ui/widgets/tag_chip.dart';
+import 'package:cb_file_manager/ui/widgets/chips_input.dart';
 import 'package:cb_file_manager/helpers/tag_color_manager.dart';
 import 'dart:ui' as ui;
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';

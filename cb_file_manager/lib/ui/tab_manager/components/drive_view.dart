@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:ffi';
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart'; // Add this import for mouse button support
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/helpers/filesystem_utils.dart';
 import 'package:win32/win32.dart' as win32;

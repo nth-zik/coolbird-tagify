@@ -5,12 +5,12 @@ import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
 import 'package:path/path.dart' as p;
-import 'package:cb_file_manager/widgets/tag_chip.dart';
-import 'package:cb_file_manager/widgets/chips_input.dart';
+import 'package:cb_file_manager/ui/widgets/tag_chip.dart';
+import 'package:cb_file_manager/ui/widgets/chips_input.dart';
 import 'package:cb_file_manager/helpers/batch_tag_manager.dart';
 import 'dart:ui' as ui; // Import for ImageFilter
 import 'package:flutter/rendering.dart';
-import 'package:cb_file_manager/widgets/tag_management_section.dart';
+import 'package:cb_file_manager/ui/widgets/tag_management_section.dart';
 import 'package:cb_file_manager/models/database/database_manager.dart';
 import 'package:cb_file_manager/helpers/tag_color_manager.dart';
 

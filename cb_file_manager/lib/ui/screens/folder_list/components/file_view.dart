@@ -83,23 +83,41 @@ class FileView extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       itemCount: folders.length + files.length,
       itemBuilder: (context, index) {
+        // Generate a stable key for item identity
+        final String itemKey = index < folders.length
+            ? 'folder-${folders[index].path}'
+            : 'file-${files[index - folders.length].path}';
+
         // Use RepaintBoundary to reduce rendering load during scrolling
-        return RepaintBoundary(
-          child: index < folders.length
-              ? FolderItem(folder: folders[index], onTap: onFolderTap)
-              : FileItem(
-                  file: files[index - folders.length],
-                  state: state,
-                  isSelectionMode: isSelectionMode,
-                  isSelected: selectedFiles
-                      .contains(files[index - folders.length].path),
-                  toggleFileSelection: toggleFileSelection,
-                  showDeleteTagDialog: showDeleteTagDialog,
-                  showAddTagToFileDialog: showAddTagToFileDialog,
-                  onFileTap: onFileTap,
-                  isDesktopMode: isDesktopMode,
-                  lastSelectedPath: lastSelectedPath,
-                ),
+        return KeyedSubtree(
+          key: ValueKey(itemKey),
+          child: RepaintBoundary(
+            child: index < folders.length
+                ? FolderItem(
+                    key: ValueKey('folder-item-${folders[index].path}'),
+                    folder: folders[index],
+                    onTap: onFolderTap,
+                    isSelected: selectedFiles.contains(folders[index].path),
+                    toggleFolderSelection: toggleFileSelection,
+                    isDesktopMode: isDesktopMode,
+                    lastSelectedPath: lastSelectedPath,
+                  )
+                : FileItem(
+                    key: ValueKey(
+                        'file-item-${files[index - folders.length].path}'),
+                    file: files[index - folders.length],
+                    state: state,
+                    isSelectionMode: isSelectionMode,
+                    isSelected: selectedFiles
+                        .contains(files[index - folders.length].path),
+                    toggleFileSelection: toggleFileSelection,
+                    showDeleteTagDialog: showDeleteTagDialog,
+                    showAddTagToFileDialog: showAddTagToFileDialog,
+                    onFileTap: onFileTap,
+                    isDesktopMode: isDesktopMode,
+                    lastSelectedPath: lastSelectedPath,
+                  ),
+          ),
         );
       },
     );
@@ -257,37 +275,50 @@ class FileView extends StatelessWidget {
                   ? Colors.transparent
                   : Colors.grey.withOpacity(0.03);
 
+              // Generate a stable key to help Flutter reuse widgets
+              final String itemKey = index < folders.length
+                  ? 'folder-${folders[index].path}'
+                  : 'file-${files[index - folders.length].path}';
+
               return Container(
                 padding:
                     const EdgeInsets.symmetric(vertical: 2.0, horizontal: 12.0),
                 decoration: BoxDecoration(
                   color: rowColor,
                 ),
-                child: RepaintBoundary(
-                  child: index < folders.length
-                      ? FolderDetailsItem(
-                          folder: folders[index],
-                          onTap: onFolderTap,
-                          isSelected:
-                              selectedFiles.contains(folders[index].path),
-                          columnVisibility: columnVisibility,
-                          toggleFolderSelection: toggleFileSelection,
-                          isDesktopMode: isDesktopMode,
-                          lastSelectedPath: lastSelectedPath,
-                        )
-                      : FileDetailsItem(
-                          file: files[index - folders.length],
-                          state: state,
-                          isSelected: selectedFiles
-                              .contains(files[index - folders.length].path),
-                          columnVisibility: columnVisibility,
-                          toggleFileSelection: toggleFileSelection,
-                          showDeleteTagDialog: showDeleteTagDialog,
-                          showAddTagToFileDialog: showAddTagToFileDialog,
-                          onTap: onFileTap,
-                          isDesktopMode: isDesktopMode,
-                          lastSelectedPath: lastSelectedPath,
-                        ),
+                // Use KeyedSubtree with a stable key to prevent unnecessary rebuilds
+                child: KeyedSubtree(
+                  key: ValueKey(itemKey),
+                  child: RepaintBoundary(
+                    child: index < folders.length
+                        ? _FolderDetailsItemWrapper(
+                            key: ValueKey(
+                                'folder-detail-${folders[index].path}'),
+                            folder: folders[index],
+                            onTap: onFolderTap,
+                            isSelected:
+                                selectedFiles.contains(folders[index].path),
+                            columnVisibility: columnVisibility,
+                            toggleFolderSelection: toggleFileSelection,
+                            isDesktopMode: isDesktopMode,
+                            lastSelectedPath: lastSelectedPath,
+                          )
+                        : _FileDetailsItemWrapper(
+                            key: ValueKey(
+                                'file-detail-${files[index - folders.length].path}'),
+                            file: files[index - folders.length],
+                            state: state,
+                            isSelected: selectedFiles
+                                .contains(files[index - folders.length].path),
+                            columnVisibility: columnVisibility,
+                            toggleFileSelection: toggleFileSelection,
+                            showDeleteTagDialog: showDeleteTagDialog,
+                            showAddTagToFileDialog: showAddTagToFileDialog,
+                            onTap: onFileTap,
+                            isDesktopMode: isDesktopMode,
+                            lastSelectedPath: lastSelectedPath,
+                          ),
+                  ),
                 ),
               );
             },
@@ -335,33 +366,129 @@ class FileView extends StatelessWidget {
         padding: const EdgeInsets.all(8.0),
         itemCount: folders.length + files.length,
         itemBuilder: (context, index) {
-          // Use RepaintBoundary for better rendering performance
-          return RepaintBoundary(
-            child: index < folders.length
-                ? FolderGridItem(
-                    folder: folders[index],
-                    onNavigate: onFolderTap ?? (_) {},
-                    isSelected: selectedFiles.contains(folders[index].path),
-                    toggleFolderSelection: toggleFileSelection,
-                    isDesktopMode: isDesktopMode,
-                    lastSelectedPath: lastSelectedPath,
-                  )
-                : FileGridItem(
-                    file: files[index - folders.length],
-                    state: state,
-                    isSelected: selectedFiles
-                        .contains(files[index - folders.length].path),
-                    toggleFileSelection: toggleFileSelection,
-                    toggleSelectionMode: toggleSelectionMode,
-                    isSelectionMode: isSelectionMode,
-                    onFileTap: onFileTap,
-                    isDesktopMode: isDesktopMode,
-                    lastSelectedPath: lastSelectedPath,
-                    onThumbnailGenerated: onThumbnailGenerated,
-                  ),
+          // Generate a stable key to help Flutter optimize rendering
+          final String itemKey = index < folders.length
+              ? 'folder-grid-${folders[index].path}'
+              : 'file-grid-${files[index - folders.length].path}';
+
+          // Use KeyedSubtree with a stable key to prevent unnecessary rebuilds
+          return KeyedSubtree(
+            key: ValueKey(itemKey),
+            child: RepaintBoundary(
+              child: index < folders.length
+                  ? FolderGridItem(
+                      key: ValueKey('folder-grid-item-${folders[index].path}'),
+                      folder: folders[index],
+                      onNavigate: onFolderTap ?? (_) {},
+                      isSelected: selectedFiles.contains(folders[index].path),
+                      toggleFolderSelection: toggleFileSelection,
+                      isDesktopMode: isDesktopMode,
+                      lastSelectedPath: lastSelectedPath,
+                    )
+                  : FileGridItem(
+                      key: ValueKey(
+                          'file-grid-item-${files[index - folders.length].path}'),
+                      file: files[index - folders.length],
+                      state: state,
+                      isSelected: selectedFiles
+                          .contains(files[index - folders.length].path),
+                      toggleFileSelection: toggleFileSelection,
+                      toggleSelectionMode: toggleSelectionMode,
+                      isSelectionMode: isSelectionMode,
+                      onFileTap: onFileTap,
+                      isDesktopMode: isDesktopMode,
+                      lastSelectedPath: lastSelectedPath,
+                      onThumbnailGenerated: onThumbnailGenerated,
+                    ),
+            ),
           );
         },
       ),
+    );
+  }
+}
+
+// Helper wrapper classes to optimize selection rendering
+
+class _FileDetailsItemWrapper extends StatelessWidget {
+  final File file;
+  final FolderListState state;
+  final bool isSelected;
+  final ColumnVisibility columnVisibility;
+  final Function(String, {bool shiftSelect, bool ctrlSelect})
+      toggleFileSelection;
+  final Function(BuildContext, String, List<String>) showDeleteTagDialog;
+  final Function(BuildContext, String) showAddTagToFileDialog;
+  final Function(File, bool)? onTap;
+  final bool isDesktopMode;
+  final String? lastSelectedPath;
+
+  const _FileDetailsItemWrapper({
+    Key? key,
+    required this.file,
+    required this.state,
+    required this.isSelected,
+    required this.columnVisibility,
+    required this.toggleFileSelection,
+    required this.showDeleteTagDialog,
+    required this.showAddTagToFileDialog,
+    this.onTap,
+    this.isDesktopMode = false,
+    this.lastSelectedPath,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    // Return the FileDetailsItem with isSelected already determined
+    // This prevents rebuilding when only selection changes
+    return FileDetailsItem(
+      file: file,
+      state: state,
+      isSelected: isSelected,
+      columnVisibility: columnVisibility,
+      toggleFileSelection: toggleFileSelection,
+      showDeleteTagDialog: showDeleteTagDialog,
+      showAddTagToFileDialog: showAddTagToFileDialog,
+      onTap: onTap,
+      isDesktopMode: isDesktopMode,
+      lastSelectedPath: lastSelectedPath,
+    );
+  }
+}
+
+class _FolderDetailsItemWrapper extends StatelessWidget {
+  final Directory folder;
+  final Function(String)? onTap;
+  final bool isSelected;
+  final ColumnVisibility columnVisibility;
+  final Function(String, {bool shiftSelect, bool ctrlSelect})
+      toggleFolderSelection;
+  final bool isDesktopMode;
+  final String? lastSelectedPath;
+
+  const _FolderDetailsItemWrapper({
+    Key? key,
+    required this.folder,
+    required this.isSelected,
+    required this.columnVisibility,
+    required this.toggleFolderSelection,
+    this.onTap,
+    this.isDesktopMode = false,
+    this.lastSelectedPath,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    // Return the FolderDetailsItem with isSelected already determined
+    // This prevents rebuilding when only selection changes
+    return FolderDetailsItem(
+      folder: folder,
+      onTap: onTap,
+      isSelected: isSelected,
+      columnVisibility: columnVisibility,
+      toggleFolderSelection: toggleFolderSelection,
+      isDesktopMode: isDesktopMode,
+      lastSelectedPath: lastSelectedPath,
     );
   }
 }

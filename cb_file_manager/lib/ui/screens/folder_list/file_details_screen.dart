@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as pathlib;
 import 'package:cb_file_manager/ui/components/video_player/custom_video_player.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
-import 'package:cb_file_manager/widgets/tag_management_section.dart';
+import 'package:cb_file_manager/ui/widgets/tag_management_section.dart';
 
 class FileDetailsScreen extends StatefulWidget {
   final File file;

@@ -18,9 +18,11 @@ import 'package:cb_file_manager/ui/dialogs/open_with_dialog.dart';
 import 'package:cb_file_manager/helpers/external_app_helper.dart';
 import 'package:cb_file_manager/helpers/file_icon_helper.dart';
 // Import app theme
-import 'package:cb_file_manager/widgets/tag_chip.dart'; // Import the new TagChip widget
+import 'package:cb_file_manager/config/app_theme.dart';
+import 'package:cb_file_manager/ui/widgets/tag_chip.dart'; // Import the new TagChip widget
 import 'package:cb_file_manager/ui/components/shared_file_context_menu.dart';
-import 'package:cb_file_manager/widgets/lazy_video_thumbnail.dart';
+import 'package:cb_file_manager/ui/widgets/lazy_video_thumbnail.dart';
+import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart'; // Import ThumbnailLoader
 import 'package:flutter/services.dart'; // Import for keyboard key detection
 import 'package:flutter/rendering.dart'; // Import for RepaintBoundary
 
@@ -98,7 +100,8 @@ class FileItem extends StatefulWidget {
 class _FileItemState extends State<FileItem> {
   late List<String> _fileTags;
   StreamSubscription? _tagChangeSubscription;
-  bool _isHovering = false;
+  // Use ValueNotifier for hover state
+  final ValueNotifier<bool> _isHoveringNotifier = ValueNotifier<bool>(false);
 
   @override
   void initState() {
@@ -112,6 +115,7 @@ class _FileItemState extends State<FileItem> {
   void dispose() {
     // Hủy đăng ký lắng nghe khi widget bị hủy
     _tagChangeSubscription?.cancel();
+    _isHoveringNotifier.dispose();
     super.dispose();
   }
 
@@ -199,37 +203,36 @@ class _FileItemState extends State<FileItem> {
   void _openFile(bool isVideo, bool isImage) {
     if (widget.onFileTap != null) {
       widget.onFileTap!(widget.file, isVideo);
-    } else if (isVideo) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => VideoPlayerFullScreen(file: widget.file),
-        ),
-      );
-    } else if (isImage) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ImageViewerScreen(file: widget.file),
-        ),
-      );
     } else {
-      ExternalAppHelper.openFileWithApp(
-        widget.file.path,
-        'shell_open',
-      ).then((success) {
-        if (!success && mounted) {
-          showDialog(
-            context: context,
-            builder: (context) => OpenWithDialog(filePath: widget.file.path),
-          );
-        }
-      });
+      // Open directly using default apps
+      if (isVideo) {
+        if (!context.mounted) return;
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) =>
+                    VideoPlayerFullScreen(file: widget.file)));
+      } else if (isImage) {
+        if (!context.mounted) return;
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => ImageViewerScreen(file: widget.file)));
+      } else {
+        ExternalAppHelper.openFileWithApp(widget.file.path, 'shell_open')
+            .then((success) {
+          if (!success && context.mounted) {
+            showDialog(
+                context: context,
+                builder: (context) =>
+                    OpenWithDialog(filePath: widget.file.path));
+          }
+        });
+      }
     }
   }
 
-  // Simplified selection tap handler
-  void _handleFileSelectionTap() {
+  void _handleSelection() {
     final HardwareKeyboard keyboard = HardwareKeyboard.instance;
     final bool isShiftPressed = keyboard.isShiftPressed;
     final bool isCtrlPressed =
@@ -239,100 +242,13 @@ class _FileItemState extends State<FileItem> {
         shiftSelect: isShiftPressed, ctrlSelect: isCtrlPressed);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final String extension = widget.file.path.split('.').last.toLowerCase();
-    final bool isVideo = [
-      'mp4',
-      'mov',
-      'avi',
-      'mkv',
-      'flv',
-      'wmv',
-    ].contains(extension);
-    final bool isImage = [
-      'jpg',
-      'jpeg',
-      'png',
-      'gif',
-      'webp',
-      'bmp',
-    ].contains(extension);
+  void _showContextMenu(BuildContext context) {
+    final extension = widget.file.path.split('.').last.toLowerCase();
+    final bool isVideo =
+        ['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv'].contains(extension);
+    final bool isImage =
+        ['jpg', 'jpeg', 'png', 'gif', 'webp'].contains(extension);
 
-    // Use widget.isSelected directly for styling
-    final Color tileColor = widget.isSelected
-        ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.7)
-        : _isHovering && widget.isDesktopMode
-            ? Theme.of(context).hoverColor
-            : Theme.of(context).cardColor;
-
-    return MouseRegion(
-      onEnter: (_) {
-        if (mounted) setState(() => _isHovering = true);
-      },
-      onExit: (_) {
-        if (mounted) setState(() => _isHovering = false);
-      },
-      cursor: SystemMouseCursors.click,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 2.0),
-        decoration: BoxDecoration(
-          color: tileColor,
-          borderRadius: BorderRadius.circular(4.0),
-        ),
-        child: RepaintBoundary(
-          child: Stack(
-            children: [
-              _FileContentLayer(
-                file: widget.file,
-                fileTags: _fileTags,
-                isVideo: isVideo,
-                isImage: isImage,
-                onRemoveTag: _removeTagDirectly,
-                onAddTag: () =>
-                    widget.showAddTagToFileDialog(context, widget.file.path),
-                showDeleteTagDialog: widget.showDeleteTagDialog,
-              ),
-              Positioned.fill(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    if (widget.isSelectionMode) {
-                      _handleFileSelectionTap();
-                    } else if (widget.isDesktopMode) {
-                      _handleFileSelectionTap(); // Desktop single click selects
-                    } else {
-                      _openFile(isVideo, isImage); // Mobile single click opens
-                    }
-                  },
-                  onDoubleTap: () {
-                    if (widget.isDesktopMode) {
-                      _openFile(isVideo, isImage);
-                    }
-                  },
-                  onSecondaryTap: () {
-                    _showContextMenu(context, isVideo, isImage);
-                  },
-                  onLongPress: () {
-                    if (!widget.isSelectionMode && !widget.isDesktopMode) {
-                      // Mobile long press enters selection mode and selects item
-                      widget.toggleFileSelection(widget.file.path,
-                          shiftSelect: false, ctrlSelect: false);
-                    } else if (widget.isSelectionMode) {
-                      _handleFileSelectionTap(); // Allow modification of selection
-                    }
-                    // For desktop, long press might also trigger context menu or other actions, handled by onSecondaryTap or specific listeners
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showContextMenu(BuildContext context, bool isVideo, bool isImage) {
     showFileContextMenu(
       context: context,
       file: widget.file,
@@ -342,263 +258,279 @@ class _FileItemState extends State<FileItem> {
       showAddTagToFileDialog: widget.showAddTagToFileDialog,
     );
   }
-}
-
-// _FileContentLayer and other helper methods like _basename, _formatFileSize, _moveToTrash, _showRenameDialog, _buildLeadingWidget remain largely the same
-// They do not directly manage selection state, only display data.
-
-class _FileContentLayer extends StatelessWidget {
-  final File file;
-  final List<String> fileTags;
-  final bool isVideo;
-  final bool isImage;
-  final Function(String) onRemoveTag;
-  final VoidCallback onAddTag;
-  final Function(BuildContext, String, List<String>) showDeleteTagDialog;
-
-  const _FileContentLayer({
-    Key? key,
-    required this.file,
-    required this.fileTags,
-    required this.isVideo,
-    required this.isImage,
-    required this.onRemoveTag,
-    required this.onAddTag,
-    required this.showDeleteTagDialog,
-  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final String extension = file.path.split('.').last.toLowerCase();
-    IconData icon;
-    Color? iconColor;
+    final extension = widget.file.path.split('.').last.toLowerCase();
+    final bool isVideo =
+        ['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv'].contains(extension);
+    final bool isImage =
+        ['jpg', 'jpeg', 'png', 'gif', 'webp'].contains(extension);
 
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(extension)) {
-      icon = EvaIcons.imageOutline;
-      iconColor = Colors.blue;
-    } else if (['mp4', 'mov', 'avi', 'mkv', 'flv', 'wmv'].contains(extension)) {
-      icon = EvaIcons.videoOutline;
-      iconColor = Colors.red;
-    } else if ([
-      'mp3',
-      'wav',
-      'ogg',
-      'm4a',
-      'aac',
-      'flac',
-    ].contains(extension)) {
-      icon = EvaIcons.musicOutline;
-      iconColor = Colors.purple;
-    } else if ([
-      'pdf',
-      'doc',
-      'docx',
-      'txt',
-      'xls',
-      'xlsx',
-      'ppt',
-      'pptx',
-    ].contains(extension)) {
-      icon = EvaIcons.fileTextOutline;
-      iconColor = Colors.indigo;
-    } else {
-      icon = EvaIcons.fileOutline;
-      iconColor = Colors.grey;
-    }
+    // Use ValueListenableBuilder for hover state to avoid full rebuilds
+    return ValueListenableBuilder<bool>(
+      valueListenable: _isHoveringNotifier,
+      builder: (context, isHovering, _) {
+        final bool isSelected = widget.isSelected;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ListTile(
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12.0, vertical: 0),
-          leading: _buildLeadingWidget(isVideo, icon, iconColor),
-          title: Text(
-            _basename(file),
-            style: const TextStyle(
-              fontSize: 14,
-            ),
-          ),
-          subtitle: FutureBuilder<FileStat>(
-            future: file.stat(),
-            builder: (context, snapshot) {
-              if (snapshot.hasData) {
-                String sizeText = _formatFileSize(snapshot.data!.size);
-                return Text(
-                  '${snapshot.data!.modified.toString().split('.')[0]} • $sizeText',
-                );
+        // Calculate colors based on selection and hover state
+        final Color backgroundColor = isSelected
+            ? Theme.of(context).primaryColor.withOpacity(0.15)
+            : isHovering && widget.isDesktopMode
+                ? Theme.of(context).hoverColor
+                : Colors.transparent;
+
+        return RepaintBoundary(
+          child: GestureDetector(
+            onSecondaryTap: () => _showContextMenu(context),
+            onLongPress: () {
+              if (!widget.isSelectionMode) {
+                widget.toggleFileSelection(widget.file.path,
+                    shiftSelect: false, ctrlSelect: false);
               }
-              return const Text('Loading...');
             },
-          ),
-          trailing: PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
-            onSelected: (String value) {
-              if (value == 'tag') {
-                onAddTag();
-              } else if (value == 'delete_tag') {
-                showDeleteTagDialog(context, file.path, fileTags);
-              } else if (value == 'details') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => FileDetailsScreen(file: file),
+            child: MouseRegion(
+              onEnter: (_) => _isHoveringNotifier.value = true,
+              onExit: (_) => _isHoveringNotifier.value = false,
+              cursor: SystemMouseCursors.click,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: backgroundColor,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Theme.of(context).dividerColor,
+                      width: 0.5,
+                    ),
                   ),
-                );
-              } else if (value == 'trash') {
-                _moveToTrash(context, file); // Pass file to moveToTrash
-              }
-            },
-            itemBuilder: (BuildContext context) => [
-              const PopupMenuItem(
-                value: 'tag',
-                child: Text('Add Tag'),
-              ),
-              if (fileTags.isNotEmpty)
-                const PopupMenuItem(
-                  value: 'delete_tag',
-                  child: Text('Manage Tags'),
                 ),
-              const PopupMenuItem(
-                value: 'details',
-                child: Text('Properties'),
-              ),
-              const PopupMenuItem(
-                value: 'trash',
-                child: Text(
-                  'Move to Trash',
-                  style: TextStyle(color: Colors.red),
+                child: Stack(
+                  children: [
+                    // File content that doesn't need to rebuild on selection changes
+                    RepaintBoundary(
+                      child: _FileItemContent(
+                        file: widget.file,
+                        fileTags: _fileTags,
+                        state: widget.state,
+                        showDeleteTagDialog: widget.showDeleteTagDialog,
+                        showAddTagToFileDialog: widget.showAddTagToFileDialog,
+                        removeTagDirectly: _removeTagDirectly,
+                      ),
+                    ),
+                    // Interactive layer
+                    Positioned.fill(
+                      child: _FileInteractionLayer(
+                        onTap: () {
+                          if (widget.isSelectionMode || widget.isDesktopMode) {
+                            _handleSelection();
+                          } else {
+                            _openFile(isVideo, isImage);
+                          }
+                        },
+                        onDoubleTap: () {
+                          if (widget.isDesktopMode && !widget.isSelectionMode) {
+                            _openFile(isVideo, isImage);
+                          }
+                        },
+                      ),
+                    ),
+                    // Selection indicator - only rebuilds when selection changes
+                    if (isSelected)
+                      Positioned(
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: 4,
+                        child: Container(
+                          color: Theme.of(context).primaryColor,
+                        ),
+                      ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
+        );
+      },
+    );
+  }
+}
+
+// Separate interaction layer to handle gestures without requiring content rerender
+class _FileInteractionLayer extends StatelessWidget {
+  final VoidCallback onTap;
+  final VoidCallback onDoubleTap;
+
+  const _FileInteractionLayer({
+    required this.onTap,
+    required this.onDoubleTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      onDoubleTap: onDoubleTap,
+    );
+  }
+}
+
+// Content widget that doesn't change with selection
+class _FileItemContent extends StatelessWidget {
+  final File file;
+  final List<String> fileTags;
+  final FolderListState state;
+  final Function(BuildContext, String, List<String>) showDeleteTagDialog;
+  final Function(BuildContext, String) showAddTagToFileDialog;
+  final Function(String) removeTagDirectly;
+
+  const _FileItemContent({
+    required this.file,
+    required this.fileTags,
+    required this.state,
+    required this.showDeleteTagDialog,
+    required this.showAddTagToFileDialog,
+    required this.removeTagDirectly,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final extension = file.path.split('.').last.toLowerCase();
+    final bool isVideo =
+        ['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv'].contains(extension);
+    final bool isImage =
+        ['jpg', 'jpeg', 'png', 'gif', 'webp'].contains(extension);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+      child: Row(
+        children: [
+          _buildThumbnail(isVideo, isImage),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  file.path.split(Platform.pathSeparator).last,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 4),
+                _buildFileDetails(context),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildThumbnail(bool isVideo, bool isImage) {
+    return RepaintBoundary(
+      child: SizedBox(
+        width: 48,
+        height: 48,
+        child: FutureBuilder<Widget>(
+          future: FileIconHelper.getIconForFile(file),
+          builder: (context, snapshot) {
+            if (isVideo) {
+              return ThumbnailLoader(
+                filePath: file.path,
+                isVideo: true,
+                isImage: false,
+                width: 48,
+                height: 48,
+                borderRadius: BorderRadius.circular(4),
+                fallbackBuilder: () => const Icon(
+                  EvaIcons.videoOutline,
+                  size: 36,
+                  color: Colors.red,
+                ),
+              );
+            } else if (isImage) {
+              return ThumbnailLoader(
+                filePath: file.path,
+                isVideo: false,
+                isImage: true,
+                width: 48,
+                height: 48,
+                borderRadius: BorderRadius.circular(4),
+                fallbackBuilder: () => const Icon(
+                  EvaIcons.imageOutline,
+                  size: 36,
+                  color: Colors.blue,
+                ),
+              );
+            } else if (snapshot.hasData) {
+              return snapshot.data!;
+            } else {
+              return const Icon(EvaIcons.fileOutline,
+                  size: 36, color: Colors.grey);
+            }
+          },
         ),
-        if (fileTags.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(
-              left: 16.0,
-              bottom: 8.0,
-              right: 16.0,
+      ),
+    );
+  }
+
+  Widget _buildFileDetails(BuildContext context) {
+    return Row(
+      children: [
+        FutureBuilder<FileStat>(
+          future: file.stat(),
+          builder: (context, snapshot) {
+            if (snapshot.hasData) {
+              final size = snapshot.data!.size;
+              String sizeStr;
+              if (size < 1024) {
+                sizeStr = '$size B';
+              } else if (size < 1024 * 1024) {
+                sizeStr = '${(size / 1024).toStringAsFixed(1)} KB';
+              } else if (size < 1024 * 1024 * 1024) {
+                sizeStr = '${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
+              } else {
+                sizeStr =
+                    '${(size / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
+              }
+              return Text(sizeStr,
+                  style: Theme.of(context).textTheme.bodySmall);
+            }
+            return Text('Loading...',
+                style: Theme.of(context).textTheme.bodySmall);
+          },
+        ),
+        if (fileTags.isNotEmpty) ...[
+          const SizedBox(width: 16),
+          Icon(EvaIcons.bookmarkOutline, size: 14, color: AppTheme.primaryBlue),
+          const SizedBox(width: 4),
+          if (fileTags.length == 1)
+            TagChip(
+              tag: fileTags.first,
+              isCompact: true,
+              onTap: () {
+                final bloc =
+                    BlocProvider.of<FolderListBloc>(context, listen: false);
+                bloc.add(SearchByTag(fileTags.first));
+              },
+              onDeleted: () => removeTagDirectly(fileTags.first),
+            )
+          else
+            Text(
+              '${fileTags.length} tags',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppTheme.primaryBlue,
+              ),
             ),
-            child: Wrap(
-              spacing: 8.0,
-              runSpacing: 4.0,
-              children:
-                  fileTags.map((tag) => _buildTagChip(tag, context)).toList(),
-            ),
-          ),
+        ],
+        const Spacer(),
+        IconButton(
+          icon: const Icon(EvaIcons.moreHorizontal),
+          iconSize: 20,
+          onPressed: () => showDeleteTagDialog(context, file.path, fileTags),
+          tooltip: 'More options',
+        ),
       ],
     );
-  }
-
-  Widget _buildTagChip(String tag, BuildContext context) {
-    return TagChip(
-      tag: tag,
-      onTap: () {
-        final bloc = BlocProvider.of<FolderListBloc>(context);
-        bloc.add(SearchByTag(tag));
-      },
-      onDeleted: () {
-        onRemoveTag(tag); // This should call _FileItemState._removeTagDirectly
-      },
-    );
-  }
-
-  Widget _buildLeadingWidget(bool isVideo, IconData icon, Color? iconColor) {
-    if (isVideo) {
-      return SizedBox(
-        width: 48,
-        height: 48,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LazyVideoThumbnail(
-            videoPath: file.path,
-            width: 48,
-            height: 48,
-            fallbackBuilder: () => Icon(icon, size: 32, color: iconColor),
-          ),
-        ),
-      );
-    } else if (isImage) {
-      return SizedBox(
-        width: 48,
-        height: 48,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: Image.file(
-            file,
-            width: 48,
-            height: 48,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) =>
-                Icon(icon, size: 32, color: iconColor),
-          ),
-        ),
-      );
-    } else {
-      return FutureBuilder<Widget>(
-        future: FileIconHelper.getIconForFile(file, size: 32),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Icon(icon, size: 32, color: iconColor);
-          }
-          if (snapshot.hasData) {
-            return snapshot.data!;
-          }
-          return Icon(icon, size: 32, color: iconColor);
-        },
-      );
-    }
-  }
-
-  String _basename(File file) {
-    return file.path.split(Platform.pathSeparator).last;
-  }
-
-  String _formatFileSize(int size) {
-    if (size < 1024) {
-      return '$size B';
-    } else if (size < 1024 * 1024) {
-      return '${(size / 1024).toStringAsFixed(1)} KB';
-    } else if (size < 1024 * 1024 * 1024) {
-      return '${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
-    } else {
-      return '${(size / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
-    }
-  }
-
-  void _moveToTrash(BuildContext context, File fileToTrash) {
-    final trashManager = TrashManager();
-    trashManager.moveToTrash(fileToTrash.path).then((success) {
-      if (success && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Moved ${_basename(fileToTrash)} to trash'),
-            action: SnackBarAction(
-              label: 'UNDO',
-              onPressed: () {
-                trashManager
-                    .restoreFromTrash(fileToTrash.path)
-                    .then((restored) {
-                  if (restored && context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content: Text('Restored ${_basename(fileToTrash)}')),
-                    );
-                  }
-                });
-              },
-            ),
-          ),
-        );
-      } else if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to move ${_basename(fileToTrash)} to trash'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    });
   }
 }

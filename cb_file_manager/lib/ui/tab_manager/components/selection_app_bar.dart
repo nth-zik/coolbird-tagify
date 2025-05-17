@@ -9,6 +9,8 @@ import 'package:cb_file_manager/ui/tab_manager/components/tag_dialogs.dart';
 /// AppBar component displayed when in selection mode
 class SelectionAppBar extends StatelessWidget implements PreferredSizeWidget {
   final int selectedCount;
+  final int? selectedFileCount; // Optional explicit file count
+  final int? selectedFolderCount; // Optional explicit folder count
   final VoidCallback onClearSelection;
   final List<String> selectedFilePaths;
   final List<String> selectedFolderPaths;
@@ -19,6 +21,8 @@ class SelectionAppBar extends StatelessWidget implements PreferredSizeWidget {
   const SelectionAppBar({
     Key? key,
     required this.selectedCount,
+    this.selectedFileCount,
+    this.selectedFolderCount,
     required this.onClearSelection,
     required this.selectedFilePaths,
     this.selectedFolderPaths = const [],
@@ -32,9 +36,9 @@ class SelectionAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Always calculate the actual count from the lists to ensure accuracy
-    final int fileCount = selectedFilePaths.length;
-    final int folderCount = selectedFolderPaths.length;
+    // Calculate the actual count from the lists or use provided counts
+    final int fileCount = selectedFileCount ?? selectedFilePaths.length;
+    final int folderCount = selectedFolderCount ?? selectedFolderPaths.length;
     final int actualCount = fileCount + folderCount;
 
     // Debug warning if passed count doesn't match actual count
@@ -43,76 +47,79 @@ class SelectionAppBar extends StatelessWidget implements PreferredSizeWidget {
           "⚠️ SelectionAppBar - Count mismatch: passed=$selectedCount, actual=$actualCount (files=$fileCount, folders=$folderCount)");
     }
 
-    // Build display text with file and folder counts
+    // Build display text with file and folder counts - always include details
     String selectionText;
     if (fileCount > 0 && folderCount > 0) {
       selectionText =
-          'Đã chọn: $actualCount (${fileCount} tệp, ${folderCount} thư mục)';
+          'Đã chọn: $actualCount ($fileCount tệp, $folderCount thư mục)';
     } else if (fileCount > 0) {
-      selectionText = 'Đã chọn: $actualCount tệp';
+      selectionText = 'Đã chọn: $fileCount tệp';
     } else if (folderCount > 0) {
-      selectionText = 'Đã chọn: $actualCount thư mục';
+      selectionText = 'Đã chọn: $folderCount thư mục';
     } else {
-      selectionText = 'Đã chọn: $actualCount';
+      selectionText = 'Đã chọn: $actualCount mục';
     }
 
-    return AppBar(
-      leading: IconButton(
-        icon: const Icon(EvaIcons.close),
-        onPressed: onClearSelection,
-      ),
-      title: Text(selectionText),
-      actions: [
-        // Show tag management for files only
-        if (fileCount > 0) ...[
-          // Tag management dropdown menu
-          PopupMenuButton<String>(
-            icon: const Icon(EvaIcons.shoppingBag),
-            tooltip: 'Quản lý Tag',
-            onSelected: (value) {
-              if (value == 'add_tag') {
-                showBatchAddTagDialog(context, selectedFilePaths);
-              } else if (value == 'remove_tags') {
-                showRemoveTagsDialog(context, selectedFilePaths);
-              } else if (value == 'manage_all_tags') {
-                showManageAllTagsDialog(context);
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem<String>(
-                value: 'add_tag',
-                child: Row(
-                  children: [
-                    Icon(EvaIcons.plusCircleOutline),
-                    SizedBox(width: 8),
-                    Text('Thêm Tag'),
-                  ],
+    // Use a RepaintBoundary to isolate this widget from parent rebuilds
+    return RepaintBoundary(
+      child: AppBar(
+        leading: IconButton(
+          icon: const Icon(EvaIcons.close),
+          onPressed: onClearSelection,
+        ),
+        title: Text(selectionText),
+        actions: [
+          // Show tag management for files only
+          if (fileCount > 0) ...[
+            // Tag management dropdown menu
+            PopupMenuButton<String>(
+              icon: const Icon(EvaIcons.shoppingBag),
+              tooltip: 'Quản lý Tag',
+              onSelected: (value) {
+                if (value == 'add_tag') {
+                  showBatchAddTagDialog(context, selectedFilePaths);
+                } else if (value == 'remove_tags') {
+                  showRemoveTagsDialog(context, selectedFilePaths);
+                } else if (value == 'manage_all_tags') {
+                  showManageAllTagsDialog(context);
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem<String>(
+                  value: 'add_tag',
+                  child: Row(
+                    children: [
+                      Icon(EvaIcons.plusCircleOutline),
+                      SizedBox(width: 8),
+                      Text('Thêm Tag'),
+                    ],
+                  ),
                 ),
-              ),
-              const PopupMenuItem<String>(
-                value: 'remove_tags',
-                child: Row(
-                  children: [
-                    Icon(EvaIcons.minusCircleOutline),
-                    SizedBox(width: 8),
-                    Text('Xóa Tag'),
-                  ],
-                ),
-              )
-            ],
-          ),
-        ],
+                const PopupMenuItem<String>(
+                  value: 'remove_tags',
+                  child: Row(
+                    children: [
+                      Icon(EvaIcons.minusCircleOutline),
+                      SizedBox(width: 8),
+                      Text('Xóa Tag'),
+                    ],
+                  ),
+                )
+              ],
+            ),
+          ],
 
-        // Delete option (works for both files and folders)
-        if (actualCount > 0)
-          IconButton(
-            icon: const Icon(EvaIcons.trash2Outline),
-            tooltip: 'Chuyển vào Thùng rác',
-            onPressed: () {
-              showDeleteConfirmationDialog(context);
-            },
-          ),
-      ],
+          // Delete option (works for both files and folders)
+          if (actualCount > 0)
+            IconButton(
+              icon: const Icon(EvaIcons.trash2Outline),
+              tooltip: 'Chuyển vào Thùng rác',
+              onPressed: () {
+                showDeleteConfirmationDialog(context);
+              },
+            ),
+        ],
+      ),
     );
   }
 }

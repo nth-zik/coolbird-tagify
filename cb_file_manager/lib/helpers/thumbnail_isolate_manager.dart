@@ -256,66 +256,76 @@ class ThumbnailIsolateManager {
     });
   }
 
-  /// Process the thumbnail queue
+  /// Process the queue of thumbnail requests
   Future<void> _processQueue() async {
-    if (_isProcessingQueue || _queue.isEmpty) return;
+    if (_queue.isEmpty || _isProcessingQueue) return;
 
     _isProcessingQueue = true;
+    _log('Starting queue processing with ${_queue.length} items');
 
-    while (_queue.isNotEmpty) {
-      // Find available worker
-      final availableWorker = _findAvailableWorker();
-      if (availableWorker == null ||
-          _processingPaths.length >= _maxConcurrentProcessing) {
-        // No worker available or at max concurrent tasks, wait a bit
-        await Future.delayed(const Duration(milliseconds: 100));
-        continue;
-      }
-
-      // Sort the queue again to ensure priorities are respected
-      _sortQueue();
-
-      // Get highest priority request
+    // Process the queue until empty or max concurrent reached
+    while (_queue.isNotEmpty &&
+        _processingPaths.length < _maxConcurrentProcessing) {
+      // Get the next item and mark as processing
       final request = _queue.removeAt(0);
       final videoPath = request.videoPath;
 
-      _log(
-          'Processing request for $videoPath on worker #${availableWorker.id}');
+      if (_processingPaths.contains(videoPath)) {
+        _log('Path $videoPath already processing, skipping duplicate');
+        continue;
+      }
 
-      // Mark worker as busy and track processing path
-      availableWorker.isBusy = true;
       _processingPaths.add(videoPath);
 
-      // Send request to worker
-      try {
-        final result = await availableWorker.generateThumbnail(
-          videoPath,
-          force: request.force,
-          quality: request.quality,
-          maxSize: request.maxSize,
-          thumbnailPercentage: request.thumbnailPercentage,
-        );
+      _log(
+          'Processing ${_processingPaths.length}/$_maxConcurrentProcessing: $videoPath');
 
-        // Complete the request
-        if (_pendingRequests.containsKey(videoPath) &&
-            !_pendingRequests[videoPath]!.isCompleted) {
-          _pendingRequests[videoPath]!.complete(result);
-        }
-      } catch (e) {
-        _log('Error generating thumbnail for $videoPath: $e');
-        if (_pendingRequests.containsKey(videoPath) &&
-            !_pendingRequests[videoPath]!.isCompleted) {
-          _pendingRequests[videoPath]!.complete(null);
-        }
-      } finally {
-        // Cleanup and mark worker as available
-        availableWorker.isBusy = false;
+      // Process item in the background
+      _processItem(request).then((_) {
+        // Item finished, remove from processing
         _processingPaths.remove(videoPath);
-        _pendingRequests.remove(videoPath);
-      }
+
+        // Continue processing if there are more items
+        if (_queue.isNotEmpty) {
+          _processQueue();
+        } else if (_processingPaths.isEmpty) {
+          _log('Queue is empty and no items processing');
+          _isProcessingQueue = false;
+        }
+      });
     }
 
-    _isProcessingQueue = false;
+    // If queue empty but still processing some items
+    if (_queue.isEmpty && _processingPaths.isNotEmpty) {
+      _log(
+          'Queue is empty but still processing ${_processingPaths.length} items');
+    }
+  }
+
+  /// Process an individual item
+  Future<void> _processItem(_ThumbnailRequest request) async {
+    final videoPath = request.videoPath;
+
+    try {
+      // Generate thumbnail directly using our method that handles errors
+      final result = await _generateThumbnailInIsolate(request);
+
+      // Complete the request
+      if (_pendingRequests.containsKey(videoPath) &&
+          !_pendingRequests[videoPath]!.isCompleted) {
+        _pendingRequests[videoPath]!.complete(result);
+      }
+
+      _log(
+          'Processed: $videoPath, result: ${result != null ? 'success' : 'null'}');
+    } catch (e) {
+      _log('Error processing $videoPath: $e');
+      // Complete with null on error
+      if (_pendingRequests.containsKey(videoPath) &&
+          !_pendingRequests[videoPath]!.isCompleted) {
+        _pendingRequests[videoPath]!.complete(null);
+      }
+    }
   }
 
   /// Find an available worker
@@ -333,6 +343,32 @@ class ThumbnailIsolateManager {
     final bytes = utf8.encode(videoPath);
     final digest = md5.convert(bytes);
     return 'thumb_${digest.toString()}.jpg';
+  }
+
+  /// Calculate timestamp in seconds based on percentage of video duration
+  Future<int> _calculateTimestampFromPercentage(
+      String videoPath, double percentage) async {
+    final estimatedDuration = await _getEstimatedVideoDuration(videoPath);
+    int timestampSeconds = ((percentage / 100.0) * estimatedDuration).round();
+    return timestampSeconds.clamp(
+        0, estimatedDuration - 1 > 0 ? estimatedDuration - 1 : 0);
+  }
+
+  /// Estimate video duration based on file size (rough approximation)
+  Future<int> _getEstimatedVideoDuration(String videoPath) async {
+    try {
+      final videoFile = File(videoPath);
+      if (await videoFile.exists()) {
+        final fileSize = await videoFile.length();
+        // Very rough estimation: 10 seconds per MB, clamped between 1-600 seconds
+        final estimatedSeconds = (fileSize / (1024 * 1024) * 10).round();
+        final clampedDuration = estimatedSeconds.clamp(1, 600);
+        return clampedDuration > 0 ? clampedDuration : 1;
+      }
+    } catch (_) {
+      // Ignore any errors and return default
+    }
+    return 60; // Default value if estimation fails
   }
 
   /// Prefetch thumbnails for multiple videos
@@ -413,6 +449,115 @@ class ThumbnailIsolateManager {
     _queue.removeWhere((req) => !req.videoPath.startsWith(directoryPath));
 
     _log('Canceled ${keysToRemove.length} requests not in $directoryPath');
+  }
+
+  /// Private function to handle thumbnail generation in isolate
+  Future<String?> _generateThumbnailInIsolate(_ThumbnailRequest request) async {
+    final String videoPath = request.videoPath;
+
+    try {
+      // Obtain cache directory
+      final tempDir = await getTemporaryDirectory();
+      final cacheFilename = _createCacheFilename(videoPath);
+      final thumbnailPath = path.join(tempDir.path, cacheFilename);
+
+      // Check if thumbnail already exists in cache
+      final cacheFile = File(thumbnailPath);
+      if (!request.force &&
+          await cacheFile.exists() &&
+          await cacheFile.length() > 0) {
+        _log('Found cached thumbnail for $videoPath');
+        return thumbnailPath;
+      }
+
+      // Use different approaches based on platform for optimal performance
+      String? generatedPath;
+
+      // Try native approach first on Windows
+      if (Platform.isWindows) {
+        try {
+          if (_isSupportedVideoFormat(videoPath)) {
+            try {
+              // Use the safer method for isolate contexts
+              generatedPath =
+                  await FcNativeVideoThumbnail.safeThumbnailGenerate(
+                videoPath: videoPath,
+                outputPath: thumbnailPath,
+                width: request.maxSize,
+                format: 'jpg',
+                timeSeconds: await _calculateTimestampFromPercentage(
+                        videoPath, request.thumbnailPercentage) ~/
+                    1000,
+              );
+
+              if (generatedPath != null) {
+                final file = File(generatedPath);
+                if (await file.exists() && await file.length() > 0) {
+                  _log(
+                      'Generated thumbnail using native method for $videoPath');
+                  return generatedPath;
+                }
+              }
+            } catch (e) {
+              // Fallback to package method
+            }
+          }
+        } catch (e) {
+          // Fallback to package method
+        }
+      }
+
+      // Fallback to video_thumbnail package
+      try {
+        final timestamp = await _calculateTimestampFromPercentage(
+            videoPath, request.thumbnailPercentage);
+
+        generatedPath = await VideoThumbnail.thumbnailFile(
+          video: videoPath,
+          thumbnailPath: thumbnailPath,
+          imageFormat: ImageFormat.JPEG,
+          quality: request.quality,
+          maxHeight: request.maxSize,
+          maxWidth: request.maxSize,
+          timeMs: timestamp * 1000,
+        );
+
+        if (generatedPath != null &&
+            await File(generatedPath).exists() &&
+            await File(generatedPath).length() > 0) {
+          _log('Generated thumbnail using video_thumbnail for $videoPath');
+          return generatedPath;
+        }
+      } catch (e) {
+        _log('Error in video_thumbnail generation: $e');
+        // If both methods fail, return null
+      }
+
+      return null;
+    } catch (e, stack) {
+      _log('Error generating thumbnail for $videoPath: $e\n$stack');
+      return null;
+    }
+  }
+
+  /// Check if the video format is supported for thumbnail generation
+  static bool _isSupportedVideoFormat(String filePath) {
+    final lowercasePath = filePath.toLowerCase();
+    final supportedExtensions = [
+      '.mp4',
+      '.mov',
+      '.avi',
+      '.mkv',
+      '.wmv',
+      '.flv',
+      '.webm',
+      '.mpg',
+      '.mpeg',
+      '.m4v',
+      '.3gp',
+      '.ts'
+    ];
+    return supportedExtensions.any((ext) => lowercasePath.endsWith(ext));
   }
 }
 
@@ -602,22 +747,28 @@ class _IsolateWorker {
       if (isWindows) {
         try {
           if (_isSupportedVideoFormat(videoPath)) {
-            generatedPath = await FcNativeVideoThumbnail.generateThumbnail(
-              videoPath: videoPath,
-              outputPath: thumbnailPath,
-              width: maxSize,
-              format: 'jpg',
-              timeSeconds: timestampMs ~/ 1000,
-            );
+            try {
+              // Use the safer method for isolate contexts
+              generatedPath =
+                  await FcNativeVideoThumbnail.safeThumbnailGenerate(
+                videoPath: videoPath,
+                outputPath: thumbnailPath,
+                width: maxSize,
+                format: 'jpg',
+                timeSeconds: timestampMs ~/ 1000,
+              );
 
-            if (generatedPath != null) {
-              final file = File(generatedPath);
-              if (await file.exists() && await file.length() > 0) {
-                return generatedPath;
+              if (generatedPath != null) {
+                final file = File(generatedPath);
+                if (await file.exists() && await file.length() > 0) {
+                  return generatedPath;
+                }
               }
+            } catch (e) {
+              // Fallback to package method
             }
           }
-        } catch (_) {
+        } catch (e) {
           // Fallback to package method
         }
       }

@@ -9,7 +9,7 @@ import 'package:cb_file_manager/ui/utils/base_screen.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/ui/components/shared_action_bar.dart';
 import 'package:cb_file_manager/ui/components/video_player/custom_video_player.dart';
-import 'package:cb_file_manager/widgets/lazy_video_thumbnail.dart';
+import 'package:cb_file_manager/ui/widgets/lazy_video_thumbnail.dart';
 import 'package:cb_file_manager/helpers/thumbnail_isolate_manager.dart';
 import 'package:cb_file_manager/helpers/frame_timing_optimizer.dart';
 import 'dart:async';

@@ -324,12 +324,12 @@ class SharedActionBar {
             break;
           case 'image_gallery':
             if (onGallerySelected != null && currentPath != null) {
-              onGallerySelected(currentPath);
+              onGallerySelected('image_gallery');
             }
             break;
           case 'video_gallery':
             if (onGallerySelected != null && currentPath != null) {
-              onGallerySelected(currentPath);
+              onGallerySelected('video_gallery');
             }
             break;
         }

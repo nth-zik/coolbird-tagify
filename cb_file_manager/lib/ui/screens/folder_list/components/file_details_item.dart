@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:cb_file_manager/ui/components/shared_file_context_menu.dart';
 import 'package:cb_file_manager/helpers/file_type_helper.dart';
 import 'package:cb_file_manager/helpers/file_icon_helper.dart';
-import 'package:cb_file_manager/widgets/lazy_video_thumbnail.dart';
+import 'package:cb_file_manager/ui/widgets/lazy_video_thumbnail.dart';
 import 'package:path/path.dart' as path;
 
 class FileDetailsItem extends StatefulWidget {
@@ -47,6 +47,8 @@ class _FileDetailsItemState extends State<FileDetailsItem> {
   FileStat? _fileStat;
   late bool isImage;
   late bool isVideo;
+  // Create a key based on the file path to prevent thumbnail recreation
+  late final ValueKey<String> _thumbnailKey;
 
   @override
   void initState() {
@@ -54,6 +56,7 @@ class _FileDetailsItemState extends State<FileDetailsItem> {
     _visuallySelected = widget.isSelected;
     _loadFileStats();
     _checkFileType();
+    _thumbnailKey = ValueKey('thumbnail-${widget.file.path}');
   }
 
   @override
@@ -68,6 +71,8 @@ class _FileDetailsItemState extends State<FileDetailsItem> {
     if (widget.file.path != oldWidget.file.path) {
       _loadFileStats();
       _checkFileType();
+      // We don't need to update the thumbnail key here since file path changed
+      // and we'll get a new widget instance anyway
     }
   }
 
@@ -139,20 +144,16 @@ class _FileDetailsItemState extends State<FileDetailsItem> {
 
     // Calculate colors based on selection state
     final Color itemBackgroundColor = _visuallySelected
-        ? Theme.of(context).primaryColor.withOpacity(0.15)
+        ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.7)
         : _isHovering && widget.isDesktopMode
             ? isDarkMode
                 ? Colors.grey[800]!
                 : Colors.grey[100]!
             : Colors.transparent;
 
-    final BoxDecoration boxDecoration = _visuallySelected
-        ? BoxDecoration(
-            color: itemBackgroundColor,
-          )
-        : BoxDecoration(
-            color: itemBackgroundColor,
-          );
+    final BoxDecoration boxDecoration = BoxDecoration(
+      color: itemBackgroundColor,
+    );
 
     // Get the file extension and icon
     final String fileExtension = path.extension(widget.file.path).toLowerCase();
@@ -193,7 +194,15 @@ class _FileDetailsItemState extends State<FileDetailsItem> {
                         horizontal: 12.0, vertical: 10.0),
                     child: Row(
                       children: [
-                        _buildFileIcon(fileIcon, iconColor),
+                        // Use a dedicated widget for file icon with a key to prevent rebuilds
+                        _OptimizedFileIcon(
+                          key: _thumbnailKey,
+                          file: widget.file,
+                          isVideo: isVideo,
+                          isImage: isImage,
+                          icon: fileIcon,
+                          color: iconColor,
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
@@ -307,53 +316,6 @@ class _FileDetailsItemState extends State<FileDetailsItem> {
     );
   }
 
-  Widget _buildFileIcon(IconData icon, Color? color) {
-    if (isVideo) {
-      return SizedBox(
-        width: 24,
-        height: 24,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(2),
-          child: LazyVideoThumbnail(
-            videoPath: widget.file.path,
-            width: 24,
-            height: 24,
-            fallbackBuilder: () => Icon(icon, size: 24, color: color),
-          ),
-        ),
-      );
-    } else if (isImage) {
-      return SizedBox(
-        width: 24,
-        height: 24,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(2),
-          child: Image.file(
-            widget.file,
-            width: 24,
-            height: 24,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) =>
-                Icon(icon, size: 24, color: color),
-          ),
-        ),
-      );
-    } else {
-      return FutureBuilder<Widget>(
-        future: FileIconHelper.getIconForFile(widget.file, size: 24),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Icon(icon, size: 24, color: color);
-          }
-          if (snapshot.hasData) {
-            return snapshot.data!;
-          }
-          return Icon(icon, size: 24, color: color);
-        },
-      );
-    }
-  }
-
   String _getFileTypeLabel(String extension) {
     if (extension.isEmpty) return 'Tệp tin';
 
@@ -417,5 +379,114 @@ class _FileDetailsItemState extends State<FileDetailsItem> {
     if (stat.modeString()[3] == 'x') attrs.add('X');
 
     return attrs.join(' ');
+  }
+}
+
+// Optimized file icon widget that keeps its own state separate from parent
+class _OptimizedFileIcon extends StatefulWidget {
+  final File file;
+  final bool isVideo;
+  final bool isImage;
+  final IconData icon;
+  final Color? color;
+
+  const _OptimizedFileIcon({
+    Key? key,
+    required this.file,
+    required this.isVideo,
+    required this.isImage,
+    required this.icon,
+    required this.color,
+  }) : super(key: key);
+
+  @override
+  State<_OptimizedFileIcon> createState() => _OptimizedFileIconState();
+}
+
+class _OptimizedFileIconState extends State<_OptimizedFileIcon>
+    with AutomaticKeepAliveClientMixin {
+  // Add this to make sure the state is preserved when selection changes
+  @override
+  bool get wantKeepAlive => true;
+
+  // Track if we've already drawn the thumbnail to prevent regeneration
+  bool _hasDrawnThumbnail = false;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+
+    // Use RepaintBoundary to prevent repainting when parent changes
+    return RepaintBoundary(
+      child: _buildOptimizedIcon(),
+    );
+  }
+
+  Widget _buildOptimizedIcon() {
+    if (widget.isVideo) {
+      return SizedBox(
+        width: 24,
+        height: 24,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(2),
+          child: LazyVideoThumbnail(
+            videoPath: widget.file.path,
+            width: 24,
+            height: 24,
+            fallbackBuilder: () =>
+                Icon(widget.icon, size: 24, color: widget.color),
+            // Pass key to prevent regeneration when selection changes
+            key: ValueKey('video-thumbnail-${widget.file.path}'),
+          ),
+        ),
+      );
+    } else if (widget.isImage) {
+      return SizedBox(
+        width: 24,
+        height: 24,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(2),
+          child: Image.file(
+            widget.file,
+            width: 24,
+            height: 24,
+            fit: BoxFit.cover,
+            cacheWidth: 48, // Cache at 2x for better quality
+            filterQuality: FilterQuality.medium,
+            // Pass key to prevent regeneration when selection changes
+            key: ValueKey('image-${widget.file.path}'),
+            errorBuilder: (context, error, stackTrace) =>
+                Icon(widget.icon, size: 24, color: widget.color),
+          ),
+        ),
+      );
+    } else {
+      return FutureBuilder<Widget>(
+        // Use a cached key to prevent rebuilding when selection changes
+        key: ValueKey('file-icon-${widget.file.path}'),
+        future: FileIconHelper.getIconForFile(widget.file, size: 24),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Icon(widget.icon, size: 24, color: widget.color);
+          }
+          if (snapshot.hasData) {
+            return snapshot.data!;
+          }
+          return Icon(widget.icon, size: 24, color: widget.color);
+        },
+      );
+    }
+  }
+
+  @override
+  void didUpdateWidget(_OptimizedFileIcon oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Only mark for rebuild if the fundamental properties changed
+    // This prevents rebuilds when only selection state changes in parent
+    if (widget.file.path != oldWidget.file.path ||
+        widget.isVideo != oldWidget.isVideo ||
+        widget.isImage != oldWidget.isImage) {
+      _hasDrawnThumbnail = false;
+    }
   }
 }
