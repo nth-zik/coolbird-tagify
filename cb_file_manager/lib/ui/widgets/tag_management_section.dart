@@ -134,7 +134,28 @@ class _TagManagementSectionState extends State<TagManagementSection> {
     }
   }
 
-  void _loadTagData() {}
+  void _loadTagData() async {
+    // Use initialTags if provided, otherwise fetch from TagManager
+    List<String> currentTags = [];
+
+    if (widget.initialTags != null) {
+      currentTags = List.from(widget.initialTags!);
+    } else {
+      try {
+        currentTags = await TagManager.getTags(widget.filePath);
+      } catch (e) {
+        debugPrint('Error loading tags: $e');
+        currentTags = [];
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _selectedTags = List.from(currentTags);
+        _originalTags = List.from(currentTags); // Store original state
+      });
+    }
+  }
 
   // Save all changes to file
   Future<void> saveChanges() async {

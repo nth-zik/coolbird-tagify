@@ -176,6 +176,7 @@ class _FolderGridItemState extends State<FolderGridItem> {
       context: context,
       folder: widget.folder,
       onNavigate: widget.onNavigate,
+      folderTags: [], // Pass empty tags or fetch from database in real implementation
     );
   }
 }

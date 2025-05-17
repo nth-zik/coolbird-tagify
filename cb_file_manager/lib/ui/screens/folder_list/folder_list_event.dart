@@ -236,3 +236,13 @@ class RenameFileOrFolder extends FolderListEvent {
 
 // Enum to represent media types for search
 enum MediaSearchType { images, videos, audio, all }
+
+// Add additional tag search results to existing results
+class AddTagSearchResults extends FolderListEvent {
+  final List<FileSystemEntity> results;
+
+  const AddTagSearchResults(this.results);
+
+  @override
+  List<Object?> get props => [results];
+}

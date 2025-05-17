@@ -85,3 +85,36 @@ class SelectAll extends SelectionEvent {
   @override
   List<Object?> get props => [allFilePaths, allFolderPaths];
 }
+
+class AddTagToItem extends SelectionEvent {
+  final String filePath;
+  final String tag;
+
+  const AddTagToItem(this.filePath, this.tag);
+
+  @override
+  List<Object?> get props => [filePath, tag];
+}
+
+class RemoveTagFromItem extends SelectionEvent {
+  final String filePath;
+  final String tag;
+
+  const RemoveTagFromItem(this.filePath, this.tag);
+
+  @override
+  List<Object?> get props => [filePath, tag];
+}
+
+class LoadTags extends SelectionEvent {
+  final String filePath;
+
+  const LoadTags(this.filePath);
+
+  @override
+  List<Object?> get props => [filePath];
+}
+
+class LoadAllTags extends SelectionEvent {
+  const LoadAllTags();
+}

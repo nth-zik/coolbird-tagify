@@ -10,6 +10,10 @@ class SelectionBloc extends Bloc<SelectionEvent, SelectionState> {
     on<ToggleSelectionMode>(_onToggleSelectionMode);
     on<SelectItemsInRect>(_onSelectItemsInRect);
     on<SelectAll>(_onSelectAll);
+    on<AddTagToItem>(_onAddTagToItem);
+    on<RemoveTagFromItem>(_onRemoveTagFromItem);
+    on<LoadTags>(_onLoadTags);
+    on<LoadAllTags>(_onLoadAllTags);
   }
 
   // Handler for file selection toggle
@@ -229,5 +233,67 @@ class SelectionBloc extends Bloc<SelectionEvent, SelectionState> {
       isSelectionMode:
           event.allFilePaths.isNotEmpty || event.allFolderPaths.isNotEmpty,
     ));
+  }
+
+  // Handler for adding a tag to a file or folder
+  void _onAddTagToItem(
+    AddTagToItem event,
+    Emitter<SelectionState> emit,
+  ) {
+    // Here you would typically call a service to save the tag in a database
+    // For this implementation, we're just updating the UI
+    // This is a placeholder - in a real app, this would save to a database
+    print('Added tag ${event.tag} to item ${event.filePath}');
+
+    // In a real implementation, you would:
+    // 1. Call a service to save the tag
+    // 2. Update the state if necessary
+    // 3. Emit a new state
+  }
+
+  // Handler for removing a tag from a file or folder
+  void _onRemoveTagFromItem(
+    RemoveTagFromItem event,
+    Emitter<SelectionState> emit,
+  ) {
+    // Here you would typically call a service to remove the tag in a database
+    // For this implementation, we're just updating the UI
+    // This is a placeholder - in a real app, this would save to a database
+    print('Removed tag ${event.tag} from item ${event.filePath}');
+
+    // In a real implementation, you would:
+    // 1. Call a service to remove the tag
+    // 2. Update the state if necessary
+    // 3. Emit a new state
+  }
+
+  // Handler for loading tags for a specific file or folder
+  void _onLoadTags(
+    LoadTags event,
+    Emitter<SelectionState> emit,
+  ) {
+    // Here you would typically call a service to load tags from a database
+    // For this implementation, we're just printing
+    print('Loading tags for item ${event.filePath}');
+
+    // In a real implementation, you would:
+    // 1. Call a service to load tags
+    // 2. Update the state with the loaded tags
+    // 3. Emit a new state
+  }
+
+  // Handler for loading all available tags
+  void _onLoadAllTags(
+    LoadAllTags event,
+    Emitter<SelectionState> emit,
+  ) {
+    // Here you would typically call a service to load all tags from a database
+    // For this implementation, we're just printing
+    print('Loading all available tags');
+
+    // In a real implementation, you would:
+    // 1. Call a service to load all tags
+    // 2. Update the state with the loaded tags
+    // 3. Emit a new state
   }
 }

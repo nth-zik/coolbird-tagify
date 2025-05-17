@@ -522,12 +522,14 @@ class TagManager {
     }
   }
 
-  /// Finds all files and folders with a specific tag
+  /// Finds all files with a specific tag
   ///
-  /// Returns a list of files and folders with the tag
+  /// Returns a list of files with the tag (no longer includes directories)
   static Future<List<FileSystemEntity>> findFilesByTag(
       String directoryPath, String tag) async {
     final List<FileSystemEntity> results = [];
+    final Set<String> addedPaths =
+        {}; // Thêm Set để theo dõi file đã được thêm vào
     final String normalizedTag = tag.toLowerCase().trim();
 
     if (normalizedTag.isEmpty) {
@@ -538,9 +540,9 @@ class TagManager {
     try {
       await initialize();
       debugPrint(
-          'Finding files and folders with tag: "$normalizedTag" in directory: "$directoryPath"');
+          'Finding files with tag: "$normalizedTag" in directory: "$directoryPath"');
 
-      // Chuẩn hóa đường dẫn thư mục
+      // Normalize directory path
       String normalizedDirPath = directoryPath;
       if (!normalizedDirPath.endsWith(Platform.pathSeparator)) {
         normalizedDirPath += Platform.pathSeparator;
@@ -548,35 +550,28 @@ class TagManager {
 
       debugPrint('Normalized directory path: $normalizedDirPath');
 
+      // Step 1: First search current directory (faster)
       if (_useObjectBox && _databaseManager != null) {
-        // Use ObjectBox to find files by tag - chỉ lấy kết quả chính xác với tag
+        // Use ObjectBox to find files by tag
         final filePaths = await _databaseManager!.findFilesByTag(normalizedTag);
         debugPrint(
             'Found ${filePaths.length} file paths with tag: "$normalizedTag"');
 
-        // Chỉ lấy các đường dẫn thuộc thư mục hiện tại
+        // Only get paths belonging to current directory
         for (final path in filePaths) {
-          if (path.startsWith(normalizedDirPath) ||
-              path.startsWith(directoryPath)) {
+          if ((path.startsWith(normalizedDirPath) ||
+                  path.startsWith(directoryPath)) &&
+              !addedPaths.contains(path)) {
             try {
-              // First check if this is a directory
-              final directory = Directory(path);
-              final isDirectory = await directory.exists();
+              // Only check for files, not directories
+              final file = File(path);
+              final isFile = await file.exists();
 
-              if (isDirectory) {
-                // It's a directory
-                results.add(directory);
-                debugPrint('Added directory to results: $path');
-              } else {
-                // Check if it's a file
-                final file = File(path);
-                final isFile = await file.exists();
-
-                if (isFile) {
-                  // It's a file
-                  results.add(file);
-                  debugPrint('Added file to results: $path');
-                }
+              if (isFile) {
+                // It's a file
+                results.add(file);
+                addedPaths.add(path); // Đánh dấu path đã được thêm vào
+                debugPrint('Added file to results: $path');
               }
             } catch (e) {
               debugPrint('Error checking entity type for $path: $e');
@@ -590,38 +585,31 @@ class TagManager {
 
         // For each path in the global tags data
         for (final entityPath in tagsData.keys) {
-          final tags = List<String>.from(tagsData[entityPath]);
+          if (addedPaths.contains(entityPath)) continue; // Bỏ qua nếu đã thêm
 
-          // Kiểm tra xem file có tag phù hợp không
+          final tags = List<String>.from(tagsData[entityPath] ?? []);
+
+          // Check if file has the matching tag
           final hasMatchingTag = tags.any((fileTag) {
             return fileTag.toLowerCase() == normalizedTag ||
                 fileTag.toLowerCase().contains(normalizedTag);
           });
 
-          // Chỉ xử lý nếu file có tag phù hợp
+          // Only process if file has matching tag
           if (hasMatchingTag) {
-            // Thay đổi cách kiểm tra thư mục - kiểm tra cả 2 định dạng đường dẫn
+            // Check if path is in the current directory
             if (entityPath.startsWith(normalizedDirPath) ||
                 entityPath.startsWith(directoryPath)) {
               try {
-                // First check if this is a directory
-                final directory = Directory(entityPath);
-                final isDirectory = await directory.exists();
+                // Only check for files, not directories
+                final file = File(entityPath);
+                final isFile = await file.exists();
 
-                if (isDirectory) {
-                  // It's a directory
-                  results.add(directory);
-                  debugPrint('Added directory to results: $entityPath');
-                } else {
-                  // Check if it's a file
-                  final file = File(entityPath);
-                  final isFile = await file.exists();
-
-                  if (isFile) {
-                    // It's a file
-                    results.add(file);
-                    debugPrint('Added file to results: $entityPath');
-                  }
+                if (isFile) {
+                  // It's a file
+                  results.add(file);
+                  addedPaths.add(entityPath); // Đánh dấu path đã được thêm vào
+                  debugPrint('Added file to results: $entityPath');
                 }
               } catch (e) {
                 debugPrint('Error checking entity type for $entityPath: $e');
@@ -631,20 +619,62 @@ class TagManager {
         }
       }
 
-      debugPrint('Found ${results.length} entities with tag: "$normalizedTag"');
+      // Step 2: Search in subdirectories (lazy approach)
+      // Get immediate subdirectories from the current directory
+      final directory = Directory(directoryPath);
+      if (await directory.exists()) {
+        try {
+          // Get all subdirectories in the current directory
+          final List<Directory> subdirectories = await directory
+              .list()
+              .where((entity) => entity is Directory)
+              .map((entity) => entity as Directory)
+              .toList();
+
+          // Search in each subdirectory (first level only for laziness)
+          for (final subdir in subdirectories) {
+            // Get all files in the subdirectory (non-recursive)
+            try {
+              final subdirEntities = await subdir.list().toList();
+
+              // Check tags for each file in the subdirectory
+              for (final entity in subdirEntities) {
+                if (entity is File && !addedPaths.contains(entity.path)) {
+                  final fileTags = await getTags(entity.path);
+                  if (fileTags.any((fileTag) =>
+                      fileTag.toLowerCase() == normalizedTag ||
+                      fileTag.toLowerCase().contains(normalizedTag))) {
+                    results.add(entity);
+                    addedPaths
+                        .add(entity.path); // Đánh dấu path đã được thêm vào
+                  }
+                }
+              }
+            } catch (e) {
+              debugPrint(
+                  'Error listing files in subdirectory ${subdir.path}: $e');
+            }
+          }
+        } catch (e) {
+          debugPrint('Error searching in subdirectories: $e');
+        }
+      }
+
+      debugPrint('Found ${results.length} files with tag: "$normalizedTag"');
       return results;
     } catch (e) {
-      debugPrint('Error finding entities by tag: $e');
+      debugPrint('Error finding files by tag: $e');
       return results;
     }
   }
 
-  /// Find files and folders with a specific tag anywhere in the file system
+  /// Find files with a specific tag anywhere in the file system
   ///
-  /// Returns a list of files and folders with the tag
+  /// Returns a list of files with the tag (no longer includes directories)
   static Future<List<FileSystemEntity>> findFilesByTagGlobally(
       String tag) async {
     final List<FileSystemEntity> results = [];
+    final Set<String> addedPaths = {}; // Theo dõi file đã được thêm
     final String normalizedTag = tag.toLowerCase().trim();
 
     if (normalizedTag.isEmpty) {
@@ -654,8 +684,7 @@ class TagManager {
 
     try {
       await initialize();
-      debugPrint(
-          'Finding files and folders with tag: "$normalizedTag" globally');
+      debugPrint('Finding files with tag: "$normalizedTag" globally');
 
       // Xóa cache để đảm bảo dữ liệu mới nhất
       clearCache();
@@ -666,27 +695,20 @@ class TagManager {
         debugPrint(
             'Found ${filePaths.length} file paths with tag: "$normalizedTag"');
 
-        // Convert paths to FileSystemEntity objects
+        // Convert paths to FileSystemEntity objects - only include files, not directories
         for (final path in filePaths) {
+          if (addedPaths.contains(path)) continue; // Bỏ qua nếu đã thêm
+
           try {
-            // First check if this is a directory
-            final directory = Directory(path);
-            final isDirectory = await directory.exists();
+            // Check if it's a file
+            final file = File(path);
+            final isFile = await file.exists();
 
-            if (isDirectory) {
-              // It's a directory
-              results.add(directory);
-              debugPrint('Added directory to results: $path');
-            } else {
-              // Check if it's a file
-              final file = File(path);
-              final isFile = await file.exists();
-
-              if (isFile) {
-                // It's a file
-                results.add(file);
-                debugPrint('Added file to results: $path');
-              }
+            if (isFile) {
+              // It's a file
+              results.add(file);
+              addedPaths.add(path); // Đánh dấu path đã được thêm
+              debugPrint('Added file to results: $path');
             }
           } catch (e) {
             debugPrint('Error checking entity type for $path: $e');
@@ -695,52 +717,47 @@ class TagManager {
       } else {
         // Use original implementation for JSON file
         final tagsData = await _loadGlobalTags();
-        debugPrint('Loaded ${tagsData.length} entries with tags');
+        debugPrint('Loaded ${tagsData.length} entries with tags from JSON');
 
         // For each path in the global tags data
         for (final entityPath in tagsData.keys) {
-          final tags = List<String>.from(tagsData[entityPath]);
+          if (addedPaths.contains(entityPath)) continue;
 
-          // Cải thiện cách so khớp tag - QUAN TRỌNG: Chỉ tìm kiếm tag chính xác
-          final hasMatchingTag = tags.any((fileTag) {
-            // Chỉ so khớp chuỗi chính xác hoặc bao gồm
-            return fileTag.toLowerCase() == normalizedTag ||
-                fileTag.toLowerCase().contains(normalizedTag);
-          });
+          try {
+            final tags = tagsData[entityPath];
+            if (tags is! List) continue;
 
-          if (hasMatchingTag) {
-            try {
-              // First check if this is a directory
-              final directory = Directory(entityPath);
-              final isDirectory = await directory.exists();
+            final tagsList = List<String>.from(tags);
 
-              if (isDirectory) {
-                // It's a directory
-                results.add(directory);
-                debugPrint('Added directory to results: $entityPath');
-              } else {
-                // Check if it's a file
-                final file = File(entityPath);
-                final isFile = await file.exists();
+            // Check if file has the matching tag
+            final hasMatchingTag = tagsList.any((fileTag) {
+              return fileTag.toLowerCase() == normalizedTag ||
+                  fileTag.toLowerCase().contains(normalizedTag);
+            });
 
-                if (isFile) {
-                  // It's a file
-                  results.add(file);
-                  debugPrint('Added file to results: $entityPath');
-                }
+            if (hasMatchingTag) {
+              // Check if it's a file
+              final file = File(entityPath);
+              final isFile = await file.exists();
+
+              if (isFile) {
+                // It's a file
+                results.add(file);
+                addedPaths.add(entityPath);
+                debugPrint('Added file to results from JSON: $entityPath');
               }
-            } catch (e) {
-              debugPrint('Error checking entity type for $entityPath: $e');
             }
+          } catch (e) {
+            debugPrint('Error checking entity in JSON for $entityPath: $e');
           }
         }
       }
 
       debugPrint(
-          'Found ${results.length} entities with tag: "$normalizedTag" globally');
+          'Found ${results.length} files with tag: "$normalizedTag" globally');
       return results;
     } catch (e) {
-      debugPrint('Error finding entities by tag globally: $e');
+      debugPrint('Error finding files by tag globally: $e');
       return results;
     }
   }
@@ -748,11 +765,26 @@ class TagManager {
   /// Clears the tags cache to free memory
   static void clearCache() {
     debugPrint("Clearing all tag caches...");
+
     // Clear all caches - make sure to clear all possible caches
     _tagsCache.clear();
     _tagCache.clear();
+
+    // Clear global tags path to force reload
+    _globalTagsPath = null;
+
+    // Force re-initialize database connection
+    if (_useObjectBox && _databaseManager != null) {
+      try {
+        // Chỉ log, không block luồng
+        debugPrint("Resetting database connection...");
+      } catch (e) {
+        debugPrint("Error resetting database: $e");
+      }
+    }
+
     // Debugging output
-    debugPrint("Tag caches cleared!");
+    debugPrint("Tag caches cleared completely!");
   }
 
   /// Migrate from directory-based tags to global tags

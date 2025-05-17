@@ -32,6 +32,7 @@ class _SearchDialogState extends State<SearchDialog> {
   List<Directory> _filteredFolders = [];
   bool _isSearchingTags = false;
   List<String> _suggestedTags = [];
+  String? _error;
 
   // Overlay entry for tag suggestions
   OverlayEntry? _overlayEntry;
@@ -128,30 +129,25 @@ class _SearchDialogState extends State<SearchDialog> {
         return;
       }
 
-      // Use TagManager to find files with the tag
-      final List<File> taggedFiles = [];
-      final List<Directory> taggedFolders = [];
+      // Use TagManager's improved findFilesByTag method for better search results
+      setState(() {
+        // Show loading indicator while searching
+        _filteredFiles = [];
+        _filteredFolders = [];
+      });
 
-      // Perform local tag search in current directory
-      for (final file in widget.files) {
-        final tags = await TagManager.getTags(file.path);
-        if (tags
-            .any((tag) => tag.toLowerCase().contains(tagQuery.toLowerCase()))) {
-          taggedFiles.add(file);
-        }
-      }
+      // Get all tagged files including in subdirectories
+      final results =
+          await TagManager.findFilesByTag(widget.currentPath, tagQuery);
 
-      for (final folder in widget.folders) {
-        final tags = await TagManager.getTags(folder.path);
-        if (tags
-            .any((tag) => tag.toLowerCase().contains(tagQuery.toLowerCase()))) {
-          taggedFolders.add(folder);
-        }
-      }
+      // Tất cả kết quả đều là file do đã sửa đổi findFilesByTag
+      final List<File> taggedFiles = results.cast<File>().toList();
 
+      // Cập nhật UI với kết quả tìm kiếm
       setState(() {
         _filteredFiles = taggedFiles;
-        _filteredFolders = taggedFolders;
+        _filteredFolders =
+            []; // Không hiển thị thư mục trong kết quả tìm kiếm tag
       });
     } else {
       // Regular text search

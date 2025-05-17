@@ -11,6 +11,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
 import 'package:path/path.dart' as pathlib;
+import 'package:cb_file_manager/ui/tab_manager/components/tag_dialogs.dart'
+    as tag_dialogs;
 
 /// A shared context menu for files
 ///
@@ -197,20 +199,22 @@ class SharedFileContextMenu extends StatelessWidget {
           },
         ),
 
-        // Tag management option
-        if (showAddTagToFileDialog != null)
-          ListTile(
-            leading: const Icon(EvaIcons.bookmarkOutline, color: Colors.green),
-            title: Text(
-              'Manage Tags',
-              style:
-                  TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
-            ),
-            onTap: () {
-              Navigator.pop(context);
-              showAddTagToFileDialog!(context, file.path);
-            },
+        // Tag management option - always show
+        ListTile(
+          leading: const Icon(EvaIcons.bookmarkOutline, color: Colors.green),
+          title: Text(
+            'Manage Tags',
+            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
           ),
+          onTap: () {
+            Navigator.pop(context);
+            if (showAddTagToFileDialog != null) {
+              showAddTagToFileDialog!(context, file.path);
+            } else {
+              _showTagManagementDialog(context);
+            }
+          },
+        ),
 
         // File details
         ListTile(
@@ -246,6 +250,11 @@ class SharedFileContextMenu extends StatelessWidget {
         const SizedBox(height: 8),
       ],
     );
+  }
+
+  // Show tag management dialog
+  void _showTagManagementDialog(BuildContext context) {
+    tag_dialogs.showAddTagToFileDialog(context, file.path);
   }
 
   // Helper method to show rename dialog
@@ -368,8 +377,6 @@ class SharedFileContextMenu extends StatelessWidget {
     }
   }
 
-  // Helper to get file extension
-
   // Helper to get file basename
   String _basename(File file) {
     return file.path.split(Platform.pathSeparator).last;
@@ -380,11 +387,15 @@ class SharedFileContextMenu extends StatelessWidget {
 class SharedFolderContextMenu extends StatelessWidget {
   final Directory folder;
   final Function(String)? onNavigate;
+  final List<String> folderTags;
+  final Function(BuildContext, String)? showAddTagToFileDialog;
 
   const SharedFolderContextMenu({
     Key? key,
     required this.folder,
     this.onNavigate,
+    this.folderTags = const [],
+    this.showAddTagToFileDialog,
   }) : super(key: key);
 
   @override
@@ -520,6 +531,19 @@ class SharedFolderContextMenu extends StatelessWidget {
           },
         ),
 
+        // Tag management option
+        ListTile(
+          leading: Icon(EvaIcons.bookmarkOutline, color: Colors.green),
+          title: Text(
+            'Manage Tags',
+            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+          ),
+          onTap: () {
+            Navigator.pop(context);
+            _showTagManagementDialog(context);
+          },
+        ),
+
         // Properties
         ListTile(
           leading: Icon(Icons.info_outline,
@@ -537,6 +561,11 @@ class SharedFolderContextMenu extends StatelessWidget {
         const SizedBox(height: 8),
       ],
     );
+  }
+
+  // Show tag management dialog for folders
+  void _showTagManagementDialog(BuildContext context) {
+    tag_dialogs.showAddTagToFileDialog(context, folder.path);
   }
 
   // Helper to show rename dialog
@@ -693,6 +722,8 @@ void showFolderContextMenu({
   required BuildContext context,
   required Directory folder,
   Function(String)? onNavigate,
+  List<String> folderTags = const [],
+  Function(BuildContext, String)? showAddTagToFileDialog,
 }) {
   final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
@@ -705,6 +736,8 @@ void showFolderContextMenu({
     builder: (context) => SharedFolderContextMenu(
       folder: folder,
       onNavigate: onNavigate,
+      folderTags: folderTags,
+      showAddTagToFileDialog: showAddTagToFileDialog,
     ),
   );
 }

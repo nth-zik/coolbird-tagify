@@ -5,6 +5,8 @@ import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
+import 'dart:io';
+import 'package:path/path.dart' as pathlib;
 
 /// Thanh tìm kiếm nằm trực tiếp trên thanh công cụ
 class SearchBar extends StatefulWidget {
@@ -85,13 +87,15 @@ class _SearchBarState extends State<SearchBar> {
       final int hashPosition = query.lastIndexOf('#');
       final String tagQuery = query.substring(hashPosition + 1).trim();
 
-      // Chỉ hiển thị gợi ý khi người dùng nhấn phím # và khoảng trắng
-      // Thay vì tự động hiển thị khi người dùng gõ
-      // Không tự động hiện dialog mỗi khi người dùng gõ
-      if (_searchFocusNode.hasFocus &&
-          tagQuery.isEmpty &&
-          query.endsWith('#')) {
-        _showTagSuggestionsDialog(tagQuery);
+      // Khi người dùng nhập sau dấu #, hiển thị và cập nhật gợi ý autocomplete
+      if (_searchFocusNode.hasFocus) {
+        // Nếu overlay đang hiển thị và có query mới, cập nhật kết quả
+        if (_overlayEntry != null) {
+          _updateTagSuggestions(tagQuery);
+        } else if (query.endsWith('#') || tagQuery.isNotEmpty) {
+          // Hiển thị gợi ý khi người dùng gõ # hoặc có ký tự sau #
+          _showTagSuggestionsDialog(tagQuery);
+        }
       }
 
       setState(() {
@@ -101,6 +105,33 @@ class _SearchBarState extends State<SearchBar> {
       setState(() {
         _isSearchingTags = false;
       });
+      // Đóng overlay nếu không còn tìm kiếm theo tag
+      _removeOverlay();
+    }
+  }
+
+  // Cập nhật danh sách gợi ý tag dựa trên input
+  Future<void> _updateTagSuggestions(String tagQuery) async {
+    List<String> tags = [];
+
+    if (tagQuery.isEmpty) {
+      // Nếu không có query, hiển thị các tag phổ biến
+      tags = _suggestedTags;
+    } else {
+      // Tìm kiếm tag phù hợp với query
+      tags = await TagManager.instance.searchTags(tagQuery);
+    }
+
+    // Cập nhật danh sách tag và UI
+    if (mounted) {
+      setState(() {
+        _currentTags = List.from(tags);
+        // Reset lựa chọn khi danh sách thay đổi
+        _selectedTagIndex = tags.isNotEmpty ? 0 : -1;
+      });
+
+      // Cập nhật overlay nếu đang hiển thị
+      _updateOverlay();
     }
   }
 
@@ -117,10 +148,14 @@ class _SearchBarState extends State<SearchBar> {
       tags = await TagManager.instance.searchTags(tagQuery);
     }
 
-    if (tags.isEmpty || !mounted) return;
+    // Nếu không có kết quả và không có query, không hiển thị
+    if (tags.isEmpty && tagQuery.isEmpty) return;
+
+    // Nếu không mounted, không tiếp tục
+    if (!mounted) return;
 
     // Reset chỉ mục tag được chọn
-    _selectedTagIndex = -1;
+    _selectedTagIndex = tags.isNotEmpty ? 0 : -1;
     _currentTags = List.from(tags);
 
     // Lấy vị trí của textfield để định vị overlay
@@ -196,64 +231,77 @@ class _SearchBarState extends State<SearchBar> {
                     ),
                   ),
                   const Divider(height: 1, thickness: 1),
-                  Flexible(
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      padding: EdgeInsets.zero,
-                      itemCount: _currentTags.length,
-                      itemBuilder: (context, index) {
-                        final bool isSelected = index == _selectedTagIndex;
-                        return InkWell(
-                          onTap: () {
-                            // Xử lý khi chọn tag
-                            _applySelectedTag(_currentTags[index]);
-                            _removeOverlay();
-                          },
-                          child: Container(
-                            color: isSelected
-                                ? theme.colorScheme.primaryContainer
-                                    .withOpacity(0.5)
-                                : Colors.transparent,
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 8.0, horizontal: 16.0),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  EvaIcons.shoppingBag,
-                                  size: 16,
-                                  color: isSelected
-                                      ? theme.colorScheme.primary
-                                      : theme.colorScheme.primary
-                                          .withOpacity(0.7),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    _currentTags[index],
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: isSelected
-                                          ? theme.colorScheme.onPrimaryContainer
-                                          : theme.colorScheme.onSurface,
-                                      fontWeight: isSelected
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                    ),
-                                  ),
-                                ),
-                                if (isSelected)
-                                  Icon(
-                                    EvaIcons.arrowRight,
-                                    size: 14,
-                                    color: theme.colorScheme.primary,
-                                  ),
-                              ],
+                  _currentTags.isEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Text(
+                            'Không tìm thấy tag phù hợp',
+                            style: TextStyle(
+                              fontStyle: FontStyle.italic,
+                              color: theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
-                        );
-                      },
-                    ),
-                  ),
+                        )
+                      : Flexible(
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            padding: EdgeInsets.zero,
+                            itemCount: _currentTags.length,
+                            itemBuilder: (context, index) {
+                              final bool isSelected =
+                                  index == _selectedTagIndex;
+                              return InkWell(
+                                onTap: () {
+                                  // Xử lý khi chọn tag
+                                  _applySelectedTag(_currentTags[index]);
+                                  _removeOverlay();
+                                },
+                                child: Container(
+                                  color: isSelected
+                                      ? theme.colorScheme.primaryContainer
+                                          .withOpacity(0.5)
+                                      : Colors.transparent,
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 8.0, horizontal: 16.0),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        EvaIcons.shoppingBag,
+                                        size: 16,
+                                        color: isSelected
+                                            ? theme.colorScheme.primary
+                                            : theme.colorScheme.primary
+                                                .withOpacity(0.7),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          _currentTags[index],
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: isSelected
+                                                ? theme.colorScheme
+                                                    .onPrimaryContainer
+                                                : theme.colorScheme.onSurface,
+                                            fontWeight: isSelected
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                          ),
+                                        ),
+                                      ),
+                                      if (isSelected)
+                                        Icon(
+                                          EvaIcons.arrowRight,
+                                          size: 14,
+                                          color: theme.colorScheme.primary,
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
                 ],
               ),
             ),
@@ -267,14 +315,6 @@ class _SearchBarState extends State<SearchBar> {
 
     // Đảm bảo focus vẫn ở text field và keyboard listener cũng được focus
     _searchFocusNode.requestFocus();
-
-    // Thiết lập chỉ mục mặc định sau khi hiển thị overlay
-    if (_currentTags.isNotEmpty) {
-      setState(() {
-        _selectedTagIndex = 0; // Chọn mục đầu tiên mặc định
-      });
-      _updateOverlay();
-    }
   }
 
   // Áp dụng tag đã chọn vào text input
@@ -325,10 +365,10 @@ class _SearchBarState extends State<SearchBar> {
 
       debugPrint('Detected tag search. Tag query: "$tagQuery"');
 
-      // Xóa cache để đảm bảo dữ liệu mới nhất
-      TagManager.clearCache();
-
       if (tagQuery.isNotEmpty) {
+        // Xóa cache để đảm bảo dữ liệu mới nhất
+        TagManager.clearCache();
+
         // Thông báo trạng thái tìm kiếm
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -339,9 +379,31 @@ class _SearchBarState extends State<SearchBar> {
           ),
         );
 
+        // Thực hiện tìm kiếm theo tag
         if (_isGlobalSearch) {
           debugPrint('Searching for tag globally: "$tagQuery"');
           folderListBloc.add(SearchByTagGlobally(tagQuery));
+
+          // Show loading indicator for global search (which takes longer)
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text('Đang tìm kiếm tag "$tagQuery" trên toàn hệ thống...'),
+                ],
+              ),
+              duration: const Duration(seconds: 3),
+            ),
+          );
         } else {
           debugPrint('Searching for tag in current directory: "$tagQuery"');
           folderListBloc.add(SearchByTag(tagQuery));
@@ -360,6 +422,49 @@ class _SearchBarState extends State<SearchBar> {
   void _updateOverlay() {
     if (_overlayEntry != null) {
       _overlayEntry!.markNeedsBuild();
+    }
+  }
+
+  /// Helper method to scan a specific folder for files with a given tag
+  /// This helps with lazy loading of tag search results in deeper directories
+  Future<void> _scanFolderForTaggedFiles(String folderPath, String tag) async {
+    try {
+      // Check if folder exists
+      final folder = Directory(folderPath);
+      if (!await folder.exists()) {
+        return;
+      }
+
+      // Inform user we're scanning
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Đang quét thư mục ${pathlib.basename(folderPath)} cho tag "$tag"...'),
+            duration: const Duration(milliseconds: 800),
+          ),
+        );
+      }
+
+      // Use TagManager to find files with tag in this specific folder
+      final results = await TagManager.findFilesByTag(folderPath, tag);
+
+      if (results.isNotEmpty && mounted) {
+        // Add these results to the main search
+        final folderListBloc = BlocProvider.of<FolderListBloc>(context);
+        folderListBloc.add(AddTagSearchResults(results));
+
+        // Notify user of results
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Tìm thấy thêm ${results.length} kết quả trong ${pathlib.basename(folderPath)}'),
+            duration: const Duration(seconds: 1),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error scanning folder $folderPath: $e');
     }
   }
 

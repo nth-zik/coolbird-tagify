@@ -235,8 +235,14 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
     });
   }
 
-  // Select a tag to show files with that tag
+  // Thay thế hàm _selectTag bằng _directTagSearch
   Future<void> _selectTag(String tag) async {
+    // Chuyển tiếp đến _directTagSearch đã hoạt động tốt
+    await _directTagSearch(tag);
+  }
+
+  // Phương thức tìm kiếm tag trực tiếp - đã được chứng minh hoạt động tốt
+  Future<void> _directTagSearch(String tag) async {
     setState(() {
       _isLoading = true;
       _selectedTag = tag;
@@ -244,41 +250,65 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
     });
 
     try {
-      // Get all files with the selected tag
-      final List<String> files = await _database.findFilesByTag(tag);
-      List<Map<String, dynamic>> fileInfoList = [];
+      // Hiển thị thông báo đang tìm kiếm
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Đang tìm kiếm trực tiếp các file có tag "$tag"...'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
 
-      // Lọc files theo startingDirectory nếu có
-      List<String> filteredFiles = files;
-      if (widget.startingDirectory.isNotEmpty) {
-        filteredFiles = files
-            .where((path) => path.startsWith(widget.startingDirectory))
-            .toList();
+      debugPrint('Bắt đầu tìm kiếm với tag: "$tag"');
+
+      // Xóa cache để đảm bảo kết quả mới nhất
+      TagManager.clearCache();
+
+      // Gọi trực tiếp API tìm kiếm tag từ TagManager
+      final results = await TagManager.findFilesByTagGlobally(tag);
+      debugPrint('Tìm thấy ${results.length} file với tag "$tag"');
+
+      // Chuyển đổi kết quả
+      final fileInfoList = <Map<String, dynamic>>[];
+
+      for (var entity in results) {
+        if (entity is File) {
+          fileInfoList.add({
+            'path': entity.path,
+            'name': pathlib.basename(entity.path),
+          });
+          debugPrint('Thêm file: ${entity.path}');
+        }
       }
 
-      // Convert list of paths to a list of file info maps
-      for (String path in filteredFiles) {
-        fileInfoList.add({
-          'path': path,
-          'name': pathlib.basename(path),
-        });
-      }
-
+      // Cập nhật UI
       if (mounted) {
         setState(() {
           _filesBySelectedTag = fileInfoList;
           _isLoading = false;
         });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+
+        // Hiển thị thông báo kết quả
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading files: $e')),
+          SnackBar(
+            content:
+                Text('Tìm thấy ${fileInfoList.length} file với tag "$tag"'),
+            duration: const Duration(seconds: 2),
+          ),
         );
       }
+    } catch (e) {
+      debugPrint('Error trong tìm kiếm trực tiếp: $e');
+      setState(() {
+        _isLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lỗi khi tìm kiếm: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -325,11 +355,8 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
     });
 
     try {
-      // Use the tag manager to delete the tag from all files
-      final files = await _database.findFilesByTag(tag);
-      for (String filePath in files) {
-        await TagManager.removeTag(filePath, tag);
-      }
+      // Use TagManager to delete the tag from all files
+      await TagManager.deleteTagGlobally(tag);
 
       await _loadAllTags();
 
@@ -1087,7 +1114,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
           ),
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
-            onTap: () => _selectTag(tag),
+            onTap: () => _directTagSearch(tag),
             onLongPress: () => _showTagOptions(tag),
             child: Padding(
               padding:
@@ -1190,16 +1217,52 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
               'No files found with this tag',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
             ),
+            const SizedBox(height: 16),
+            Text(
+              'Debugging info: searching for tag "${_selectedTag ?? 'none'}"',
+              style: const TextStyle(fontSize: 14, color: Colors.grey),
+            ),
             const SizedBox(height: 24),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.arrow_back, size: 22),
-              label: const Text('Back to all tags',
-                  style: TextStyle(fontSize: 16)),
-              style: ElevatedButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              ),
-              onPressed: _clearTagSelection,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.arrow_back,
+                      size: 22, color: Colors.white),
+                  label: const Text('Back to all tags',
+                      style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500)),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
+                    backgroundColor: Colors.grey[800],
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: _clearTagSelection,
+                ),
+                const SizedBox(width: 16),
+                // Thêm nút tìm kiếm trực tiếp
+                ElevatedButton.icon(
+                  icon:
+                      const Icon(Icons.refresh, size: 22, color: Colors.white),
+                  label: const Text('Try Again',
+                      style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: _selectedTag != null
+                      ? () => _directTagSearch(_selectedTag!)
+                      : null,
+                ),
+              ],
             ),
           ],
         ),
@@ -1229,13 +1292,19 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
               children: [
                 Row(
                   children: [
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.arrow_back, size: 20),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.arrow_back,
+                          size: 22, color: Colors.white),
                       label: const Text('Back to all tags',
-                          style: TextStyle(fontSize: 15)),
-                      style: OutlinedButton.styleFrom(
+                          style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w500)),
+                      style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 10),
+                            horizontal: 24, vertical: 12),
+                        backgroundColor: Colors.grey[800],
+                        foregroundColor: Colors.white,
                       ),
                       onPressed: _clearTagSelection,
                     ),
@@ -1243,14 +1312,20 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                     // Add button to change color for selected tag
                     if (_selectedTag != null)
                       ElevatedButton.icon(
-                        icon: const Icon(Icons.color_lens, size: 20),
-                        label: const Text('Change Color',
-                            style: TextStyle(fontSize: 15)),
+                        icon: const Icon(Icons.color_lens,
+                            size: 20, color: Colors.white),
+                        label: const Text(
+                          'Change Color',
+                          style: TextStyle(
+                              fontSize: 15,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold),
+                        ),
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 10),
-                          backgroundColor:
-                              Theme.of(context).colorScheme.secondary,
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
                         ),
                         onPressed: () => _showColorPickerDialog(_selectedTag!),
                       ),

@@ -6,6 +6,7 @@ import 'dart:io'; // Added for File operations
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
+import 'package:flutter/foundation.dart';
 
 /// Database manager for centralizing access to the database
 class DatabaseManager implements IDatabaseProvider {
@@ -131,11 +132,36 @@ class DatabaseManager implements IDatabaseProvider {
     return _provider.setTagsForFile(filePath, tags);
   }
 
-  /// Find all files with a specific tag
+  /// Finds all files tagged with a specific tag
   @override
   Future<List<String>> findFilesByTag(String tag) async {
-    await _ensureInitialized();
-    return _provider.findFilesByTag(tag);
+    debugPrint('DatabaseManager: Finding files with tag: "$tag"');
+
+    // Trim và lowercase tag để tìm kiếm chính xác hơn
+    final normalizedTag = tag.trim().toLowerCase();
+
+    if (!_isInitialized) {
+      await _ensureInitialized();
+    }
+
+    try {
+      // Sử dụng provider hiện tại để tìm kiếm tag
+      final List<String> results =
+          await _provider.findFilesByTag(normalizedTag);
+
+      debugPrint(
+          'DatabaseManager: Found ${results.length} files with tag "$normalizedTag"');
+
+      // In ra thông tin chi tiết về các file được tìm thấy
+      for (final path in results) {
+        debugPrint('DatabaseManager: Found file: $path');
+      }
+
+      return results;
+    } catch (e) {
+      debugPrint('DatabaseManager: Error finding files by tag: $e');
+      return [];
+    }
   }
 
   /// Get all unique tags in the database

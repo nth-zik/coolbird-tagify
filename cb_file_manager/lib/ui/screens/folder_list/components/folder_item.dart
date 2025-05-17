@@ -80,6 +80,7 @@ class _FolderItemState extends State<FolderItem> {
       context: context,
       folder: widget.folder,
       onNavigate: widget.onTap,
+      folderTags: [], // Pass empty tags or fetch from database in real implementation
     );
   }
 
