@@ -66,33 +66,25 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    // Initialize với 0 tab vì chúng ta sẽ tạo tab động
+    // Initialize with a temporary controller. It will be properly set in postFrameCallback.
     _tabController = TabController(length: 0, vsync: this);
 
-    // Load drawer preferences
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadDrawerPreferences();
+      if (mounted) {
+        final initialState = context.read<TabManagerBloc>().state;
+        // _updateTabController will create the controller with the correct length
+        // and set its initialIndex based on the initialState from BLoC.
+        _updateTabController(initialState.tabs.length);
+      }
     });
   }
 
   @override
   void didUpdateWidget(TabScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-
-    // Cập nhật TabController khi số lượng tab thay đổi
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final state = context.read<TabManagerBloc>().state;
-      if (_tabController.length != state.tabs.length) {
-        _updateTabController(state.tabs.length);
-        if (state.activeTabId != null) {
-          final activeIndex =
-              state.tabs.indexWhere((tab) => tab.id == state.activeTabId);
-          if (activeIndex >= 0 && activeIndex < _tabController.length) {
-            _tabController.animateTo(activeIndex);
-          }
-        }
-      }
-    });
+    // Content removed: BlocBuilder now handles all TabController updates
+    // based on TabManagerBloc state.
   }
 
   @override
@@ -103,16 +95,48 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
 
   void _updateTabController(int tabCount) {
     final oldController = _tabController;
+
+    // Determine the initialIndex for the new TabController based on current BLoC state.
+    int newInitialIndex = 0;
+    if (mounted) {
+      // Ensure context is valid for reading BLoC
+      final currentState = context.read<TabManagerBloc>().state;
+      if (currentState.activeTabId != null && tabCount > 0) {
+        final activeIndexFromBloc = currentState.tabs
+            .indexWhere((tab) => tab.id == currentState.activeTabId);
+        if (activeIndexFromBloc >= 0 && activeIndexFromBloc < tabCount) {
+          newInitialIndex = activeIndexFromBloc;
+        } else if (tabCount > 0) {
+          // Fallback if activeId is somehow invalid
+          newInitialIndex =
+              (oldController.index < tabCount && oldController.index >= 0)
+                  ? oldController.index
+                  : tabCount - 1;
+        }
+      } else if (tabCount > 0) {
+        // No activeTabId, but tabs exist
+        newInitialIndex =
+            (oldController.index < tabCount && oldController.index >= 0)
+                ? oldController.index
+                : 0;
+      }
+    } else if (tabCount > 0) {
+      // Fallback if not mounted (less ideal)
+      newInitialIndex =
+          (oldController.index < tabCount && oldController.index >= 0)
+              ? oldController.index
+              : 0;
+    }
+
     _tabController = TabController(
-      // Add +1 to include the "+" tab
-      length: (tabCount > 0 ? tabCount : 1) + 1,
+      length: tabCount,
       vsync: this,
-      initialIndex: oldController.index < tabCount ? oldController.index : 0,
+      initialIndex: newInitialIndex, // Set based on BLoC's active tab
     );
     oldController.dispose();
 
-    // Đảm bảo TabController được cập nhật ngay lập tức khi có tab mới
     if (mounted) {
+      // This setState is crucial for the UI to pick up the new _tabController instance
       setState(() {});
     }
   }
@@ -197,15 +221,6 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
     if (tabIndex >= 0 && tabIndex < state.tabs.length) {
       // Switch to the tab
       context.read<TabManagerBloc>().add(SwitchToTab(state.tabs[tabIndex].id));
-
-      // Force UI update to make active tab display correctly
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          setState(() {
-            // This triggers a rebuild that ensures tab state is correctly reflected
-          });
-        }
-      });
     }
   }
 
@@ -222,26 +237,57 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
 
     return BlocBuilder<TabManagerBloc, TabManagerState>(
       builder: (context, state) {
-        // Cập nhật tab controller khi có sự thay đổi (chỉ cần cho UI tablet)
-        if (isTablet && _tabController.length != state.tabs.length + 1) {
-          // +1 to account for the "+" tab
+        // 1. Handle TabController LENGTH update (if needed)
+        if (isTablet && _tabController.length != state.tabs.length) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            _updateTabController(state.tabs.length);
+            if (mounted) {
+              // Re-read latest state to ensure consistency for the update.
+              final latestStateForLengthUpdate =
+                  context.read<TabManagerBloc>().state;
+              if (_tabController.length !=
+                  latestStateForLengthUpdate.tabs.length) {
+                // _updateTabController now sets the correct initialIndex from BLoC state
+                _updateTabController(latestStateForLengthUpdate.tabs.length);
+              }
+            }
           });
         }
-
-        // Đồng bộ các tab đang hoạt động (chỉ cần cho UI tablet)
-        if (isTablet &&
+        // 2. Handle TabController INDEX synchronization if length is already correct.
+        // This covers cases where the active tab changes without a change in tab count.
+        // If _updateTabController was just called, the new controller it created
+        // should already have the correct initialIndex, making this animation redundant for that specific frame.
+        // However, this handles clicks on tabs that don't change the tab count.
+        else if (isTablet &&
             state.activeTabId != null &&
-            _tabController.length > 0) {
-          final activeIndex =
+            state.tabs.isNotEmpty) {
+          final activeIndexFromBloc =
               state.tabs.indexWhere((tab) => tab.id == state.activeTabId);
-          if (activeIndex >= 0 &&
-              activeIndex < state.tabs.length &&
-              _tabController.index != activeIndex) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _tabController.animateTo(activeIndex);
-            });
+          if (activeIndexFromBloc >= 0 &&
+              activeIndexFromBloc < _tabController.length) {
+            if (_tabController.index != activeIndexFromBloc) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  // Re-read state to ensure we're acting on the most current information.
+                  final latestStateForSync =
+                      context.read<TabManagerBloc>().state;
+                  if (latestStateForSync.activeTabId != null &&
+                      latestStateForSync.tabs.isNotEmpty &&
+                      _tabController.length == latestStateForSync.tabs.length) {
+                    // Check length again
+
+                    final latestActiveIndex = latestStateForSync.tabs
+                        .indexWhere(
+                            (tab) => tab.id == latestStateForSync.activeTabId);
+                    if (latestActiveIndex >= 0 &&
+                        latestActiveIndex < _tabController.length) {
+                      if (_tabController.index != latestActiveIndex) {
+                        _tabController.animateTo(latestActiveIndex);
+                      }
+                    }
+                  }
+                }
+              });
+            }
           }
         }
 
@@ -316,89 +362,70 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                 },
                 child: Scaffold(
                   key: _scaffoldKey,
-                  // Modern AppBar only for tablet interface
+                  // Modern AppBar, always present on tablet/desktop for custom title bar
                   appBar: isTablet
                       ? AppBar(
                           elevation: 0,
                           backgroundColor: theme.scaffoldBackgroundColor,
-                          // Move TabBar to the title area instead of using bottom
-                          title: state.tabs.isEmpty
-                              ? Text(
-                                  context.tr.appTitle,
-                                  style: TextStyle(
-                                    color: isDarkMode
-                                        ? Colors.white
-                                        : theme.colorScheme.primary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                )
-                              : ScrollConfiguration(
-                                  // Apply custom scroll behavior that supports mouse wheel scrolling
-                                  behavior: TabBarMouseScrollBehavior(),
-                                  child: ScrollableTabBar(
-                                    controller: _tabController,
-                                    onTap: (index) {
-                                      // Only handle tab switching for valid tabs
-                                      if (index < state.tabs.length) {
-                                        // Dispatch event to change active tab
-                                        context.read<TabManagerBloc>().add(
-                                            SwitchToTab(state.tabs[index].id));
-
-                                        // Force UI update to make active tab display correctly on desktop
-                                        SchedulerBinding.instance
-                                            .addPostFrameCallback((_) {
-                                          if (mounted) {
-                                            setState(() {
-                                              // This triggers a rebuild that ensures tab state is correctly reflected
-                                            });
-                                          }
-                                        });
-                                      }
-                                    },
-                                    // Add tab close callback
-                                    onTabClose: (index) {
-                                      if (index < state.tabs.length) {
-                                        context.read<TabManagerBloc>().add(
-                                            CloseTab(state.tabs[index].id));
-                                      }
-                                    },
-                                    // Keep the add tab button functionality
-                                    onAddTabPressed: _handleAddNewTab,
-                                    tabs: [
-                                      // Generate modern-style tabs
-                                      ...state.tabs.map((tab) {
-                                        return Tab(
-                                          height: 38,
-                                          child: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 4),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(
-                                                  tab.isPinned
-                                                      ? EvaIcons.pin
-                                                      : tab.icon ??
-                                                          EvaIcons
-                                                              .folderOutline,
-                                                  size: 16,
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Flexible(
-                                                  child: Text(
-                                                    tab.name,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                              ],
+                          // Always show ScrollableTabBar in the title for Windows (isTablet)
+                          // It handles its own content (tabs or add button) and window controls.
+                          title: ScrollConfiguration(
+                            behavior: TabBarMouseScrollBehavior(),
+                            child: ScrollableTabBar(
+                              controller:
+                                  _tabController, // Ensure this controller has the correct length
+                              onTap: (index) {
+                                // Only handle tab switching for valid tabs
+                                if (index < state.tabs.length) {
+                                  // Dispatch event to change active tab
+                                  context
+                                      .read<TabManagerBloc>()
+                                      .add(SwitchToTab(state.tabs[index].id));
+                                }
+                              },
+                              // Add tab close callback
+                              onTabClose: (index) {
+                                if (index < state.tabs.length) {
+                                  context
+                                      .read<TabManagerBloc>()
+                                      .add(CloseTab(state.tabs[index].id));
+                                }
+                              },
+                              // Keep the add tab button functionality
+                              onAddTabPressed: _handleAddNewTab,
+                              tabs: [
+                                // Generate modern-style tabs from state.tabs
+                                ...state.tabs.map((tab) {
+                                  return Tab(
+                                    height: 38,
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 4),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            tab.isPinned
+                                                ? EvaIcons.pin
+                                                : tab.icon ??
+                                                    EvaIcons.folderOutline,
+                                            size: 16,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Flexible(
+                                            child: Text(
+                                              tab.name,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
                                           ),
-                                        );
-                                      }).toList(),
-                                    ],
-                                  ),
-                                ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ],
+                            ),
+                          ),
                           actions: [
                             // Modern menu button
                             Padding(

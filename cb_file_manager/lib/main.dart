@@ -81,7 +81,7 @@ void main() async {
       WindowOptions windowOptions = const WindowOptions(
         center: true,
         backgroundColor: Colors.transparent,
-        titleBarStyle: TitleBarStyle.normal,
+        titleBarStyle: TitleBarStyle.hidden,
         windowButtonVisibility: true,
         // Set minimum size but allow window to be resized
         minimumSize: Size(800, 600),

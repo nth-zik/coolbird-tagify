@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Added import for HapticFeedback
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:cb_file_manager/config/app_theme.dart'; // Import app theme
+import 'package:window_manager/window_manager.dart'; // Import window_manager
+import 'dart:io'; // Import dart:io for Platform check
 
 /// A custom TabBar wrapper that translates vertical mouse wheel scrolling
 /// to horizontal scrolling of the tab bar, with modern styling.
@@ -69,64 +71,122 @@ class _ScrollableTabBarState extends State<ScrollableTabBar> {
         ? theme.colorScheme.surface.withOpacity(0.8)
         : theme.colorScheme.surface.withOpacity(0.8);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: tabBackgroundColor,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 1,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Listener(
-        onPointerSignal: (PointerSignalEvent event) {
-          // Check if it's a mouse wheel event
-          if (event is PointerScrollEvent && _scrollController.hasClients) {
-            // Prevent the default behavior (vertical scrolling)
-            GestureBinding.instance.pointerSignalResolver
-                .register(event, (_) {});
-
-            // Calculate the new scroll position
-            final double newPosition =
-                _scrollController.offset + event.scrollDelta.dy;
-
-            // Smooth horizontal scrolling based on vertical mouse wheel delta
-            _scrollController.animateTo(
-              // Clamp value between min and max scroll extent
-              newPosition.clamp(
-                _scrollController.position.minScrollExtent,
-                _scrollController.position.maxScrollExtent,
+    Widget windowCaptionButtons = Platform.isWindows
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Add a small spacer to avoid buttons being too close to the tabs or window edge
+              const SizedBox(width: 8),
+              _WindowCaptionButton(
+                icon: EvaIcons.minus,
+                onPressed: () async => await windowManager.minimize(),
+                tooltip: 'Minimize',
+                theme: theme,
               ),
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOutCubic,
-            );
-          }
-        },
-        // Use a SingleChildScrollView to enable horizontal scrolling with our controller
-        child: SingleChildScrollView(
-          controller: _scrollController,
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          child: _ModernTabBar(
-            controller: widget.controller,
-            tabs: widget.tabs,
-            labelColor: isDarkMode ? Colors.white : theme.colorScheme.primary,
-            unselectedLabelColor:
-                isDarkMode ? Colors.white70 : theme.colorScheme.onSurface,
-            labelStyle: widget.labelStyle,
-            unselectedLabelStyle: widget.unselectedLabelStyle,
-            onTap: widget.onTap,
-            activeTabColor: activeTabColor,
-            hoverColor: hoverColor,
-            tabBackgroundColor: tabBackgroundColor,
-            onAddTabPressed: widget.onAddTabPressed, // Pass the callback
-            onTabClose: widget.onTabClose, // Pass the callback
-            theme: theme,
-          ),
+              _WindowCaptionButton(
+                // Icon and tooltip will be updated by its state
+                icon: EvaIcons.squareOutline,
+                onPressed: () async {
+                  bool isMaximized = await windowManager.isMaximized();
+                  if (isMaximized) {
+                    await windowManager.unmaximize();
+                  } else {
+                    await windowManager.maximize();
+                  }
+                },
+                tooltip: 'Maximize',
+                theme: theme,
+              ),
+              _WindowCaptionButton(
+                icon: EvaIcons.close,
+                onPressed: () async => await windowManager.close(),
+                tooltip: 'Close',
+                isCloseButton: true,
+                theme: theme,
+              ),
+              const SizedBox(width: 6), // Consistent with previous spacing
+            ],
+          )
+        : const SizedBox.shrink(); // Use SizedBox.shrink for non-Windows
+
+    return DragToMoveArea(
+      child: Container(
+        height: Platform.isWindows
+            ? 48
+            : null, // Provide a specific height for the custom title bar on Windows
+        decoration: BoxDecoration(
+          color: tabBackgroundColor,
+          // Removed borderRadius for a flush look on Windows title bar
+          // borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 1,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        // Adjust margin for Windows to be flush at the top
+        margin: Platform.isWindows
+            ? const EdgeInsets.only(
+                bottom: 1) // Minimal bottom margin to keep shadow visible maybe
+            : const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        // Padding to align content within the new title bar structure
+        padding: Platform.isWindows
+            ? const EdgeInsets.only(
+                left: 8.0) // Padding for the draggable area before tabs start
+            : EdgeInsets.zero,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment
+              .center, // Vertically align tabs and caption buttons
+          children: [
+            Expanded(
+              child: Listener(
+                onPointerSignal: (PointerSignalEvent event) {
+                  if (event is PointerScrollEvent &&
+                      _scrollController.hasClients) {
+                    GestureBinding.instance.pointerSignalResolver
+                        .register(event, (_) {});
+                    final double newPosition =
+                        _scrollController.offset + event.scrollDelta.dy;
+                    _scrollController.animateTo(
+                      newPosition.clamp(
+                        _scrollController.position.minScrollExtent,
+                        _scrollController.position.maxScrollExtent,
+                      ),
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
+                    );
+                  }
+                },
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: _ModernTabBar(
+                    controller: widget.controller,
+                    tabs: widget.tabs,
+                    labelColor:
+                        isDarkMode ? Colors.white : theme.colorScheme.primary,
+                    unselectedLabelColor: isDarkMode
+                        ? Colors.white70
+                        : theme.colorScheme.onSurface,
+                    labelStyle: widget.labelStyle,
+                    unselectedLabelStyle: widget.unselectedLabelStyle,
+                    onTap: widget.onTap,
+                    activeTabColor: activeTabColor,
+                    hoverColor: hoverColor,
+                    tabBackgroundColor:
+                        tabBackgroundColor, // This is for individual tab bg, might need renaming or re-evaluation
+                    onAddTabPressed: widget.onAddTabPressed,
+                    onTabClose: widget.onTabClose,
+                    theme: theme,
+                  ),
+                ),
+              ),
+            ),
+            windowCaptionButtons,
+          ],
         ),
       ),
     );
@@ -134,7 +194,7 @@ class _ScrollableTabBarState extends State<ScrollableTabBar> {
 }
 
 /// Modern tab bar implementation with softer, more elegant styling
-class _ModernTabBar extends StatelessWidget {
+class _ModernTabBar extends StatefulWidget {
   final TabController controller;
   final List<Widget> tabs;
   final Color? labelColor;
@@ -144,7 +204,8 @@ class _ModernTabBar extends StatelessWidget {
   final Function(int)? onTap;
   final Color activeTabColor;
   final Color hoverColor;
-  final Color tabBackgroundColor;
+  final Color
+      tabBackgroundColor; // This is the background of the tab itself, not the whole bar
   final VoidCallback? onAddTabPressed;
   final Function(int)? onTabClose;
   final ThemeData theme;
@@ -167,41 +228,83 @@ class _ModernTabBar extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<_ModernTabBar> createState() => _ModernTabBarState();
+}
+
+class _ModernTabBarState extends State<_ModernTabBar> {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onTabControllerChange);
+  }
+
+  @override
+  void didUpdateWidget(_ModernTabBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.controller != oldWidget.controller) {
+      oldWidget.controller.removeListener(_onTabControllerChange);
+      widget.controller.addListener(_onTabControllerChange);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onTabControllerChange);
+    super.dispose();
+  }
+
+  void _onTabControllerChange() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isDarkMode = theme.brightness == Brightness.dark;
+    final isDarkMode = widget.theme.brightness == Brightness.dark;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      // Padding to vertically center the tabs if the parent container has a fixed height (e.g., 48px)
+      // _ModernTab height is 38px. (48-38)/2 = 5px vertical padding.
+      // Horizontal padding is for spacing from the edges of the scroll area.
+      padding: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 4.0),
       child: Row(
+        mainAxisSize: MainAxisSize
+            .min, // CRITICAL: This ensures the Row takes only the width of its children
         children: [
-          ...List.generate(tabs.length, (index) {
-            final isActive = controller.index == index;
+          ...List.generate(widget.tabs.length, (index) {
+            final isActive = widget.controller.index == index;
             return _ModernTab(
               isActive: isActive,
-              onTap: () => onTap?.call(index),
-              activeTabColor: activeTabColor,
-              hoverColor: hoverColor,
-              tabBackgroundColor: tabBackgroundColor,
-              labelColor: isActive ? labelColor : unselectedLabelColor,
-              labelStyle: isActive ? labelStyle : unselectedLabelStyle,
-              child: tabs[index],
-              onClose: () => onTabClose?.call(index),
-              theme: theme,
+              onTap: () => widget.onTap?.call(index),
+              activeTabColor: widget.activeTabColor,
+              hoverColor: widget.hoverColor,
+              tabBackgroundColor: widget
+                  .tabBackgroundColor, // This is for the individual tab's bg when active
+              labelColor:
+                  isActive ? widget.labelColor : widget.unselectedLabelColor,
+              labelStyle:
+                  isActive ? widget.labelStyle : widget.unselectedLabelStyle,
+              child: widget.tabs[index],
+              onClose: () => widget.onTabClose?.call(index),
+              theme: widget.theme,
             );
           }),
 
           // "New Tab" button with modern styling
-          if (onAddTabPressed != null)
+          if (widget.onAddTabPressed != null)
             Material(
               color: Colors.transparent,
               child: Tooltip(
                 message: 'Add new tab',
                 child: Container(
-                  margin: const EdgeInsets.only(left: 4, right: 4),
+                  margin: const EdgeInsets.only(
+                      left: 4, right: 4), // Keep existing margin
                   child: InkWell(
                     borderRadius: BorderRadius.circular(24),
-                    onTap: onAddTabPressed,
-                    hoverColor: hoverColor,
+                    onTap: widget.onAddTabPressed,
+                    hoverColor: widget
+                        .hoverColor, // Use the general hover color passed down
                     splashColor: Colors.transparent,
                     highlightColor: Colors.transparent,
                     child: Container(
@@ -220,7 +323,7 @@ class _ModernTabBar extends StatelessWidget {
                           size: 18,
                           color: isDarkMode
                               ? Colors.white70
-                              : theme.colorScheme.primary,
+                              : widget.theme.colorScheme.primary,
                         ),
                       ),
                     ),
@@ -271,6 +374,13 @@ class _ModernTabState extends State<_ModernTab>
   late AnimationController _controller;
   late Animation<double> _animation;
 
+  // Variables for custom tap detection
+  PointerDownEvent? _pointerDownEvent;
+  bool _isTapCandidate = false;
+  static const double _kTapSlop =
+      kDoubleTapSlop / 2.0; // Max distance for a tap
+  static const int _kTapTimeoutMilliseconds = 200; // Max time for a tap
+
   @override
   void initState() {
     super.initState();
@@ -306,13 +416,17 @@ class _ModernTabState extends State<_ModernTab>
     super.dispose();
   }
 
+  void _resetTapCandidateState() {
+    _isTapCandidate = false;
+    _pointerDownEvent = null;
+  }
+
   @override
   Widget build(BuildContext context) {
     const tabWidth = 210.0;
     final isDarkMode = widget.theme.brightness == Brightness.dark;
     final primaryColor = widget.theme.colorScheme.primary;
 
-    // Modern hover color with opacity
     final hoverColor = isDarkMode
         ? Colors.white.withOpacity(0.04)
         : Colors.black.withOpacity(0.04);
@@ -321,19 +435,49 @@ class _ModernTabState extends State<_ModernTab>
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: Listener(
+        // Outer listener for middle mouse button close
         onPointerDown: (PointerDownEvent event) {
-          // Check if middle button is clicked (button 2)
-          if (event.buttons == 4 && widget.onClose != null) {
+          if (event.buttons == kMiddleMouseButton) {
+            // kMiddleMouseButton is 4
             widget.onClose?.call();
           }
         },
-        child: GestureDetector(
-          onTap: () {
-            widget.onTap();
-            HapticFeedback.lightImpact();
+        child: Listener(
+          // Inner listener for custom tap detection
+          onPointerDown: (PointerDownEvent event) {
+            if (event.buttons == kPrimaryMouseButton) {
+              // kPrimaryMouseButton is 1
+              _isTapCandidate = true;
+              _pointerDownEvent = event;
+            }
           },
-          behavior: HitTestBehavior.opaque,
+          onPointerMove: (PointerMoveEvent event) {
+            if (_isTapCandidate && _pointerDownEvent != null) {
+              final Offset delta = event.position - _pointerDownEvent!.position;
+              if (delta.distanceSquared > _kTapSlop * _kTapSlop) {
+                _resetTapCandidateState();
+              }
+            }
+          },
+          onPointerUp: (PointerUpEvent event) {
+            if (_isTapCandidate && _pointerDownEvent != null) {
+              // Calculate duration between pointer down and up directly from their timestamps
+              final Duration timeSinceDown =
+                  event.timeStamp - _pointerDownEvent!.timeStamp;
+              final Offset delta = event.position - _pointerDownEvent!.position;
+              if (timeSinceDown.inMilliseconds < _kTapTimeoutMilliseconds &&
+                  delta.distanceSquared <= _kTapSlop * _kTapSlop) {
+                widget.onTap();
+                HapticFeedback.lightImpact();
+              }
+            }
+            _resetTapCandidateState();
+          },
+          onPointerCancel: (PointerCancelEvent event) {
+            _resetTapCandidateState();
+          },
           child: AnimatedBuilder(
+            // GestureDetector removed, tap handled by Listener above
             animation: _animation,
             builder: (context, child) {
               return Container(
@@ -464,4 +608,125 @@ class _ModernTabState extends State<_ModernTab>
       ),
     );
   }
+}
+
+// New widget for window caption buttons
+class _WindowCaptionButton extends StatefulWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+  final String tooltip;
+  final bool isCloseButton;
+  final ThemeData theme;
+
+  const _WindowCaptionButton({
+    Key? key,
+    required this.icon,
+    required this.onPressed,
+    required this.tooltip,
+    this.isCloseButton = false,
+    required this.theme,
+  }) : super(key: key);
+
+  @override
+  State<_WindowCaptionButton> createState() => _WindowCaptionButtonState();
+}
+
+class _WindowCaptionButtonState extends State<_WindowCaptionButton> {
+  bool _isHovered = false;
+  IconData? _currentMaximizeIcon;
+  String? _currentMaximizeTooltip;
+  _MyWindowListener? _windowListener;
+
+  @override
+  void initState() {
+    super.initState();
+    // Listen to window state changes only for the maximize/restore button
+    if (widget.tooltip == 'Maximize' || widget.tooltip == 'Restore') {
+      _windowListener =
+          _MyWindowListener(onWindowStateChange: _updateMaximizeButtonVisuals);
+      windowManager.addListener(_windowListener!);
+      _updateMaximizeButtonVisuals(); // Initial check
+    }
+  }
+
+  @override
+  void dispose() {
+    if (_windowListener != null) {
+      windowManager.removeListener(_windowListener!);
+    }
+    super.dispose();
+  }
+
+  Future<void> _updateMaximizeButtonVisuals() async {
+    if (!mounted) return;
+    bool isMaximized = await windowManager.isMaximized();
+    setState(() {
+      _currentMaximizeIcon =
+          isMaximized ? EvaIcons.collapseOutline : EvaIcons.expandOutline;
+      _currentMaximizeTooltip = isMaximized ? 'Restore' : 'Maximize';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = widget.theme.brightness == Brightness.dark;
+    final iconColor = isDarkMode ? Colors.white70 : Colors.black54;
+    final hoverBackgroundColor = widget.isCloseButton
+        ? Colors.red.withOpacity(0.9)
+        : (isDarkMode
+            ? Colors.white.withOpacity(0.1)
+            : Colors.black.withOpacity(0.08));
+    final hoverIconColor = widget.isCloseButton
+        ? Colors.white
+        : (isDarkMode ? Colors.white : Colors.black);
+
+    return Tooltip(
+      message: _currentMaximizeTooltip ?? widget.tooltip,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: InkWell(
+          onTap: widget.onPressed,
+          borderRadius: BorderRadius.circular(4),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              color: _isHovered ? hoverBackgroundColor : Colors.transparent,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Icon(
+              _currentMaximizeIcon ?? widget.icon,
+              size: 18,
+              color: _isHovered ? hoverIconColor : iconColor,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Define a class that extends WindowListener
+class _MyWindowListener extends WindowListener {
+  final VoidCallback onWindowStateChange;
+
+  _MyWindowListener({required this.onWindowStateChange});
+
+  @override
+  void onWindowMaximize() {
+    onWindowStateChange();
+  }
+
+  @override
+  void onWindowUnmaximize() {
+    onWindowStateChange();
+  }
+
+  @override
+  void onWindowRestore() {
+    onWindowStateChange();
+  }
+  // You can override other methods if needed:
+  // onWindowFocus, onWindowBlur, onWindowMove, onWindowResize,
+  // onWindowMinimize, onWindowEnterFullScreen, onWindowLeaveFullScreen, onWindowClose
 }
