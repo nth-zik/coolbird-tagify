@@ -266,3 +266,11 @@ class AddTagSearchResults extends FolderListEvent {
   @override
   List<Object?> get props => [results];
 }
+
+// Event for lazy loading drive information
+class FolderListLoadDrives extends FolderListEvent {
+  const FolderListLoadDrives();
+
+  @override
+  List<Object?> get props => [];
+}

@@ -42,6 +42,7 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
     on<FolderListLoad>(_onFolderListLoad);
     on<FolderListRefresh>(_onFolderListRefresh);
     on<FolderListFilter>(_onFolderListFilter);
+    on<FolderListLoadDrives>(_onFolderListLoadDrives);
 
     // Register for local tag change events
     _tagChangeSubscription = TagManager.onTagChanged.listen(_onTagsChanged);
@@ -1535,5 +1536,18 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
         searchResults: [], // Ensure we clear results on error
       ));
     }
+  }
+
+  // Add handler for loading drives
+  void _onFolderListLoadDrives(
+    FolderListLoadDrives event,
+    Emitter<FolderListState> emit,
+  ) async {
+    // Drives will be loaded by the DriveView's FutureBuilder directly
+    // This event is primarily for BLoC state management when lazy loading
+    // No need to change the state here since we're already showing skeleton UI
+    // Just log the event for debugging
+    debugPrint(
+        'FolderListLoadDrives event received - drives will load asynchronously');
   }
 }

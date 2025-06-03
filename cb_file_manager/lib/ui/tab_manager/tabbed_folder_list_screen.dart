@@ -141,6 +141,9 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
   String? _currentFilter;
   String? _currentSearchTag;
 
+  // Add flag for lazy loading drives
+  bool _isLazyLoadingDrives = false;
+
   // Replace ValueNotifier with SelectionBloc
   late SelectionBloc _selectionBloc;
 
@@ -182,6 +185,15 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
     _searchController = TextEditingController();
     _tagController = TextEditingController();
     _pathController = TextEditingController(text: _currentPath);
+
+    // If this is a new tab with empty path (drive view), enable lazy loading
+    if (_currentPath.isEmpty && Platform.isWindows) {
+      _isLazyLoadingDrives = true;
+      // Schedule drive loading after UI is built
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _startLazyLoadingDrives();
+      });
+    }
 
     // Set current search tag if provided
     _currentSearchTag = widget.searchTag;
@@ -804,6 +816,26 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
     _isHandlingPathUpdate = false;
   }
 
+  // New method to handle lazy loading of drives
+  void _startLazyLoadingDrives() {
+    // Small delay to ensure UI is responsive first
+    Future.delayed(const Duration(milliseconds: 50), () {
+      if (mounted) {
+        // Load drives in the background
+        _folderListBloc.add(const FolderListLoadDrives());
+
+        // After a reasonable time for drives to load, update UI
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) {
+            setState(() {
+              _isLazyLoadingDrives = false;
+            });
+          }
+        });
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     // If path is empty, show drive picker view
@@ -820,6 +852,8 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
         // Add handlers for mouse navigation buttons
         onBackButtonPressed: () => _handleMouseBackButton(),
         onForwardButtonPressed: () => _handleMouseForwardButton(),
+        // Pass the lazy loading flag
+        isLazyLoading: _isLazyLoadingDrives,
       );
     }
 

@@ -9,6 +9,7 @@ import 'package:ffi/ffi.dart';
 import '../tab_manager.dart';
 import '../../screens/folder_list/folder_list_bloc.dart';
 import '../../screens/folder_list/folder_list_event.dart';
+import '../../screens/folder_list/folder_list_state.dart';
 
 /// Component for displaying the drive list view with storage information
 class DriveView extends StatelessWidget {
@@ -17,6 +18,7 @@ class DriveView extends StatelessWidget {
   final FolderListBloc folderListBloc;
   final VoidCallback? onBackButtonPressed; // Add this parameter
   final VoidCallback? onForwardButtonPressed; // Add this parameter
+  final bool isLazyLoading; // Add this parameter
 
   const DriveView({
     Key? key,
@@ -25,6 +27,7 @@ class DriveView extends StatelessWidget {
     required this.folderListBloc,
     this.onBackButtonPressed, // Add this parameter
     this.onForwardButtonPressed, // Add this parameter
+    this.isLazyLoading = false, // Default to false
   }) : super(key: key);
 
   @override
@@ -41,167 +44,241 @@ class DriveView extends StatelessWidget {
           onForwardButtonPressed!();
         }
       },
-      child: FutureBuilder<List<Directory>>(
-        future: getAllWindowsDrives(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final drives = snapshot.data ?? [];
-          if (drives.isEmpty) {
-            return const Center(child: Text('Không tìm thấy ổ đĩa nào!'));
-          }
+      child: isLazyLoading
+          ? _buildSkeletonDriveList(context)
+          : _buildActualDriveList(context),
+    );
+  }
 
-          return Container(
-            padding: const EdgeInsets.all(16.0),
-            child: ListView.builder(
-              itemCount: drives.length,
-              itemBuilder: (context, index) {
-                final drive = drives[index];
-                final isDarkMode =
-                    Theme.of(context).brightness == Brightness.dark;
-
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 16.0),
-                  color: isDarkMode ? Colors.grey[850] : Colors.white,
-                  elevation: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: FutureBuilder<Map<String, dynamic>>(
-                      future: _getDriveSpaceInfo(drive.path),
-                      builder: (context, spaceSnapshot) {
-                        // Default values
-                        double usageRatio = 0.0;
-                        String totalStr = '';
-                        String freeStr = '';
-                        String usedStr = '';
-
-                        if (spaceSnapshot.hasData) {
-                          final data = spaceSnapshot.data!;
-                          usageRatio = data['usageRatio'] as double;
-                          totalStr = data['totalStr'] as String;
-                          freeStr = data['freeStr'] as String;
-                          usedStr = data['usedStr'] as String;
-                        }
-
-                        // Define colors based on theme and usage
-                        Color progressColor = usageRatio > 0.9
-                            ? Colors.red
-                            : (usageRatio > 0.7
-                                ? Colors.orange
-                                : Theme.of(context).colorScheme.primary);
-
-                        Color progressBackgroundColor =
-                            isDarkMode ? Colors.grey[800]! : Colors.grey[200]!;
-
-                        Color textColor =
-                            isDarkMode ? Colors.grey[300]! : Colors.grey[700]!;
-
-                        Color headerTextColor =
-                            isDarkMode ? Colors.white : Colors.black87;
-
-                        Color usedColor = progressColor;
-
-                        Color subtitleColor =
-                            isDarkMode ? Colors.grey[400]! : Colors.grey[600]!;
-
-                        return InkWell(
-                          onTap: () {
-                            context
-                                .read<TabManagerBloc>()
-                                .add(UpdateTabPath(tabId, drive.path));
-                            context
-                                .read<TabManagerBloc>()
-                                .add(UpdateTabName(tabId, drive.path));
-                            onPathChanged(drive.path);
-                            folderListBloc.add(FolderListLoad(drive.path));
-                          },
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Drive title and icon
-                              Row(
-                                children: [
-                                  const Icon(Icons.storage, size: 36),
-                                  const SizedBox(width: 12),
-                                  FutureBuilder<String>(
-                                    future: getDriveLabel(drive.path),
-                                    builder: (context, labelSnapshot) {
-                                      String displayText = drive.path;
-                                      if (labelSnapshot.hasData &&
-                                          labelSnapshot.data!.isNotEmpty) {
-                                        displayText =
-                                            '${drive.path} (${labelSnapshot.data})';
-                                      }
-                                      return Expanded(
-                                        child: Text(
-                                          displayText,
-                                          style: TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            color: headerTextColor,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                  const Icon(Icons.arrow_forward_ios, size: 16),
-                                ],
-                              ),
-                              const SizedBox(height: 20),
-
-                              // Progress bar
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: LinearProgressIndicator(
-                                  value: usageRatio,
-                                  backgroundColor: progressBackgroundColor,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                      progressColor),
-                                  minHeight: 12,
-                                ),
-                              ),
-
-                              // Storage information
-                              Padding(
-                                padding: const EdgeInsets.only(top: 8.0),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Đã dùng: $usedStr',
-                                      style: TextStyle(
-                                          color: usedColor,
-                                          fontWeight: FontWeight.w500),
-                                    ),
-                                    Text(
-                                      'Còn trống: $freeStr',
-                                      style: TextStyle(color: textColor),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              Text(
-                                'Tổng: $totalStr',
-                                style: TextStyle(
-                                    color: subtitleColor, fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
+  // Skeleton UI for lazy loading
+  Widget _buildSkeletonDriveList(BuildContext context) {
+    // Create a list of skeleton drive items (usually 3-5 is enough for visual effect)
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      child: ListView.builder(
+        itemCount: 5, // Show 5 skeleton items
+        itemBuilder: (context, index) {
+          return Card(
+            margin: const EdgeInsets.only(bottom: 16.0),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Drive title and icon skeleton
+                  Row(
+                    children: [
+                      _buildSkeletonBox(36, 36), // Icon placeholder
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildSkeletonBox(
+                            double.infinity, 20), // Title placeholder
+                      ),
+                      const SizedBox(width: 8),
+                      _buildSkeletonBox(16, 16), // Arrow icon placeholder
+                    ],
                   ),
-                );
-              },
+                  const SizedBox(height: 20),
+
+                  // Progress bar skeleton
+                  _buildSkeletonBox(double.infinity, 10),
+                  const SizedBox(height: 12),
+
+                  // Storage info skeleton
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildSkeletonBox(80, 14), // Used text
+                      _buildSkeletonBox(80, 14), // Free text
+                      _buildSkeletonBox(80, 14), // Total text
+                    ],
+                  ),
+                ],
+              ),
             ),
           );
         },
       ),
+    );
+  }
+
+  // Helper to build skeleton placeholder boxes
+  Widget _buildSkeletonBox(double width, double height) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.grey.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(4),
+      ),
+    );
+  }
+
+  // The actual drive list with real data
+  Widget _buildActualDriveList(BuildContext context) {
+    return BlocBuilder<FolderListBloc, FolderListState>(
+      bloc: folderListBloc,
+      builder: (context, state) {
+        return FutureBuilder<List<Directory>>(
+          future: getAllWindowsDrives(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final drives = snapshot.data ?? [];
+            if (drives.isEmpty) {
+              return const Center(child: Text('Không tìm thấy ổ đĩa nào!'));
+            }
+
+            return Container(
+              padding: const EdgeInsets.all(16.0),
+              child: ListView.builder(
+                itemCount: drives.length,
+                itemBuilder: (context, index) {
+                  final drive = drives[index];
+                  final isDarkMode =
+                      Theme.of(context).brightness == Brightness.dark;
+
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 16.0),
+                    color: isDarkMode ? Colors.grey[850] : Colors.white,
+                    elevation: 2,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: FutureBuilder<Map<String, dynamic>>(
+                        future: _getDriveSpaceInfo(drive.path),
+                        builder: (context, spaceSnapshot) {
+                          // Default values
+                          double usageRatio = 0.0;
+                          String totalStr = '';
+                          String freeStr = '';
+                          String usedStr = '';
+
+                          if (spaceSnapshot.hasData) {
+                            final data = spaceSnapshot.data!;
+                            usageRatio = data['usageRatio'] as double;
+                            totalStr = data['totalStr'] as String;
+                            freeStr = data['freeStr'] as String;
+                            usedStr = data['usedStr'] as String;
+                          }
+
+                          // Define colors based on theme and usage
+                          Color progressColor = usageRatio > 0.9
+                              ? Colors.red
+                              : (usageRatio > 0.7
+                                  ? Colors.orange
+                                  : Theme.of(context).colorScheme.primary);
+
+                          Color progressBackgroundColor = isDarkMode
+                              ? Colors.grey[800]!
+                              : Colors.grey[200]!;
+
+                          Color textColor = isDarkMode
+                              ? Colors.grey[300]!
+                              : Colors.grey[700]!;
+
+                          Color headerTextColor =
+                              isDarkMode ? Colors.white : Colors.black87;
+
+                          Color usedColor = progressColor;
+
+                          Color subtitleColor = isDarkMode
+                              ? Colors.grey[400]!
+                              : Colors.grey[600]!;
+
+                          return InkWell(
+                            onTap: () {
+                              context
+                                  .read<TabManagerBloc>()
+                                  .add(UpdateTabPath(tabId, drive.path));
+                              context
+                                  .read<TabManagerBloc>()
+                                  .add(UpdateTabName(tabId, drive.path));
+                              onPathChanged(drive.path);
+                              folderListBloc.add(FolderListLoad(drive.path));
+                            },
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Drive title and icon
+                                Row(
+                                  children: [
+                                    const Icon(Icons.storage, size: 36),
+                                    const SizedBox(width: 12),
+                                    FutureBuilder<String>(
+                                      future: getDriveLabel(drive.path),
+                                      builder: (context, labelSnapshot) {
+                                        String displayText = drive.path;
+                                        if (labelSnapshot.hasData &&
+                                            labelSnapshot.data!.isNotEmpty) {
+                                          displayText =
+                                              '${drive.path} (${labelSnapshot.data})';
+                                        }
+                                        return Expanded(
+                                          child: Text(
+                                            displayText,
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: headerTextColor,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    const Icon(Icons.arrow_forward_ios,
+                                        size: 16),
+                                  ],
+                                ),
+                                const SizedBox(height: 20),
+
+                                // Progress bar
+                                LinearProgressIndicator(
+                                  value: usageRatio,
+                                  backgroundColor: progressBackgroundColor,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      progressColor),
+                                  minHeight: 10,
+                                ),
+                                const SizedBox(height: 12),
+
+                                // Storage details
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Used: $usedStr',
+                                      style: TextStyle(
+                                        color: usedColor,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Free: $freeStr',
+                                      style: TextStyle(color: subtitleColor),
+                                    ),
+                                    Text(
+                                      'Total: $totalStr',
+                                      style: TextStyle(color: subtitleColor),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -268,11 +345,13 @@ class DriveView extends StatelessWidget {
   }
 
   String _formatSize(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    if (bytes < 1024 * 1024 * 1024) {
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    const suffixes = ["B", "KB", "MB", "GB", "TB"];
+    var i = 0;
+    double size = bytes.toDouble();
+    while (size > 1024 && i < suffixes.length - 1) {
+      size /= 1024;
+      i++;
     }
-    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
+    return '${size.toStringAsFixed(2)} ${suffixes[i]}';
   }
 }
