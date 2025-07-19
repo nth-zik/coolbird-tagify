@@ -15,6 +15,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/helpers/user_preferences.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:cb_file_manager/helpers/video_thumbnail_helper.dart'; // Add import for VideoThumbnailHelper
+import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart'; // Add import for ThumbnailLoader
 import 'package:flutter/services.dart'; // Import for keyboard keys
 import 'tab_manager.dart';
 import 'package:cb_file_manager/ui/utils/fluent_background.dart'; // Import the Fluent Design background
@@ -180,6 +181,30 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
   final ValueNotifier<Offset?> _dragCurrentPositionNotifier =
       ValueNotifier<Offset?>(null);
 
+  // Flag to track if there are background thumbnail tasks
+  bool _hasPendingThumbnails = false;
+
+  // Add a method to check if there are any video/image files in the current state
+  bool _hasVideoOrImageFiles(FolderListState state) {
+    final files = state.files ?? [];
+    return files.any((file) {
+      final fileName = file.path.split('/').last.toLowerCase();
+      return fileName.endsWith('.jpg') ||
+          fileName.endsWith('.jpeg') ||
+          fileName.endsWith('.png') ||
+          fileName.endsWith('.gif') ||
+          fileName.endsWith('.bmp') ||
+          fileName.endsWith('.webp') ||
+          fileName.endsWith('.mp4') ||
+          fileName.endsWith('.avi') ||
+          fileName.endsWith('.mkv') ||
+          fileName.endsWith('.mov') ||
+          fileName.endsWith('.wmv') ||
+          fileName.endsWith('.flv') ||
+          fileName.endsWith('.webm');
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -198,6 +223,16 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
     }
 
     // Set current search tag if provided
+
+    // Listen for thumbnail loading changes
+    ThumbnailLoader.onPendingTasksChanged.listen((count) {
+      final hasBackgroundTasks = count > 0;
+      if (_hasPendingThumbnails != hasBackgroundTasks) {
+        setState(() {
+          _hasPendingThumbnails = hasBackgroundTasks;
+        });
+      }
+    });
     _currentSearchTag = widget.searchTag;
 
     // Set global search flag if specified
@@ -911,9 +946,24 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
               value: _folderListBloc,
               child: BlocListener<FolderListBloc, FolderListState>(
                 listener: (context, folderState) {
-                  // Update tab loading indicator based on FolderListBloc loading state
+                  // Check if there are any video/image files in the current directory
+                  final hasVideoOrImageFiles =
+                      _hasVideoOrImageFiles(folderState);
+
+                  // If no video/image files and we have pending thumbnails, reset the count
+                  if (!hasVideoOrImageFiles && _hasPendingThumbnails) {
+                    debugPrint(
+                        "TabbedFolderListScreen: No video/image files found, resetting pending thumbnail count");
+                    ThumbnailLoader.resetPendingCount();
+                    _hasPendingThumbnails = false;
+                  }
+
+                  // Only show tab loading when there are actual thumbnail tasks
+                  // Folder loading should not show in tab loading indicator
+                  final isLoading = _hasPendingThumbnails;
+
                   context.read<TabManagerBloc>().add(
-                        UpdateTabLoading(widget.tabId, folderState.isLoading),
+                        UpdateTabLoading(widget.tabId, isLoading),
                       );
                 },
                 child: BlocBuilder<FolderListBloc, FolderListState>(

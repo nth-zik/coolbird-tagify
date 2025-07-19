@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
@@ -30,21 +31,53 @@ class SMBBrowserScreen extends StatefulWidget {
   State<SMBBrowserScreen> createState() => _SMBBrowserScreenState();
 }
 
-class _SMBBrowserScreenState extends State<SMBBrowserScreen> {
+class _SMBBrowserScreenState extends State<SMBBrowserScreen>
+    with AutomaticKeepAliveClientMixin {
   final NetworkDiscoveryService _discoveryService = NetworkDiscoveryService();
   final NetworkServiceRegistry _registry =
       NetworkServiceRegistry(); // Added registry instance
+
+  // Sử dụng static cache để giữ state khi widget bị dispose
+  static final List<NetworkDevice> _cachedDiscoveredDevices = [];
+  static bool _cachedHasScanned = false;
+  static bool _cachedIsScanning = false;
+
   final List<NetworkDevice> _discoveredDevices = [];
   bool _isScanning = false;
+  bool _hasScanned = false; // Thêm flag để track đã scan chưa
   bool _showScanPermissionWarning = false;
+  StreamSubscription<NetworkDevice>? _deviceStreamSubscription;
 
   // Thêm bloc local để không phụ thuộc vào context
   late NetworkBrowsingBloc _networkBloc;
   bool _isLocalBloc = false;
 
+  // AutomaticKeepAliveClientMixin implementation
+  @override
+  bool get wantKeepAlive => true;
+
+  // Method để sync state với cache
+  void _syncStateWithCache() {
+    _isScanning = _cachedIsScanning;
+    _hasScanned = _cachedHasScanned;
+    _discoveredDevices.clear();
+    _discoveredDevices.addAll(_cachedDiscoveredDevices);
+  }
+
+  // Method để update cache từ current state
+  void _updateCacheFromState() {
+    _cachedIsScanning = _isScanning;
+    _cachedHasScanned = _hasScanned;
+    _cachedDiscoveredDevices.clear();
+    _cachedDiscoveredDevices.addAll(_discoveredDevices);
+  }
+
   @override
   void initState() {
     super.initState();
+
+    // Restore cached state
+    _syncStateWithCache();
 
     // Thử lấy bloc từ context hoặc tạo mới nếu không tìm thấy
     try {
@@ -59,6 +92,22 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen> {
     }
 
     _checkNetworkDiscovery();
+
+    // Thêm listener để refresh UI khi có connection mới
+    _networkBloc.stream.listen((state) {
+      if (mounted) {
+        setState(() {
+          // Force rebuild để cập nhật active connections
+        });
+      }
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Sync state với cache khi dependencies thay đổi
+    _syncStateWithCache();
   }
 
   @override
@@ -70,7 +119,15 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen> {
 
     // Ensure we stop any ongoing network scan
     _discoveryService.cancelScan();
+    _deviceStreamSubscription?.cancel();
     super.dispose();
+  }
+
+  // Method để clear cache khi cần thiết
+  static void clearCache() {
+    _cachedDiscoveredDevices.clear();
+    _cachedHasScanned = false;
+    _cachedIsScanning = false;
   }
 
   Future<void> _checkNetworkDiscovery() async {
@@ -81,8 +138,10 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen> {
       });
     }
 
-    // Bắt đầu quét mạng
-    _startNetworkScan();
+    // Chỉ scan nếu chưa scan bao giờ
+    if (!_hasScanned) {
+      _startNetworkScan();
+    }
   }
 
   Future<void> _startNetworkScan() async {
@@ -90,27 +149,63 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen> {
 
     setState(() {
       _isScanning = true;
+      // Chỉ clear devices nếu đây là lần scan đầu tiên hoặc manual refresh
+      if (!_hasScanned) {
+        _discoveredDevices.clear();
+        _cachedDiscoveredDevices.clear();
+      }
+      _updateCacheFromState();
+    });
+
+    // Subscribe to device stream for real-time updates
+    _deviceStreamSubscription?.cancel();
+    _deviceStreamSubscription = _discoveryService.deviceStream.listen((device) {
+      if (mounted) {
+        setState(() {
+          // Add device if not already in list
+          if (!_discoveredDevices.any((d) => d.ipAddress == device.ipAddress)) {
+            _discoveredDevices.add(device);
+            _cachedDiscoveredDevices.add(device);
+          }
+        });
+      }
     });
 
     try {
-      final devices = await _discoveryService.scanNetwork();
+      // Start the scan - devices will be added to the list via stream
+      await _discoveryService.scanNetwork();
+
       if (mounted) {
         setState(() {
-          _discoveredDevices.clear();
-          _discoveredDevices.addAll(devices);
           _isScanning = false;
+          _hasScanned = true; // Đánh dấu đã scan
+          _updateCacheFromState();
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _isScanning = false;
+          _updateCacheFromState();
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Network scan failed: $e')),
         );
       }
+    } finally {
+      _deviceStreamSubscription?.cancel();
     }
+  }
+
+  // Method để reset scan state và scan lại từ đầu
+  Future<void> _resetAndScan() async {
+    setState(() {
+      _hasScanned = false;
+      _discoveredDevices.clear();
+      _cachedDiscoveredDevices.clear();
+      _updateCacheFromState();
+    });
+    await _startNetworkScan();
   }
 
   Future<void> _openWindowsNetworkSettings() async {
@@ -183,62 +278,40 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen> {
           SnackBar(content: Text('Không thể mở cài đặt mạng: $e')),
         );
       }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Cài đặt mạng chỉ có thể mở trên Windows')),
-      );
     }
   }
 
-  void _connectToSMBServer(String ipAddress, String name) {
+  void _connectToSMBServer(String ipAddress, String deviceName) {
+    // Lấy TabManagerBloc từ context trước khi mở dialog
+    final tabBloc = BlocProvider.of<TabManagerBloc>(context, listen: false);
+
     showDialog<String?>(
       context: context,
-      builder: (dialogContext) => BlocProvider.value(
-        value: _networkBloc, // Use the bloc instance from SMBBrowserScreen
-        child: NetworkConnectionDialog(
-          initialService: 'SMB',
-          initialHost: ipAddress,
-        ),
-      ),
-    ).then((connectionPath) {
-      // connectionPath should now be the #network/... path from NetworkConnectionDialog
-      if (connectionPath != null && connectionPath.startsWith('#network/')) {
-        final tabBloc = BlocProvider.of<TabManagerBloc>(context, listen: false);
+      builder: (context) => NetworkConnectionDialog(
+        initialService: 'SMB',
+        initialHost: ipAddress,
+        onConnectionRequested: (connectionPath, tabName) {
+          if (connectionPath != null &&
+              connectionPath.startsWith('#network/')) {
+            debugPrint(
+                'Opening SMB connection in tab with path: $connectionPath');
 
-        // Use a more descriptive name for the tab, e.g., from the connection path or the discovered name
-        String tabName = name; // Default to discovered name
-        try {
-          // Try to extract a better name from the path, e.g. host/share
-          final pathParts = connectionPath.split('/');
-          if (pathParts.length >= 4) {
-            // Format is #network/smb/host/Sshare/...
-            final host = Uri.decodeComponent(pathParts[2]);
-            final share = pathParts[3].startsWith('S')
-                ? Uri.decodeComponent(pathParts[3].substring(1))
-                : pathParts[3];
-            tabName = '$host/$share';
+            // Create a new tab with the connection path
+            tabBloc.add(AddTab(
+              path: connectionPath, // This is the #network/... path
+              name: tabName,
+              switchToTab: true,
+            ));
+          } else {
+            // Handle cases where connectionPath is null (dialog cancelled) or not the expected format
+            if (connectionPath != null) {
+              debugPrint(
+                  'SMBBrowserScreen: Received unexpected connection path: $connectionPath');
+            }
           }
-        } catch (_) {
-          // Keep default name if parsing fails
-        }
-
-        debugPrint('Opening SMB connection in tab with path: $connectionPath');
-
-        // Create a new tab with the connection path
-        tabBloc.add(AddTab(
-          path: connectionPath, // This is the #network/... path
-          name: tabName,
-          switchToTab: true,
-        ));
-      } else {
-        // Handle cases where connectionPath is null (dialog cancelled) or not the expected format
-        if (connectionPath != null) {
-          debugPrint(
-              'SMBBrowserScreen: Received unexpected connection path: $connectionPath');
-        }
-      }
-    });
+        },
+      ),
+    );
   }
 
   void _openSavedConnection(String nativeServicePath) {
@@ -262,25 +335,17 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen> {
       }
 
       debugPrint('Opening saved SMB connection in tab with path: $tabPath');
-
-      // Create a new tab for the existing connection
       tabBloc.add(AddTab(
-        path: tabPath, // Use the transformed #network/... path
+        path: tabPath,
         name: tabName,
         switchToTab: true,
       ));
-    } else {
-      debugPrint(
-          'SMBBrowserScreen: Could not get tab path for native service path: $nativeServicePath');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('Could not open connection: $nativeServicePath')),
-      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Call super.build to ensure keepAlive is managed
     return SystemScreen(
       title: 'SMB Network',
       systemId: '#smb',
@@ -299,19 +364,34 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen> {
                   ),
                 )
               : const Icon(EvaIcons.refresh),
-          onPressed: _isScanning ? null : _startNetworkScan,
+          onPressed: _isScanning ? null : _resetAndScan,
           tooltip: 'Refresh',
         ),
         // Nút kết nối mới
         IconButton(
           icon: const Icon(EvaIcons.plus),
           onPressed: () {
+            // Lấy TabManagerBloc từ context trước khi mở dialog
+            final tabBloc =
+                BlocProvider.of<TabManagerBloc>(context, listen: false);
+
             // Hiển thị dialog kết nối mới
-            showDialog(
+            showDialog<String?>(
               context: context,
-              builder: (dialogContext) => BlocProvider.value(
-                value: _networkBloc,
-                child: const NetworkConnectionDialog(initialService: 'SMB'),
+              builder: (dialogContext) => NetworkConnectionDialog(
+                initialService: 'SMB',
+                onConnectionRequested: (connectionPath, tabName) {
+                  if (connectionPath != null &&
+                      connectionPath.startsWith('#network/')) {
+                    debugPrint(
+                        'Opening new SMB connection in tab with path: $connectionPath');
+                    tabBloc.add(AddTab(
+                      path: connectionPath,
+                      name: tabName,
+                      switchToTab: true,
+                    ));
+                  }
+                },
               ),
             );
           },
@@ -391,29 +471,17 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen> {
                 // Discovered Devices Section
                 Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Discovered SMB Servers',
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
-                            Text(
-                              'Servers discovered on your local network',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ],
-                        ),
+                      Text(
+                        'Discovered SMB Servers',
+                        style: Theme.of(context).textTheme.titleLarge,
                       ),
-                      if (_isScanning)
-                        const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
+                      Text(
+                        'Servers discovered on your local network',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                     ],
                   ),
                 ),
@@ -429,16 +497,59 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen> {
   }
 
   Widget _buildActiveConnections(Map<String, dynamic>? connections) {
+    // Lấy active connections trực tiếp từ registry thay vì từ state
+    final activeConnections = _registry.activeConnections;
+
+    // Debug: Log connections để kiểm tra
+    debugPrint(
+        'SMBBrowserScreen: Active connections from registry: ${activeConnections.keys}');
+
     // Filter only SMB connections
-    final smbConnections = connections?.entries
-            .where((entry) => entry.key.startsWith('smb://'))
-            .toList() ??
-        [];
+    final smbConnections = activeConnections.entries
+        .where((entry) => entry.key.startsWith('smb://'))
+        .toList();
+
+    debugPrint(
+        'SMBBrowserScreen: SMB connections found: ${smbConnections.length}');
 
     if (smbConnections.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16.0),
-        child: Text('No active SMB connections'),
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        child: Container(
+          padding: const EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey[300]!),
+          ),
+          child: Row(
+            children: [
+              Icon(EvaIcons.info, color: Colors.grey[600], size: 20),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'No active SMB connections',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                    Text(
+                      'Connect to an SMB server to see it here',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
@@ -452,20 +563,65 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen> {
 
         // Extract server name from path
         final serverName = path.replaceFirst('smb://', '').split('/').first;
+        final sharePath = path.replaceFirst('smb://$serverName/', '');
 
-        return ListTile(
-          leading: const Icon(EvaIcons.monitor, color: Colors.blue),
-          title: Text(serverName),
-          subtitle: Text(path),
-          trailing: IconButton(
-            icon: const Icon(EvaIcons.closeCircle, color: Colors.red),
-            onPressed: () {
-              // Disconnect from this server
-              _networkBloc.add(NetworkDisconnectRequested(path));
-            },
-            tooltip: 'Disconnect',
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+          child: ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(EvaIcons.monitor, color: Colors.blue, size: 20),
+            ),
+            title: Text(
+              serverName,
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  sharePath.isNotEmpty ? 'Share: $sharePath' : 'Root share',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+                Container(
+                  margin: const EdgeInsets.only(top: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'Connected',
+                    style: TextStyle(fontSize: 10, color: Colors.green),
+                  ),
+                ),
+              ],
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(EvaIcons.arrowForward, color: Colors.blue),
+                  onPressed: () => _openSavedConnection(path),
+                  tooltip: 'Open Connection',
+                ),
+                IconButton(
+                  icon: const Icon(EvaIcons.closeCircle, color: Colors.red),
+                  onPressed: () {
+                    // Disconnect from this server
+                    _networkBloc.add(NetworkDisconnectRequested(path));
+                  },
+                  tooltip: 'Disconnect',
+                ),
+              ],
+            ),
+            onTap: () => _openSavedConnection(path),
           ),
-          onTap: () => _openSavedConnection(path),
         );
       },
     );
@@ -474,48 +630,231 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen> {
   Widget _buildDiscoveredDevices() {
     if (_discoveredDevices.isEmpty) {
       if (_isScanning) {
-        return const Center(
-          child: Padding(
-            padding: EdgeInsets.all(24.0),
-            child: Text('Scanning for SMB servers...'),
+        return Expanded(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: CircularProgressIndicator(strokeWidth: 3),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Scanning for SMB servers...',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Devices will appear here as they are discovered',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'This may take a few moments',
+                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
           ),
         );
       }
 
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(EvaIcons.wifiOff, size: 48, color: Colors.grey),
-              const SizedBox(height: 16),
-              const Text('No SMB servers found'),
-              const SizedBox(height: 8),
-              OutlinedButton(
-                onPressed: _startNetworkScan,
-                child: const Text('Scan Again'),
+      // Nếu đã scan nhưng không tìm thấy gì
+      if (_hasScanned) {
+        return Expanded(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(EvaIcons.wifiOff, size: 48, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  const Text('No SMB servers found'),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Try scanning again or check your network settings',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    onPressed: _resetAndScan,
+                    icon: const Icon(EvaIcons.refresh, size: 16),
+                    label: const Text('Scan Again'),
+                  ),
+                ],
               ),
-            ],
+            ),
+          ),
+        );
+      }
+
+      // Nếu chưa scan bao giờ
+      return Expanded(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(EvaIcons.search, size: 48, color: Colors.grey),
+                const SizedBox(height: 16),
+                const Text('Ready to scan'),
+                const SizedBox(height: 8),
+                const Text(
+                  'Click the refresh button to start scanning for SMB servers',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: _resetAndScan,
+                  icon: const Icon(EvaIcons.refresh, size: 16),
+                  label: const Text('Start Scan'),
+                ),
+              ],
+            ),
           ),
         ),
       );
     }
 
     return Expanded(
-      child: ListView.builder(
-        itemCount: _discoveredDevices.length,
-        itemBuilder: (context, index) {
-          final device = _discoveredDevices[index];
+      child: Column(
+        children: [
+          // Header with device count and scan status
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: Row(
+              children: [
+                Text(
+                  'Found ${_discoveredDevices.length} device${_discoveredDevices.length == 1 ? '' : 's'}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey[600],
+                      ),
+                ),
+                const Spacer(),
+                if (_isScanning)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(strokeWidth: 1),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Scanning...',
+                        style: TextStyle(fontSize: 12, color: Colors.blue),
+                      ),
+                    ],
+                  )
+                else if (_hasScanned)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      'Scan Complete',
+                      style: TextStyle(fontSize: 10, color: Colors.green),
+                    ),
+                  ),
+              ],
+            ),
+          ),
 
-          return ListTile(
-            leading: const Icon(EvaIcons.monitor, color: Colors.blue),
-            title: Text(device.name),
-            subtitle: Text(device.ipAddress),
-            trailing: const Icon(EvaIcons.arrowForward),
-            onTap: () => _connectToSMBServer(device.ipAddress, device.name),
-          );
-        },
+          // Device list
+          Expanded(
+            child: ListView.builder(
+              itemCount: _discoveredDevices.length,
+              itemBuilder: (context, index) {
+                final device = _discoveredDevices[index];
+
+                return Card(
+                  margin: const EdgeInsets.symmetric(
+                      horizontal: 16.0, vertical: 4.0),
+                  child: ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(EvaIcons.monitor,
+                          color: Colors.blue, size: 20),
+                    ),
+                    title: Text(
+                      device.name,
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          device.ipAddress,
+                          style:
+                              TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        ),
+                        if (device.hasSmbPort || device.hasNetbiosPort)
+                          Row(
+                            children: [
+                              if (device.hasSmbPort)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Text(
+                                    'SMB',
+                                    style: TextStyle(
+                                        fontSize: 10, color: Colors.green),
+                                  ),
+                                ),
+                              if (device.hasSmbPort && device.hasNetbiosPort)
+                                const SizedBox(width: 4),
+                              if (device.hasNetbiosPort)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Text(
+                                    'NetBIOS',
+                                    style: TextStyle(
+                                        fontSize: 10, color: Colors.orange),
+                                  ),
+                                ),
+                            ],
+                          ),
+                      ],
+                    ),
+                    trailing:
+                        const Icon(EvaIcons.arrowForward, color: Colors.blue),
+                    onTap: () =>
+                        _connectToSMBServer(device.ipAddress, device.name),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

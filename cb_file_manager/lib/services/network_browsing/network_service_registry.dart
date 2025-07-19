@@ -34,6 +34,10 @@ class NetworkServiceRegistry {
   List<NetworkServiceBase> get availableServices =>
       List.unmodifiable(_services);
 
+  /// Get active connections
+  Map<String, NetworkServiceBase> get activeConnections =>
+      Map.unmodifiable(_activeConnections);
+
   /// Get a network service by name
   NetworkServiceBase? getServiceByName(String name) {
     try {

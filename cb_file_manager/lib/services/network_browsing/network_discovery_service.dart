@@ -7,7 +7,10 @@ class NetworkDiscoveryService {
   static const int _smbPort = 445; // Standard SMB port
   static const int _netbiosPort =
       139; // NetBIOS port used by older SMB implementations
-  static const int _timeoutMilliseconds = 200; // Socket connection timeout
+  static const int _timeoutMilliseconds =
+      100; // Reduced timeout for faster scanning
+  static const int _maxConcurrentScans = 50; // Increased concurrency
+  static const int _batchSize = 10; // Process hosts in smaller batches
 
   /// Singleton instance
   static final NetworkDiscoveryService _instance =
@@ -39,7 +42,11 @@ class NetworkDiscoveryService {
   List<NetworkDevice> get discoveredDevices =>
       List.unmodifiable(_discoveredDevices);
 
-  /// Scan the local network for SMB devices
+  /// Cache for recently discovered devices to avoid re-scanning
+  final Map<String, NetworkDevice> _deviceCache = {};
+  static const Duration _cacheExpiry = Duration(minutes: 5);
+
+  /// Scan the local network for SMB devices with real-time updates
   Future<List<NetworkDevice>> scanNetwork() async {
     if (_isScanning) {
       return _discoveredDevices; // Return current list if already scanning
@@ -47,7 +54,6 @@ class NetworkDiscoveryService {
 
     _isScanning = true;
     _discoveredDevices.clear();
-    final futures = <Future>[];
     final scannedSubnets = <String>{};
 
     try {
@@ -60,6 +66,9 @@ class NetworkDiscoveryService {
         _isScanning = false;
         return _discoveredDevices;
       }
+
+      // Clean up expired cache entries
+      _cleanupExpiredCache();
 
       for (final ip in localIps) {
         // Extract the subnet (e.g., from 192.168.1.5 to 192.168.1)
@@ -77,15 +86,12 @@ class NetworkDiscoveryService {
         }
         scannedSubnets.add(subnet);
 
-        // Scan the subnet for devices with SMB ports open
-        for (int i = 1; i <= 254; i++) {
-          final host = '$subnet.$i';
-          futures.add(_scanHost(host));
-        }
-      }
+        // Generate host list with optimized order (common ranges first)
+        final List<String> hosts = _generateOptimizedHostList(subnet);
 
-      // Wait for all scans to complete
-      await Future.wait(futures);
+        // Process hosts with improved concurrency
+        await _scanHostsOptimized(hosts);
+      }
     } catch (e) {
       debugPrint('NetworkDiscoveryService: Error during network scan: $e');
     } finally {
@@ -95,25 +101,129 @@ class NetworkDiscoveryService {
     return _discoveredDevices;
   }
 
+  /// Generate optimized host list with common ranges first
+  List<String> _generateOptimizedHostList(String subnet) {
+    final List<String> hosts = [];
+
+    // Add common ranges first (1-50, 100-150, 200-254)
+    // These ranges are more likely to contain devices
+    for (int i = 1; i <= 50; i++) {
+      hosts.add('$subnet.$i');
+    }
+    for (int i = 100; i <= 150; i++) {
+      hosts.add('$subnet.$i');
+    }
+    for (int i = 200; i <= 254; i++) {
+      hosts.add('$subnet.$i');
+    }
+
+    // Add remaining ranges
+    for (int i = 51; i <= 99; i++) {
+      hosts.add('$subnet.$i');
+    }
+    for (int i = 151; i <= 199; i++) {
+      hosts.add('$subnet.$i');
+    }
+
+    return hosts;
+  }
+
+  /// Clean up expired cache entries
+  void _cleanupExpiredCache() {
+    final now = DateTime.now();
+    _deviceCache.removeWhere((key, device) {
+      // Remove entries older than cache expiry time
+      return now.difference(device._discoveredAt) > _cacheExpiry;
+    });
+  }
+
+  /// Optimized host scanning with better concurrency management
+  Future<void> _scanHostsOptimized(List<String> hosts) async {
+    final semaphore = Completer<void>();
+    int activeScans = 0;
+    int completedScans = 0;
+    final totalHosts = hosts.length;
+
+    // Process hosts in batches for better performance
+    for (int i = 0; i < hosts.length; i += _batchSize) {
+      if (!_isScanning) break;
+
+      final batchEnd =
+          (i + _batchSize < hosts.length) ? i + _batchSize : hosts.length;
+      final batch = hosts.sublist(i, batchEnd);
+
+      // Wait if we've reached the maximum concurrent scans
+      while (activeScans >= _maxConcurrentScans && _isScanning) {
+        await Future.delayed(const Duration(milliseconds: 5));
+      }
+
+      if (!_isScanning) break;
+
+      // Start batch of scans
+      for (final host in batch) {
+        if (!_isScanning) break;
+
+        activeScans++;
+        _scanHostFast(host).then((_) {
+          activeScans--;
+          completedScans++;
+
+          // Log progress every 25 completed scans
+          if (completedScans % 25 == 0) {
+            debugPrint(
+                'NetworkDiscoveryService: Scanned $completedScans/$totalHosts hosts');
+          }
+        });
+      }
+
+      // Small delay between batches to prevent overwhelming
+      if (_isScanning) {
+        await Future.delayed(const Duration(milliseconds: 2));
+      }
+    }
+
+    // Wait for all remaining scans to complete
+    while (activeScans > 0 && _isScanning) {
+      await Future.delayed(const Duration(milliseconds: 10));
+    }
+  }
+
   /// Cancel an ongoing scan
   void cancelScan() {
     _isScanning = false;
   }
 
-  /// Scan a specific host for SMB ports
-  Future<void> _scanHost(String host) async {
-    if (!_isScanning) return; // Check if scan was canceled
+  /// Fast host scanning with minimal overhead
+  Future<void> _scanHostFast(String host) async {
+    if (!_isScanning) return;
 
-    // Try to connect to SMB port
-    bool isSmbPort = await _isPortOpen(host, _smbPort);
-    bool isNetbiosPort = false;
-
-    // If SMB port is closed, try NetBIOS port
-    if (!isSmbPort) {
-      isNetbiosPort = await _isPortOpen(host, _netbiosPort);
+    // Check cache first
+    if (_deviceCache.containsKey(host)) {
+      final cachedDevice = _deviceCache[host]!;
+      if (DateTime.now().difference(cachedDevice._discoveredAt) <
+          _cacheExpiry) {
+        // Use cached device if not expired
+        if (!_discoveredDevices.any((device) => device.ipAddress == host)) {
+          _discoveredDevices.add(cachedDevice);
+          _deviceStreamController.add(cachedDevice);
+        }
+        return;
+      } else {
+        // Remove expired cache entry
+        _deviceCache.remove(host);
+      }
     }
 
-    // If either port is open, add the device to the list
+    // Try SMB port first with very short timeout
+    bool isSmbPort = await _isPortOpenFast(host, _smbPort);
+
+    // Only try NetBIOS if SMB port is closed and scan is still active
+    bool isNetbiosPort = false;
+    if (!isSmbPort && _isScanning) {
+      isNetbiosPort = await _isPortOpenFast(host, _netbiosPort);
+    }
+
+    // If either port is open, add the device immediately
     if (isSmbPort || isNetbiosPort) {
       debugPrint('NetworkDiscoveryService: Found SMB device at $host');
 
@@ -122,28 +232,33 @@ class NetworkDiscoveryService {
         return;
       }
 
-      // Try to get the hostname
-      String? deviceName = await _getHostnameByIp(host);
+      // Get hostname asynchronously without blocking
+      _getHostnameAsync(host).then((deviceName) {
+        final device = NetworkDevice(
+          ipAddress: host,
+          name: deviceName ?? 'Unknown',
+          type: NetworkDeviceType.smb,
+          hasSmbPort: isSmbPort,
+          hasNetbiosPort: isNetbiosPort,
+        );
 
-      final device = NetworkDevice(
-        ipAddress: host,
-        name: deviceName ?? 'Unknown',
-        type: NetworkDeviceType.smb,
-        hasSmbPort: isSmbPort,
-        hasNetbiosPort: isNetbiosPort,
-      );
+        // Cache the device
+        _deviceCache[host] = device;
 
-      _discoveredDevices.add(device);
-      _deviceStreamController.add(device);
+        // Add to list and emit for real-time updates
+        if (!_discoveredDevices.any((d) => d.ipAddress == host)) {
+          _discoveredDevices.add(device);
+          _deviceStreamController.add(device);
+        }
+      });
     }
   }
 
-  /// Check if a port is open on a host
-  Future<bool> _isPortOpen(String host, int port) async {
+  /// Fast port checking with minimal timeout
+  Future<bool> _isPortOpenFast(String host, int port) async {
     try {
       final socket = await Socket.connect(host, port,
           timeout: const Duration(milliseconds: _timeoutMilliseconds));
-
       await socket.close();
       return true;
     } catch (e) {
@@ -151,12 +266,12 @@ class NetworkDiscoveryService {
     }
   }
 
-  /// Try to get hostname for an IP address
-  Future<String?> _getHostnameByIp(String ipAddress) async {
+  /// Asynchronous hostname resolution
+  Future<String?> _getHostnameAsync(String ipAddress) async {
     try {
-      // This is a simple implementation that may not work in all environments
-      // In a real implementation, you might use NetBIOS name service or NBNS queries
-      final result = await InternetAddress(ipAddress).reverse();
+      final result = await InternetAddress(ipAddress)
+          .reverse()
+          .timeout(const Duration(milliseconds: 200));
       return result.host;
     } catch (e) {
       return null;
@@ -184,6 +299,11 @@ class NetworkDiscoveryService {
     return ips;
   }
 
+  /// Clear the device cache
+  void clearCache() {
+    _deviceCache.clear();
+  }
+
   /// Dispose the service and close streams
   void dispose() {
     _deviceStreamController.close();
@@ -197,6 +317,7 @@ class NetworkDevice {
   final NetworkDeviceType type;
   final bool hasSmbPort;
   final bool hasNetbiosPort;
+  final DateTime _discoveredAt;
 
   NetworkDevice({
     required this.ipAddress,
@@ -204,7 +325,7 @@ class NetworkDevice {
     required this.type,
     this.hasSmbPort = false,
     this.hasNetbiosPort = false,
-  });
+  }) : _discoveredAt = DateTime.now();
 
   @override
   String toString() {

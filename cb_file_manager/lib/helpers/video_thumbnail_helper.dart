@@ -138,10 +138,14 @@ Future<String?> _generateThumbnailIsolate(_ThumbnailIsolateArgs args) async {
   String? finalThumbnailPath;
 
   try {
+    // Safely initialize BackgroundIsolateBinaryMessenger with proper error handling
     if (args.rootIsolateToken != null) {
       try {
-        BackgroundIsolateBinaryMessenger.ensureInitialized(
-            args.rootIsolateToken!);
+        // Add null check and proper error handling
+        if (args.rootIsolateToken != null) {
+          BackgroundIsolateBinaryMessenger.ensureInitialized(
+              args.rootIsolateToken!);
+        }
       } catch (e) {
         debugPrint(
             'VideoThumbnail (Isolate): Error initializing BackgroundIsolateBinaryMessenger: $e');
@@ -601,76 +605,44 @@ class VideoThumbnailHelper {
     }
   }
 
+  /// Process the thumbnail generation queue
   static Future<void> _processQueue() async {
-    if (_isProcessingQueue) return;
+    if (_isProcessingQueue || _pendingQueue.isEmpty) return;
+
     _isProcessingQueue = true;
 
     try {
-      // Process as many items as allowed by _maxConcurrentProcesses
-      while (_processingQueue.length < _maxConcurrentProcesses &&
-          _pendingQueue.isNotEmpty &&
-          !_shouldStopProcessing) {
-        // Check if processing should stop
-
-        // If we're switching directories, don't process more thumbnails
-        if (_shouldStopProcessing) {
-          _log(
-              'VideoThumbnail: Stopping queue processing due to directory change',
-              forceShow: true);
-          break;
-        }
-
-        // Sort by priority to ensure most visible thumbnails are processed first
-        _pendingQueue.sort((a, b) => b.priority.compareTo(a.priority));
-
+      while (_pendingQueue.isNotEmpty) {
         final request = _pendingQueue.removeAt(0);
-        _processingQueue.add(request);
 
-        // Use microtask to avoid blocking the UI thread
-        // This ensures UI stays responsive between thumbnail processing
-        scheduleMicrotask(() {
-          _processRequest(request).then((_) {
-            _processingQueue.remove(request);
-            // Schedule next batch via microtask to avoid blocking UI
-            scheduleMicrotask(() => _processQueue());
-          });
-        });
+        try {
+          final result = await _requestThumbnail(request.videoPath,
+              priority: request.priority,
+              forceRegenerate: request.forceRegenerate);
 
-        // Small delay to ensure the UI thread gets time to process
-        await Future<void>.delayed(const Duration(milliseconds: 5));
+          if (result != null) {
+            _fileCache[request.videoPath] = result;
+            request.completer.complete(result);
+          } else {
+            request.completer.complete(null);
+          }
+        } catch (e) {
+          debugPrint(
+              'VideoThumbnail: Error processing request for ${request.videoPath}: $e');
+          request.completer.complete(null);
+        }
       }
     } finally {
       _isProcessingQueue = false;
     }
   }
 
-  static Future<void> _processRequest(_ThumbnailRequest request) async {
-    try {
-      // Check if we should stop processing before starting
-      if (_shouldStopProcessing) {
-        _log(
-            'VideoThumbnail: Skipping request for ${request.videoPath} due to directory change',
-            forceShow: true);
-        if (!request.completer.isCompleted) {
-          request.completer.complete(null);
-        }
-        return;
-      }
-
-      final thumbnailPath = await _generateThumbnailInternal(request.videoPath,
-          forceRegenerate: request.forceRegenerate);
-
-      if (!request.completer.isCompleted) {
-        request.completer.complete(thumbnailPath);
-      }
-    } catch (e, stackTrace) {
-      _log(
-          'VideoThumbnail: Error processing request for ${request.videoPath}: $e\n$stackTrace',
-          forceShow: true);
-      if (!request.completer.isCompleted) {
-        request.completer.completeError(e, stackTrace);
-      }
-    }
+  /// Generate cache filename for video path
+  static String _generateCacheFilename(String videoPath) {
+    final fileName = path.basename(videoPath);
+    final nameWithoutExt = path.basenameWithoutExtension(fileName);
+    final hash = videoPath.hashCode.abs();
+    return '${nameWithoutExt}_${hash}.jpg';
   }
 
   static Future<String?> _requestThumbnail(String videoPath,
@@ -1615,6 +1587,25 @@ class VideoThumbnailHelper {
     } catch (e) {
       debugPrint('VideoThumbnail: Error getting cache directory path: $e');
       return null;
+    }
+  }
+
+  /// Safe method to initialize BackgroundIsolateBinaryMessenger without crashing
+  static void _safeInitializeBackgroundIsolate(RootIsolateToken? token) {
+    if (token == null) {
+      debugPrint(
+          'VideoThumbnail: RootIsolateToken is null, skipping BackgroundIsolateBinaryMessenger initialization');
+      return;
+    }
+
+    try {
+      BackgroundIsolateBinaryMessenger.ensureInitialized(token);
+      debugPrint(
+          'VideoThumbnail: BackgroundIsolateBinaryMessenger initialized successfully');
+    } catch (e) {
+      debugPrint(
+          'VideoThumbnail: Failed to initialize BackgroundIsolateBinaryMessenger: $e');
+      // Continue without platform channels - this is not critical for thumbnail generation
     }
   }
 }

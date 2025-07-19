@@ -165,6 +165,13 @@ class ThumbnailLoader extends StatefulWidget {
     }
   }
 
+  // Method to force reset pending count (for debugging and edge cases)
+  static void forceResetPendingCount() {
+    pendingThumbnailCount = 0;
+    _pendingTasksController.add(0);
+    debugPrint('ThumbnailLoader: Force reset pending count to 0');
+  }
+
   // Method to clean up static resources
   static void disposeStatic() {
     _pendingTasksController.close();

@@ -172,9 +172,8 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
           _hasPendingThumbnails = hasBackgroundTasks;
         });
 
-        // Update tab loading indicator based on both network loading and thumbnail loading
-        final isLoading =
-            _networkBrowsingBloc.state.isLoading || _hasPendingThumbnails;
+        // Only show tab loading when there are actual thumbnail tasks
+        final isLoading = _hasPendingThumbnails;
         context
             .read<TabManagerBloc>()
             .add(UpdateTabLoading(widget.tabId, isLoading));
@@ -390,10 +389,31 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
       ThumbnailLoader.resetPendingCount();
       _hasPendingThumbnails = false;
 
-      // Inform TabManager that this tab is loading
-      context.read<TabManagerBloc>().add(UpdateTabLoading(widget.tabId, true));
+      // Don't set tab loading here - only set it when thumbnail loading starts
+      // context.read<TabManagerBloc>().add(UpdateTabLoading(widget.tabId, true));
       _networkBrowsingBloc.add(NetworkDirectoryRequested(_currentPath));
     }
+  }
+
+  // Add a method to check if there are any video/image files in the current state
+  bool _hasVideoOrImageFiles(NetworkBrowsingState state) {
+    final files = state.files ?? [];
+    return files.any((file) {
+      final fileName = file.path.split('/').last.toLowerCase();
+      return fileName.endsWith('.jpg') ||
+          fileName.endsWith('.jpeg') ||
+          fileName.endsWith('.png') ||
+          fileName.endsWith('.gif') ||
+          fileName.endsWith('.bmp') ||
+          fileName.endsWith('.webp') ||
+          fileName.endsWith('.mp4') ||
+          fileName.endsWith('.avi') ||
+          fileName.endsWith('.mkv') ||
+          fileName.endsWith('.mov') ||
+          fileName.endsWith('.wmv') ||
+          fileName.endsWith('.flv') ||
+          fileName.endsWith('.webm');
+    });
   }
 
   void _showSearchTip(BuildContext context) {
@@ -484,15 +504,27 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
             },
             child: BlocConsumer<NetworkBrowsingBloc, NetworkBrowsingState>(
                 listener: (context, state) {
-              debugPrint(
-                  "NetworkBrowserScreen: BlocConsumer listener triggered");
+              debugPrint("NetworkBrowserScreen: BlocListener triggered");
               debugPrint("  - state.isLoading: ${state.isLoading}");
               debugPrint("  - state.hasDirectories: ${state.hasDirectories}");
               debugPrint("  - state.hasFiles: ${state.hasFiles}");
               debugPrint("  - state.hasContent: ${state.hasContent}");
 
-              // Update tab loading indicator based on both network loading and thumbnail loading
-              final isLoading = state.isLoading || _hasPendingThumbnails;
+              // Check if there are any video/image files in the current directory
+              final hasVideoOrImageFiles = _hasVideoOrImageFiles(state);
+
+              // If no video/image files and we have pending thumbnails, reset the count
+              if (!hasVideoOrImageFiles && _hasPendingThumbnails) {
+                debugPrint(
+                    "NetworkBrowserScreen: No video/image files found, resetting pending thumbnail count");
+                ThumbnailLoader.resetPendingCount();
+                _hasPendingThumbnails = false;
+              }
+
+              // Only show tab loading when there are actual thumbnail tasks
+              // Network loading should not show in tab loading indicator
+              final isLoading = _hasPendingThumbnails;
+
               context
                   .read<TabManagerBloc>()
                   .add(UpdateTabLoading(widget.tabId, isLoading));
