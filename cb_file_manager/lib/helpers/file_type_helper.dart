@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 
 enum FileType {
   image,
@@ -18,34 +19,22 @@ enum FileType {
 class FileTypeHelper {
   // Check if the file is an image based on extension
   static bool isImage(String extension) {
-    return ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.heic']
-        .contains(extension.toLowerCase());
+    return FileTypeUtils.isImageFile('file$extension');
   }
 
   // Check if the file is a video based on extension
   static bool isVideo(String extension) {
-    return [
-      '.mp4',
-      '.mov',
-      '.avi',
-      '.mkv',
-      '.wmv',
-      '.flv',
-      '.webm',
-      '.m4v',
-      '.3gp'
-    ].contains(extension.toLowerCase());
+    return FileTypeUtils.isVideoFile('file$extension');
   }
 
   // Check if the file is an audio based on extension
   static bool isAudio(String extension) {
-    return ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac', '.wma', '.opus']
-        .contains(extension.toLowerCase());
+    return FileTypeUtils.isAudioFile('file$extension');
   }
 
   // Check if the file is a document based on extension
   static bool isDocument(String extension) {
-    return ['.doc', '.docx', '.odt', '.rtf'].contains(extension.toLowerCase());
+    return FileTypeUtils.isDocumentFile('file$extension');
   }
 
   // Get file type based on extension

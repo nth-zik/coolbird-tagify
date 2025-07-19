@@ -15,6 +15,7 @@ import 'package:ffi/ffi.dart';
 
 // local files
 import 'io_extensions.dart';
+import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 
 String storageRootPath = "/storage/emulated/0/";
 
@@ -509,24 +510,8 @@ Future<List<File>> getAllVideos(String path, {bool recursive = true}) async {
   List<FileSystemEntity> allFiles =
       await getFoldersAndFiles(path, recursive: recursive);
 
-  // Filter for video files based on common video extensions
-  List<String> videoExtensions = [
-    '.mp4',
-    '.avi',
-    '.mov',
-    '.wmv',
-    '.flv',
-    '.mkv',
-    '.webm',
-    '.m4v',
-    '.mpg',
-    '.mpeg',
-    '.3gp'
-  ];
-
   List<File> videoFiles = allFiles.whereType<File>().where((file) {
-    String extension = pathlib.extension(file.path).toLowerCase();
-    return videoExtensions.contains(extension);
+    return FileTypeUtils.isVideoFile(file.path);
   }).toList();
 
   return videoFiles;
@@ -537,22 +522,8 @@ Future<List<File>> getAllImages(String path, {bool recursive = true}) async {
   List<FileSystemEntity> allFiles =
       await getFoldersAndFiles(path, recursive: recursive);
 
-  // Filter for image files based on common image extensions
-  List<String> imageExtensions = [
-    '.jpg',
-    '.jpeg',
-    '.png',
-    '.gif',
-    '.bmp',
-    '.webp',
-    '.tiff',
-    '.ico',
-    '.heic'
-  ];
-
   List<File> imageFiles = allFiles.whereType<File>().where((file) {
-    String extension = pathlib.extension(file.path).toLowerCase();
-    return imageExtensions.contains(extension);
+    return FileTypeUtils.isImageFile(file.path);
   }).toList();
 
   return imageFiles;

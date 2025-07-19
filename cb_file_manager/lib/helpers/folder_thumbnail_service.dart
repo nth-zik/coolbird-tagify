@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cb_file_manager/helpers/video_thumbnail_helper.dart';
+import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 
 class FolderThumbnailService {
   static const String _customThumbnailsKey = 'folder_custom_thumbnails';
@@ -209,9 +210,7 @@ class FolderThumbnailService {
       // First look for images
       for (final entity in entities) {
         if (entity is File) {
-          final ext = path.extension(entity.path).toLowerCase();
-          if (['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp']
-              .contains(ext)) {
+          if (FileTypeUtils.isImageFile(entity.path)) {
             debugPrint('Found image file: ${entity.path}');
             return entity.path;
           }
@@ -266,8 +265,8 @@ class FolderThumbnailService {
         if (entity is File) {
           final extension = path.extension(entity.path).toLowerCase();
 
-          // Check for supported media files
-          if (['.jpg', '.jpeg', '.png', '.webp', '.gif'].contains(extension) ||
+          // Check for supported media files using FileTypeUtils
+          if (FileTypeUtils.isImageFile(entity.path) ||
               VideoThumbnailHelper.isSupportedVideoFormat(entity.path)) {
             mediaFiles.add(entity);
           }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'windows_app_icon.dart';
 import 'dart:ui' as ui;
+import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 
 class AppInfo {
   final String packageName;
@@ -107,10 +108,10 @@ class ExternalAppHelper {
         ));
       }
 
-      // Add common applications based on file type
+      // Add common applications based on file type using FileTypeUtils
       List<Map<String, String>> appPaths = [];
 
-      if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].contains(extension)) {
+      if (FileTypeUtils.isImageFile('dummy.$extension')) {
         appPaths = [
           {'path': 'C:\\Windows\\system32\\mspaint.exe', 'name': 'Paint'},
           {
@@ -123,7 +124,7 @@ class ExternalAppHelper {
             'name': 'Photo Viewer'
           },
         ];
-      } else if (['mp4', 'avi', 'mkv', 'mov', 'wmv'].contains(extension)) {
+      } else if (FileTypeUtils.isVideoFile('dummy.$extension')) {
         appPaths = [
           {
             'path': 'C:\\Program Files\\Windows Media Player\\wmplayer.exe',
@@ -138,7 +139,8 @@ class ExternalAppHelper {
             'name': 'VLC Media Player'
           },
         ];
-      } else if (['pdf'].contains(extension)) {
+      } else if (FileTypeUtils.isDocumentFile('dummy.$extension') &&
+          extension == 'pdf') {
         appPaths = [
           {
             'path':
@@ -156,7 +158,7 @@ class ExternalAppHelper {
             'name': 'Microsoft Word'
           },
         ];
-      } else if (['doc', 'docx'].contains(extension)) {
+      } else if (FileTypeUtils.isDocumentFile('dummy.$extension')) {
         appPaths = [
           {
             'path':
@@ -169,7 +171,7 @@ class ExternalAppHelper {
             'name': 'Microsoft Word'
           },
         ];
-      } else if (['xls', 'xlsx'].contains(extension)) {
+      } else if (FileTypeUtils.isSpreadsheetFile('dummy.$extension')) {
         appPaths = [
           {
             'path':
@@ -182,7 +184,7 @@ class ExternalAppHelper {
             'name': 'Microsoft Excel'
           },
         ];
-      } else if (['ppt', 'pptx'].contains(extension)) {
+      } else if (FileTypeUtils.isPresentationFile('dummy.$extension')) {
         appPaths = [
           {
             'path':

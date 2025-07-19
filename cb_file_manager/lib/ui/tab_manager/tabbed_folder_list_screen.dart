@@ -16,6 +16,7 @@ import 'package:cb_file_manager/helpers/user_preferences.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:cb_file_manager/helpers/video_thumbnail_helper.dart'; // Add import for VideoThumbnailHelper
 import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart'; // Add import for ThumbnailLoader
+import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 import 'package:flutter/services.dart'; // Import for keyboard keys
 import 'tab_manager.dart';
 import 'package:cb_file_manager/ui/utils/fluent_background.dart'; // Import the Fluent Design background
@@ -187,22 +188,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
   // Add a method to check if there are any video/image files in the current state
   bool _hasVideoOrImageFiles(FolderListState state) {
     final files = state.files ?? [];
-    return files.any((file) {
-      final fileName = file.path.split('/').last.toLowerCase();
-      return fileName.endsWith('.jpg') ||
-          fileName.endsWith('.jpeg') ||
-          fileName.endsWith('.png') ||
-          fileName.endsWith('.gif') ||
-          fileName.endsWith('.bmp') ||
-          fileName.endsWith('.webp') ||
-          fileName.endsWith('.mp4') ||
-          fileName.endsWith('.avi') ||
-          fileName.endsWith('.mkv') ||
-          fileName.endsWith('.mov') ||
-          fileName.endsWith('.wmv') ||
-          fileName.endsWith('.flv') ||
-          fileName.endsWith('.webm');
-    });
+    return files.any((file) => FileTypeUtils.isMediaFile(file.path));
   }
 
   @override
@@ -1871,13 +1857,9 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
     // Stop any ongoing thumbnail processing when opening a file
     VideoThumbnailHelper.stopAllProcessing();
 
-    // Get file extension
-    String extension = file.path.split('.').last.toLowerCase();
-
-    // Use lists to check file types
-    final videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv', 'm4v'];
-    final imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
-    final isVideo = videoExtensions.contains(extension);
+    // Check file type using utility
+    final isVideo = FileTypeUtils.isVideoFile(file.path);
+    final isImage = FileTypeUtils.isImageFile(file.path);
 
     // Open file based on file type
     if (isVideo) {
@@ -1888,7 +1870,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
           builder: (context) => VideoPlayerFullScreen(file: file),
         ),
       );
-    } else if (imageExtensions.contains(extension)) {
+    } else if (isImage) {
       // Get all image files in the same directory for gallery navigation
       List<File> imageFiles = [];
       int initialIndex = 0;
@@ -1898,8 +1880,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
           _currentSearchTag == null &&
           _folderListBloc.state.files.isNotEmpty) {
         imageFiles = _folderListBloc.state.files.whereType<File>().where((f) {
-          final ext = f.path.split('.').last.toLowerCase();
-          return imageExtensions.contains(ext);
+          return FileTypeUtils.isImageFile(f.path);
         }).toList();
 
         // Find the index of the current file in the imageFiles list

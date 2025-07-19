@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:uuid/uuid.dart';
+import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 
 /// Service for managing cached files from network sources
 class NetworkFileCacheService {
@@ -22,44 +23,14 @@ class NetworkFileCacheService {
   // For tracking active stream buffers
   final Map<String, _StreamBufferInfo> _activeStreamBuffers = {};
 
-  // Video format extensions
-  final Set<String> _videoExtensions = {
-    '.mp4',
-    '.avi',
-    '.mkv',
-    '.mov',
-    '.wmv',
-    '.flv',
-    '.webm',
-    '.m4v',
-    '.3gp',
-    '.ts',
-    '.mpg',
-    '.mpeg'
-  };
-
-  // Image format extensions
-  final Set<String> _imageExtensions = {
-    '.jpg',
-    '.jpeg',
-    '.png',
-    '.gif',
-    '.bmp',
-    '.webp',
-    '.tiff',
-    '.tif'
-  };
-
   /// Check if a file is a video based on extension
   bool isVideoFile(String path) {
-    final ext = p.extension(path).toLowerCase();
-    return _videoExtensions.contains(ext);
+    return FileTypeUtils.isVideoFile(path);
   }
 
   /// Check if a file is an image based on extension
   bool isImageFile(String path) {
-    final ext = p.extension(path).toLowerCase();
-    return _imageExtensions.contains(ext);
+    return FileTypeUtils.isImageFile(path);
   }
 
   /// Get cache key for a file path

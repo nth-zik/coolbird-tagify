@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:cb_file_manager/ui/components/shared_file_context_menu.dart';
 import 'package:cb_file_manager/helpers/file_type_helper.dart';
 import 'package:cb_file_manager/helpers/file_icon_helper.dart';
+import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 import 'package:cb_file_manager/ui/widgets/lazy_video_thumbnail.dart';
 import 'package:path/path.dart' as path;
 import 'package:cb_file_manager/ui/components/optimized_interaction_handler.dart';
@@ -327,43 +328,7 @@ class _FileDetailsItemState extends State<FileDetailsItem> {
   }
 
   String _getFileTypeLabel(String extension) {
-    if (extension.isEmpty) return 'Tệp tin';
-
-    // Remove the dot
-    extension = extension.substring(1).toUpperCase();
-
-    switch (extension) {
-      case 'JPG':
-      case 'JPEG':
-        return 'Ảnh JPEG';
-      case 'PNG':
-        return 'Ảnh PNG';
-      case 'GIF':
-        return 'Ảnh GIF';
-      case 'MP4':
-        return 'Video MP4';
-      case 'AVI':
-        return 'Video AVI';
-      case 'MP3':
-        return 'Âm thanh MP3';
-      case 'WAV':
-        return 'Âm thanh WAV';
-      case 'PDF':
-        return 'Tài liệu PDF';
-      case 'DOCX':
-      case 'DOC':
-        return 'Tài liệu Word';
-      case 'XLSX':
-      case 'XLS':
-        return 'Bảng tính Excel';
-      case 'PPTX':
-      case 'PPT':
-        return 'Bài thuyết trình PowerPoint';
-      case 'TXT':
-        return 'Tệp văn bản';
-      default:
-        return 'Tệp $extension';
-    }
+    return FileTypeUtils.getFileTypeLabel(extension);
   }
 
   String _formatFileSize(int size) {

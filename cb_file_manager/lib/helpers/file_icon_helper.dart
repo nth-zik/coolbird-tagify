@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'external_app_helper.dart';
 import 'windows_app_icon.dart';
+import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 
 /// Helper class to get file icons, including app icons for file types
 class FileIconHelper {
@@ -133,37 +134,37 @@ class FileIconHelper {
     _iconCache.clear();
   }
 
-  // Helper methods to identify file types
+  // Helper methods to identify file types using FileTypeUtils
   static String _getFileExtension(File file) {
     return file.path.split('.').last.toLowerCase();
   }
 
   static bool _isImageFile(String extension) {
-    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(extension);
+    return FileTypeUtils.isImageFile('dummy.$extension');
   }
 
   static bool _isVideoFile(String extension) {
-    return ['mp4', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'webm']
-        .contains(extension);
+    return FileTypeUtils.isVideoFile('dummy.$extension');
   }
 
   static bool _isAudioFile(String extension) {
-    return ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].contains(extension);
+    return FileTypeUtils.isAudioFile('dummy.$extension');
   }
 
   static bool _isDocumentFile(String extension) {
-    return ['doc', 'docx', 'txt', 'rtf', 'odt'].contains(extension);
+    return FileTypeUtils.isDocumentFile('dummy.$extension');
   }
 
   static bool _isSpreadsheetFile(String extension) {
-    return ['xls', 'xlsx', 'csv', 'ods'].contains(extension);
+    return FileTypeUtils.isSpreadsheetFile('dummy.$extension');
   }
 
   static bool _isPresentationFile(String extension) {
-    return ['ppt', 'pptx', 'odp'].contains(extension);
+    return FileTypeUtils.isPresentationFile('dummy.$extension');
   }
 
   static bool _isPdfFile(String extension) {
-    return extension == 'pdf';
+    return FileTypeUtils.isDocumentFile('dummy.$extension') &&
+        extension == 'pdf';
   }
 }

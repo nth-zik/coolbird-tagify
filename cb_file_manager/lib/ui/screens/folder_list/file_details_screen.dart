@@ -11,6 +11,7 @@ import 'package:cb_file_manager/ui/components/video_player/custom_video_player.d
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:cb_file_manager/ui/widgets/tag_management_section.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
+import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 
 class FileDetailsScreen extends StatefulWidget {
   final File file;
@@ -61,13 +62,9 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
-    final String extension = widget.file.extension().toLowerCase();
-    final bool isImage =
-        ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(extension);
-    final bool isVideo =
-        ['mp4', 'mov', 'avi', 'mkv', 'flv', 'wmv'].contains(extension);
-    final bool isAudio =
-        ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].contains(extension);
+    final bool isImage = FileTypeUtils.isImageFile(widget.file.path);
+    final bool isVideo = FileTypeUtils.isVideoFile(widget.file.path);
+    final bool isAudio = FileTypeUtils.isAudioFile(widget.file.path);
 
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final Color bgColor = isDarkMode ? Colors.grey[900]! : Colors.grey[100]!;
@@ -273,24 +270,20 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
     IconData fileIcon;
     Color iconColor;
 
-    // Set icon based on file type
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(extension)) {
+    // Set icon based on file type using FileTypeUtils
+    if (FileTypeUtils.isImageFile(widget.file.path)) {
       fileIcon = EvaIcons.imageOutline;
       iconColor = Colors.blue;
-    } else if (['mp4', 'mov', 'avi', 'mkv', 'flv', 'wmv'].contains(extension)) {
+    } else if (FileTypeUtils.isVideoFile(widget.file.path)) {
       fileIcon = EvaIcons.videoOutline;
       iconColor = Colors.red;
-    } else if (['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac']
-        .contains(extension)) {
+    } else if (FileTypeUtils.isAudioFile(widget.file.path)) {
       fileIcon = EvaIcons.musicOutline;
       iconColor = Colors.purple;
-    } else if (['pdf'].contains(extension)) {
-      fileIcon = EvaIcons.fileOutline;
-      iconColor = Colors.orange;
-    } else if (['doc', 'docx', 'txt', 'rtf'].contains(extension)) {
+    } else if (FileTypeUtils.isDocumentFile(widget.file.path)) {
       fileIcon = EvaIcons.fileTextOutline;
       iconColor = Colors.blue;
-    } else if (['xls', 'xlsx', 'csv'].contains(extension)) {
+    } else if (FileTypeUtils.isSpreadsheetFile(widget.file.path)) {
       fileIcon = EvaIcons.gridOutline;
       iconColor = Colors.green;
     } else {

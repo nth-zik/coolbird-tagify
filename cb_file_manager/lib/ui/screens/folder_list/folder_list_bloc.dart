@@ -9,6 +9,7 @@ import 'package:cb_file_manager/helpers/video_thumbnail_helper.dart';
 import 'dart:async'; // Thêm import cho StreamSubscription
 import 'package:cb_file_manager/helpers/folder_sort_manager.dart';
 import 'package:cb_file_manager/models/database/database_manager.dart';
+import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 
 import 'folder_list_event.dart';
 import 'folder_list_state.dart';
@@ -699,46 +700,17 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
     try {
       final List<FileSystemEntity> filteredFiles = state.files.where((file) {
         if (file is File) {
-          String extension = file.path.split('.').last.toLowerCase();
           switch (event.fileType) {
             case 'image':
-              return [
-                'jpg',
-                'jpeg',
-                'png',
-                'gif',
-                'webp',
-                'bmp',
-              ].contains(extension);
+              return FileTypeUtils.isImageFile(file.path);
             case 'video':
-              return [
-                'mp4',
-                'mov',
-                'avi',
-                'mkv',
-                'flv',
-                'wmv',
-              ].contains(extension);
+              return FileTypeUtils.isVideoFile(file.path);
             case 'audio':
-              return [
-                'mp3',
-                'wav',
-                'ogg',
-                'm4a',
-                'aac',
-                'flac',
-              ].contains(extension);
+              return FileTypeUtils.isAudioFile(file.path);
             case 'document':
-              return [
-                'pdf',
-                'doc',
-                'docx',
-                'txt',
-                'xls',
-                'xlsx',
-                'ppt',
-                'pptx',
-              ].contains(extension);
+              return FileTypeUtils.isDocumentFile(file.path) ||
+                  FileTypeUtils.isSpreadsheetFile(file.path) ||
+                  FileTypeUtils.isPresentationFile(file.path);
             default:
               return true;
           }

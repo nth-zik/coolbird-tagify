@@ -47,6 +47,7 @@ import 'package:path/path.dart' as p;
 import 'package:cb_file_manager/helpers/network_thumbnail_helper.dart';
 import 'package:cb_file_manager/ui/screens/network_browsing/smb_video_player_screen.dart';
 import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart';
+import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 
 // Helper class to listen to multiple ValueNotifiers
 class ValueListenableBuilder3<A, B, C> extends StatelessWidget {
@@ -398,22 +399,7 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
   // Add a method to check if there are any video/image files in the current state
   bool _hasVideoOrImageFiles(NetworkBrowsingState state) {
     final files = state.files ?? [];
-    return files.any((file) {
-      final fileName = file.path.split('/').last.toLowerCase();
-      return fileName.endsWith('.jpg') ||
-          fileName.endsWith('.jpeg') ||
-          fileName.endsWith('.png') ||
-          fileName.endsWith('.gif') ||
-          fileName.endsWith('.bmp') ||
-          fileName.endsWith('.webp') ||
-          fileName.endsWith('.mp4') ||
-          fileName.endsWith('.avi') ||
-          fileName.endsWith('.mkv') ||
-          fileName.endsWith('.mov') ||
-          fileName.endsWith('.wmv') ||
-          fileName.endsWith('.flv') ||
-          fileName.endsWith('.webm');
-    });
+    return files.any((file) => FileTypeUtils.isMediaFile(file.path));
   }
 
   void _showSearchTip(BuildContext context) {
@@ -1118,13 +1104,9 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
   }
 
   void _openFile(File file) {
-    // Get file extension
-    String extension = file.path.split('.').last.toLowerCase();
-
-    // Use lists to check file types
-    final videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv', 'm4v'];
-    final imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
-    final isVideoFile = videoExtensions.contains(extension);
+    // Check file type using utility
+    final isVideoFile = FileTypeUtils.isVideoFile(file.path);
+    final isImageFile = FileTypeUtils.isImageFile(file.path);
 
     // Open file based on file type
     if (isVideoFile) {
@@ -1143,7 +1125,7 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
           ),
         );
       }
-    } else if (imageExtensions.contains(extension)) {
+    } else if (isImageFile) {
       // For network files, we need to handle streaming differently
       if (file.path.startsWith('#network/')) {
         _openNetworkImageFile(file);

@@ -23,6 +23,7 @@ import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart'; // Import Thu
 import 'package:flutter/services.dart'; // Import for keyboard key detection
 // Import for RepaintBoundary
 import 'package:cb_file_manager/ui/components/optimized_interaction_handler.dart';
+import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 
 // Add this class to disable ripple effects
 class NoSplashFactory extends InteractiveInkFeatureFactory {
@@ -278,11 +279,8 @@ class _FileItemState extends State<FileItem> {
   }
 
   void _showContextMenu(BuildContext context) {
-    final extension = widget.file.path.split('.').last.toLowerCase();
-    final bool isVideo =
-        ['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv'].contains(extension);
-    final bool isImage =
-        ['jpg', 'jpeg', 'png', 'gif', 'webp'].contains(extension);
+    final bool isVideo = FileTypeUtils.isVideoFile(widget.file.path);
+    final bool isImage = FileTypeUtils.isImageFile(widget.file.path);
 
     showFileContextMenu(
       context: context,
@@ -296,11 +294,8 @@ class _FileItemState extends State<FileItem> {
 
   @override
   Widget build(BuildContext context) {
-    final extension = widget.file.path.split('.').last.toLowerCase();
-    final bool isVideo =
-        ['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv'].contains(extension);
-    final bool isImage =
-        ['jpg', 'jpeg', 'png', 'gif', 'webp'].contains(extension);
+    final bool isVideo = FileTypeUtils.isVideoFile(widget.file.path);
+    final bool isImage = FileTypeUtils.isImageFile(widget.file.path);
 
     // Use ValueListenableBuilder for hover and selection state to avoid full rebuilds
     return ValueListenableBuilder<bool>(
@@ -491,11 +486,8 @@ class _FileItemContentState extends State<_FileItemContent> {
 
   @override
   Widget build(BuildContext context) {
-    final extension = widget.file.path.split('.').last.toLowerCase();
-    final bool isVideo =
-        ['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv'].contains(extension);
-    final bool isImage =
-        ['jpg', 'jpeg', 'png', 'gif', 'webp'].contains(extension);
+    final bool isVideo = FileTypeUtils.isVideoFile(widget.file.path);
+    final bool isImage = FileTypeUtils.isImageFile(widget.file.path);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),

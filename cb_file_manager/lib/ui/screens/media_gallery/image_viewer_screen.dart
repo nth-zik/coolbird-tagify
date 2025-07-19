@@ -8,6 +8,7 @@ import 'package:cb_file_manager/helpers/frame_timing_optimizer.dart';
 import 'package:cb_file_manager/ui/components/thumbnail_strip.dart';
 import 'package:cb_file_manager/helpers/trash_manager.dart';
 import 'package:share_plus/share_plus.dart'; // Add import for Share Plus
+import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 // Add import for XFile
 
 class ImageViewerScreen extends StatefulWidget {
@@ -102,19 +103,9 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
       final directory = Directory(pathlib.dirname(widget.file.path));
       if (await directory.exists()) {
         final entities = await directory.list().toList();
-        final imageExtensions = [
-          '.jpg',
-          '.jpeg',
-          '.png',
-          '.gif',
-          '.webp',
-          '.bmp',
-          '.heic'
-        ];
 
         final images = entities.whereType<File>().where((file) {
-          final ext = pathlib.extension(file.path).toLowerCase();
-          return imageExtensions.contains(ext);
+          return FileTypeUtils.isImageFile(file.path);
         }).toList();
 
         // Sort images by name

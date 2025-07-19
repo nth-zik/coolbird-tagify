@@ -5,6 +5,7 @@ import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:path/path.dart' as pathlib;
 import 'package:cb_file_manager/helpers/trash_manager.dart';
 import 'package:intl/intl.dart';
+import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 
 class TrashBinScreen extends StatefulWidget {
   const TrashBinScreen({Key? key}) : super(key: key);
@@ -624,11 +625,8 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
   }
 
   Widget _getFileIcon(String fileName) {
-    final extension = pathlib.extension(fileName).toLowerCase();
-
-    // Image file
-    if (['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
-        .contains(extension)) {
+    // Use FileTypeUtils to determine file type
+    if (FileTypeUtils.isImageFile(fileName)) {
       return const CircleAvatar(
         backgroundColor: Colors.blue,
         child: Icon(EvaIcons.imageOutline, color: Colors.white),
@@ -636,7 +634,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
     }
 
     // Video file
-    if (['.mp4', '.mov', '.avi', '.mkv', '.flv', '.wmv'].contains(extension)) {
+    if (FileTypeUtils.isVideoFile(fileName)) {
       return const CircleAvatar(
         backgroundColor: Colors.red,
         child: Icon(EvaIcons.videoOutline, color: Colors.white),
@@ -644,7 +642,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
     }
 
     // Audio file
-    if (['.mp3', '.wav', '.ogg', '.aac', '.flac'].contains(extension)) {
+    if (FileTypeUtils.isAudioFile(fileName)) {
       return const CircleAvatar(
         backgroundColor: Colors.purple,
         child: Icon(EvaIcons.musicOutline, color: Colors.white),
@@ -652,7 +650,9 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
     }
 
     // Document file
-    if (['.pdf', '.doc', '.docx', '.txt', '.rtf'].contains(extension)) {
+    if (FileTypeUtils.isDocumentFile(fileName) ||
+        FileTypeUtils.isSpreadsheetFile(fileName) ||
+        FileTypeUtils.isPresentationFile(fileName)) {
       return const CircleAvatar(
         backgroundColor: Colors.orange,
         child: Icon(EvaIcons.fileTextOutline, color: Colors.white),

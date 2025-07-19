@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cb_file_manager/helpers/io_extensions.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/file_details_screen.dart';
+import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 
 class SearchDialog extends StatefulWidget {
   final String currentPath;
@@ -408,23 +409,22 @@ class _SearchDialogState extends State<SearchDialog> {
   }
 
   Widget _buildFileItem(File file) {
-    final extension = file.path.split('.').last.toLowerCase();
     IconData icon;
     Color? iconColor;
 
-    // Determine file type and icon
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(extension)) {
+    // Determine file type and icon using FileTypeUtils
+    if (FileTypeUtils.isImageFile(file.path)) {
       icon = Icons.image;
       iconColor = Colors.blue;
-    } else if (['mp4', 'mov', 'avi', 'mkv', 'flv', 'wmv'].contains(extension)) {
+    } else if (FileTypeUtils.isVideoFile(file.path)) {
       icon = Icons.videocam;
       iconColor = Colors.red;
-    } else if (['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac']
-        .contains(extension)) {
+    } else if (FileTypeUtils.isAudioFile(file.path)) {
       icon = Icons.audiotrack;
       iconColor = Colors.purple;
-    } else if (['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx', 'ppt', 'pptx']
-        .contains(extension)) {
+    } else if (FileTypeUtils.isDocumentFile(file.path) ||
+        FileTypeUtils.isSpreadsheetFile(file.path) ||
+        FileTypeUtils.isPresentationFile(file.path)) {
       icon = Icons.description;
       iconColor = Colors.indigo;
     } else {
