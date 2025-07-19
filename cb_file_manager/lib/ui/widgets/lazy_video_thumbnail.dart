@@ -5,6 +5,7 @@ import 'package:flutter/scheduler.dart';
 import '../../helpers/video_thumbnail_helper.dart';
 import '../../helpers/frame_timing_optimizer.dart';
 import 'package:visibility_detector/visibility_detector.dart';
+import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 
 /// A widget that efficiently displays a video thumbnail with lazy loading
 /// and background processing to avoid UI thread blocking during scrolling
@@ -473,7 +474,20 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
             return AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
               child: frame != null
-                  ? child
+                  ? Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        child,
+                        // Add video play icon overlay for local videos
+                        const Center(
+                          child: Icon(
+                            EvaIcons.playCircleOutline,
+                            color: Colors.white,
+                            size: 32,
+                          ),
+                        ),
+                      ],
+                    )
                   : SizedBox(
                       width: widget.width,
                       height: widget.height,

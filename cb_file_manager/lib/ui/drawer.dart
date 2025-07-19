@@ -52,14 +52,18 @@ class _CBDrawerState extends State<CBDrawer> {
 
     try {
       final locations = await getAllStorageLocations();
-      setState(() {
-        _storageLocations = locations;
-        _isLoadingStorages = false;
-      });
+      if (mounted) {
+        setState(() {
+          _storageLocations = locations;
+          _isLoadingStorages = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _isLoadingStorages = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingStorages = false;
+        });
+      }
       if (mounted) {
         ScaffoldMessenger.of(widget.parentContext).showSnackBar(
           SnackBar(
@@ -599,6 +603,8 @@ class _CBDrawerState extends State<CBDrawer> {
       }
     } else {
       // Không trong hệ thống tab, chuyển đến màn hình tab trước
+      // Store the context to avoid using widget.context after dispose
+      final currentContext = context;
       Navigator.of(context)
           .pushAndRemoveUntil(
               MaterialPageRoute(builder: (context) => const TabMainScreen()),
@@ -606,7 +612,10 @@ class _CBDrawerState extends State<CBDrawer> {
           .then((_) {
         // Thêm độ trễ nhỏ để đảm bảo TabManagerBloc được khởi tạo đúng cách
         Future.delayed(const Duration(milliseconds: 100), () {
-          TabMainScreen.openPath(context, path);
+          // Check if the widget is still mounted before using the context
+          if (mounted) {
+            TabMainScreen.openPath(currentContext, path);
+          }
         });
       });
     }

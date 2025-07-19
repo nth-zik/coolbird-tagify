@@ -17,6 +17,15 @@ class NetworkBrowsingBloc
   String? _lastRequestedPath;
   bool _isProcessingDirectoryRequest = false;
 
+  // Toggle this to true if you need verbose BLoC logs for debugging.
+  static const bool _enableBlocVerboseLogs = false;
+
+  void _log(String message) {
+    if (_enableBlocVerboseLogs) {
+      debugPrint(message);
+    }
+  }
+
   NetworkBrowsingBloc() : super(const NetworkBrowsingState.initial()) {
     on<NetworkServicesListRequested>(_onServicesListRequested);
     on<NetworkConnectionRequested>(_onConnectionRequested);
@@ -99,7 +108,7 @@ class NetworkBrowsingBloc
       Emitter<NetworkBrowsingState> emit) async {
     // Check for duplicate requests for the same path
     if (event.path == _lastRequestedPath && _isProcessingDirectoryRequest) {
-      debugPrint(
+      _log(
           "NetworkBrowsingBloc: Skipping duplicate directory request for ${event.path}");
       return;
     }
@@ -112,23 +121,22 @@ class NetworkBrowsingBloc
     final NetworkServiceBase? previousService = state.currentService;
 
     // Additional debugging for the current state
-    debugPrint("NetworkBrowsingBloc: Current state BEFORE request:");
-    debugPrint("  - currentPath: ${state.currentPath}");
-    debugPrint("  - directories: ${state.directories?.length ?? 0}");
-    debugPrint("  - files: ${state.files?.length ?? 0}");
+    _log("NetworkBrowsingBloc: Current state BEFORE request:");
+    _log("  - currentPath: ${state.currentPath}");
+    _log("  - directories: ${state.directories?.length ?? 0}");
+    _log("  - files: ${state.files?.length ?? 0}");
 
     // First, emit a loading state to show progress
     emit(state.copyWith(isLoading: true, currentPath: event.path));
 
     // Log once at the start of the request
-    debugPrint("NetworkBrowsingBloc: Requesting directory: ${event.path}");
+    _log("NetworkBrowsingBloc: Requesting directory: ${event.path}");
 
     try {
       final service = _registry.getServiceForPath(event.path);
 
       if (service == null) {
-        debugPrint(
-            "NetworkBrowsingBloc: No service found for path: ${event.path}");
+        _log("NetworkBrowsingBloc: No service found for path: ${event.path}");
         emit(state.copyWith(
           isLoading: false,
           errorMessage: 'No connected service found for path: ${event.path}',
@@ -141,17 +149,16 @@ class NetworkBrowsingBloc
 
       try {
         // Log the service type we're using
-        debugPrint(
-            "NetworkBrowsingBloc: Using service type: ${service.serviceName}");
+        _log("NetworkBrowsingBloc: Using service type: ${service.serviceName}");
 
         // Get directory contents
         final contents = await service.listDirectory(event.path);
 
         // Log raw contents for debugging
-        debugPrint(
+        _log(
             "NetworkBrowsingBloc: Raw contents received (${contents.length} items):");
         for (var item in contents) {
-          debugPrint("  - ${item.runtimeType}: ${item.path}");
+          _log("  - ${item.runtimeType}: ${item.path}");
         }
 
         // Filter out empty or null entries that might be causing issues
@@ -160,7 +167,7 @@ class NetworkBrowsingBloc
                 item != null && item.path != null && item.path.isNotEmpty)
             .toList();
 
-        debugPrint(
+        _log(
             "NetworkBrowsingBloc: Valid contents after filtering: ${validContents.length} items");
 
         // Force cast to correct types - this is important for the UI to recognize the types
@@ -169,51 +176,45 @@ class NetworkBrowsingBloc
 
         // Instead of blindly casting, ensure we create proper Directory and File objects
         for (var item in validContents) {
-          debugPrint("Processing item: ${item.runtimeType} - ${item.path}");
+          _log("Processing item: ${item.runtimeType} - ${item.path}");
 
           if (item is Directory) {
             directories.add(item);
-            debugPrint("Added existing Directory: ${item.path}");
+            _log("Added existing Directory: ${item.path}");
           } else if (item is File) {
             files.add(item);
-            debugPrint("Added existing File: ${item.path}");
+            _log("Added existing File: ${item.path}");
           } else {
             // For other types, create a proper Directory or File based on some criteria
             // For example, path ending with / might be directory
             if (item.path.endsWith('/') || item.path.endsWith('\\')) {
               final dir = Directory(item.path);
               directories.add(dir);
-              debugPrint("Created new Directory from path: ${item.path}");
+              _log("Created new Directory from path: ${item.path}");
             } else {
               final file = File(item.path);
               files.add(file);
-              debugPrint("Created new File from path: ${item.path}");
+              _log("Created new File from path: ${item.path}");
             }
           }
         }
 
         // Log success with count and content details
-        debugPrint(
+        _log(
             "NetworkBrowsingBloc: Listed ${directories.length} directories and ${files.length} files");
 
         // Log all directories and files for debugging
-        debugPrint("NetworkBrowsingBloc: Directories:");
+        _log("NetworkBrowsingBloc: Directories:");
         for (var dir in directories) {
-          debugPrint("  - Directory: ${dir.path}");
+          _log("  - Directory: ${dir.path}");
         }
-
-        debugPrint("NetworkBrowsingBloc: Files:");
-        for (var file in files) {
-          debugPrint("  - File: ${file.path}");
-        }
-
         // Verify that directories and files are non-null before emitting
-        debugPrint(
+        _log(
             "NetworkBrowsingBloc: About to emit state update with directories: ${directories.length}, files: ${files.length}");
 
         // If we have no content but no error, set a warning message
         if (directories.isEmpty && files.isEmpty) {
-          debugPrint(
+          _log(
               "NetworkBrowsingBloc: Directory is empty or path might be invalid");
         }
 
@@ -230,16 +231,15 @@ class NetworkBrowsingBloc
         emit(newState);
 
         // Log the state after emission to confirm
-        debugPrint("NetworkBrowsingBloc: State emitted successfully.");
-        debugPrint(
+        _log("NetworkBrowsingBloc: State emitted successfully.");
+        _log(
             "NetworkBrowsingBloc: New state has directories: ${newState.directories?.length ?? 0}, files: ${newState.files?.length ?? 0}");
 
         // Extra verification to make sure state was properly updated
-        debugPrint(
+        _log(
             "NetworkBrowsingBloc: After emit - current state: directories=${state.directories?.length ?? 0}, files=${state.files?.length ?? 0}");
       } catch (e) {
-        debugPrint(
-            "NetworkBrowsingBloc: Error listing directory ${event.path}: $e");
+        _log("NetworkBrowsingBloc: Error listing directory ${event.path}: $e");
         emit(state.copyWith(
           isLoading: false,
           errorMessage: 'Error listing directory: $e',
@@ -248,7 +248,7 @@ class NetworkBrowsingBloc
         ));
       }
     } catch (e) {
-      debugPrint("NetworkBrowsingBloc: Error: $e");
+      _log("NetworkBrowsingBloc: Error: $e");
       emit(state.copyWith(
         isLoading: false,
         errorMessage: 'Error: $e',
@@ -264,8 +264,8 @@ class NetworkBrowsingBloc
       Emitter<NetworkBrowsingState> emit) async {
     final servicePath = event.path;
 
-    debugPrint("NetworkBrowsingBloc: Disconnecting from path: $servicePath");
-    debugPrint(
+    _log("NetworkBrowsingBloc: Disconnecting from path: $servicePath");
+    _log(
         "NetworkBrowsingBloc: Current connections: ${state.connections.keys.join(', ')}");
 
     if (servicePath == null || !servicePath.startsWith('#network/')) {
@@ -288,9 +288,9 @@ class NetworkBrowsingBloc
       final NetworkServiceBase? service =
           updatedConnections.remove(servicePath);
 
-      debugPrint(
+      _log(
           "NetworkBrowsingBloc: Removed connection: $servicePath, service: ${service?.serviceName}");
-      debugPrint(
+      _log(
           "NetworkBrowsingBloc: Updated connections: ${updatedConnections.keys.join(', ')}");
 
       // Nếu ngắt kết nối dịch vụ hiện tại, reset về danh sách dịch vụ
@@ -309,7 +309,7 @@ class NetworkBrowsingBloc
         ));
       }
     } catch (e) {
-      debugPrint("NetworkBrowsingBloc: Error disconnecting: $e");
+      _log("NetworkBrowsingBloc: Error disconnecting: $e");
       emit(state.copyWith(
         errorMessage: 'Error disconnecting: $e',
       ));
@@ -324,10 +324,10 @@ class NetworkBrowsingBloc
   // Handler for the NetworkDirectoryLoaded event
   void _onDirectoryLoaded(
       NetworkDirectoryLoaded event, Emitter<NetworkBrowsingState> emit) {
-    debugPrint("NetworkBrowsingBloc: Processing NetworkDirectoryLoaded event");
-    debugPrint("NetworkBrowsingBloc: Path: ${event.path}");
-    debugPrint("NetworkBrowsingBloc: Directories: ${event.directories.length}");
-    debugPrint("NetworkBrowsingBloc: Files: ${event.files.length}");
+    _log("NetworkBrowsingBloc: Processing NetworkDirectoryLoaded event");
+    _log("NetworkBrowsingBloc: Path: ${event.path}");
+    _log("NetworkBrowsingBloc: Directories: ${event.directories.length}");
+    _log("NetworkBrowsingBloc: Files: ${event.files.length}");
 
     // We simply update the state with the provided directories and files
     emit(state.copyWith(

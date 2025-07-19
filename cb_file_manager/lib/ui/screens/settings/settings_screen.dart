@@ -4,6 +4,8 @@ import 'package:cb_file_manager/ui/utils/base_screen.dart';
 import 'package:cb_file_manager/config/language_controller.dart';
 import 'package:cb_file_manager/config/translation_helper.dart';
 import 'package:cb_file_manager/helpers/video_thumbnail_helper.dart'; // Add import for VideoThumbnailHelper
+import 'package:cb_file_manager/helpers/network_thumbnail_helper.dart'; // Add import for NetworkThumbnailHelper
+import 'package:cb_file_manager/helpers/win32_smb_helper.dart'; // Add import for Win32SmbHelper
 import 'package:cb_file_manager/ui/screens/settings/database_settings_screen.dart'; // Import for database settings screen
 import 'package:file_picker/file_picker.dart'; // Import for FilePicker
 import 'package:intl/intl.dart'; // Import for DateFormat
@@ -27,15 +29,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Video thumbnail percentage value (new setting)
   late int _videoThumbnailPercentage;
 
+  // Cache clearing states
+  bool _isClearingVideoCache = false;
+  bool _isClearingNetworkCache = false;
+  bool _isClearingTempFiles = false;
+
   // Add a loading indicator state for cache clearing operation
   bool _isClearingCache = false;
 
-  // Add a state for ObjectBox usage preference
+  // Cache directory information
+  String? _networkCachePath;
+  String? _videoCachePath;
+  String? _tempFilesPath;
+  Map<String, dynamic>? _networkCacheStats;
 
   @override
   void initState() {
     super.initState();
     _loadPreferences();
+    _loadCacheInfo();
   }
 
   Future<void> _loadPreferences() async {
@@ -111,6 +123,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _videoThumbnailPercentage = percentage;
     });
 
+    // Refresh the percentage in VideoThumbnailHelper
+    await VideoThumbnailHelper.refreshThumbnailPercentage();
+
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -134,31 +149,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Call the clearCache method from VideoThumbnailHelper
       await VideoThumbnailHelper.clearCache();
 
-      // Get the current directory path from context or last opened folder
-      String? currentDirectory = await _preferences.getLastAccessedFolder();
-      String directoryPath = currentDirectory ?? '';
-
-      // Only attempt to regenerate thumbnails if we're still mounted
-      // This prevents crashes when users navigate back immediately
-      if (mounted && directoryPath.isNotEmpty) {
-        try {
-          // Regenerate thumbnails for the current directory automatically
-          // Add timeout to prevent hanging if the process takes too long
-          await VideoThumbnailHelper.regenerateThumbnailsForDirectory(
-                  directoryPath)
-              .timeout(
-            const Duration(seconds: 3),
-            onTimeout: () {
-              // Just log timeout but don't throw an exception
-              debugPrint(
-                  'Thumbnail regeneration timed out, user may have navigated away');
-            },
-          );
-        } catch (e) {
-          // Catch and log errors but don't fail the entire operation
-          debugPrint('Error during thumbnail regeneration: $e');
-        }
-      }
+      // Không tự động tạo lại thumbnail sau khi xoá cache.
 
       // Force refresh of the UI without closing the screen
       if (mounted) {
@@ -210,6 +201,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _loadCacheInfo() async {
+    try {
+      // Get network thumbnail cache path
+      final networkHelper = NetworkThumbnailHelper();
+      _networkCachePath = await networkHelper.getCacheDirectoryPath();
+      _networkCacheStats = await networkHelper.getCacheStats();
+
+      // Get video thumbnail cache path
+      _videoCachePath = await VideoThumbnailHelper.getCacheDirectoryPath();
+
+      // Get temp files path
+      final win32Helper = Win32SmbHelper();
+      _tempFilesPath = win32Helper.tempDirectoryPath;
+
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      debugPrint('Error loading cache info: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BaseScreen(
@@ -225,7 +238,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(),
                 _buildVideoThumbnailSection(context),
                 const Divider(),
-                _buildDatabaseSection(context), // Add database section
+                _buildCacheManagementSection(
+                    context), // Add cache management section
+                const Divider(),
+                _buildDatabaseSection(context),
               ],
             ),
     );
@@ -402,6 +418,66 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     fontStyle: FontStyle.italic,
                   ),
                 ),
+                const SizedBox(height: 8),
+                // Add button to regenerate all thumbnails with new percentage
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _isClearingCache
+                        ? null
+                        : () async {
+                            setState(() {
+                              _isClearingCache = true;
+                            });
+
+                            try {
+                              // Clear existing cache and regenerate with new percentage
+                              await VideoThumbnailHelper.clearCache();
+                              await VideoThumbnailHelper
+                                  .refreshThumbnailPercentage();
+
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                        'Đã xóa cache và sẽ tạo lại thumbnail với vị trí $_videoThumbnailPercentage%'),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Lỗi: $e'),
+                                    behavior: SnackBarBehavior.floating,
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            } finally {
+                              if (mounted) {
+                                setState(() {
+                                  _isClearingCache = false;
+                                });
+                              }
+                            }
+                          },
+                    icon: _isClearingCache
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.refresh, size: 16),
+                    label: Text(_isClearingCache
+                        ? 'Đang xử lý...'
+                        : 'Tạo lại thumbnail với vị trí mới'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -454,6 +530,437 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCacheManagementSection(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              children: [
+                const Icon(Icons.cleaning_services, size: 24),
+                const SizedBox(width: 16),
+                Text(
+                  'Quản lý bộ nhớ cache',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+            child: Text(
+              'Xóa dữ liệu cache để giải phóng bộ nhớ',
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Cache location information section
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Card(
+              elevation: 0,
+              color:
+                  Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.folder_special,
+                            size: 18,
+                            color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Thư mục cache:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Network cache info
+                    if (_networkCacheStats != null) ...[
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.image, size: 16),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Thumbnail mạng:',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 13,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _networkCachePath ?? 'Chưa khởi tạo',
+                                  style: const TextStyle(fontSize: 12),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                if (_networkCacheStats?['fileCount'] != null)
+                                  Text(
+                                    '${_networkCacheStats!['fileCount']} files (${_networkCacheStats!['totalSizeMB']} MB)',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .secondary,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 12),
+                    ],
+
+                    // Video cache info
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.video_file, size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Thumbnail video:',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 13,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _videoCachePath ?? 'Chưa khởi tạo',
+                                style: const TextStyle(fontSize: 12),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 12),
+
+                    // Temp files info
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.folder_zip, size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'File tạm:',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 13,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _tempFilesPath ?? 'Chưa khởi tạo',
+                                style: const TextStyle(fontSize: 12),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 4),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: () async {
+                          await _loadCacheInfo();
+                          if (mounted) {
+                            setState(() {});
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Đã cập nhật thông tin cache'),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.refresh, size: 16),
+                        label: const Text('Làm mới',
+                            style: TextStyle(fontSize: 12)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Video thumbnails cache
+          ListTile(
+            title: const Text('Xóa cache video thumbnails'),
+            subtitle: const Text('Xóa các thumbnail video đã tạo'),
+            leading: const Icon(Icons.video_library),
+            trailing: _isClearingVideoCache
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.delete_forever),
+            onTap: _isClearingVideoCache
+                ? null
+                : () async {
+                    setState(() {
+                      _isClearingVideoCache = true;
+                    });
+
+                    try {
+                      await VideoThumbnailHelper.clearCache();
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Đã xóa cache thumbnails video'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        // Refresh cache info after clearing
+                        _loadCacheInfo();
+                      }
+                    } catch (e) {
+                      debugPrint('Error clearing video cache: $e');
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Lỗi: $e'),
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    } finally {
+                      if (mounted) {
+                        setState(() {
+                          _isClearingVideoCache = false;
+                        });
+                      }
+                    }
+                  },
+          ),
+
+          // Network thumbnails cache
+          ListTile(
+            title: const Text('Xóa cache SMB/network thumbnails'),
+            subtitle: const Text('Xóa các thumbnail mạng đã tạo'),
+            leading: const Icon(Icons.cloud),
+            trailing: _isClearingNetworkCache
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.delete_forever),
+            onTap: _isClearingNetworkCache
+                ? null
+                : () async {
+                    setState(() {
+                      _isClearingNetworkCache = true;
+                    });
+
+                    try {
+                      final networkHelper = NetworkThumbnailHelper();
+                      await networkHelper.clearCache();
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Đã xóa cache thumbnails mạng'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        // Refresh cache info after clearing
+                        _loadCacheInfo();
+                      }
+                    } catch (e) {
+                      debugPrint('Error clearing network cache: $e');
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Lỗi: $e'),
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    } finally {
+                      if (mounted) {
+                        setState(() {
+                          _isClearingNetworkCache = false;
+                        });
+                      }
+                    }
+                  },
+          ),
+
+          // Temporary files
+          ListTile(
+            title: const Text('Xóa các file tạm'),
+            subtitle: const Text('Xóa file tạm từ chia sẻ mạng'),
+            leading: const Icon(Icons.folder_delete),
+            trailing: _isClearingTempFiles
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.delete_forever),
+            onTap: _isClearingTempFiles
+                ? null
+                : () async {
+                    setState(() {
+                      _isClearingTempFiles = true;
+                    });
+
+                    try {
+                      final win32Helper = Win32SmbHelper();
+                      await win32Helper.clearTempFileCache();
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Đã xóa các file tạm'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        // Refresh cache info after clearing
+                        _loadCacheInfo();
+                      }
+                    } catch (e) {
+                      debugPrint('Error clearing temp files: $e');
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Lỗi: $e'),
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    } finally {
+                      if (mounted) {
+                        setState(() {
+                          _isClearingTempFiles = false;
+                        });
+                      }
+                    }
+                  },
+          ),
+
+          // Clear all cache
+          ListTile(
+            title: const Text('Xóa tất cả cache'),
+            subtitle: const Text('Xóa tất cả dữ liệu cache'),
+            leading: const Icon(Icons.cleaning_services),
+            trailing: _isClearingVideoCache ||
+                    _isClearingNetworkCache ||
+                    _isClearingTempFiles ||
+                    _isClearingCache
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.delete_sweep),
+            onTap: _isClearingVideoCache ||
+                    _isClearingNetworkCache ||
+                    _isClearingTempFiles ||
+                    _isClearingCache
+                ? null
+                : () async {
+                    setState(() {
+                      _isClearingCache = true;
+                    });
+
+                    try {
+                      // Clear all caches
+                      await VideoThumbnailHelper.clearCache();
+                      final networkHelper = NetworkThumbnailHelper();
+                      await networkHelper.clearCache();
+                      final win32Helper = Win32SmbHelper();
+                      await win32Helper.clearTempFileCache();
+
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Đã xóa tất cả dữ liệu cache'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        // Refresh cache info after clearing
+                        _loadCacheInfo();
+                      }
+                    } catch (e) {
+                      debugPrint('Error clearing all caches: $e');
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Lỗi: $e'),
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    } finally {
+                      if (mounted) {
+                        setState(() {
+                          _isClearingCache = false;
+                        });
+                      }
+                    }
+                  },
+          ),
+          const SizedBox(height: 8),
         ],
       ),
     );

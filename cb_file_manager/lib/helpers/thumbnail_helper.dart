@@ -22,8 +22,10 @@ class ThumbnailTaskManager {
     int priority = 0,
   }) async {
     // Sử dụng VideoThumbnailHelper để tạo thumbnail
-    final thumbnailPath =
-        await VideoThumbnailHelper.generateThumbnail(videoPath);
+    final thumbnailPath = await VideoThumbnailHelper.generateThumbnail(
+      videoPath,
+      isPriority: priority > 0,
+    );
     onComplete(thumbnailPath);
   }
 
@@ -45,7 +47,10 @@ class ThumbnailTaskManager {
 
     for (final path in pathsToPreload) {
       // Tạo thumbnail không đồng bộ
-      unawaited(VideoThumbnailHelper.generateThumbnail(path));
+      unawaited(VideoThumbnailHelper.generateThumbnail(
+        path,
+        isPriority: false,
+      ));
     }
 
     // Không chờ đợi các tác vụ hoàn thành
@@ -89,6 +94,7 @@ class ThumbnailHelper {
         videoPath,
         isPriority: true,
         forceRegenerate: forceRegenerate,
+        thumbnailSize: width.toInt(),
       );
       onThumbnailGenerated(path);
     });
@@ -139,6 +145,7 @@ class OptimizedLazyThumbnailWidget extends StatelessWidget {
         videoPath,
         isPriority: true,
         forceRegenerate: forceRegenerate,
+        thumbnailSize: width.toInt(),
       );
       onThumbnailGenerated(path);
     });

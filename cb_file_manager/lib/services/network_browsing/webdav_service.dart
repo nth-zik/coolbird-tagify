@@ -227,4 +227,17 @@ class WebDAVService implements NetworkServiceBase {
 
     return filePath;
   }
+
+  @override
+  Stream<List<int>>? openFileStream(String remotePath) {
+    // WebDAV doesn't support true streaming in this implementation, return null
+    return null;
+  }
+
+  @override
+  Future<int?> getFileSize(String remotePath) async {
+    // WebDAV file size would require a HEAD request in a real implementation
+    // For now, return null to indicate size is unknown
+    return null;
+  }
 }

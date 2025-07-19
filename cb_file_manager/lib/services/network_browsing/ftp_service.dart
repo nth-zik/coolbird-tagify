@@ -708,6 +708,42 @@ class FTPService implements NetworkServiceBase {
 
     return Directory(safePath);
   }
+
+  @override
+  Stream<List<int>>? openFileStream(String remotePath) {
+    // FTP doesn't support true streaming, return null to use default download behavior
+    return null;
+  }
+
+  @override
+  Future<int?> getFileSize(String remotePath) async {
+    // Try to get file size from directory listing
+    if (!_connected || _ftpClient == null) return null;
+
+    try {
+      String normalizedPath = _normalizePath(remotePath);
+      final parentDir = path.dirname(normalizedPath);
+      final fileName = path.basename(normalizedPath);
+
+      final filesList = await _ftpClient!.listDirectory(parentDir);
+
+      for (var item in filesList) {
+        final itemName = path.basename(item.path);
+        if (itemName == fileName && !item.path.endsWith('/')) {
+          try {
+            final stat = await item.stat();
+            return stat.size;
+          } catch (e) {
+            debugPrint("FTPService: Error getting file stat: $e");
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('FTPService: Could not determine file size: $e');
+    }
+
+    return null;
+  }
 }
 
 // Helper class for dynamic loading

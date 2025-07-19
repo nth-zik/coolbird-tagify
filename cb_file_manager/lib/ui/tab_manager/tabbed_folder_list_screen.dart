@@ -597,6 +597,18 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
         // Clear the system screen router cache for this path
         SystemScreenRouter.refreshSystemPath(_currentPath, widget.tabId);
         _folderListBloc.add(SearchByTagGlobally(tag));
+      } else if (_currentPath.startsWith('#network/')) {
+        // Network special paths (#network/TYPE/...) – clear widget cache and reload
+        SystemScreenRouter.refreshSystemPath(_currentPath, widget.tabId);
+
+        // Force TabManager to re-set the same path to trigger rebuild
+        context
+            .read<TabManagerBloc>()
+            .add(UpdateTabPath(widget.tabId, _currentPath));
+
+        // If this screen still uses FolderList, trigger bloc refresh to regenerate thumbnails
+        _folderListBloc.add(
+            FolderListRefresh(_currentPath, forceRegenerateThumbnails: true));
       }
     } else {
       // For regular paths, reload with thumbnail regeneration
@@ -897,13 +909,23 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
             },
             child: BlocProvider<FolderListBloc>.value(
               value: _folderListBloc,
-              child: BlocBuilder<FolderListBloc, FolderListState>(
+              child: BlocListener<FolderListBloc, FolderListState>(
+                listener: (context, folderState) {
+                  // Update tab loading indicator based on FolderListBloc loading state
+                  context.read<TabManagerBloc>().add(
+                        UpdateTabLoading(widget.tabId, folderState.isLoading),
+                      );
+                },
+                child: BlocBuilder<FolderListBloc, FolderListState>(
                   builder: (context, state) {
-                _currentSearchTag = state.currentSearchTag;
-                _currentFilter = state.currentFilter;
+                    _currentSearchTag = state.currentSearchTag;
+                    _currentFilter = state.currentFilter;
 
-                return _buildWithSelectionState(context, state, isNetworkPath);
-              }),
+                    return _buildWithSelectionState(
+                        context, state, isNetworkPath);
+                  },
+                ),
+              ),
             ),
           ),
         ),
@@ -1229,6 +1251,18 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
             SystemScreenRouter.refreshSystemPath(_currentPath, widget.tabId);
             _folderListBloc.add(SearchByTagGlobally(tag));
             // Completion will be triggered by the listener above
+          } else if (_currentPath.startsWith('#network/')) {
+            // Network special paths (#network/TYPE/...) – clear widget cache and reload
+            SystemScreenRouter.refreshSystemPath(_currentPath, widget.tabId);
+
+            // Force TabManager to re-set the same path to trigger rebuild
+            context
+                .read<TabManagerBloc>()
+                .add(UpdateTabPath(widget.tabId, _currentPath));
+
+            // If this screen still uses FolderList, trigger bloc refresh to regenerate thumbnails
+            _folderListBloc.add(FolderListRefresh(_currentPath,
+                forceRegenerateThumbnails: true));
           }
         } else {
           // Use FolderListRefresh instead of FolderListLoad to force thumbnail regeneration

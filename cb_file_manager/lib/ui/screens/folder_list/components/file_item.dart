@@ -428,11 +428,50 @@ class _FileItemContentState extends State<_FileItemContent> {
   late Future<Widget> _iconFuture;
   late Future<FileStat> _fileStatFuture;
 
+  // Static cache for file stats to avoid repeated calls
+  static final Map<String, FileStat> _fileStatCache = <String, FileStat>{};
+  static const int _maxCacheSize = 100;
+
   @override
   void initState() {
     super.initState();
+
+    // Simple approach: load icon immediately but skip file stats for network files
     _iconFuture = FileIconHelper.getIconForFile(widget.file);
-    _fileStatFuture = widget.file.stat();
+
+    // Skip file stat for network files completely to avoid lag
+    if (widget.file.path.startsWith('#network/')) {
+      _fileStatFuture = Future.error('Network file - no stat needed');
+    } else {
+      _fileStatFuture = _getFileStatLazy();
+    }
+  }
+
+  Future<FileStat> _getFileStatLazy() async {
+    final path = widget.file.path;
+
+    // Check cache first
+    if (_fileStatCache.containsKey(path)) {
+      return _fileStatCache[path]!;
+    }
+
+    // Add a longer delay for better UI responsiveness
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    try {
+      final stat = await widget.file.stat();
+
+      // Add to cache, but limit cache size
+      if (_fileStatCache.length >= _maxCacheSize) {
+        final firstKey = _fileStatCache.keys.first;
+        _fileStatCache.remove(firstKey);
+      }
+      _fileStatCache[path] = stat;
+
+      return stat;
+    } catch (e) {
+      rethrow; // Let the FutureBuilder handle the error
+    }
   }
 
   @override
@@ -440,7 +479,13 @@ class _FileItemContentState extends State<_FileItemContent> {
     super.didUpdateWidget(oldWidget);
     if (widget.file.path != oldWidget.file.path) {
       _iconFuture = FileIconHelper.getIconForFile(widget.file);
-      _fileStatFuture = widget.file.stat();
+
+      // Skip file stat for network files completely to avoid lag
+      if (widget.file.path.startsWith('#network/')) {
+        _fileStatFuture = Future.error('Network file - no stat needed');
+      } else {
+        _fileStatFuture = _getFileStatLazy();
+      }
     }
   }
 
@@ -463,7 +508,7 @@ class _FileItemContentState extends State<_FileItemContent> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.file.path.split(Platform.pathSeparator).last,
+                  _getDisplayName(widget.file),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w500,
                       ),
@@ -479,50 +524,54 @@ class _FileItemContentState extends State<_FileItemContent> {
   }
 
   Widget _buildThumbnail(bool isVideo, bool isImage) {
+    // Always use ThumbnailLoader for all files (network and local)
     return RepaintBoundary(
       child: SizedBox(
         width: 48,
         height: 48,
         child: isVideo || isImage
-            ? isVideo
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: ThumbnailLoader(
-                      filePath: widget.file.path,
-                      isVideo: true,
-                      isImage: false,
-                      width: 48,
-                      height: 48,
-                      borderRadius: BorderRadius.circular(8),
-                      fallbackBuilder: () => const Icon(
-                        EvaIcons.videoOutline,
-                        size: 36,
-                        color: Colors.red,
-                      ),
-                    ),
-                  )
-                : ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: ThumbnailLoader(
-                      filePath: widget.file.path,
-                      isVideo: false,
-                      isImage: true,
-                      width: 48,
-                      height: 48,
-                      borderRadius: BorderRadius.circular(8),
-                      fallbackBuilder: () => const Icon(
-                        EvaIcons.imageOutline,
-                        size: 36,
-                        color: Colors.blue,
-                      ),
-                    ),
-                  )
-            : OptimizedFileIcon(
-                file: widget.file,
-                size: 48,
-                fallbackIcon: EvaIcons.fileOutline,
-                fallbackColor: Colors.grey,
+            ? ClipRRect(
                 borderRadius: BorderRadius.circular(8),
+                child: ThumbnailLoader(
+                  filePath: widget.file.path,
+                  isVideo: isVideo,
+                  isImage: isImage,
+                  width: 48,
+                  height: 48,
+                  borderRadius: BorderRadius.circular(8),
+                  fallbackBuilder: () => Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.grey.shade100,
+                    ),
+                    child: Icon(
+                      isVideo ? EvaIcons.videoOutline : EvaIcons.imageOutline,
+                      size: 36,
+                      color: isVideo ? Colors.red : Colors.blue,
+                    ),
+                  ),
+                ),
+              )
+            : FutureBuilder<Widget>(
+                future: _iconFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+                    return snapshot.data!;
+                  }
+                  return Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.grey.shade200,
+                    ),
+                    child: const Icon(
+                      EvaIcons.fileOutline,
+                      size: 36,
+                      color: Colors.grey,
+                    ),
+                  );
+                },
               ),
       ),
     );
@@ -571,9 +620,16 @@ class _FileItemContentState extends State<_FileItemContent> {
               final size = snapshot.data!.size;
               return Text(FileUtils.formatFileSize(size),
                   style: Theme.of(context).textTheme.bodySmall);
+            } else if (snapshot.hasError) {
+              // For network files or files with stat errors
+              if (widget.file.path.startsWith('#network/')) {
+                return Text('Network file',
+                    style: Theme.of(context).textTheme.bodySmall);
+              }
+              return Text('--', style: Theme.of(context).textTheme.bodySmall);
             }
-            return Text('Loading...',
-                style: Theme.of(context).textTheme.bodySmall);
+
+            return Text('...', style: Theme.of(context).textTheme.bodySmall);
           },
         ),
         if (widget.fileTags.isNotEmpty) ...[
@@ -643,5 +699,15 @@ class _FileItemContentState extends State<_FileItemContent> {
         ],
       ],
     );
+  }
+
+  String _getDisplayName(File file) {
+    // For network files, extract just the filename from the path
+    if (file.path.startsWith('#network/')) {
+      final parts = file.path.split('/');
+      return parts.last; // Return just the filename
+    }
+    // For local files, use the standard method
+    return file.path.split(Platform.pathSeparator).last;
   }
 }

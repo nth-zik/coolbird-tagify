@@ -12,6 +12,8 @@ import 'package:video_thumbnail/video_thumbnail.dart';
 import 'package:path/path.dart' as path;
 // import 'package:ffmpeg_helper/ffmpeg_helper.dart';
 import 'package:cb_file_manager/helpers/user_preferences.dart';
+import 'package:cb_file_manager/helpers/app_path_helper.dart';
+import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 
 import 'fc_native_video_thumbnail.dart';
 
@@ -20,19 +22,91 @@ Future<int> _getEstimatedVideoDurationIsolate(String videoPath) async {
     final videoFile = File(videoPath);
     if (await videoFile.exists()) {
       final fileSize = await videoFile.length();
-      final estimatedSeconds = (fileSize / (1024 * 1024) * 10).round();
-      final clampedDuration = estimatedSeconds.clamp(1, 600);
-      return clampedDuration > 0 ? clampedDuration : 1;
+
+      // Get file extension to better estimate duration
+      final extension = videoPath.toLowerCase().split('.').last;
+
+      // Different estimation based on video format
+      double estimationFactor;
+      switch (extension) {
+        case 'mp4':
+        case 'mov':
+        case 'avi':
+          estimationFactor = 8.0; // 8 seconds per MB (higher quality)
+          break;
+        case 'mkv':
+        case 'webm':
+          estimationFactor = 10.0; // 10 seconds per MB (medium quality)
+          break;
+        case 'flv':
+        case '3gp':
+          estimationFactor = 15.0; // 15 seconds per MB (lower quality)
+          break;
+        default:
+          estimationFactor = 10.0; // Default estimation
+      }
+
+      final estimatedSeconds =
+          (fileSize / (1024 * 1024) * estimationFactor).round();
+
+      // Clamp to reasonable bounds (minimum 10 seconds, maximum 10 minutes for estimation)
+      final clampedDuration = estimatedSeconds.clamp(10, 600);
+
+      debugPrint(
+          'VideoThumbnail: Estimated duration for $videoPath: ${clampedDuration}s (${fileSize / (1024 * 1024)} MB, factor: $estimationFactor)');
+
+      return clampedDuration > 0 ? clampedDuration : 60;
     }
-  } catch (_) {}
+  } catch (e) {
+    debugPrint('VideoThumbnail: Error estimating duration for $videoPath: $e');
+  }
+
+  // Default fallback
   return 60;
 }
 
 Future<int> _calculateTimestampFromPercentageIsolate(
     String videoPath, double percentage) async {
   final estimatedDuration = await _getEstimatedVideoDurationIsolate(videoPath);
-  int timestampSeconds = ((percentage / 100.0) * estimatedDuration).round();
-  timestampSeconds = timestampSeconds.clamp(0, max(0, estimatedDuration - 1));
+
+  // Ensure percentage is within valid range
+  final validPercentage = percentage.clamp(0.0, 100.0);
+
+  // For very short videos, use a fixed timestamp
+  if (estimatedDuration <= 10) {
+    final timestamp =
+        (estimatedDuration / 2).round().clamp(2, estimatedDuration - 2);
+    debugPrint(
+        'VideoThumbnail: Short video ($estimatedDuration s), using middle timestamp: ${timestamp}s');
+    return timestamp;
+  }
+
+  // Avoid the first and last 10% of the video to prevent black screens
+  double adjustedPercentage = validPercentage;
+  if (validPercentage < 10.0) {
+    adjustedPercentage = 10.0; // Start at 10% minimum
+  } else if (validPercentage > 90.0) {
+    adjustedPercentage = 90.0; // End at 90% maximum
+  }
+
+  // Calculate timestamp in seconds
+  int timestampSeconds =
+      ((adjustedPercentage / 100.0) * estimatedDuration).round();
+
+  // Ensure timestamp is within safe bounds (avoid first/last 5 seconds)
+  final minTimestamp = 5;
+  final maxTimestamp =
+      estimatedDuration > 10 ? estimatedDuration - 5 : estimatedDuration ~/ 2;
+  timestampSeconds = timestampSeconds.clamp(minTimestamp, maxTimestamp);
+
+  // Debug logging to track thumbnail timestamp calculation
+  debugPrint('VideoThumbnail: Calculating timestamp for $videoPath');
+  debugPrint('  - Original percentage: $percentage%');
+  debugPrint('  - Adjusted percentage: $adjustedPercentage%');
+  debugPrint('  - Estimated duration: ${estimatedDuration}s');
+  debugPrint('  - Calculated timestamp: ${timestampSeconds}s');
+  debugPrint('  - Safe range: ${minTimestamp}s - ${maxTimestamp}s');
+
   return timestampSeconds;
 }
 
@@ -78,7 +152,7 @@ Future<String?> _generateThumbnailIsolate(_ThumbnailIsolateArgs args) async {
           'VideoThumbnail (Isolate): Warning - RootIsolateToken is null, platform channels may fail.');
     }
 
-    final Directory tempDir = await getTemporaryDirectory();
+    final Directory tempDir = await AppPathHelper.getVideoCacheDir();
     final String thumbnailPath = path.join(tempDir.path, args.cacheFilename);
     final cacheFile = File(thumbnailPath);
 
@@ -249,6 +323,32 @@ class VideoThumbnailHelper {
   static final UserPreferences _userPrefs = UserPreferences.instance;
   static bool _userPrefsInitialized = false;
   static double _thumbnailPercentage = 10.0;
+
+  // Add method to refresh percentage from preferences
+  static Future<void> refreshThumbnailPercentage() async {
+    try {
+      if (!_userPrefsInitialized) {
+        await _userPrefs.init();
+        _userPrefsInitialized = true;
+      }
+
+      final percentage = await _userPrefs.getVideoThumbnailPercentage();
+      final oldPercentage = _thumbnailPercentage;
+      _thumbnailPercentage = percentage.toDouble();
+
+      debugPrint(
+          'VideoThumbnail: Refreshed thumbnail percentage from $oldPercentage% to $_thumbnailPercentage%');
+
+      // Clear cache if percentage changed significantly to regenerate thumbnails
+      if ((oldPercentage - _thumbnailPercentage).abs() > 5.0) {
+        debugPrint(
+            'VideoThumbnail: Percentage changed significantly, clearing cache to regenerate thumbnails');
+        await clearCache();
+      }
+    } catch (e) {
+      debugPrint('VideoThumbnail: Error refreshing thumbnail percentage: $e');
+    }
+  }
 
   static Timer? _saveCacheTimer;
   static const Duration _saveCacheThrottleDuration = Duration(seconds: 10);
@@ -457,7 +557,7 @@ class VideoThumbnailHelper {
     _lastCleanupTime = now;
 
     try {
-      final tempDir = await getTemporaryDirectory();
+      final tempDir = await AppPathHelper.getVideoCacheDir();
       final directory = Directory(tempDir.path);
 
       final files = await directory
@@ -826,8 +926,14 @@ class VideoThumbnailHelper {
     }
   }
 
-  static Future<String?> generateThumbnail(String videoPath,
-      {bool isPriority = false, bool forceRegenerate = false}) async {
+  /// Generate a thumbnail for a video file
+  static Future<String?> generateThumbnail(
+    String videoPath, {
+    bool forceRegenerate = false,
+    bool isPriority = false,
+    int? quality,
+    int? thumbnailSize,
+  }) async {
     if (!_cacheInitialized) {
       if (_initializing) {
         await _initCompleter.future;
@@ -1069,7 +1175,20 @@ class VideoThumbnailHelper {
                 opacity: frame == null ? 0 : 1,
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeOut,
-                child: child,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    child,
+                    // Add video play icon overlay
+                    const Center(
+                      child: Icon(
+                        EvaIcons.playCircleOutline,
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                    ),
+                  ],
+                ),
               );
             },
             errorBuilder: (context, error, stackTrace) {
@@ -1155,7 +1274,7 @@ class VideoThumbnailHelper {
 
       // Delete physical thumbnail files
       try {
-        final tempDir = await getTemporaryDirectory();
+        final tempDir = await AppPathHelper.getVideoCacheDir();
         final directory = Directory(tempDir.path);
 
         if (!await directory.exists()) {
@@ -1310,43 +1429,11 @@ class VideoThumbnailHelper {
   /// Force regenerate a thumbnail even if it's already in cache
   /// Useful when a thumbnail was attempted but failed and needs to be retried
   static Future<String?> forceRegenerateThumbnail(String videoPath) async {
-    if (!_cacheInitialized) {
-      await initializeCache();
-    }
-
-    // First remove from all caches
-    _inMemoryPathCache.remove(videoPath);
-    _fileCache.remove(videoPath);
-    _attemptedPaths.remove(videoPath);
-
-    // Clear from pending and processing queues
-    final pendingIndex =
-        _pendingQueue.indexWhere((req) => req.videoPath == videoPath);
-    if (pendingIndex != -1) {
-      if (!_pendingQueue[pendingIndex].completer.isCompleted) {
-        _pendingQueue[pendingIndex].completer.complete(null);
-      }
-      _pendingQueue.removeAt(pendingIndex);
-    }
-
-    // Delete any existing file
-    try {
-      final cacheFilename = _createCacheFilename(videoPath);
-      final tempDir = await getTemporaryDirectory();
-      final thumbnailPath = path.join(tempDir.path, cacheFilename);
-
-      final File file = File(thumbnailPath);
-      if (await file.exists()) {
-        await file.delete();
-      }
-    } catch (e) {
-      _log('Error deleting thumbnail file for $videoPath: $e');
-    }
-
-    // Request new thumbnail with highest priority
-    return await _requestThumbnail(videoPath,
-        priority: _visiblePriority + 50, // Super high priority
-        forceRegenerate: true);
+    return generateThumbnail(
+      videoPath,
+      forceRegenerate: true,
+      isPriority: true,
+    );
   }
 
   /// Regenerate thumbnails for all video files in the specified directory
@@ -1463,6 +1550,8 @@ class VideoThumbnailHelper {
     bool forceRegenerate = false,
     bool isPriority = false,
     double? thumbnailPercentage,
+    int? quality,
+    int? thumbnailSize,
   }) async {
     if (!_cacheInitialized) {
       await initializeCache();
@@ -1513,7 +1602,20 @@ class VideoThumbnailHelper {
       videoPath,
       forceRegenerate: forceRegenerate,
       isPriority: isPriority,
+      quality: quality,
+      thumbnailSize: thumbnailSize,
     );
+  }
+
+  /// Get the cache directory path where thumbnails are stored
+  static Future<String?> getCacheDirectoryPath() async {
+    try {
+      final dir = await AppPathHelper.getVideoCacheDir();
+      return dir.path;
+    } catch (e) {
+      debugPrint('VideoThumbnail: Error getting cache directory path: $e');
+      return null;
+    }
   }
 }
 

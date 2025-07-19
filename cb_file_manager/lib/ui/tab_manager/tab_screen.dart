@@ -404,6 +404,16 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
+                                          if (tab.isLoading) ...[
+                                            SizedBox(
+                                              width: 14,
+                                              height: 14,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                          ],
                                           Icon(
                                             tab.isPinned
                                                 ? EvaIcons.pin

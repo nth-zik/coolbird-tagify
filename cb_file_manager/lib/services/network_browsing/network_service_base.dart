@@ -61,6 +61,12 @@ abstract class NetworkServiceBase {
 
   /// Get the base path for this connection, used for tab display
   String get basePath;
+
+  /// Open a file for streaming (optional, returns null if not supported)
+  Stream<List<int>>? openFileStream(String remotePath) => null;
+
+  /// Get file size without downloading (optional, returns null if not supported)
+  Future<int?> getFileSize(String remotePath) async => null;
 }
 
 /// Result of a connection attempt

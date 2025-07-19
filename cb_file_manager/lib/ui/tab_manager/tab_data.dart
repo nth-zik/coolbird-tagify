@@ -17,6 +17,9 @@ class TabData {
   /// Whether the tab is pinned
   final bool isPinned;
 
+  /// Whether the tab is currently performing a background task (e.g. loading)
+  final bool isLoading;
+
   /// Navigation history for this tab
   final List<String> navigationHistory;
 
@@ -32,6 +35,7 @@ class TabData {
     required this.path,
     this.icon,
     this.isPinned = false,
+    this.isLoading = false,
     List<String>? navigationHistory,
     List<String>? forwardHistory,
     GlobalKey<NavigatorState>? navigatorKey,
@@ -45,6 +49,7 @@ class TabData {
     String? path,
     IconData? icon,
     bool? isPinned,
+    bool? isLoading,
     List<String>? navigationHistory,
     List<String>? forwardHistory,
     GlobalKey<NavigatorState>? navigatorKey,
@@ -55,6 +60,7 @@ class TabData {
       path: path ?? this.path,
       icon: icon ?? this.icon,
       isPinned: isPinned ?? this.isPinned,
+      isLoading: isLoading ?? this.isLoading,
       navigationHistory: navigationHistory ?? this.navigationHistory,
       forwardHistory: forwardHistory ?? this.forwardHistory,
       navigatorKey: navigatorKey ?? this.navigatorKey,

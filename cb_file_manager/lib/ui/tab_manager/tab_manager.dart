@@ -56,6 +56,14 @@ class ToggleTabPin extends TabEvent {
   ToggleTabPin(this.tabId);
 }
 
+/// Event to update a tab's loading state
+class UpdateTabLoading extends TabEvent {
+  final String tabId;
+  final bool isLoading;
+
+  UpdateTabLoading(this.tabId, this.isLoading);
+}
+
 /// Event to add a path to tab navigation history
 class AddToTabHistory extends TabEvent {
   final String tabId;
@@ -100,6 +108,7 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
     on<UpdateTabPath>(_onUpdateTabPath);
     on<UpdateTabName>(_onUpdateTabName);
     on<ToggleTabPin>(_onToggleTabPin);
+    on<UpdateTabLoading>(_onUpdateTabLoading);
     on<AddToTabHistory>(_onAddToTabHistory);
   }
 
@@ -112,6 +121,7 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
       id: newTabId,
       name: event.name ?? _extractNameFromPath(event.path),
       path: event.path,
+      isLoading: false,
     );
 
     final tabs = List<TabData>.from(state.tabs)..add(newTab);
@@ -207,6 +217,7 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
           path: tab.path,
           icon: tab.icon,
           isPinned: !tab.isPinned,
+          isLoading: tab.isLoading,
         );
       }
       return tab;
@@ -225,6 +236,18 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
           updatedHistory.add(event.path);
         }
         return tab.copyWith(navigationHistory: updatedHistory);
+      }
+      return tab;
+    }).toList();
+
+    emit(state.copyWith(tabs: tabs));
+  }
+
+  void _onUpdateTabLoading(
+      UpdateTabLoading event, Emitter<TabManagerState> emit) {
+    final tabs = state.tabs.map((tab) {
+      if (tab.id == event.tabId) {
+        return tab.copyWith(isLoading: event.isLoading);
       }
       return tab;
     }).toList();

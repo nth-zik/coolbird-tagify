@@ -14,6 +14,8 @@ add_executable(${BINARY_NAME} WIN32
   "${FLUTTER_MANAGED_DIR}/generated_plugin_registrant.cc"
   "fc_native_video_thumbnail_plugin.cpp"
   "fc_native_video_thumbnail_plugin.h"
+  "smb_native_thumbnail_plugin.cpp"
+  "smb_native_thumbnail_plugin.h"
   "ffmpeg_thumbnail_helper.cpp"
   "ffmpeg_thumbnail_helper.h"
   "app_icon_plugin.cpp"
@@ -55,6 +57,7 @@ endif()
 # dependencies here.
 target_link_libraries(${BINARY_NAME} PRIVATE flutter flutter_wrapper_app flutter_wrapper_plugin)
 target_link_libraries(${BINARY_NAME} PRIVATE "dwmapi.lib")
+target_link_libraries(${BINARY_NAME} PRIVATE smb_native)
 
 # Add FFmpeg libraries
 target_link_libraries(${BINARY_NAME} PRIVATE

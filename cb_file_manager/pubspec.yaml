@@ -66,11 +66,15 @@ dependencies:
   share_plus: ^11.0.0
   flutter_chips_input: ^2.0.0
   flutter_colorpicker: ^1.1.0
+  # File caching
+  flutter_cache_manager: ^3.3.1
+  uuid: ^4.0.0
 
   ffi: any
   network_info_plus: ^6.1.4
   url_launcher: ^6.3.1
   smb_connect: ^0.0.9 # Added for SMB/CIFS network file sharingUse local path for smb_connect
+  image: ^4.5.4
 dev_dependencies:
   flutter_test:
     sdk: flutter

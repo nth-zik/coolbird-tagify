@@ -42,6 +42,11 @@ import 'package:cb_file_manager/helpers/video_thumbnail_helper.dart';
 import 'package:cb_file_manager/helpers/external_app_helper.dart';
 import 'package:cb_file_manager/ui/components/video_player/custom_video_player.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/image_viewer_screen.dart';
+import 'package:cb_file_manager/services/network_browsing/smb_service.dart';
+import 'package:path/path.dart' as p;
+import 'package:cb_file_manager/helpers/network_thumbnail_helper.dart';
+import 'package:cb_file_manager/ui/screens/network_browsing/smb_video_player_screen.dart';
+import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart';
 
 // Helper class to listen to multiple ValueNotifiers
 class ValueListenableBuilder3<A, B, C> extends StatelessWidget {
@@ -129,6 +134,12 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
   // Flag to prevent multiple loads
   bool _isLoadingStarted = false;
 
+  // Flag to track if there are background thumbnail tasks
+  bool _hasPendingThumbnails = false;
+
+  // Subscription for thumbnail loading events
+  StreamSubscription? _thumbnailLoadingSubscription;
+
   // Variables for drag selection
   final Map<String, Rect> _itemPositions = {};
   final ValueNotifier<bool> _isDraggingNotifier = ValueNotifier<bool>(false);
@@ -151,6 +162,24 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
     // Initialize the blocs
     _networkBrowsingBloc = context.read<NetworkBrowsingBloc>();
     _selectionBloc = SelectionBloc();
+
+    // Listen for thumbnail loading changes
+    _thumbnailLoadingSubscription =
+        ThumbnailLoader.onPendingTasksChanged.listen((count) {
+      final hasBackgroundTasks = count > 0;
+      if (_hasPendingThumbnails != hasBackgroundTasks) {
+        setState(() {
+          _hasPendingThumbnails = hasBackgroundTasks;
+        });
+
+        // Update tab loading indicator based on both network loading and thumbnail loading
+        final isLoading =
+            _networkBrowsingBloc.state.isLoading || _hasPendingThumbnails;
+        context
+            .read<TabManagerBloc>()
+            .add(UpdateTabLoading(widget.tabId, isLoading));
+      }
+    });
 
     // Load preferences
     _loadPreferences();
@@ -185,6 +214,9 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
   void didChangeDependencies() {
     super.didChangeDependencies();
 
+    // Reset pagination when changing dependencies
+    _currentPage = 1;
+
     // Set up a listener for TabManagerBloc state changes
     final tabBloc = BlocProvider.of<TabManagerBloc>(context);
     final activeTab = tabBloc.state.activeTab;
@@ -215,6 +247,7 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
     _isDraggingNotifier.dispose();
     _dragStartPositionNotifier.dispose();
     _dragCurrentPositionNotifier.dispose();
+    _thumbnailLoadingSubscription?.cancel();
 
     // Restore default settings
     WidgetsBinding.instance.renderView.automaticSystemUiAdjustment = true;
@@ -336,6 +369,14 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
   }
 
   void _refreshFileList() {
+    // Clear network thumbnail caches so that thumbnails are regenerated
+    NetworkThumbnailHelper().clearCache();
+
+    // Force reload even if same path by resetting flags
+    setState(() {
+      _isLoadingStarted = false;
+    });
+
     _loadNetworkDirectory();
   }
 
@@ -344,6 +385,13 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
       setState(() {
         _isLoadingStarted = true;
       });
+
+      // Reset thumbnail loading state when loading a new directory
+      ThumbnailLoader.resetPendingCount();
+      _hasPendingThumbnails = false;
+
+      // Inform TabManager that this tab is loading
+      context.read<TabManagerBloc>().add(UpdateTabLoading(widget.tabId, true));
       _networkBrowsingBloc.add(NetworkDirectoryRequested(_currentPath));
     }
   }
@@ -442,6 +490,12 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
               debugPrint("  - state.hasDirectories: ${state.hasDirectories}");
               debugPrint("  - state.hasFiles: ${state.hasFiles}");
               debugPrint("  - state.hasContent: ${state.hasContent}");
+
+              // Update tab loading indicator based on both network loading and thumbnail loading
+              final isLoading = state.isLoading || _hasPendingThumbnails;
+              context
+                  .read<TabManagerBloc>()
+                  .add(UpdateTabLoading(widget.tabId, isLoading));
 
               if (!state.isLoading) {
                 setState(() {
@@ -581,21 +635,6 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
     debugPrint("NetworkBrowserScreen: Error state: ${state.hasError}");
     if (state.hasError) {
       debugPrint("NetworkBrowserScreen: Error message: ${state.errorMessage}");
-    }
-
-    // Critical debug
-    debugPrint(
-        "NetworkBrowserScreen: Directories: ${state.directories?.length ?? 0}");
-    if (state.directories != null && state.directories!.isNotEmpty) {
-      for (var dir in state.directories!) {
-        debugPrint("  - Directory: ${dir.path}");
-      }
-    }
-    debugPrint("NetworkBrowserScreen: Files: ${state.files?.length ?? 0}");
-    if (state.files != null && state.files!.isNotEmpty) {
-      for (var file in state.files!) {
-        debugPrint("  - File: ${file.path}");
-      }
     }
 
     if (state.isLoading && state.directories == null) {
@@ -801,21 +840,7 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
                     isSelected: isSelected,
                     toggleFileSelection: _toggleFileSelection,
                     toggleSelectionMode: _toggleSelectionMode,
-                    onFileTap: (file, isVideo) {
-                      // Show loading indicator before opening file
-                      setState(() {
-                        _isLoadingStarted = true;
-                      });
-                      _onFileTap(file, isVideo);
-                      // Reset loading state after a short delay
-                      Future.delayed(Duration(milliseconds: 500), () {
-                        if (mounted) {
-                          setState(() {
-                            _isLoadingStarted = false;
-                          });
-                        }
-                      });
-                    },
+                    onFileTap: (file, isVideo) => _openFile(file),
                     isDesktopMode: true,
                     lastSelectedPath: selectionState.lastSelectedPath,
                   ),
@@ -843,26 +868,80 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
       showDeleteTagDialog: _showDeleteTagDialog,
       showAddTagToFileDialog: _showAddTagToFileDialog,
       onFolderTap: _navigateToPath,
-      onFileTap: _onFileTap,
+      onFileTap: (file, isVideo) => _openFile(file),
       isDesktopMode: true,
       lastSelectedPath: selectionState.lastSelectedPath,
       columnVisibility: _columnVisibility,
     );
   }
 
-  // Build list view
+  // State for pagination
+  int _currentPage = 1;
+  static const int itemsPerPage =
+      15; // Further reduced from 20 to 15 for better performance
+
+  // Build list view with real pagination
   Widget _buildListView(List<FileSystemEntity> folders,
       List<FileSystemEntity> files, SelectionState selectionState) {
+    final int totalItems = folders.length + files.length;
+    final int displayedItems = totalItems > (itemsPerPage * _currentPage)
+        ? (itemsPerPage * _currentPage)
+        : totalItems;
+
+    // Limit the number of items to improve performance
+
+    // Create sublist of items to display - always show folders first
+    final List<FileSystemEntity> displayFolders = folders.length <= itemsPerPage
+        ? folders
+        : folders.sublist(0, itemsPerPage); // Show max itemsPerPage folders
+
+    // For files, only show what's needed for current page, capped at 5 files per page
+    final int maxFilesToShow = 5; // Reduced from 10 to 5 for better performance
+    final int filesToShow =
+        min(maxFilesToShow, itemsPerPage - displayFolders.length);
+    final int fileStartIndex = (_currentPage - 1) * filesToShow;
+    final int fileEndIndex = min(fileStartIndex + filesToShow, files.length);
+
+    final List<FileSystemEntity> displayFiles = files.isEmpty
+        ? []
+        : (fileStartIndex >= files.length
+            ? []
+            : files.sublist(fileStartIndex, fileEndIndex));
+
     return ListView.builder(
-      physics: const BouncingScrollPhysics(
-        parent: AlwaysScrollableScrollPhysics(),
-      ),
-      cacheExtent: 500,
-      itemCount: folders.length + files.length,
+      physics:
+          const ClampingScrollPhysics(), // Changed from BouncingScrollPhysics for better performance
+      cacheExtent: 200, // Increased cache for better thumbnail visibility
+      itemCount: displayFolders.length +
+          displayFiles.length +
+          (totalItems > displayedItems ? 1 : 0), // +1 for "Load More" button
       itemBuilder: (context, index) {
-        final String itemPath = index < folders.length
-            ? folders[index].path
-            : files[index - folders.length].path;
+        // Handle "Load More" button
+        if (index == displayFolders.length + displayFiles.length &&
+            totalItems > displayedItems) {
+          return Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Center(
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.expand_more),
+                label: Text(
+                    'Load More (${totalItems - displayedItems} remaining)'),
+                onPressed: () {
+                  // Increment page to load more items
+                  setState(() {
+                    _currentPage++;
+                    debugPrint(
+                        'Loading page $_currentPage, showing $displayedItems of $totalItems items');
+                  });
+                },
+              ),
+            ),
+          );
+        }
+
+        final String itemPath = index < displayFolders.length
+            ? displayFolders[index].path
+            : displayFiles[index - displayFolders.length].path;
         final bool isSelected = selectionState.isPathSelected(itemPath);
 
         return LayoutBuilder(
@@ -879,8 +958,8 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
             }
           });
 
-          if (index < folders.length) {
-            final folder = folders[index] as Directory;
+          if (index < displayFolders.length) {
+            final folder = displayFolders[index] as Directory;
             return Stack(
               children: [
                 KeyedSubtree(
@@ -931,7 +1010,7 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
               ],
             );
           } else {
-            final file = files[index - folders.length] as File;
+            final file = displayFiles[index - displayFolders.length] as File;
             return KeyedSubtree(
               key: ValueKey("file-${file.path}"),
               child: FluentBackground(
@@ -954,21 +1033,7 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
                     toggleFileSelection: _toggleFileSelection,
                     showDeleteTagDialog: _showDeleteTagDialog,
                     showAddTagToFileDialog: _showAddTagToFileDialog,
-                    onFileTap: (file, isVideo) {
-                      // Show loading indicator before opening file
-                      setState(() {
-                        _isLoadingStarted = true;
-                      });
-                      _onFileTap(file, isVideo);
-                      // Reset loading state after a short delay
-                      Future.delayed(Duration(milliseconds: 500), () {
-                        if (mounted) {
-                          setState(() {
-                            _isLoadingStarted = false;
-                          });
-                        }
-                      });
-                    },
+                    onFileTap: (file, isVideo) => _openFile(file),
                     isDesktopMode: true,
                     lastSelectedPath: selectionState.lastSelectedPath,
                   ),
@@ -1020,17 +1085,7 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
     _saveGridZoomSetting(zoomLevel);
   }
 
-  void _onFileTap(File file, bool isVideo) {
-    // Stop any ongoing thumbnail processing when opening a file
-    VideoThumbnailHelper.stopAllProcessing();
-
-    // For network files, we download instead of directly opening
-    if (_currentPath.startsWith('#network/')) {
-      _downloadFile(context, file.path);
-      return;
-    }
-
-    // For local files, use the original behavior...
+  void _openFile(File file) {
     // Get file extension
     String extension = file.path.split('.').last.toLowerCase();
 
@@ -1041,26 +1096,43 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
 
     // Open file based on file type
     if (isVideoFile) {
-      // Open video in video player
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => CustomVideoPlayer(file: file),
-        ),
-      );
-    } else if (imageExtensions.contains(extension)) {
-      // Open image in image viewer
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ImageViewerScreen(
-            file: file,
+      // For network files, we need to handle streaming differently
+      if (file.path.startsWith('#network/')) {
+        _openNetworkVideoFile(file);
+      } else {
+        // Open local video in video player
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => Scaffold(
+              backgroundColor: Colors.black,
+              body: SafeArea(child: CustomVideoPlayer(file: file)),
+            ),
           ),
-        ),
-      );
+        );
+      }
+    } else if (imageExtensions.contains(extension)) {
+      // For network files, we need to handle streaming differently
+      if (file.path.startsWith('#network/')) {
+        _openNetworkImageFile(file);
+      } else {
+        // Open local image in image viewer
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ImageViewerScreen(
+              file: file,
+            ),
+          ),
+        );
+      }
     } else {
       // For other file types, try to open with default app
-      ExternalAppHelper.openFileWithApp(file.path, 'shell_open');
+      if (file.path.startsWith('#network/')) {
+        _openNetworkFile(file);
+      } else {
+        ExternalAppHelper.openFileWithApp(file.path, 'shell_open');
+      }
     }
   }
 
@@ -1732,6 +1804,153 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
       const SnackBar(
           content: Text('Tags are not supported for network locations')),
     );
+  }
+
+  void _openNetworkVideoFile(File file) {
+    // Try to use streaming for SMB files
+    final service = _networkBrowsingBloc.state.currentService;
+    if (service is SMBService) {
+      _openSMBVideoStream(file, service);
+    } else {
+      // For other services, download first
+      _downloadFile(context, file.path);
+    }
+  }
+
+  void _openNetworkImageFile(File file) {
+    // Try to use streaming for SMB files
+    final service = _networkBrowsingBloc.state.currentService;
+    if (service is SMBService) {
+      _openSMBImageStream(file, service);
+    } else {
+      // For other services, download first
+      _downloadFile(context, file.path);
+    }
+  }
+
+  void _openNetworkFile(File file) {
+    // Try to use streaming for SMB files
+    final service = _networkBrowsingBloc.state.currentService;
+    if (service is SMBService) {
+      _openSMBFileStream(file, service);
+    } else {
+      // For other services, download first
+      _downloadFile(context, file.path);
+    }
+  }
+
+  void _openSMBVideoStream(File file, SMBService service) {
+    // Use prebuilt route for instant navigation
+    Navigator.of(context).push(
+      SmbVideoPlayerScreen.createRoute(service, file.path),
+    );
+  }
+
+  void _openSMBImageStream(File file, SMBService service) async {
+    try {
+      // Create a temporary file for the stream
+      final tempDir = await Directory.systemTemp.createTemp('smb_image_stream');
+      final tempFile = File(p.join(tempDir.path, p.basename(file.path)));
+
+      // Show progress dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          title: Text('Opening Image'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Streaming image file...'),
+            ],
+          ),
+        ),
+      );
+
+      // Open stream and write to temp file
+      final stream = service.openFileStream(file.path);
+      if (stream != null) {
+        final sink = tempFile.openWrite();
+        await for (final chunk in stream) {
+          sink.add(chunk);
+        }
+        await sink.close();
+
+        // Close progress dialog
+        if (mounted) Navigator.of(context).pop();
+
+        // Open image viewer with temp file
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ImageViewerScreen(file: tempFile),
+            ),
+          );
+        }
+      } else {
+        // Fallback to download
+        if (mounted) Navigator.of(context).pop();
+        _downloadFile(context, file.path);
+      }
+    } catch (e) {
+      if (mounted) Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error opening image: $e')),
+      );
+    }
+  }
+
+  void _openSMBFileStream(File file, SMBService service) async {
+    // For other file types, just download to temp and open with system app
+    try {
+      final tempDir = await Directory.systemTemp.createTemp('smb_file_stream');
+      final tempFile = File(p.join(tempDir.path, p.basename(file.path)));
+
+      // Show progress dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          title: Text('Opening File'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Streaming file...'),
+            ],
+          ),
+        ),
+      );
+
+      // Open stream and write to temp file
+      final stream = service.openFileStream(file.path);
+      if (stream != null) {
+        final sink = tempFile.openWrite();
+        await for (final chunk in stream) {
+          sink.add(chunk);
+        }
+        await sink.close();
+
+        // Close progress dialog
+        if (mounted) Navigator.of(context).pop();
+
+        // Open with system app
+        ExternalAppHelper.openFileWithApp(tempFile.path, 'shell_open');
+      } else {
+        // Fallback to download
+        if (mounted) Navigator.of(context).pop();
+        _downloadFile(context, file.path);
+      }
+    } catch (e) {
+      if (mounted) Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error opening file: $e')),
+      );
+    }
   }
 }
 

@@ -1,8 +1,11 @@
 import 'dart:io';
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 import 'package:cb_file_manager/helpers/video_thumbnail_helper.dart';
+import 'package:cb_file_manager/helpers/network_thumbnail_helper.dart';
 import 'package:cb_file_manager/helpers/frame_timing_optimizer.dart';
 import 'package:cb_file_manager/ui/widgets/lazy_video_thumbnail.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
@@ -15,11 +18,25 @@ class ThumbnailWidgetCache {
   ThumbnailWidgetCache._internal();
 
   final Map<String, Widget> _thumbnailWidgets = {};
+  final Map<String, String> _thumbnailPaths =
+      {}; // Cache for thumbnail file paths
   final Map<String, DateTime> _lastAccessTime = {};
   final Set<String> _generatingThumbnails = {};
 
-  static const int _maxCacheSize = 200;
-  static const Duration _cacheRetentionTime = Duration(minutes: 15);
+  // Stream controller to notify widgets when new thumbnails are available
+  final StreamController<String> _thumbnailReadyController =
+      StreamController<String>.broadcast();
+  Stream<String> get onThumbnailReady => _thumbnailReadyController.stream;
+
+  // Stream controller to notify when all thumbnails are loaded
+  static final StreamController<bool> _allThumbnailsLoadedController =
+      StreamController<bool>.broadcast();
+  static Stream<bool> get onAllThumbnailsLoaded =>
+      _allThumbnailsLoadedController.stream;
+
+  static const int _maxCacheSize = 300; // Increased cache size
+  static const Duration _cacheRetentionTime =
+      Duration(minutes: 30); // Increased retention time
 
   Widget? getCachedThumbnailWidget(String path) {
     final widget = _thumbnailWidgets[path];
@@ -35,16 +52,45 @@ class ThumbnailWidgetCache {
     _cleanupCacheIfNeeded();
   }
 
+  String? getCachedThumbnailPath(String path) {
+    final thumbnailPath = _thumbnailPaths[path];
+    if (thumbnailPath != null) {
+      _lastAccessTime[path] = DateTime.now();
+    }
+    return thumbnailPath;
+  }
+
+  void cacheThumbnailPath(String path, String thumbnailPath) {
+    _thumbnailPaths[path] = thumbnailPath;
+    _lastAccessTime[path] = DateTime.now();
+    _cleanupCacheIfNeeded();
+
+    // Notify all listening widgets that a new thumbnail is ready
+    _thumbnailReadyController.add(path);
+  }
+
   bool isGeneratingThumbnail(String path) =>
       _generatingThumbnails.contains(path);
   void markGeneratingThumbnail(String path) => _generatingThumbnails.add(path);
-  void markThumbnailGenerated(String path) =>
-      _generatingThumbnails.remove(path);
+  void markThumbnailGenerated(String path) {
+    _generatingThumbnails.remove(path);
+
+    // If no more thumbnails are being generated, notify listeners
+    if (_generatingThumbnails.isEmpty &&
+        ThumbnailLoader.pendingThumbnailCount == 0) {
+      _allThumbnailsLoadedController.add(true);
+    }
+  }
 
   void clearCache() {
     _thumbnailWidgets.clear();
+    _thumbnailPaths.clear();
     _lastAccessTime.clear();
     _generatingThumbnails.clear();
+  }
+
+  void dispose() {
+    _thumbnailReadyController.close();
   }
 
   void _cleanupCacheIfNeeded() {
@@ -72,9 +118,15 @@ class ThumbnailWidgetCache {
 
     for (final path in stalePaths) {
       _thumbnailWidgets.remove(path);
+      _thumbnailPaths.remove(path);
       _lastAccessTime.remove(path);
     }
   }
+
+  // Check if any thumbnails are still being generated
+  bool get isAnyThumbnailGenerating =>
+      _generatingThumbnails.isNotEmpty ||
+      ThumbnailLoader.pendingThumbnailCount > 0;
 }
 
 /// A widget that displays thumbnails for images and videos with loading indicators
@@ -90,6 +142,34 @@ class ThumbnailLoader extends StatefulWidget {
   final VoidCallback? onThumbnailLoaded;
   final BorderRadius? borderRadius;
   final bool isPriority;
+
+  // Static counter to track pending thumbnail generation tasks
+  static int pendingThumbnailCount = 0;
+
+  // Stream controller to notify when background tasks change
+  static final StreamController<int> _pendingTasksController =
+      StreamController<int>.broadcast();
+  static Stream<int> get onPendingTasksChanged =>
+      _pendingTasksController.stream;
+
+  // Method to check if any background tasks are still running
+  static bool get hasBackgroundTasks =>
+      pendingThumbnailCount > 0 ||
+      ThumbnailWidgetCache()._generatingThumbnails.isNotEmpty;
+
+  // Method to reset pending thumbnail count
+  static void resetPendingCount() {
+    if (pendingThumbnailCount > 0) {
+      pendingThumbnailCount = 0;
+      _pendingTasksController.add(0);
+    }
+  }
+
+  // Method to clean up static resources
+  static void disposeStatic() {
+    _pendingTasksController.close();
+    ThumbnailWidgetCache._allThumbnailsLoadedController.close();
+  }
 
   const ThumbnailLoader({
     Key? key,
@@ -111,12 +191,25 @@ class ThumbnailLoader extends StatefulWidget {
 }
 
 class _ThumbnailLoaderState extends State<ThumbnailLoader>
-    with AutomaticKeepAliveClientMixin {
+    with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
   final ThumbnailWidgetCache _cache = ThumbnailWidgetCache();
   final ValueNotifier<bool> _isLoadingNotifier = ValueNotifier<bool>(true);
   final ValueNotifier<bool> _hasErrorNotifier = ValueNotifier<bool>(false);
   StreamSubscription? _cacheChangedSubscription;
-  bool _widgetMounted = false;
+  StreamSubscription? _thumbnailReadySubscription;
+  bool _widgetMounted = true;
+  Timer? _loadTimer;
+  Timer? _refreshTimer;
+  String? _networkThumbnailPath; // Store the generated thumbnail path
+
+  // Throttle network thumbnail generation to avoid overloading
+  static final _throttler = <String, DateTime>{};
+  static const _throttleInterval = Duration(milliseconds: 200);
+
+  // Limit how many thumbnails can be loaded at once per screen
+  static int _activeLoaders = 0;
+  static const int _maxActiveLoaders =
+      6; // Giới hạn loader đồng thời để giảm drop frame
 
   @override
   bool get wantKeepAlive => true;
@@ -125,6 +218,7 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
   void initState() {
     super.initState();
     _widgetMounted = true;
+    WidgetsBinding.instance.addObserver(this);
 
     // Listen for cache changes
     _cacheChangedSubscription = VideoThumbnailHelper.onCacheChanged.listen((_) {
@@ -135,9 +229,42 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
       }
     });
 
-    // Optimize frame timing for better performance during scrolling
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      if (_widgetMounted) {
+    // Listen for thumbnail ready notifications
+    _thumbnailReadySubscription = _cache.onThumbnailReady.listen((path) {
+      if (_widgetMounted && mounted && path == widget.filePath) {
+        debugPrint(
+            'Received thumbnail ready notification for ${widget.filePath}');
+        final cachedPath = _cache.getCachedThumbnailPath(widget.filePath);
+        if (cachedPath != null && File(cachedPath).existsSync()) {
+          setState(() {
+            _networkThumbnailPath = cachedPath;
+          });
+          _isLoadingNotifier.value = false;
+          _hasErrorNotifier.value = false;
+
+          if (widget.onThumbnailLoaded != null) {
+            widget.onThumbnailLoaded!();
+          }
+        }
+      }
+    });
+
+    // Check cache first before loading
+    final cachedPath = _cache.getCachedThumbnailPath(widget.filePath);
+    if (cachedPath != null && File(cachedPath).existsSync()) {
+      _networkThumbnailPath = cachedPath;
+      _isLoadingNotifier.value = false;
+      _hasErrorNotifier.value = false;
+    } else {
+      // Không khởi tạo thumbnail ngay; chờ khi widget thực sự hiển thị (VisibilityDetector)
+    }
+  }
+
+  void _scheduleLoad() {
+    _loadTimer?.cancel();
+    _loadTimer = Timer(const Duration(milliseconds: 50), () {
+      // Reduced delay
+      if (mounted) {
         _loadThumbnail();
       }
     });
@@ -149,16 +276,18 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
     if (oldWidget.filePath != widget.filePath ||
         oldWidget.isVideo != widget.isVideo ||
         oldWidget.isImage != widget.isImage) {
-      _invalidateThumbnail();
+      _networkThumbnailPath = null; // Reset thumbnail path
+      _loadThumbnail(); // Load immediately
     }
   }
 
   void _invalidateThumbnail() {
     _isLoadingNotifier.value = true;
     _hasErrorNotifier.value = false;
+    _networkThumbnailPath = null;
     // Use a small delay to prevent multiple reloads in quick succession
-    Future.delayed(const Duration(milliseconds: 10), () {
-      if (_widgetMounted) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_widgetMounted && mounted) {
         _loadThumbnail();
       }
     });
@@ -166,44 +295,108 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _cacheChangedSubscription?.cancel();
+    _thumbnailReadySubscription?.cancel();
     _isLoadingNotifier.dispose();
     _hasErrorNotifier.dispose();
     _widgetMounted = false;
+    _loadTimer?.cancel();
+    _refreshTimer?.cancel();
+
+    // Mark this path as invisible (lower priority)
+    if (widget.filePath.startsWith('#network/')) {
+      NetworkThumbnailHelper().markInvisible(widget.filePath);
+    }
+
     super.dispose();
   }
 
-  void _loadThumbnail() {
-    // Skip if not a previewable file
-    if (!widget.isImage && !widget.isVideo) {
-      _isLoadingNotifier.value = false;
-      return;
+  // Tránh tải lại thumbnail không cần thiết
+  bool _shouldSkipReload(String? path, String? previousPath) {
+    if (path == previousPath) return true;
+    if (path == null || previousPath == null) return false;
+
+    // Nếu đã là network path thì không reload nếu phần phía sau giống nhau
+    // (tránh reload lại khi chỉ có giao thức thay đổi)
+    if (path.startsWith('#network/') && previousPath.startsWith('#network/')) {
+      final pathSegments = path.split('/');
+      final previousSegments = previousPath.split('/');
+
+      // Check if base paths (without protocol) match
+      if (pathSegments.length > 3 && previousSegments.length > 3) {
+        final basePath = pathSegments.sublist(3).join('/');
+        final previousBasePath = previousSegments.sublist(3).join('/');
+        if (basePath == previousBasePath) return true;
+      }
     }
 
-    // Check if already in cache
-    if (_cache.isGeneratingThumbnail(widget.filePath)) {
-      // Already being generated, just wait
-      return;
+    return false;
+  }
+
+  void _loadThumbnail() async {
+    if (!_widgetMounted) return;
+
+    final path = widget.filePath;
+    final prevPath = _networkThumbnailPath;
+
+    if (_shouldSkipReload(path, prevPath)) {
+      return; // Avoid unnecessary reloads
     }
 
-    FrameTimingOptimizer().optimizeImageRendering();
-
-    if (widget.isImage) {
-      // For images, we just need to check if the file exists
-      _isLoadingNotifier.value = true;
-      File(widget.filePath).exists().then((exists) {
-        if (_widgetMounted) {
-          _isLoadingNotifier.value = false;
-          _hasErrorNotifier.value = !exists;
-          if (exists && widget.onThumbnailLoaded != null) {
-            widget.onThumbnailLoaded!();
-          }
-        }
-      });
-    } else if (widget.isVideo) {
-      // Video thumbnails are handled by LazyVideoThumbnail
+    // Đánh dấu đang tải
+    setState(() {
       _isLoadingNotifier.value = true;
       _hasErrorNotifier.value = false;
+    });
+
+    try {
+      if (path.isEmpty) {
+        _hasErrorNotifier.value = true;
+        return;
+      }
+
+      // First try file directly if it exists locally
+      final file = File(path);
+      bool fileExists = false;
+      try {
+        fileExists = !path.startsWith('#') && await file.exists();
+      } catch (e) {
+        // Ignore file access errors
+      }
+
+      String? thumbPath;
+
+      // Priority processing for visible thumbnails
+      if (path.startsWith('#network/')) {
+        NetworkThumbnailHelper().markVisible(path);
+      }
+
+      if (fileExists) {
+        if (widget.isVideo) {
+          thumbPath = await _getVideoThumbnail(path);
+        } else if (widget.isImage) {
+          thumbPath = path; // Đối với local image files, dùng path trực tiếp
+        }
+      } else if (path.startsWith('#network/')) {
+        // For network files (SMB, FTP, etc)
+        final thumbnailHelper = NetworkThumbnailHelper();
+        thumbPath = await thumbnailHelper.generateThumbnail(path, size: 256);
+      }
+
+      if (!_widgetMounted) return;
+
+      if (thumbPath != null) {
+        setState(() {
+          _networkThumbnailPath = thumbPath;
+          _isLoadingNotifier.value = false;
+        });
+      } else {
+        _hasErrorNotifier.value = true;
+      }
+    } catch (e) {
+      if (!_widgetMounted) return;
+      _hasErrorNotifier.value = true;
     }
   }
 
@@ -211,17 +404,28 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
   Widget build(BuildContext context) {
     super.build(context);
 
-    // For files that are neither images nor videos
-    if (!widget.isImage && !widget.isVideo) {
-      return _buildFallbackWidget();
-    }
+    // Gói toàn bộ nội dung bên trong VisibilityDetector để chỉ tải khi thấy trên màn hình
+    return VisibilityDetector(
+      key: ValueKey('vis-${widget.filePath}'),
+      onVisibilityChanged: (info) {
+        if (!_widgetMounted) return;
 
-    final borderRadius = widget.borderRadius ?? BorderRadius.zero;
+        if (info.visibleFraction > 0) {
+          // Became visible
+          NetworkThumbnailHelper().markVisible(widget.filePath);
 
-    // Wrap in try-catch to handle any rendering errors
-    try {
-      return ClipRRect(
-        borderRadius: borderRadius,
+          // Nếu chưa tải thumbnail, bắt đầu tải
+          if (_networkThumbnailPath == null &&
+              !_cache.isGeneratingThumbnail(widget.filePath)) {
+            _scheduleLoad();
+          }
+        } else {
+          // Not visible
+          NetworkThumbnailHelper().markInvisible(widget.filePath);
+        }
+      },
+      child: ClipRRect(
+        borderRadius: widget.borderRadius ?? BorderRadius.zero,
         child: ValueListenableBuilder<bool>(
           valueListenable: _isLoadingNotifier,
           builder: (context, isLoading, child) {
@@ -259,12 +463,8 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
             );
           },
         ),
-      );
-    } catch (e) {
-      debugPrint(
-          'ThumbnailLoader: Error rendering thumbnail for ${widget.filePath}: $e');
-      return _buildFallbackWidget();
-    }
+      ),
+    );
   }
 
   Widget _buildThumbnailContent() {
@@ -278,6 +478,116 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
   }
 
   Widget _buildVideoThumbnail() {
+    // For SMB videos, we need special handling
+    if (widget.filePath.toLowerCase().startsWith('#network/smb/')) {
+      // Check if we have a cached thumbnail path
+      final cachedPath = _cache.getCachedThumbnailPath(widget.filePath);
+      final thumbnailPath = _networkThumbnailPath ?? cachedPath;
+
+      if (thumbnailPath != null && File(thumbnailPath).existsSync()) {
+        // We have a thumbnail, display it
+        return Image.file(
+          File(thumbnailPath),
+          width: widget.width,
+          height: widget.height,
+          fit: widget.fit,
+          filterQuality: FilterQuality.medium,
+          cacheWidth: widget.width.isInfinite ? null : widget.width.toInt(),
+          cacheHeight: widget.height.isInfinite ? null : widget.height.toInt(),
+          errorBuilder: (context, error, stackTrace) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (_widgetMounted) {
+                _hasErrorNotifier.value = true;
+              }
+            });
+            return _buildFallbackWidget();
+          },
+          frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+            if (frame != null) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (_widgetMounted) {
+                  _isLoadingNotifier.value = false;
+                  if (widget.onThumbnailLoaded != null) {
+                    widget.onThumbnailLoaded!();
+                  }
+                }
+              });
+            }
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                child,
+                // Add video play icon overlay
+                const Center(
+                  child: Icon(
+                    EvaIcons.playCircleOutline,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      }
+
+      // No thumbnail yet, try to generate one
+      if (!_cache.isGeneratingThumbnail(widget.filePath)) {
+        _cache.markGeneratingThumbnail(widget.filePath);
+        _activeLoaders++;
+
+        // Increment pending thumbnail count
+        ThumbnailLoader.pendingThumbnailCount++;
+        ThumbnailLoader._pendingTasksController
+            .add(ThumbnailLoader.pendingThumbnailCount);
+
+        // Use NetworkThumbnailHelper to generate the thumbnail
+        NetworkThumbnailHelper()
+            .generateThumbnail(
+              widget.filePath,
+              size: 256, // Larger size for better quality
+            )
+            .timeout(const Duration(seconds: 8)) // Longer timeout for videos
+            .then((path) {
+          if (_widgetMounted && path != null) {
+            setState(() {
+              _networkThumbnailPath = path;
+              _cache.cacheThumbnailPath(widget.filePath, path);
+            });
+            _isLoadingNotifier.value = false;
+            if (widget.onThumbnailLoaded != null) {
+              widget.onThumbnailLoaded!();
+            }
+          } else {
+            _isLoadingNotifier.value = false;
+          }
+          _cache.markThumbnailGenerated(widget.filePath);
+          _activeLoaders--;
+
+          // Decrement pending thumbnail count
+          ThumbnailLoader.pendingThumbnailCount--;
+          ThumbnailLoader._pendingTasksController
+              .add(ThumbnailLoader.pendingThumbnailCount);
+        }).catchError((error) {
+          if (_widgetMounted) {
+            _isLoadingNotifier.value = false;
+            _hasErrorNotifier.value = true;
+          }
+          _cache.markThumbnailGenerated(widget.filePath);
+          _activeLoaders--;
+
+          // Decrement pending thumbnail count
+          ThumbnailLoader.pendingThumbnailCount--;
+          ThumbnailLoader._pendingTasksController
+              .add(ThumbnailLoader.pendingThumbnailCount);
+        });
+      }
+
+      // Return fallback while loading
+      return _buildFallbackWidget();
+    }
+
+    // For local videos, use LazyVideoThumbnail
     return LazyVideoThumbnail(
       videoPath: widget.filePath,
       width: widget.width,
@@ -309,12 +619,112 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
   }
 
   Widget _buildImageThumbnail() {
+    // For network files, use the generated thumbnail path if available
+    if (widget.filePath.startsWith('#network/')) {
+      // Check cache first
+      final cachedPath = _cache.getCachedThumbnailPath(widget.filePath);
+      final thumbnailPath = _networkThumbnailPath ?? cachedPath;
+
+      if (thumbnailPath != null && File(thumbnailPath).existsSync()) {
+        // Cache the path if not already cached
+        if (cachedPath == null) {
+          _cache.cacheThumbnailPath(widget.filePath, thumbnailPath);
+        }
+
+        return Image.file(
+          File(thumbnailPath),
+          width: widget.width,
+          height: widget.height,
+          fit: widget.fit,
+          filterQuality: FilterQuality.medium, // Tăng chất lượng lên medium
+          cacheWidth: widget.width.isInfinite ? null : widget.width.toInt(),
+          cacheHeight: widget.height.isInfinite ? null : widget.height.toInt(),
+          errorBuilder: (context, error, stackTrace) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (_widgetMounted) {
+                _hasErrorNotifier.value = true;
+              }
+            });
+            return _buildFallbackWidget();
+          },
+          frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+            if (frame != null) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (_widgetMounted) {
+                  _isLoadingNotifier.value = false;
+                  if (widget.onThumbnailLoaded != null) {
+                    widget.onThumbnailLoaded!();
+                  }
+                }
+              });
+            }
+            return child;
+          },
+        );
+      } else {
+        // No thumbnail available yet, show fallback
+        // Trigger thumbnail generation if not already in progress
+        if (!_cache.isGeneratingThumbnail(widget.filePath)) {
+          _cache.markGeneratingThumbnail(widget.filePath);
+          _activeLoaders++;
+
+          // Increment pending thumbnail count
+          ThumbnailLoader.pendingThumbnailCount++;
+          ThumbnailLoader._pendingTasksController
+              .add(ThumbnailLoader.pendingThumbnailCount);
+
+          NetworkThumbnailHelper()
+              .generateThumbnail(
+                widget.filePath,
+                size: 128,
+              )
+              .timeout(const Duration(seconds: 6))
+              .then((path) {
+            if (_widgetMounted && path != null) {
+              setState(() {
+                _networkThumbnailPath = path;
+                _cache.cacheThumbnailPath(widget.filePath, path);
+              });
+              _isLoadingNotifier.value = false;
+              if (widget.onThumbnailLoaded != null) {
+                widget.onThumbnailLoaded!();
+              }
+            } else {
+              _isLoadingNotifier.value = false;
+            }
+            _cache.markThumbnailGenerated(widget.filePath);
+            _activeLoaders--;
+
+            // Decrement pending thumbnail count
+            ThumbnailLoader.pendingThumbnailCount--;
+            ThumbnailLoader._pendingTasksController
+                .add(ThumbnailLoader.pendingThumbnailCount);
+          }).catchError((error) {
+            if (_widgetMounted) {
+              _isLoadingNotifier.value = false;
+              _hasErrorNotifier.value = true;
+            }
+            _cache.markThumbnailGenerated(widget.filePath);
+            _activeLoaders--;
+
+            // Decrement pending thumbnail count
+            ThumbnailLoader.pendingThumbnailCount--;
+            ThumbnailLoader._pendingTasksController
+                .add(ThumbnailLoader.pendingThumbnailCount);
+          });
+        }
+
+        return _buildFallbackWidget();
+      }
+    }
+
+    // For local files, use the original logic
     return Image.file(
       File(widget.filePath),
       width: widget.width,
       height: widget.height,
       fit: widget.fit,
-      filterQuality: FilterQuality.medium,
+      filterQuality: FilterQuality.medium, // Tăng chất lượng lên medium
       cacheWidth: widget.width.isInfinite ? null : widget.width.toInt(),
       cacheHeight: widget.height.isInfinite ? null : widget.height.toInt(),
       errorBuilder: (context, error, stackTrace) {
@@ -380,5 +790,26 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
         ),
       );
     }
+  }
+
+  // Helper để lấy video thumbnail
+  Future<String?> _getVideoThumbnail(String path) async {
+    try {
+      return await VideoThumbnailHelper.getThumbnail(path,
+          isPriority: true, forceRegenerate: false);
+    } catch (e) {
+      debugPrint('Error getting video thumbnail: $e');
+      return null;
+    }
+  }
+
+  // Helper để kiểm tra file có phải là video không
+  bool _isVideoFile(String path) {
+    return widget.isVideo;
+  }
+
+  // Helper để kiểm tra file có phải là ảnh không
+  bool _isImageFile(String path) {
+    return widget.isImage;
   }
 }
