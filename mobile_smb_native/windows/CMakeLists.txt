@@ -42,17 +42,22 @@ set_target_properties(${PLUGIN_NAME} PROPERTIES
   CXX_VISIBILITY_PRESET hidden)
 target_compile_definitions(${PLUGIN_NAME} PRIVATE FLUTTER_PLUGIN_IMPL)
 
+# Build the core SMB bridge native library and link it
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../native" "smb_bridge_build")
+
 # Source include directories and library dependencies. Add any plugin-specific
 # dependencies here.
 target_include_directories(${PLUGIN_NAME} INTERFACE
   "${CMAKE_CURRENT_SOURCE_DIR}/include")
-target_link_libraries(${PLUGIN_NAME} PRIVATE flutter flutter_wrapper_plugin)
+# Link against Flutter wrappers *and* the freshly built smb_bridge library
+target_link_libraries(${PLUGIN_NAME} PRIVATE flutter flutter_wrapper_plugin smb_bridge)
 
 # List of absolute paths to libraries that should be bundled with the plugin.
 # This list could contain prebuilt libraries, or libraries created by an
 # external build triggered from this build file.
-set(test_plugin_bundled_libraries
-  ""
+# Bundle smb_bridge.dll so Flutter copies it next to the app executable
+set(mobile_smb_native_plugin_bundled_libraries
+  "$<TARGET_FILE:smb_bridge>"
   PARENT_SCOPE
 )
 

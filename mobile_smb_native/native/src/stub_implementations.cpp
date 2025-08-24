@@ -6,6 +6,9 @@
 #include <cstring>
 #include <cstdlib>
 #include <iostream>
+#include <vector>
+#include <string>
+#include <memory>
 
 // Stub SmbClient implementation
 class SmbClientStub {
@@ -30,25 +33,27 @@ public:
         return reinterpret_cast<void*>(0x12345678); // Dummy handle
     }
     
-    std::vector<FileInfo> listDirectory(const std::string& path) {
+    std::vector<SmbFileInfo> listDirectory(const std::string& path) {
         std::cout << "[STUB] Listing directory: " << path << std::endl;
-        std::vector<FileInfo> files;
+        std::vector<SmbFileInfo> files;
         
         // Add some dummy files
-        FileInfo file1;
-        file1.name = "example.txt";
-        file1.path = path + "/example.txt";
+        SmbFileInfo file1;
+        file1.name = _strdup("example.txt");
+        file1.path = _strdup((path + "/example.txt").c_str());
         file1.size = 1024;
         file1.modified_time = 1640995200; // 2022-01-01
-        file1.is_directory = false;
+        file1.is_directory = 0;
+        file1.error_code = SMB_SUCCESS;
         files.push_back(file1);
         
-        FileInfo dir1;
-        dir1.name = "subfolder";
-        dir1.path = path + "/subfolder";
+        SmbFileInfo dir1;
+        dir1.name = _strdup("subfolder");
+        dir1.path = _strdup((path + "/subfolder").c_str());
         dir1.size = 0;
         dir1.modified_time = 1640995200;
-        dir1.is_directory = true;
+        dir1.is_directory = 1;
+        dir1.error_code = SMB_SUCCESS;
         files.push_back(dir1);
         
         return files;
@@ -229,12 +234,12 @@ SmbDirectoryResult smb_list_directory(SmbContext* context, const char* path) {
     
     for (size_t i = 0; i < files.size(); ++i) {
         const auto& file = files[i];
-        result.files[i].name = strdup(file.name.c_str());
-        result.files[i].path = strdup(file.path.c_str());
+        result.files[i].name = _strdup(file.name);
+        result.files[i].path = _strdup(file.path);
         result.files[i].size = file.size;
         result.files[i].modified_time = file.modified_time;
-        result.files[i].is_directory = file.is_directory ? 1 : 0;
-        result.files[i].error_code = SMB_SUCCESS;
+        result.files[i].is_directory = file.is_directory;
+        result.files[i].error_code = file.error_code;
     }
     
     result.error_code = SMB_SUCCESS;

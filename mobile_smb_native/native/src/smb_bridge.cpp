@@ -3,7 +3,7 @@
 
 #include "smb_bridge.h"
 #include "smb_client.h"
-#include "thumbnail_generator.h"
+#include "../include/thumbnail_generator.h"
 #include <memory>
 #include <map>
 #include <string>
