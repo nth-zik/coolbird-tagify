@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
+import 'thumbnail_queue_manager.dart';
+import 'ui_blocking_prevention.dart';
 
 /// A Flutter plugin to access Windows native video thumbnail generation
 /// This uses the Windows thumbnail cache system for efficient thumbnail extraction
@@ -52,17 +54,19 @@ class FcNativeVideoThumbnail {
   ///
   /// - [videoPath]: Path to the video file
   /// - [outputPath]: Where to save the thumbnail (must be a valid path)
-  /// - [width]: Width of the thumbnail (also used for height to maintain aspect ratio)
+  /// - [width]: Width of the thumbnail (0 = use original width, negative = use percentage of original)
   /// - [format]: Image format, either 'png' or 'jpg'
   /// - [timeSeconds]: Position in the video (in seconds) to extract the thumbnail from (optional)
+  /// - [quality]: Image quality for JPEG format (1-100, default 95, ignored for PNG)
   ///
   /// Returns the path to the generated thumbnail if successful, null otherwise
   static Future<String?> generateThumbnail({
     required String videoPath,
     required String outputPath,
-    int width = 200,
-    String format = 'jpg',
+    int width = 1024, // Increased for better quality with HD/4K videos
+    String format = 'png',
     int? timeSeconds,
+    int quality = 95,
   }) async {
     if (!isWindows) {
       debugPrint(
@@ -130,6 +134,9 @@ class FcNativeVideoThumbnail {
         // Call the native method with a timeout and proper error handling
         bool? result;
         try {
+          // Add small delay to allow UI thread to update
+          await Future.delayed(const Duration(milliseconds: 50));
+
           // Wrap platform channel call in try-catch to handle BackgroundIsolateBinaryMessenger errors
           result = await _channel.invokeMethod<bool>('getVideoThumbnail', {
             'srcFile': videoPath,
@@ -137,6 +144,7 @@ class FcNativeVideoThumbnail {
             'width': width,
             'format': format.toLowerCase() == 'png' ? 'png' : 'jpg',
             'timeSeconds': timeSeconds, // Pass the timestamp to native code
+            'quality': quality, // Pass quality setting for JPEG format
           }).timeout(_operationTimeout, onTimeout: () {
             debugPrint(
                 'FcNativeVideoThumbnail: Native operation timed out for $videoPath');
@@ -165,6 +173,9 @@ class FcNativeVideoThumbnail {
         }
 
         if (result == true) {
+          // Add small delay before file verification to allow UI updates
+          await Future.delayed(const Duration(milliseconds: 50));
+
           // Verify the thumbnail was created (async)
           final outputFile = File(outputPath);
           if (await outputFile.exists() && await outputFile.length() > 0) {
@@ -221,13 +232,99 @@ class FcNativeVideoThumbnail {
     return supportedExtensions.contains(extension);
   }
 
+  /// Generate thumbnail using original video resolution (highest quality)
+  static Future<String?> generateOriginalSizeThumbnail({
+    required String videoPath,
+    required String outputPath,
+    String format = 'png',
+    int? timeSeconds,
+    int quality = 95,
+  }) async {
+    return generateThumbnail(
+      videoPath: videoPath,
+      outputPath: outputPath,
+      width: 0, // 0 = use original resolution
+      format: format,
+      timeSeconds: timeSeconds,
+      quality: quality,
+    );
+  }
+
+  /// Generate thumbnail using percentage of original resolution
+  /// [percentage] should be between 10 and 100 (e.g., 75 = 75% of original size)
+  static Future<String?> generatePercentageThumbnail({
+    required String videoPath,
+    required String outputPath,
+    required int percentage,
+    String format = 'png',
+    int? timeSeconds,
+    int quality = 95,
+  }) async {
+    if (percentage < 10 || percentage > 100) {
+      throw ArgumentError('Percentage must be between 10 and 100');
+    }
+
+    return generateThumbnail(
+      videoPath: videoPath,
+      outputPath: outputPath,
+      width: -percentage, // Negative = use percentage
+      format: format,
+      timeSeconds: timeSeconds,
+      quality: quality,
+    );
+  }
+
+  /// Generate high-quality thumbnail optimized for HD/4K videos
+  static Future<String?> generateHDThumbnail({
+    required String videoPath,
+    required String outputPath,
+    String format = 'png',
+    int? timeSeconds,
+    int quality = 98,
+  }) async {
+    return generateThumbnail(
+      videoPath: videoPath,
+      outputPath: outputPath,
+      width: 1920, // HD width with intelligent scaling
+      format: format,
+      timeSeconds: timeSeconds,
+      quality: quality,
+    );
+  }
+
   /// A safer method to handle isolate contexts
   static Future<String?> safeThumbnailGenerate({
     required String videoPath,
     required String outputPath,
-    int width = 200,
-    String format = 'jpg',
+    int width = 1024,
+    String format = 'png',
     int? timeSeconds,
+    int quality = 95,
+  }) async {
+    // Use queue manager to prevent UI blocking
+    return ThumbnailQueueManager().requestThumbnail(
+      videoPath: videoPath,
+      outputPath: outputPath,
+      generator: () => generateThumbnail(
+        videoPath: videoPath,
+        outputPath: outputPath,
+        width: width,
+        format: format,
+        timeSeconds: timeSeconds,
+        quality: quality,
+      ),
+      priority: 10,
+      isVisible: true,
+    );
+  }
+
+  static Future<String?> _originalSafeThumbnailGenerate({
+    required String videoPath,
+    required String outputPath,
+    int width = 1024,
+    String format = 'png',
+    int? timeSeconds,
+    int quality = 95,
   }) async {
     // For safety in isolates, first try to use this class's standard method
     try {
@@ -237,6 +334,7 @@ class FcNativeVideoThumbnail {
         width: width,
         format: format,
         timeSeconds: timeSeconds,
+        quality: quality,
       );
     } catch (e) {
       // If we get any errors, fallback to a pure Dart implementation

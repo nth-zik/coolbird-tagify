@@ -12,6 +12,8 @@ import 'folder_item.dart';
 import 'folder_grid_item.dart';
 import 'file_details_item.dart';
 import 'folder_details_item.dart';
+import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
+import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 
 class FileView extends StatelessWidget {
   final List<File> files;
@@ -355,12 +357,10 @@ class FileView extends StatelessWidget {
         }
       },
       child: GridView.builder(
-        // Add better scrolling physics for smoother scrolling
         physics: const BouncingScrollPhysics(
           parent: AlwaysScrollableScrollPhysics(),
         ),
-        // Add caching for better scroll performance
-        cacheExtent: 1000,
+        cacheExtent: 1500,
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: state.gridZoomLevel,
           childAspectRatio: 0.8,

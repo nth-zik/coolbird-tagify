@@ -6,7 +6,6 @@ import 'package:flutter/scheduler.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:cb_file_manager/helpers/video_thumbnail_helper.dart';
 import 'package:cb_file_manager/helpers/network_thumbnail_helper.dart';
-import 'package:cb_file_manager/helpers/frame_timing_optimizer.dart';
 import 'package:cb_file_manager/ui/widgets/lazy_video_thumbnail.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 
@@ -503,19 +502,15 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
                     // Main content
                     _buildThumbnailContent(),
 
-                    // Loading indicator overlay
+                    // Skeleton loading overlay - static for better performance
                     if (isLoading && widget.showLoadingIndicator)
                       Container(
-                        color: Colors.black26,
-                        child: const Center(
-                          child: SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[800]?.withOpacity(0.8),
+                          borderRadius: widget.borderRadius,
+                        ),
+                        child: Center(
+                          child: _buildSkeletonLoader(),
                         ),
                       ),
                   ],
@@ -881,5 +876,64 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
   // Helper để kiểm tra file có phải là ảnh không
   bool _isImageFile(String path) {
     return widget.isImage;
+  }
+
+  /// Build simple and clean skeleton loader
+  Widget _buildSkeletonLoader() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: widget.borderRadius ?? BorderRadius.circular(8),
+        color: Colors.grey[800],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Icon area
+          Expanded(
+            flex: 3,
+            child: Center(
+              child: Icon(
+                widget.isVideo
+                    ? EvaIcons.playCircleOutline
+                    : widget.isImage
+                        ? EvaIcons.imageOutline
+                        : EvaIcons.fileTextOutline,
+                color: Colors.grey[600],
+                size: 32,
+              ),
+            ),
+          ),
+
+          // Text area
+          Expanded(
+            flex: 1,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[700],
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    height: 8,
+                    width: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[700]?.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
