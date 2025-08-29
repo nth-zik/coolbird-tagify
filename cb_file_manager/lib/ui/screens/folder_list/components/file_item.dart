@@ -24,6 +24,9 @@ import 'package:flutter/services.dart'; // Import for keyboard key detection
 // Import for RepaintBoundary
 import 'package:cb_file_manager/ui/components/optimized_interaction_handler.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
+import 'package:cb_file_manager/helpers/streaming_helper.dart';
+import 'package:cb_file_manager/services/network_browsing/webdav_service.dart';
+import 'package:cb_file_manager/services/network_browsing/ftp_service.dart';
 
 // Add this class to disable ripple effects
 class NoSplashFactory extends InteractiveInkFeatureFactory {
@@ -570,6 +573,50 @@ class _FileItemContentState extends State<_FileItemContent> {
   }
 
   Widget _buildFileDetails(BuildContext context) {
+    // Prefer WebDAV metadata when available
+    try {
+      final service = StreamingHelper.instance.currentNetworkService;
+      if (service is WebDAVService) {
+        final remotePath = service.getRemotePathFromLocal(widget.file.path);
+        if (remotePath != null) {
+          final meta = service.getMeta(remotePath);
+          if (meta != null) {
+            final sizeText =
+                meta.size >= 0 ? FileUtils.formatFileSize(meta.size) : '--';
+            final modifiedText = meta.modified.toString().split('.').first;
+            return Row(
+              children: [
+                Text(sizeText, style: Theme.of(context).textTheme.bodySmall),
+                const SizedBox(width: 12),
+                const Icon(Icons.calendar_today, size: 12, color: Colors.grey),
+                const SizedBox(width: 4),
+                Text(modifiedText,
+                    style: Theme.of(context).textTheme.bodySmall),
+              ],
+            );
+          }
+        }
+      } else if (service is FTPService) {
+        // For FTP, we keyed meta by UI path directly
+        final meta = service.getMeta(widget.file.path);
+        if (meta != null) {
+          final sizeText =
+              meta.size >= 0 ? FileUtils.formatFileSize(meta.size) : '--';
+          final modifiedText =
+              (meta.modified ?? DateTime.now()).toString().split('.').first;
+          return Row(
+            children: [
+              Text(sizeText, style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(width: 12),
+              const Icon(Icons.calendar_today, size: 12, color: Colors.grey),
+              const SizedBox(width: 4),
+              Text(modifiedText, style: Theme.of(context).textTheme.bodySmall),
+            ],
+          );
+        }
+      }
+    } catch (_) {}
+
     // Calculate approximate available width for tags
     // File size text ~100px, icon button ~48px, spacing ~32px, bookmark icon ~20px
     final screenWidth = MediaQuery.of(context).size.width;
@@ -577,7 +624,6 @@ class _FileItemContentState extends State<_FileItemContent> {
         screenWidth * 0.6 - 200; // Conservative estimate
 
     // Estimate tag chip width: each character ~8px + padding ~20px
-    int estimatedTagsToShow = 0;
     int totalTagWidth = 0;
     final List<String> tagsToShow = [];
 
@@ -592,7 +638,6 @@ class _FileItemContentState extends State<_FileItemContent> {
       if (totalTagWidth + estimatedWidth <= approximateAvailableWidth) {
         totalTagWidth += estimatedWidth;
         tagsToShow.add(tag);
-        estimatedTagsToShow++;
       } else {
         break;
       }

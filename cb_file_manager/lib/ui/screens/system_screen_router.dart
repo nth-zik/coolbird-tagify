@@ -6,6 +6,7 @@ import 'package:cb_file_manager/ui/screens/network_browsing/network_connection_s
 import 'package:cb_file_manager/ui/screens/network_browsing/network_browser_screen.dart';
 import 'package:cb_file_manager/ui/screens/network_browsing/smb_browser_screen.dart';
 import 'package:cb_file_manager/ui/screens/network_browsing/ftp_browser_screen.dart';
+import 'package:cb_file_manager/ui/screens/network_browsing/webdav_browser_screen.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/tab_manager/tab_manager.dart';
@@ -14,6 +15,7 @@ import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
 import 'package:cb_file_manager/bloc/network_browsing/network_browsing_bloc.dart';
 import 'package:cb_file_manager/services/network_browsing/network_service_registry.dart';
 import 'package:cb_file_manager/ui/screens/trash_bin/trash_bin_screen.dart';
+import '../utils/route.dart';
 
 /// A router that handles system screens and special paths
 class SystemScreenRouter {
@@ -73,14 +75,14 @@ class SystemScreenRouter {
       return FTPBrowserScreen(tabId: tabId);
     } else if (path == '#webdav') {
       // Route to the WebDAV browser screen
-      // ... existing code ...
+      return WebDAVBrowserScreen(tabId: tabId);
     } else if (path.startsWith('#tag:')) {
       // Check if we already have a cached widget for this tab+path
       if (_cachedWidgets.containsKey(cacheKey)) {
         // Only log once to avoid spamming
         if (!_loggedKeys.contains(cacheKey)) {
-            _loggedKeys.add(cacheKey);
-          }
+          _loggedKeys.add(cacheKey);
+        }
         return _cachedWidgets[cacheKey]!;
       }
 
@@ -127,7 +129,8 @@ class SystemScreenRouter {
     }
 
     // Fallback for unknown system paths
-    return _buildErrorWidget(context, 'Unknown system path: $path', cacheKey: cacheKey);
+    return _buildErrorWidget(context, 'Unknown system path: $path',
+        cacheKey: cacheKey);
   }
 
   /// Handles network paths (smb://, ftp://, etc.)
@@ -136,7 +139,6 @@ class SystemScreenRouter {
     // Create a cache key from the tab ID and path
     final String cacheKey = '$tabId:$path';
     try {
-
       // Check if we already have a cached widget for this network path
       if (_cachedWidgets.containsKey(cacheKey)) {
         // Only log once to avoid spamming
@@ -224,7 +226,8 @@ class SystemScreenRouter {
     } catch (e) {
       _loggedKeys.add(cacheKey);
       // Fallback for navigation errors
-      return _buildErrorWidget(context, 'Không thể mở đường dẫn mạng: $path', cacheKey: cacheKey);
+      return _buildErrorWidget(context, 'Không thể mở đường dẫn mạng: $path',
+          cacheKey: cacheKey);
     }
   }
 
@@ -243,7 +246,8 @@ class SystemScreenRouter {
   }
 
   /// Builds an error widget for unknown paths
-  static Widget _buildErrorWidget(BuildContext context, String message, {String? cacheKey}) {
+  static Widget _buildErrorWidget(BuildContext context, String message,
+      {String? cacheKey}) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -264,7 +268,7 @@ class SystemScreenRouter {
             onPressed: () {
               // Kiểm tra xem Navigator có thể pop() không
               if (Navigator.of(context).canPop()) {
-                Navigator.of(context).pop();
+                RouteUtils.safePopDialog(context);
               } else {
                 // Nếu không thể pop, hãy thử chuyển về tab mặc định
                 try {

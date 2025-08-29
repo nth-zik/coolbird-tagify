@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cb_file_manager/services/network_browsing/optimized_smb_service.dart';
 import 'package:cb_file_manager/ui/components/stream_speed_indicator.dart';
+import '../utils/route.dart';
 
 /// Dialog to show detailed streaming performance information
 class StreamingPerformanceDialog extends StatefulWidget {
@@ -100,7 +101,7 @@ class _StreamingPerformanceDialogState
                   ),
                 ),
                 IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () => RouteUtils.safePopDialog(context),
                   icon: const Icon(Icons.close),
                 ),
               ],

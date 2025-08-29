@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cb_file_manager/ui/utils/base_screen.dart';
+import 'package:cb_file_manager/main.dart' show goHome;
+import 'package:cb_file_manager/ui/utils/route.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 
 /// Helper class to standardize app bar functionality across the application
@@ -34,7 +36,7 @@ class ActionBarHelper {
     if (canPop) {
       return IconButton(
         icon: const Icon(EvaIcons.arrowBack),
-        onPressed: () => _handleBackNavigation(context),
+        onPressed: () => RouteUtils.safeBackNavigation(context),
       );
     } else {
       return IconButton(
@@ -46,32 +48,51 @@ class ActionBarHelper {
 
   /// Handles back navigation, either popping the current route or showing a dialog
   static void _handleBackNavigation(BuildContext context) {
-    if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
-    } else {
-      // Show exit confirmation dialog when trying to exit the app
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Exit Application?'),
-          content: const Text('Are you sure you want to exit the application?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Exit'),
-            ),
-          ],
-        ),
-      ).then((value) {
-        if (value == true) {
-          // Exit the app if confirmed
-          Navigator.of(context).pop();
+    try {
+      if (Navigator.of(context).canPop()) {
+        RouteUtils.safePopDialog(context);
+      } else {
+        // Show exit confirmation dialog when trying to exit the app
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Exit Application?'),
+            content:
+                const Text('Are you sure you want to exit the application?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Exit'),
+              ),
+            ],
+          ),
+        ).then((value) {
+          if (value == true && context.mounted) {
+            // Exit the app if confirmed
+            try {
+              RouteUtils.safePopDialog(context);
+            } catch (e) {
+              debugPrint('Error exiting app: $e');
+              // If pop fails, try to go home
+              goHome(context);
+            }
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error in back navigation: $e');
+      // Last resort: try to go home
+      try {
+        if (context.mounted) {
+          goHome(context);
         }
-      });
+      } catch (homeError) {
+        debugPrint('Failed to go home: $homeError');
+      }
     }
   }
 

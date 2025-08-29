@@ -5,11 +5,12 @@ import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:cb_file_manager/ui/components/shared_file_context_menu.dart';
 import 'package:cb_file_manager/helpers/file_type_helper.dart';
-import 'package:cb_file_manager/helpers/file_icon_helper.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
-import 'package:cb_file_manager/ui/widgets/lazy_video_thumbnail.dart';
 import 'package:path/path.dart' as path;
 import 'package:cb_file_manager/ui/components/optimized_interaction_handler.dart';
+import 'package:cb_file_manager/helpers/streaming_helper.dart';
+import 'package:cb_file_manager/services/network_browsing/webdav_service.dart';
+import 'package:cb_file_manager/services/network_browsing/ftp_service.dart';
 
 class FileDetailsItem extends StatefulWidget {
   final File file;
@@ -235,39 +236,78 @@ class _FileDetailsItemState extends State<FileDetailsItem> {
                       ),
                     ),
 
-                  // Size column
+                  // Size column (prefer WebDAV metadata)
                   if (widget.columnVisibility.size)
                     Expanded(
                       flex: 1,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12.0, vertical: 10.0),
-                        child: Text(
-                          _fileStat != null
-                              ? _formatFileSize(_fileStat!.size)
-                              : 'Loading...',
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        child: Builder(builder: (context) {
+                          String text = 'Loading...';
+                          final svc =
+                              StreamingHelper.instance.currentNetworkService;
+                          if (svc is WebDAVService) {
+                            final remotePath =
+                                svc.getRemotePathFromLocal(widget.file.path);
+                            if (remotePath != null) {
+                              final meta = svc.getMeta(remotePath);
+                              if (meta != null && meta.size >= 0) {
+                                text = _formatFileSize(meta.size);
+                              }
+                            }
+                          } else if (svc is FTPService) {
+                            final meta = svc.getMeta(widget.file.path);
+                            if (meta != null && meta.size >= 0) {
+                              text = _formatFileSize(meta.size);
+                            }
+                          }
+                          if (text == 'Loading...' && _fileStat != null) {
+                            text = _formatFileSize(_fileStat!.size);
+                          }
+                          return Text(text, overflow: TextOverflow.ellipsis);
+                        }),
                       ),
                     ),
 
-                  // Date modified column
+                  // Date modified column (prefer WebDAV metadata)
                   if (widget.columnVisibility.dateModified)
                     Expanded(
                       flex: 2,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12.0, vertical: 10.0),
-                        child: Text(
-                          _fileStat != null
-                              ? _fileStat!.modified.toString().split('.')[0]
-                              : 'Loading...',
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        child: Builder(builder: (context) {
+                          String text = 'Loading...';
+                          final svc =
+                              StreamingHelper.instance.currentNetworkService;
+                          if (svc is WebDAVService) {
+                            final remotePath =
+                                svc.getRemotePathFromLocal(widget.file.path);
+                            if (remotePath != null) {
+                              final meta = svc.getMeta(remotePath);
+                              if (meta != null) {
+                                text =
+                                    meta.modified.toString().split('.').first;
+                              }
+                            }
+                          } else if (svc is FTPService) {
+                            final meta = svc.getMeta(widget.file.path);
+                            if (meta != null) {
+                              final dt = meta.modified ?? DateTime.now();
+                              text = dt.toString().split('.').first;
+                            }
+                          }
+                          if (text == 'Loading...' && _fileStat != null) {
+                            text =
+                                _fileStat!.modified.toString().split('.').first;
+                          }
+                          return Text(text, overflow: TextOverflow.ellipsis);
+                        }),
                       ),
                     ),
 
-                  // Date created column
+                  // Date created column (fallback to FileStat)
                   if (widget.columnVisibility.dateCreated)
                     Expanded(
                       flex: 2,
@@ -276,7 +316,7 @@ class _FileDetailsItemState extends State<FileDetailsItem> {
                             horizontal: 12.0, vertical: 10.0),
                         child: Text(
                           _fileStat != null
-                              ? _fileStat!.changed.toString().split('.')[0]
+                              ? _fileStat!.changed.toString().split('.').first
                               : 'Loading...',
                           overflow: TextOverflow.ellipsis,
                         ),

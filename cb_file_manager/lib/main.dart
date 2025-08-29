@@ -24,6 +24,7 @@ import 'package:flutter_localizations/flutter_localizations.dart'; // Import for
 import 'config/language_controller.dart'; // Import our language controller
 import 'config/languages/app_localizations_delegate.dart'; // Import our localization delegate
 import 'services/streaming_service_manager.dart'; // Import streaming service manager
+import 'ui/utils/safe_navigation_wrapper.dart'; // Import safe navigation wrapper
 
 // Global access to test the video thumbnail screen (for development)
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -284,28 +285,30 @@ class _CBFileAppState extends State<CBFileApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'CoolBird - File Manager',
-      // Use our TabMainScreen as the default entry point
-      home: const TabMainScreen(),
-      navigatorKey: navigatorKey, // Add navigator key for global access
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: _themeMode,
-      debugShowCheckedModeBanner: false,
+    return SafeNavigationWrapper(
+      child: MaterialApp(
+        title: 'CoolBird - File Manager',
+        // Use our TabMainScreen as the default entry point
+        home: const TabMainScreen(),
+        navigatorKey: navigatorKey, // Add navigator key for global access
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: _themeMode,
+        debugShowCheckedModeBanner: false,
 
-      // Add localization support
-      locale: _languageController.currentLocale,
-      localizationsDelegates: const [
-        AppLocalizationsDelegate(),
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [
-        Locale('vi', ''), // Vietnamese
-        Locale('en', ''), // English
-      ],
+        // Add localization support
+        locale: _languageController.currentLocale,
+        localizationsDelegates: const [
+          AppLocalizationsDelegate(),
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('vi', ''), // Vietnamese
+          Locale('en', ''), // English
+        ],
+      ),
     );
   }
 }

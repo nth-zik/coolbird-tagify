@@ -47,6 +47,7 @@ import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/helpers/folder_sort_manager.dart'; // Import for FolderSortManager
 import 'package:cb_file_manager/helpers/tag_manager.dart';
 import 'package:cb_file_manager/ui/components/screen_scaffold.dart';
+import '../utils/route.dart';
 
 // Add this class to cache thumbnails
 class ThumbnailCache {
@@ -688,7 +689,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
               actions: [
                 TextButton(
                   onPressed: () {
-                    Navigator.pop(context);
+                    RouteUtils.safePopDialog(context);
                     setState(() {
                       _showSearchBar = true;
                     });
@@ -779,48 +780,59 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
 
   // Handle back button press for Android
   Future<bool> _handleBackButton() async {
-    // Stop any ongoing thumbnail processing when navigating
-    VideoThumbnailHelper.stopAllProcessing();
+    try {
+      // Stop any ongoing thumbnail processing when navigating
+      VideoThumbnailHelper.stopAllProcessing();
 
-    // First check if we're currently showing search results
-    final folderListState = _folderListBloc.state;
-    if (folderListState.isSearchActive) {
-      // Clear search results and reload current directory
-      _folderListBloc.add(const ClearSearchAndFilters());
-      _folderListBloc.add(FolderListLoad(_currentPath));
-      return false; // Don't exit app, we cleared the search
-    }
-
-    // Check if we can navigate back in the folder hierarchy
-    final tabManagerBloc = context.read<TabManagerBloc>();
-    if (tabManagerBloc.canTabNavigateBack(widget.tabId)) {
-      final previousPath = tabManagerBloc.getTabPreviousPath(widget.tabId);
-      if (previousPath != null) {
-        // Handle empty path case for Windows drive view
-        if (previousPath.isEmpty && Platform.isWindows) {
-          setState(() {
-            _currentPath = '';
-            _pathController.text = '';
-          });
-          // Update the tab name to indicate we're showing drives
-          context
-              .read<TabManagerBloc>()
-              .add(UpdateTabName(widget.tabId, 'Drives'));
-          return false; // Don't exit app, we're navigating to drives view
-        }
-
-        // Regular path navigation
-        setState(() {
-          _currentPath = previousPath;
-          _pathController.text = previousPath;
-        });
-        _folderListBloc.add(FolderListLoad(previousPath));
-        return false; // Don't exit app, we navigated back
+      // First check if we're currently showing search results
+      final folderListState = _folderListBloc.state;
+      if (folderListState.isSearchActive) {
+        // Clear search results and reload current directory
+        _folderListBloc.add(const ClearSearchAndFilters());
+        _folderListBloc.add(FolderListLoad(_currentPath));
+        return false; // Don't exit app, we cleared the search
       }
-    }
 
-    // If we're at the root, let the system handle back (which might exit the app)
-    return true;
+      // Check if we can navigate back in the folder hierarchy
+      final tabManagerBloc = context.read<TabManagerBloc>();
+      if (tabManagerBloc.canTabNavigateBack(widget.tabId)) {
+        final previousPath = tabManagerBloc.getTabPreviousPath(widget.tabId);
+        if (previousPath != null) {
+          // Handle empty path case for Windows drive view
+          if (previousPath.isEmpty && Platform.isWindows) {
+            setState(() {
+              _currentPath = '';
+              _pathController.text = '';
+            });
+            // Update the tab name to indicate we're showing drives
+            context
+                .read<TabManagerBloc>()
+                .add(UpdateTabName(widget.tabId, 'Drives'));
+            return false; // Don't exit app, we're navigating to drives view
+          }
+
+          // Regular path navigation
+          setState(() {
+            _currentPath = previousPath;
+            _pathController.text = previousPath;
+          });
+          _folderListBloc.add(FolderListLoad(previousPath));
+          return false; // Don't exit app, we navigated back
+        }
+      }
+
+      // If we can't navigate back in tab, check if we can pop the navigator
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+        return false; // Don't exit app
+      }
+
+      // If we're at the root and can't navigate back, don't allow back
+      return false; // Don't exit app, just prevent back navigation
+    } catch (e) {
+      debugPrint('Error in _handleBackButton: $e');
+      return true; // Allow app to close on error
+    }
   }
 
   // Centralized method to update path and reload folder contents
@@ -1800,7 +1812,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
+              RouteUtils.safePopDialog(context);
             },
             child: const Text('CANCEL'),
           ),
@@ -1832,7 +1844,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                 _folderListBloc.add(FolderListLoad(_currentPath));
               }
 
-              Navigator.of(context).pop();
+              RouteUtils.safePopDialog(context);
               _clearSelection();
             },
             child: const Text(

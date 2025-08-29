@@ -39,6 +39,8 @@ import 'package:cb_file_manager/helpers/network_thumbnail_helper.dart';
 import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 import 'package:cb_file_manager/helpers/streaming_helper.dart';
+import 'package:cb_file_manager/ui/utils/route.dart';
+import 'package:cb_file_manager/services/network_browsing/webdav_service.dart';
 
 // Helper class to listen to multiple ValueNotifiers
 class ValueListenableBuilder3<A, B, C> extends StatelessWidget {
@@ -447,15 +449,28 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
   }
 
   Future<bool> _handleBackButton() async {
-    final tabManagerBloc = context.read<TabManagerBloc>();
-    if (tabManagerBloc.canTabNavigateBack(widget.tabId)) {
-      final previousPath = tabManagerBloc.getTabPreviousPath(widget.tabId);
-      if (previousPath != null) {
-        _navigateToPath(previousPath);
-        return false; // Don't exit app, we navigated back
+    try {
+      final tabManagerBloc = context.read<TabManagerBloc>();
+      if (tabManagerBloc.canTabNavigateBack(widget.tabId)) {
+        final previousPath = tabManagerBloc.getTabPreviousPath(widget.tabId);
+        if (previousPath != null) {
+          _navigateToPath(previousPath);
+          return false; // Don't exit app, we navigated back
+        }
       }
+
+      // If we can't navigate back in tab, check if we can pop the navigator
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+        return false; // Don't exit app
+      }
+
+      // If we're at the root and can't navigate back, don't allow back
+      return false; // Don't exit app, just prevent back navigation
+    } catch (e) {
+      debugPrint('Error in _handleBackButton: $e');
+      return false; // Don't exit app on error
     }
-    return true; // If we're at the root, let the system handle back
   }
 
   void _updatePath(String newPath) {
@@ -646,10 +661,7 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
         IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () async {
-            final canPop = await _handleBackButton();
-            if (canPop && context.mounted) {
-              Navigator.of(context).pop();
-            }
+            await _handleBackButton();
           },
         ),
         Expanded(

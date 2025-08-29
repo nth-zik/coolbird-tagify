@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
+import '../../utils/route.dart';
 
 /// Dialog for searching files by tag
 class TagSearchDialog extends StatefulWidget {
@@ -63,7 +64,7 @@ class _TagSearchDialogState extends State<TagSearchDialog> {
         );
       }
 
-      Navigator.of(context).pop();
+      RouteUtils.safePopDialog(context);
       widget.onSearchComplete(results, _tagController.text.trim());
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -153,7 +154,7 @@ class _TagSearchDialogState extends State<TagSearchDialog> {
       actions: [
         TextButton(
           onPressed: () {
-            Navigator.of(context).pop();
+            RouteUtils.safePopDialog(context);
           },
           child: const Text('HỦY'),
         ),

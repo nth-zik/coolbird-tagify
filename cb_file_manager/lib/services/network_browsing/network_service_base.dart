@@ -77,6 +77,9 @@ abstract class NetworkServiceBase {
 
   /// Generate thumbnail for image or video file (optional, returns null if not supported)
   Future<Uint8List?> getThumbnail(String remotePath, int size) async => null;
+
+  /// Read file data directly (optional, returns null if not supported)
+  Future<Uint8List?> readFileData(String remotePath) async => null;
 }
 
 /// Result of a connection attempt

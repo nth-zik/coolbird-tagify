@@ -722,6 +722,12 @@ class SMBService implements ISmbService {
     }
   }
 
+  @override
+  Future<Uint8List?> readFileData(String remotePath) async {
+    // SMB doesn't support direct file data reading, return null
+    return null;
+  }
+
   /// Try to get thumbnail using native Windows API
   Future<Uint8List?> _getNativeThumbnail(String uncPath, int size) async {
     final uncPathPtr = uncPath.toNativeUtf16();

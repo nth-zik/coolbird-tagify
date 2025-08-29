@@ -4,6 +4,7 @@ import 'package:cb_file_manager/services/network_browsing/ftp_client/ftp_client.
 import 'package:cb_file_manager/bloc/network_browsing/network_browsing_bloc.dart';
 import 'package:cb_file_manager/bloc/network_browsing/network_browsing_event.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../utils/route.dart';
 
 class FtpConnectionForm extends StatefulWidget {
   const FtpConnectionForm({Key? key}) : super(key: key);
@@ -102,7 +103,7 @@ class _FtpConnectionFormState extends State<FtpConnectionForm> {
                 },
               ),
             );
-        Navigator.of(context).pop();
+        RouteUtils.safePopDialog(context);
       }
     } catch (e) {
       setState(() {
@@ -234,7 +235,7 @@ class _FtpConnectionFormState extends State<FtpConnectionForm> {
             children: [
               TextButton(
                 onPressed:
-                    _isLoading ? null : () => Navigator.of(context).pop(),
+                    _isLoading ? null : () => RouteUtils.safePopDialog(context),
                 child: const Text('Cancel'),
               ),
               const SizedBox(width: 8),

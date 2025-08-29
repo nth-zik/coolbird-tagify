@@ -34,6 +34,11 @@ class FTPService implements NetworkServiceBase {
   // Debugging info
   Map<String, dynamic> _lastConnectionInfo = {};
 
+  // FTP metadata storage (UI path -> meta)
+  final Map<String, _FtpMeta> _metaMap = {};
+
+  _FtpMeta? getMeta(String uiPath) => _metaMap[uiPath];
+
   @override
   String get serviceName => 'FTP';
 
@@ -153,23 +158,7 @@ class FTPService implements NetworkServiceBase {
     }
   }
 
-  // Helper method to check network connectivity
-  Future<void> _checkNetworkConnectivity(String host) async {
-    try {
-      debugPrint("FTPService: Kiểm tra kết nối mạng tới $host...");
-
-      // Try to resolve the host to check DNS
-      final addresses = await InternetAddress.lookup(host);
-      if (addresses.isEmpty) {
-        debugPrint("FTPService: DNS lookup failed for $host");
-      } else {
-        debugPrint("FTPService: DNS lookup succeeded: $addresses");
-      }
-    } catch (e) {
-      debugPrint("FTPService: Network connectivity check failed: $e");
-      // Don't throw, just log the issue
-    }
-  }
+  // _checkNetworkConnectivity removed (unused)
 
   @override
   Future<void> disconnect() async {
@@ -247,12 +236,24 @@ class FTPService implements NetworkServiceBase {
           if (item.isDirectory) {
             final dir = Directory(uiPath);
             result.add(dir);
+            // Save metadata for directory
+            _metaMap[uiPath] = _FtpMeta(
+              size: -1,
+              modified: item.lastModified,
+              isDirectory: true,
+            );
             debugPrint(
               "FTPService: Added directory: $uiPath (${dir.runtimeType})",
             );
           } else {
             final file = File(uiPath);
             result.add(file);
+            // Save metadata for file
+            _metaMap[uiPath] = _FtpMeta(
+              size: item.size,
+              modified: item.lastModified,
+              isDirectory: false,
+            );
             debugPrint("FTPService: Added file: $uiPath (${file.runtimeType})");
           }
         }
@@ -646,11 +647,7 @@ class FTPService implements NetworkServiceBase {
     return filePath;
   }
 
-  String _extractRelativePath(String filePath) {
-    final normalized = _normalizePath(filePath);
-    // Remove leading slash for relative FTP paths
-    return normalized.startsWith('/') ? normalized.substring(1) : normalized;
-  }
+  // _extractRelativePath removed (unused)
 
   // Helper method to extract path from network path format
   String _extractPathFromNetworkPath(String networkPath) {
@@ -690,51 +687,9 @@ class FTPService implements NetworkServiceBase {
   }
 
   // Helper methods to create FileSystemEntity objects from FTP entries
-  File _createFileInfo(FileSystemEntity entity, String parentPath) {
-    String fileName = path.basename(entity.path);
-    String remotePath = path.join(parentPath, fileName).replaceAll('\\', '/');
+  // _createFileInfo removed (unused)
 
-    // Ensure remotePath starts with a slash
-    if (!remotePath.startsWith('/')) {
-      remotePath = '/$remotePath';
-    }
-
-    // Using a simple format that the UI can understand: #network/FTP/host/path
-    // Remove any potentially problematic characters from host
-    String safePath = '#network/FTP/${Uri.encodeComponent(_host)}$remotePath';
-
-    // Log all details for debugging
-    debugPrint("\nFTPService: Creating file:");
-    debugPrint("  Name: $fileName");
-    debugPrint("  Parent path: $parentPath");
-    debugPrint("  Remote path: $remotePath");
-    debugPrint("  Safe path for UI: $safePath");
-
-    return File(safePath);
-  }
-
-  Directory _createDirectoryInfo(FileSystemEntity entity, String parentPath) {
-    String dirName = path.basename(entity.path);
-    String remotePath = path.join(parentPath, dirName).replaceAll('\\', '/');
-
-    // Ensure remotePath starts with a slash
-    if (!remotePath.startsWith('/')) {
-      remotePath = '/$remotePath';
-    }
-
-    // Using a simple format that the UI can understand: #network/FTP/host/path
-    // Remove any potentially problematic characters from host
-    String safePath = '#network/FTP/${Uri.encodeComponent(_host)}$remotePath';
-
-    // Log all details for debugging
-    debugPrint("\nFTPService: Creating directory:");
-    debugPrint("  Name: $dirName");
-    debugPrint("  Parent path: $parentPath");
-    debugPrint("  Remote path: $remotePath");
-    debugPrint("  Safe path for UI: $safePath");
-
-    return Directory(safePath);
-  }
+  // _createDirectoryInfo removed (unused)
 
   @override
   Stream<List<int>>? openFileStream(String remotePath) {
@@ -777,13 +732,25 @@ class FTPService implements NetworkServiceBase {
     // FTP doesn't support thumbnail generation, return null
     return null;
   }
+
+  @override
+  Future<Uint8List?> readFileData(String remotePath) async {
+    // FTP doesn't support direct file data reading, return null
+    return null;
+  }
+}
+
+class _FtpMeta {
+  final int size; // -1 for directories/unknown
+  final DateTime? modified;
+  final bool isDirectory;
+  const _FtpMeta(
+      {required this.size, required this.modified, required this.isDirectory});
 }
 
 // Helper class for dynamic loading
 class Class {
-  final String _name;
-
-  Class(this._name);
+  Class();
 
   dynamic get FTPConnect => throw Exception(
         'FTP functionality requires the ftpconnect package. '

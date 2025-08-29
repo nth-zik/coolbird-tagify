@@ -8,6 +8,7 @@ import 'package:cb_file_manager/helpers/batch_tag_manager.dart';
 import 'dart:ui' as ui; // Import for ImageFilter
 import 'package:cb_file_manager/ui/widgets/tag_management_section.dart';
 import 'package:cb_file_manager/helpers/tag_color_manager.dart';
+import '../../utils/route.dart';
 
 /// Dialog for adding a tag to a file
 void showAddTagToFileDialog(BuildContext context, String filePath) {
@@ -86,7 +87,7 @@ void showAddTagToFileDialog(BuildContext context, String filePath) {
                   onPressed: () {
                     // Discard changes
                     tagManagementSection.discardChanges();
-                    Navigator.of(context).pop();
+                    RouteUtils.safePopDialog(context);
                   },
                   style: TextButton.styleFrom(
                     textStyle: const TextStyle(fontSize: 16),
@@ -112,7 +113,7 @@ void showAddTagToFileDialog(BuildContext context, String filePath) {
                     );
 
                     // Close the dialog
-                    Navigator.of(context).pop();
+                    RouteUtils.safePopDialog(context);
                   },
                   style: ElevatedButton.styleFrom(
                     textStyle: const TextStyle(fontSize: 16),
@@ -185,7 +186,7 @@ void showDeleteTagDialog(
               actions: [
                 TextButton(
                   onPressed: () {
-                    Navigator.of(context).pop();
+                    RouteUtils.safePopDialog(context);
                   },
                   child: const Text('CANCEL'),
                 ),
@@ -226,7 +227,7 @@ void showDeleteTagDialog(
                             ),
                           );
 
-                          Navigator.of(context).pop();
+                          RouteUtils.safePopDialog(context);
                         }
                       } catch (e) {
                         if (context.mounted) {
@@ -239,7 +240,7 @@ void showDeleteTagDialog(
                         }
                       }
                     } else {
-                      Navigator.of(context).pop();
+                      RouteUtils.safePopDialog(context);
                     }
                   },
                   child: const Text('REMOVE'),
@@ -487,7 +488,7 @@ void showBatchAddTagDialog(BuildContext context, List<String> selectedFiles) {
                 actions: [
                   TextButton(
                     onPressed: () {
-                      Navigator.of(context).pop();
+                      RouteUtils.safePopDialog(context);
                     },
                     style: TextButton.styleFrom(
                       textStyle: const TextStyle(fontSize: 16),
@@ -598,7 +599,7 @@ void showBatchAddTagDialog(BuildContext context, List<String> selectedFiles) {
                           }
 
                           // Close the dialog
-                          Navigator.of(context).pop();
+                          RouteUtils.safePopDialog(context);
                         } catch (e) {
                           debugPrint('Error processing batch tags: $e');
                           if (context.mounted) {
@@ -1051,7 +1052,7 @@ class _RemoveTagsChipDialogState extends State<RemoveTagsChipDialog> {
   /// Removes the selected tags from all files
   Future<void> _removeSelectedTags() async {
     if (_selectedTagsToRemove.isEmpty) {
-      Navigator.of(context).pop();
+      RouteUtils.safePopDialog(context);
       return;
     }
 
@@ -1088,7 +1089,7 @@ class _RemoveTagsChipDialogState extends State<RemoveTagsChipDialog> {
       }
 
       if (mounted) {
-        Navigator.of(context).pop();
+        RouteUtils.safePopDialog(context);
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1256,7 +1257,8 @@ class _RemoveTagsChipDialogState extends State<RemoveTagsChipDialog> {
         ),
         actions: [
           TextButton(
-            onPressed: _isRemoving ? null : () => Navigator.of(context).pop(),
+            onPressed:
+                _isRemoving ? null : () => RouteUtils.safePopDialog(context),
             style: TextButton.styleFrom(
               textStyle: const TextStyle(fontSize: 16),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

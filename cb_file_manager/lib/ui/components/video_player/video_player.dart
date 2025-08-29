@@ -16,6 +16,7 @@ import '../../../helpers/user_preferences.dart';
 import '../../../helpers/win32_smb_helper.dart';
 import '../stream_speed_indicator.dart';
 import '../buffer_info_widget.dart';
+import '../../utils/route.dart';
 
 // Enums for new features
 enum LoopMode { none, single, all }
@@ -1096,7 +1097,8 @@ class _VideoPlayerState extends State<VideoPlayer> {
               ),
             IconButton(
               icon: const Icon(Icons.close),
-              onPressed: widget.onClose ?? () => Navigator.of(context).pop(),
+              onPressed:
+                  widget.onClose ?? () => RouteUtils.safePopDialog(context),
             ),
           ],
         ),
@@ -2015,7 +2017,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
         content: const Text('Audio track selection will be implemented here.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => RouteUtils.safePopDialog(context),
             child: const Text('Close'),
           ),
         ],
@@ -2125,7 +2127,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
                     _selectedSubtitleTrack = value;
                     _subtitlesEnabled = false;
                   });
-                  Navigator.pop(context);
+                  RouteUtils.safePopDialog(context);
                 },
               ),
             ),
@@ -2142,7 +2144,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
                       _selectedSubtitleTrack = value;
                       _subtitlesEnabled = true;
                     });
-                    Navigator.pop(context);
+                    RouteUtils.safePopDialog(context);
                   },
                 ),
               );
@@ -2151,7 +2153,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => RouteUtils.safePopDialog(context),
             child: const Text('Cancel'),
           ),
         ],
@@ -2179,7 +2181,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
                       _playbackSpeed = value;
                     });
                     _setPlaybackSpeed(value);
-                    Navigator.pop(context);
+                    RouteUtils.safePopDialog(context);
                   }
                 },
               ),
@@ -2188,7 +2190,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => RouteUtils.safePopDialog(context),
             child: const Text('Cancel'),
           ),
         ],
@@ -2269,7 +2271,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
               child: const Text('Reset'),
             ),
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => RouteUtils.safePopDialog(context),
               child: const Text('Close'),
             ),
           ],
@@ -2300,7 +2302,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
                 groupValue: _sleepDuration,
                 onChanged: (value) {
                   _cancelSleepTimer();
-                  Navigator.pop(context);
+                  RouteUtils.safePopDialog(context);
                 },
               ),
             ),
@@ -2321,7 +2323,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
                   onChanged: (value) {
                     if (value != null) {
                       _setSleepTimer(value);
-                      Navigator.pop(context);
+                      RouteUtils.safePopDialog(context);
                     }
                   },
                 ),
@@ -2331,7 +2333,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => RouteUtils.safePopDialog(context),
             child: const Text('Cancel'),
           ),
         ],
@@ -2579,7 +2581,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
               child: const Text('Reset to Default'),
             ),
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => RouteUtils.safePopDialog(context),
               child: const Text('Close'),
             ),
           ],
@@ -2766,7 +2768,7 @@ class VideoInfoDialog extends StatelessWidget {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => RouteUtils.safePopDialog(context),
           child: const Text('Close'),
         ),
       ],
@@ -2914,7 +2916,8 @@ class _StreamingImageViewerState extends State<StreamingImageViewer> {
         actions: [
           IconButton(
             icon: const Icon(Icons.close),
-            onPressed: widget.onClose ?? () => Navigator.of(context).pop(),
+            onPressed:
+                widget.onClose ?? () => RouteUtils.safePopDialog(context),
           ),
         ],
       ),

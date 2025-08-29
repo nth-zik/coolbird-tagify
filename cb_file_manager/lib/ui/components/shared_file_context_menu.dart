@@ -13,6 +13,10 @@ import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
 import 'package:path/path.dart' as pathlib;
 import 'package:cb_file_manager/ui/tab_manager/components/tag_dialogs.dart'
     as tag_dialogs;
+import 'package:cb_file_manager/services/network_browsing/webdav_service.dart';
+import 'package:cb_file_manager/helpers/streaming_helper.dart';
+import 'package:cb_file_manager/services/network_browsing/ftp_service.dart';
+import 'package:file_picker/file_picker.dart';
 
 /// A shared context menu for files
 ///
@@ -36,6 +40,37 @@ class SharedFileContextMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final currentService = StreamingHelper.instance.currentNetworkService;
+    String? webDavSize;
+    String? webDavModified;
+    String? remotePath;
+    String? remoteFileName;
+    if (currentService is WebDAVService) {
+      remotePath = currentService.getRemotePathFromLocal(file.path);
+      if (remotePath != null) {
+        remoteFileName = pathlib.basename(remotePath);
+        final meta = currentService.getMeta(remotePath);
+        if (meta != null) {
+          if (meta.size >= 0) {
+            webDavSize = _formatSize(meta.size);
+          }
+          webDavModified = meta.modified.toString().split('.').first;
+        }
+      }
+    } else if (currentService is FTPService) {
+      // For FTP, UI path is used as key
+      remotePath = file.path;
+      remoteFileName = pathlib.basename(file.path);
+      final meta = currentService.getMeta(file.path);
+      if (meta != null) {
+        if (meta.size >= 0) {
+          webDavSize = _formatSize(meta.size);
+        }
+        if (meta.modified != null) {
+          webDavModified = meta.modified!.toString().split('.').first;
+        }
+      }
+    }
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -66,15 +101,48 @@ class SharedFileContextMenu extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  _basename(file),
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : Colors.black87,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      remoteFileName ?? _basename(file),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: isDarkMode ? Colors.white : Colors.black87,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (webDavSize != null || webDavModified != null) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          if (webDavSize != null) ...[
+                            const Icon(Icons.storage, size: 14),
+                            const SizedBox(width: 4),
+                            Text(webDavSize,
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: isDarkMode
+                                        ? Colors.white70
+                                        : Colors.black54)),
+                          ],
+                          if (webDavModified != null) ...[
+                            const SizedBox(width: 12),
+                            const Icon(Icons.event, size: 14),
+                            const SizedBox(width: 4),
+                            Text(webDavModified,
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: isDarkMode
+                                        ? Colors.white70
+                                        : Colors.black54)),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ],
                 ),
               ),
               IconButton(
@@ -150,6 +218,43 @@ class SharedFileContextMenu extends StatelessWidget {
             );
           },
         ),
+
+        if ((currentService is WebDAVService || currentService is FTPService) &&
+            remotePath != null)
+          ListTile(
+            leading: const Icon(Icons.download, color: Colors.blue),
+            title: Text(
+              'Download',
+              style:
+                  TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+            ),
+            onTap: () async {
+              Navigator.pop(context);
+              try {
+                final fileName = remoteFileName ?? _basename(file);
+                final String? saveLocation = await FilePicker.platform.saveFile(
+                  dialogTitle: 'Save "$fileName" as...',
+                  fileName: fileName,
+                );
+                if (saveLocation == null) return;
+                await StreamingHelper.instance
+                    .downloadFile(file.path, saveLocation);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Downloaded to $saveLocation')),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text('Download failed: $e'),
+                        backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+          ),
 
         // Copy option
         ListTile(
@@ -740,4 +845,12 @@ void showFolderContextMenu({
       showAddTagToFileDialog: showAddTagToFileDialog,
     ),
   );
+}
+
+String _formatSize(int bytes) {
+  if (bytes < 1024) return '$bytes B';
+  if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+  if (bytes < 1024 * 1024 * 1024)
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
 }

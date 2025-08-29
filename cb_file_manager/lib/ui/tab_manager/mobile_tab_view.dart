@@ -11,6 +11,7 @@ import '../screens/network_browsing/network_connection_screen.dart';
 import '../screens/network_browsing/network_browser_screen.dart';
 import '../screens/network_browsing/smb_browser_screen.dart'; // Added import for SMBBrowserScreen
 import '../../bloc/network_browsing/network_browsing_bloc.dart';
+import '../utils/route.dart';
 
 /// Giao diện kiểu Chrome cho thiết bị di động, hiển thị thanh địa chỉ ở trên
 /// và một nút hiển thị số lượng tab bên cạnh
@@ -304,7 +305,7 @@ class MobileTabView extends StatelessWidget {
                       leading: const Icon(EvaIcons.close),
                       title: const Text('Đóng tất cả các tab'),
                       onTap: () {
-                        Navigator.pop(context);
+                        RouteUtils.safePopDialog(context);
                         _showCloseAllTabsConfirmation(context);
                       },
                     ),
@@ -316,7 +317,7 @@ class MobileTabView extends StatelessWidget {
                     leading: const Icon(EvaIcons.settings2Outline),
                     title: const Text('Cài đặt'),
                     onTap: () {
-                      Navigator.pop(context);
+                      RouteUtils.safePopDialog(context);
                       Navigator.push(
                         context,
                         MaterialPageRoute(

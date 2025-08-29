@@ -14,6 +14,7 @@ import 'package:cb_file_manager/helpers/frame_timing_optimizer.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:cb_file_manager/helpers/folder_sort_manager.dart';
+import '../../utils/route.dart';
 
 class VideoGalleryScreen extends StatefulWidget {
   final String path;
@@ -743,7 +744,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
             leading: const Icon(Icons.play_arrow),
             title: const Text('Phát video'),
             onTap: () {
-              Navigator.pop(context);
+              RouteUtils.safePopDialog(context);
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -756,7 +757,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
             leading: const Icon(Icons.info_outline),
             title: const Text('Thông tin video'),
             onTap: () {
-              Navigator.pop(context);
+              RouteUtils.safePopDialog(context);
               _showVideoInfoDialog(context, file);
             },
           ),
@@ -764,7 +765,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
             leading: const Icon(Icons.share),
             title: const Text('Chia sẻ'),
             onTap: () {
-              Navigator.pop(context);
+              RouteUtils.safePopDialog(context);
               // Implement share functionality
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -777,7 +778,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
             leading: const Icon(Icons.delete, color: Colors.red),
             title: const Text('Xóa video', style: TextStyle(color: Colors.red)),
             onTap: () {
-              Navigator.pop(context);
+              RouteUtils.safePopDialog(context);
               _showDeleteConfirmationDialog(context, [file.path]);
             },
           ),
@@ -820,7 +821,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
             actions: [
               TextButton(
                 onPressed: () {
-                  Navigator.of(context).pop();
+                  RouteUtils.safePopDialog(context);
                 },
                 child: const Text('Đóng'),
               ),
@@ -872,13 +873,13 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
+              RouteUtils.safePopDialog(context);
             },
             child: const Text('HỦY'),
           ),
           TextButton(
             onPressed: () async {
-              Navigator.of(context).pop();
+              RouteUtils.safePopDialog(context);
 
               // Xử lý xóa file
               int successCount = 0;
@@ -947,13 +948,13 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
+              RouteUtils.safePopDialog(context);
             },
             child: const Text('HỦY'),
           ),
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
+              RouteUtils.safePopDialog(context);
 
               if (searchQuery.trim().isEmpty) {
                 setState(() {

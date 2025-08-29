@@ -15,6 +15,7 @@ import 'package:cb_file_manager/ui/tab_manager/tab_data.dart'; // Import TabData
 // Add UserPreferences import
 import 'package:cb_file_manager/config/app_theme.dart'; // Import theme configuration
 import 'package:cb_file_manager/config/translation_helper.dart'; // Import translation helper
+import 'utils/route.dart';
 
 class CBDrawer extends StatefulWidget {
   final BuildContext parentContext;
@@ -126,7 +127,7 @@ class _CBDrawerState extends State<CBDrawer> {
                         onTap: () {
                           // Only pop the Navigator when drawer is not pinned
                           if (!widget.isPinned) {
-                            Navigator.pop(context);
+                            RouteUtils.safePopDialog(context);
                           }
                           RouteUtils.safeNavigate(
                               context, const TabMainScreen());
@@ -152,7 +153,7 @@ class _CBDrawerState extends State<CBDrawer> {
                         onTap: () {
                           // Only pop the Navigator when drawer is not pinned
                           if (!widget.isPinned) {
-                            Navigator.pop(context);
+                            RouteUtils.safePopDialog(context);
                           }
 
                           // Open tag management in a new tab
@@ -188,7 +189,7 @@ class _CBDrawerState extends State<CBDrawer> {
                         onTap: () {
                           // Only pop the Navigator when drawer is not pinned
                           if (!widget.isPinned) {
-                            Navigator.pop(context);
+                            RouteUtils.safePopDialog(context);
                           }
 
                           // Open network browsing in a new tab
@@ -234,7 +235,7 @@ class _CBDrawerState extends State<CBDrawer> {
                         onTap: () {
                           // Only pop the Navigator when drawer is not pinned
                           if (!widget.isPinned) {
-                            Navigator.pop(context);
+                            RouteUtils.safePopDialog(context);
                           }
                           _showSettingsDialog(context);
                         },
@@ -247,7 +248,7 @@ class _CBDrawerState extends State<CBDrawer> {
                         onTap: () {
                           // Only pop the Navigator when drawer is not pinned
                           if (!widget.isPinned) {
-                            Navigator.pop(context);
+                            RouteUtils.safePopDialog(context);
                           }
                           _showAboutDialog(context);
                         },
@@ -437,7 +438,7 @@ class _CBDrawerState extends State<CBDrawer> {
                 onTap: () async {
                   // Only pop the Navigator when drawer is not pinned
                   if (!widget.isPinned) {
-                    Navigator.pop(context);
+                    RouteUtils.safePopDialog(context);
                   }
                   // Navigate to the Trash Bin screen
                   if (context.mounted) {
@@ -566,7 +567,7 @@ class _CBDrawerState extends State<CBDrawer> {
             _showAdminAccessDialog(context, storage);
           } else {
             // Regular drive access
-            Navigator.pop(context);
+            RouteUtils.safePopDialog(context);
             _openInCurrentTab(storage.path, displayName);
           }
         },
@@ -656,15 +657,15 @@ class _CBDrawerState extends State<CBDrawer> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => RouteUtils.safePopDialog(context),
             child: Text(context.tr.cancel),
           ),
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
+              RouteUtils.safePopDialog(context);
               // Only pop the Navigator when drawer is not pinned
               if (!widget.isPinned) {
-                Navigator.pop(context);
+                RouteUtils.safePopDialog(context);
               }
               _openInCurrentTab(drive.path, drive.path.split(r'\')[0]);
             },
@@ -693,7 +694,7 @@ class _CBDrawerState extends State<CBDrawer> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => RouteUtils.safePopDialog(context),
             child: Text(context.tr.close),
           ),
         ],
@@ -823,7 +824,7 @@ class _CBDrawerState extends State<CBDrawer> {
               title: const Text('SMB Network'),
               subtitle: const Text('Browse Windows/Samba shares'),
               onTap: () {
-                Navigator.pop(context); // Close dialog
+                RouteUtils.safePopDialog(context); // Close dialog
                 _openNetworkTab(context, '#smb', 'SMB Network');
               },
             ),
@@ -832,7 +833,7 @@ class _CBDrawerState extends State<CBDrawer> {
               title: const Text('FTP Connections'),
               subtitle: const Text('Connect to FTP servers'),
               onTap: () {
-                Navigator.pop(context); // Close dialog
+                RouteUtils.safePopDialog(context); // Close dialog
                 _openNetworkTab(context, '#ftp', 'FTP Connections');
               },
             ),
@@ -841,7 +842,7 @@ class _CBDrawerState extends State<CBDrawer> {
               title: const Text('All Network Connections'),
               subtitle: const Text('View all connection types'),
               onTap: () {
-                Navigator.pop(context); // Close dialog
+                RouteUtils.safePopDialog(context); // Close dialog
                 _openNetworkTab(context, '#network', 'Network');
               },
             ),
@@ -849,7 +850,7 @@ class _CBDrawerState extends State<CBDrawer> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => RouteUtils.safePopDialog(context),
             child: const Text('CANCEL'),
           ),
         ],

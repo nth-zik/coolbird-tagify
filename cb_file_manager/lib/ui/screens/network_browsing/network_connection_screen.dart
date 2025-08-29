@@ -197,6 +197,8 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
               _openBrowserInTab(context, '#smb', 'SMB Network');
             } else if (service.serviceName == 'FTP') {
               _openBrowserInTab(context, '#ftp', 'FTP Connections');
+            } else if (service.serviceName == 'WebDAV') {
+              _openBrowserInTab(context, '#webdav', 'WebDAV Connections');
             } else {
               _showConnectionDialog(
                 context,

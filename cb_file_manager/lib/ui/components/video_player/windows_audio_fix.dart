@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:media_kit/media_kit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../utils/route.dart';
 
 /// A utility class to help diagnose and fix Windows audio issues with MediaKit
 class WindowsAudioFix extends StatefulWidget {
@@ -159,7 +160,7 @@ class _WindowsAudioFixState extends State<WindowsAudioFix> {
           ElevatedButton(
             onPressed: () {
               _applyAudioConfig(_currentOutput);
-              Navigator.of(context).pop();
+              RouteUtils.safePopDialog(context);
             },
             child: const Text('Use this audio configuration'),
           )
@@ -181,7 +182,7 @@ class _WindowsAudioFixState extends State<WindowsAudioFix> {
                 onPressed: _isTestingAudio
                     ? null
                     : () {
-                        Navigator.of(context).pop();
+                        RouteUtils.safePopDialog(context);
                       },
                 child: const Text('Close'),
               ),

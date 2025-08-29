@@ -9,6 +9,7 @@ import 'package:cb_file_manager/ui/tab_manager/tab_manager.dart'; // Add TabMana
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'dart:io';
 import 'package:path/path.dart' as pathlib;
+import '../../utils/route.dart';
 
 /// Thanh tìm kiếm nằm trực tiếp trên thanh công cụ
 class SearchBar extends StatefulWidget {
@@ -516,7 +517,7 @@ class _SearchBarState extends State<SearchBar> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => RouteUtils.safePopDialog(context),
             child: Text(localizations.close),
           ),
         ],

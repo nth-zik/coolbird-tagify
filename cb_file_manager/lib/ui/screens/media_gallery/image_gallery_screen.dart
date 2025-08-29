@@ -14,6 +14,7 @@ import 'package:cb_file_manager/helpers/folder_sort_manager.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/helpers/tag_manager.dart';
 import 'package:cb_file_manager/ui/widgets/tag_chip.dart';
+import '../../utils/route.dart';
 
 class ImageGalleryScreen extends StatefulWidget {
   final String path;
@@ -295,13 +296,13 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
+              RouteUtils.safePopDialog(context);
             },
             child: const Text('HỦY'),
           ),
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
+              RouteUtils.safePopDialog(context);
 
               if (searchQuery.trim().isEmpty) {
                 setState(() {
@@ -885,7 +886,7 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
             actions: [
               TextButton(
                 onPressed: () {
-                  Navigator.of(context).pop();
+                  RouteUtils.safePopDialog(context);
                 },
                 child: const Text('Đóng'),
               ),
@@ -936,13 +937,13 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
+              RouteUtils.safePopDialog(context);
             },
             child: const Text('HỦY'),
           ),
           TextButton(
             onPressed: () async {
-              Navigator.of(context).pop();
+              RouteUtils.safePopDialog(context);
 
               int successCount = 0;
               List<String> failedPaths = [];

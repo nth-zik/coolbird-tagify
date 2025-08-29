@@ -10,6 +10,7 @@ import 'package:cb_file_manager/helpers/trash_manager.dart';
 import 'package:share_plus/share_plus.dart'; // Add import for Share Plus
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 // Add import for XFile
+import '../../utils/route.dart';
 
 class ImageViewerScreen extends StatefulWidget {
   final File file;
@@ -293,7 +294,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
             actions: [
               TextButton(
                 onPressed: () {
-                  Navigator.of(context).pop();
+                  RouteUtils.safePopDialog(context);
                 },
                 child: const Text('Close'),
               ),
@@ -346,7 +347,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
             _allImages.removeAt(_currentIndex);
             if (_allImages.isEmpty) {
               // No more images to show, return to previous screen
-              Navigator.of(context).pop();
+              RouteUtils.safePopDialog(context);
             } else {
               // Adjust current index if needed
               if (_currentIndex >= _allImages.length) {
@@ -454,7 +455,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
           if (event is RawKeyDownEvent) {
             // Handle escape key press to exit the image viewer
             if (event.logicalKey == LogicalKeyboardKey.escape) {
-              Navigator.of(context).pop();
+              RouteUtils.safePopDialog(context);
               return;
             }
 

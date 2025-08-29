@@ -13,6 +13,8 @@ import 'network_file_cache_service.dart';
 import 'vlc_direct_smb_helper.dart';
 // import '../helpers/libsmb2_streaming_helper.dart';
 import 'native_vlc_direct_helper.dart';
+import '../ui/utils/route.dart';
+import '../services/network_browsing/webdav_service.dart';
 
 /// Class để lưu trữ kết quả mở file
 class FileOpenResult {
@@ -73,9 +75,28 @@ class StreamingHelper {
   /// Mở file với streaming
   Future<void> openFileWithStreaming(
     BuildContext context,
-    String remotePath,
+    String filePath,
     String fileName,
   ) async {
+    // For WebDAV, convert local temp path to remote path
+    String remotePath = filePath;
+    if (_currentNetworkService?.serviceName == 'WebDAV') {
+      final webdavService = _currentNetworkService as dynamic;
+      if (webdavService.getRemotePathFromLocal != null) {
+        final actualRemotePath = webdavService.getRemotePathFromLocal(filePath);
+        if (actualRemotePath != null) {
+          remotePath = actualRemotePath;
+          debugPrint(
+              'StreamingHelper: Converted local path $filePath to remote path $remotePath');
+        } else {
+          debugPrint(
+              'StreamingHelper: No remote path mapping found for $filePath');
+        }
+      } else {
+        debugPrint(
+            'StreamingHelper: getRemotePathFromLocal method not available');
+      }
+    }
     try {
       // Hiển thị loading dialog
       showDialog(
@@ -88,7 +109,7 @@ class StreamingHelper {
 
       // Đóng loading dialog
       if (context.mounted) {
-        Navigator.of(context).pop();
+        RouteUtils.safePopDialog(context);
       }
 
       if (result.success) {
@@ -99,7 +120,7 @@ class StreamingHelper {
     } catch (e) {
       // Đóng loading dialog nếu còn mở
       if (context.mounted) {
-        Navigator.of(context).pop();
+        RouteUtils.safePopDialog(context);
       }
       await _handleOpenError(context, 'Error opening file: $e');
     }
@@ -133,6 +154,44 @@ class StreamingHelper {
       final fileType = _getFileType(fileExtension);
       debugPrint('StreamingHelper: File extension: $fileExtension');
       debugPrint('StreamingHelper: File type: $fileType');
+
+      // Handle FTP by downloading to a temp file and opening with system default app
+      if (service.serviceName == 'FTP') {
+        try {
+          final tempDir = Directory.systemTemp;
+          final fileName = p.basename(remotePath);
+          final tempPath = p.join(tempDir.path,
+              'ftp_${DateTime.now().millisecondsSinceEpoch}_$fileName');
+          debugPrint('StreamingHelper: FTP - downloading to temp: $tempPath');
+
+          await service.getFileWithProgress(
+            remotePath,
+            tempPath,
+            (progress) {
+              if (progress >= 0) {
+                debugPrint(
+                    'StreamingHelper: FTP download ${(progress * 100).toStringAsFixed(1)}%');
+              } else {
+                debugPrint('StreamingHelper: FTP downloading (indeterminate)');
+              }
+            },
+          );
+
+          // Open with system default app
+          if (Platform.isWindows) {
+            await Process.run('cmd', ['/c', 'start', '', tempPath]);
+          } else if (Platform.isMacOS) {
+            await Process.run('open', [tempPath]);
+          } else if (Platform.isLinux) {
+            await Process.run('xdg-open', [tempPath]);
+          }
+
+          return FileOpenResult(success: true, viewerLaunched: true);
+        } catch (e) {
+          debugPrint('StreamingHelper: FTP fallback open failed: $e');
+          // Continue to other flows if needed
+        }
+      }
 
       // Priority 1: Attempt Native VLC Direct streaming (highest priority)
       debugPrint(
@@ -212,10 +271,38 @@ class StreamingHelper {
         );
       }
 
-      // Priority 4: Try openFileStream for other cases
+      // Priority 4: For WebDAV, prefer readFileData over openFileStream for better reliability
+      if (service.serviceName == 'WebDAV' &&
+          (fileType != FileType.video && fileType != FileType.audio)) {
+        debugPrint(
+            'StreamingHelper: Using readFileData for WebDAV non-media file');
+        debugPrint('StreamingHelper: remotePath for readFileData: $remotePath');
+
+        try {
+          final fileData = await service.readFileData(remotePath);
+          if (fileData != null && fileData.isNotEmpty) {
+            final fileStream = Stream.value(fileData);
+            return FileOpenResult(
+              success: true,
+              fileStream: fileStream,
+              fileType: fileType,
+              message:
+                  'WebDAV file loaded via readFileData (${(fileData.length / 1024).toStringAsFixed(1)} KB)',
+            );
+          } else {
+            debugPrint(
+                'StreamingHelper: WebDAV readFileData returned null or empty data');
+          }
+        } catch (e) {
+          debugPrint('StreamingHelper: WebDAV readFileData failed: $e');
+        }
+      }
+
+      // Priority 5: Try openFileStream for other cases
       debugPrint(
           'StreamingHelper: DECISION - Using openFileStream method (optimized)');
       debugPrint('StreamingHelper: Calling service.openFileStream...');
+      debugPrint('StreamingHelper: remotePath for openFileStream: $remotePath');
 
       final streamStartTime = DateTime.now();
       final sourceStream = service.openFileStream(remotePath);
@@ -253,7 +340,7 @@ class StreamingHelper {
         }
       }
 
-      // Fallback: Try readFileData only for small non-media files
+      // Fallback: Try readFileData only for small non-media files (excluding WebDAV which was already handled)
       if (service is MobileSMBService &&
           (fileType != FileType.video && fileType != FileType.audio)) {
         debugPrint(
@@ -321,6 +408,49 @@ class StreamingHelper {
       debugPrint(
           'StreamingHelper: Total execution time: ${totalDuration.inMilliseconds}ms');
       debugPrint('=== StreamingHelper._openFileDirectly END (Optimized) ===');
+    }
+  }
+
+  /// Downloads a file from network service to local storage
+  Future<void> downloadFile(String filePath, String destinationPath) async {
+    if (_currentNetworkService == null) {
+      throw Exception('No network service available');
+    }
+
+    try {
+      debugPrint(
+          'StreamingHelper: Starting download from $filePath to $destinationPath');
+      final svc = _currentNetworkService!;
+      // Resolve remote path if the service uses local-temp mapping (WebDAV)
+      String remotePath = filePath;
+      if (svc is WebDAVService) {
+        final mapped = svc.getRemotePathFromLocal(filePath);
+        if (mapped == null) {
+          throw Exception('Could not determine remote path for file');
+        }
+        remotePath = mapped;
+      }
+
+      debugPrint('StreamingHelper: Resolved remote path: $remotePath');
+
+      // Prefer progress-enabled download when available
+      await svc.getFileWithProgress(
+        remotePath,
+        destinationPath,
+        (progress) {
+          if (progress >= 0) {
+            debugPrint(
+                'StreamingHelper: Download ${(progress * 100).toStringAsFixed(1)}%');
+          } else {
+            debugPrint('StreamingHelper: Downloading (indeterminate)');
+          }
+        },
+      );
+
+      debugPrint('StreamingHelper: Download completed successfully');
+    } catch (e) {
+      debugPrint('StreamingHelper: Download failed: $e');
+      throw Exception('Failed to download file: $e');
     }
   }
 
@@ -469,6 +599,89 @@ class StreamingHelper {
                     ),
         ),
       );
+    } else {
+      // Handle other file types (text, documents, etc.)
+      debugPrint(
+          'StreamingHelper: Processing other file type: ${result.fileType}');
+
+      // For text files and other non-media files, save to temp and open with system default app
+      if (result.fileStream != null) {
+        try {
+          debugPrint(
+              'StreamingHelper: result.fileStream is not null, attempting to read');
+
+          // Create temporary file
+          final tempDir = Directory.systemTemp;
+          final tempFile = File(
+              '${tempDir.path}/webdav_${DateTime.now().millisecondsSinceEpoch}_$fileName');
+
+          debugPrint('StreamingHelper: Creating temp file: ${tempFile.path}');
+
+          // Write stream to temp file
+          final sink = tempFile.openWrite();
+          int totalBytes = 0;
+          await for (final chunk in result.fileStream!) {
+            sink.add(chunk);
+            totalBytes += chunk.length;
+            debugPrint(
+                'StreamingHelper: Read chunk: ${chunk.length} bytes, total: $totalBytes');
+          }
+          await sink.close();
+
+          debugPrint(
+              'StreamingHelper: Temp file created successfully: ${await tempFile.length()} bytes');
+
+          // Open with system default app
+          if (Platform.isWindows) {
+            final result =
+                await Process.run('cmd', ['/c', 'start', '', tempFile.path]);
+            debugPrint('StreamingHelper: Process result: ${result.exitCode}');
+
+            if (result.exitCode == 0) {
+              // Clean up temp file after a delay
+              Future.delayed(const Duration(seconds: 10), () async {
+                try {
+                  await tempFile.delete();
+                  debugPrint('StreamingHelper: Temp file cleaned up');
+                } catch (e) {
+                  debugPrint(
+                      'StreamingHelper: Failed to clean up temp file: $e');
+                }
+              });
+            } else {
+              await _handleOpenError(
+                  context, 'Failed to open file with system default app');
+            }
+          } else {
+            final result = await Process.run('open', [tempFile.path]);
+            debugPrint('StreamingHelper: Process result: ${result.exitCode}');
+
+            if (result.exitCode == 0) {
+              _showSuccessMessage(
+                  context, 'File opened with system default app');
+
+              // Clean up temp file after a delay
+              Future.delayed(const Duration(seconds: 10), () async {
+                try {
+                  await tempFile.delete();
+                  debugPrint('StreamingHelper: Temp file cleaned up');
+                } catch (e) {
+                  debugPrint(
+                      'StreamingHelper: Failed to clean up temp file: $e');
+                }
+              });
+            } else {
+              await _handleOpenError(
+                  context, 'Failed to open file with system default app');
+            }
+          }
+        } catch (e) {
+          debugPrint('StreamingHelper: Error handling other file type: $e');
+          await _handleOpenError(context, 'Error opening file: $e');
+        }
+      } else {
+        await _handleOpenError(context, 'No file data available to open');
+      }
     }
   }
 
@@ -489,12 +702,12 @@ class StreamingHelper {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => RouteUtils.safePopDialog(context),
             child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () async {
-              Navigator.of(context).pop();
+              RouteUtils.safePopDialog(context);
               await _downloadAndOpen(context, fileName);
             },
             child: const Text('Download'),
@@ -542,13 +755,13 @@ class StreamingHelper {
       await _currentNetworkService!.getFile(remotePath, localPath);
 
       if (context.mounted) {
-        Navigator.of(context).pop(); // Đóng loading
+        RouteUtils.safePopDialog(context); // Đóng loading
       }
 
       _showSuccessMessage(context, 'File downloaded successfully');
     } catch (e) {
       if (context.mounted) {
-        Navigator.of(context).pop(); // Đóng loading
+        RouteUtils.safePopDialog(context); // Đóng loading
       }
       await _handleOpenError(context, 'Error downloading file: $e');
     }
@@ -568,7 +781,7 @@ class StreamingHelper {
         content: Text(errorMessage),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => RouteUtils.safePopDialog(context),
             child: const Text('OK'),
           ),
         ],

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:cb_file_manager/main.dart' show goHome;
+import 'package:cb_file_manager/main.dart' show goHome, CBFileApp;
 import 'package:cb_file_manager/ui/drawer.dart';
 import 'package:cb_file_manager/helpers/user_preferences.dart'; // Add UserPreferences import
 import 'package:cb_file_manager/config/translation_helper.dart'; // Import translation helper
 import 'package:eva_icons_flutter/eva_icons_flutter.dart'; // Import EvaIcons
+import 'package:cb_file_manager/ui/utils/route.dart'; // Import RouteUtils
 // For Platform check
 
 /// A base screen widget that handles common functionality across all screens
@@ -136,7 +137,7 @@ class _BaseScreenState extends State<BaseScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
-          _handleBackNavigation(context);
+          RouteUtils.safeBackNavigation(context);
         }
       },
       child: Scaffold(
@@ -184,18 +185,7 @@ class _BaseScreenState extends State<BaseScreen> {
   Widget _buildLeadingIcon(BuildContext context) {
     return IconButton(
       icon: const Icon(EvaIcons.arrowBack),
-      onPressed: () => _handleBackNavigation(context),
+      onPressed: () => RouteUtils.safeBackNavigation(context),
     );
-  }
-
-  /// Handle back button navigation safely
-  void _handleBackNavigation(BuildContext context) {
-    // Check if we can pop before attempting to
-    if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
-    } else {
-      // If we can't pop, go to home screen
-      goHome(context);
-    }
   }
 }

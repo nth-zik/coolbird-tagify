@@ -18,6 +18,7 @@ import 'mobile_tab_view.dart'; // Import giao diện mobile kiểu Chrome
 import 'package:cb_file_manager/config/translation_helper.dart'; // Import translation helper
 import 'package:cb_file_manager/ui/screens/system_screen_router.dart'; // Import system screen router
 // import 'package:cb_file_manager/widgets/test_native_streaming.dart'; // Test widget removed
+import '../utils/route.dart';
 
 // Create a custom scroll behavior that supports mouse wheel scrolling
 class TabBarMouseScrollBehavior extends MaterialScrollBehavior {
@@ -350,16 +351,30 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
               autofocus: true,
               child: WillPopScope(
                 onWillPop: () async {
-                  // Handle back button press - if any tab is open, navigate back in that tab
-                  final activeTab = state.activeTab;
-                  if (activeTab != null) {
-                    final navigatorState = activeTab.navigatorKey.currentState;
-                    if (navigatorState != null && navigatorState.canPop()) {
-                      navigatorState.pop();
+                  try {
+                    // Handle back button press - if any tab is open, navigate back in that tab
+                    final activeTab = state.activeTab;
+                    if (activeTab != null) {
+                      final navigatorState =
+                          activeTab.navigatorKey.currentState;
+                      if (navigatorState != null && navigatorState.canPop()) {
+                        navigatorState.pop();
+                        return false; // Don't close the app
+                      }
+                    }
+
+                    // If no active tab or can't pop, check if we can pop the main navigator
+                    if (Navigator.of(context).canPop()) {
+                      Navigator.of(context).pop();
                       return false; // Don't close the app
                     }
+
+                    // If we're at the root and can't navigate back, don't allow back
+                    return false; // Don't close the app, just prevent back navigation
+                  } catch (e) {
+                    debugPrint('Error in WillPopScope: $e');
+                    return true; // Allow app to close on error
                   }
-                  return true; // Allow app to close
                 },
                 child: Scaffold(
                   key: _scaffoldKey,
@@ -736,7 +751,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                         size: 20,
                         color: textColor?.withOpacity(0.7),
                       ),
-                      onPressed: () => Navigator.of(context).pop(),
+                      onPressed: () => RouteUtils.safePopDialog(context),
                       iconSize: 20,
                       style: IconButton.styleFrom(
                         backgroundColor: isDarkMode
@@ -757,7 +772,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                 icon: EvaIcons.plusCircleOutline,
                 text: 'New tab',
                 onTap: () {
-                  Navigator.of(context).pop();
+                  RouteUtils.safePopDialog(context);
                   _handleAddNewTab();
                 },
               ),
@@ -766,7 +781,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                 icon: EvaIcons.close,
                 text: 'Close current tab',
                 onTap: () {
-                  Navigator.of(context).pop();
+                  RouteUtils.safePopDialog(context);
                   _handleCloseCurrentTab();
                 },
               ),
@@ -787,7 +802,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                 icon: EvaIcons.settings2Outline,
                 text: 'Settings',
                 onTap: () {
-                  Navigator.of(context).pop();
+                  RouteUtils.safePopDialog(context);
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -854,7 +869,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
   // New method to navigate to network browsing screen
   void _navigateToNetworkBrowsing() {
     // Close the tab options dialog if it's open
-    Navigator.of(context).pop();
+    RouteUtils.safePopDialog(context);
 
     // Add a new tab with the network path
     context.read<TabManagerBloc>().add(
@@ -865,7 +880,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
   // New method to navigate to SMB browsing screen
   void _navigateToSMBBrowsing() {
     // Close the tab options dialog if it's open
-    Navigator.of(context).pop();
+    RouteUtils.safePopDialog(context);
 
     // Add a new tab with the SMB path
     context.read<TabManagerBloc>().add(

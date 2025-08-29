@@ -14,6 +14,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/tab_manager/tab_manager.dart';
 import 'package:cb_file_manager/ui/tab_manager/tab_data.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
+import '../../utils/route.dart';
 
 class TagManagementScreen extends StatefulWidget {
   final String startingDirectory;
@@ -534,7 +535,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();
+                RouteUtils.safePopDialog(context);
               },
               child: Text(localizations.cancel),
             ),
@@ -545,7 +546,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                 if (mounted) {
                   // Rebuild UI
                   setState(() {});
-                  Navigator.of(context).pop();
+                  RouteUtils.safePopDialog(context);
 
                   // Thông báo thành công
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -592,7 +593,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => RouteUtils.safePopDialog(context),
             child: Text(localizations.close.toUpperCase()),
           ),
         ],
@@ -1764,7 +1765,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
           // Xử lý khi không trong môi trường tab
           // Điều này phụ thuộc vào cách ứng dụng của bạn điều hướng
           // Ví dụ: bạn có thể pop màn hình hiện tại và mở thư mục
-          Navigator.of(context).pop();
+          RouteUtils.safePopDialog(context);
         }
       } catch (e) {}
     } else {

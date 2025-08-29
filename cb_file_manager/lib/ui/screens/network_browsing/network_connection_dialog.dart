@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
@@ -11,6 +12,7 @@ import '../../../services/network_browsing/smb_service.dart';
 // Removed smb_connect import - using mobile_smb_native instead
 import '../../../services/network_credentials_service.dart';
 import '../../../models/database/network_credentials.dart';
+import '../../utils/route.dart';
 
 /// Dialog for entering network connection details
 class NetworkConnectionDialog extends StatefulWidget {
@@ -42,6 +44,7 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _portController = TextEditingController();
+  final _basePathController = TextEditingController();
   bool _showPassword = false;
   bool _useSSL = true;
   String? _domain;
@@ -102,7 +105,7 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
         final connectionPath = state.lastSuccessfullyConnectedPath!;
         final tabName = _getTabNameFromPath(connectionPath);
         widget.onConnectionRequested!(connectionPath, tabName);
-        Navigator.of(context).pop();
+        RouteUtils.safePopDialog(context);
       }
     });
   }
@@ -113,6 +116,7 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
     _usernameController.dispose();
     _passwordController.dispose();
     _portController.dispose();
+    _basePathController.dispose();
     _localBloc.close();
     super.dispose();
   }
@@ -186,6 +190,19 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
 
           if (_selectedService == 'SMB' && credentials.domain != null) {
             _domain = credentials.domain;
+          }
+
+          // Load basePath for WebDAV
+          if (_selectedService == 'WebDAV' &&
+              credentials.additionalOptions != null) {
+            try {
+              final options = jsonDecode(credentials.additionalOptions!);
+              if (options['basePath'] != null) {
+                _basePathController.text = options['basePath'];
+              }
+            } catch (e) {
+              debugPrint('Error parsing additionalOptions: $e');
+            }
           }
         });
 
@@ -514,6 +531,13 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
     // Clear fields when switching service type
     _passwordController.clear();
 
+    // Set default base path for WebDAV
+    if (value == 'WebDAV') {
+      _basePathController.text = '/webdav';
+    } else {
+      _basePathController.clear();
+    }
+
     // Load saved credentials for the selected service
     _loadSavedCredentials();
 
@@ -528,7 +552,8 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
       child: BlocBuilder<NetworkBrowsingBloc, NetworkBrowsingState>(
         bloc: _localBloc,
         builder: (context, state) {
-          final isLoading = state.isLoading || _connectingToServer;
+          final isLoading =
+              state.isLoading || state.isConnecting || _connectingToServer;
 
           // Không còn cần dialog chọn share nữa vì shares sẽ hiển thị như thư mục
           return AlertDialog(
@@ -629,7 +654,7 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
                                             const Icon(EvaIcons.edit, size: 16),
                                         onPressed: () {
                                           // Stop dropdown from closing
-                                          Navigator.of(context).pop();
+                                          RouteUtils.safePopDialog(context);
                                           _deleteSavedHost(option);
                                         },
                                         tooltip: 'Delete Saved Connection',
@@ -717,6 +742,19 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
                                   });
                                 },
                         ),
+
+                        const SizedBox(height: 16),
+
+                        // Base Path Field
+                        TextFormField(
+                          controller: _basePathController,
+                          enabled: !isLoading,
+                          decoration: const InputDecoration(
+                            labelText: 'Base Path (optional)',
+                            hintText: 'e.g., /webdav',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
                       ],
 
                       if (_selectedService == 'SMB') ...[
@@ -732,6 +770,32 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
                           onChanged: (value) {
                             _domain = value.isEmpty ? null : value;
                           },
+                        ),
+                      ],
+
+                      // Error message display
+                      if (state.hasError && state.errorMessage != null) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            border: Border.all(color: Colors.red.shade200),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.error,
+                                  color: Colors.red.shade600, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  state.errorMessage!,
+                                  style: TextStyle(color: Colors.red.shade700),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
 
@@ -787,11 +851,16 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
                                 additionalOptions: {
                                   if (_selectedService == 'WebDAV')
                                     'useSSL': _useSSL,
+                                  if (_selectedService == 'WebDAV' &&
+                                      _basePathController.text.isNotEmpty)
+                                    'basePath': _basePathController.text.trim(),
                                   if (_selectedService == 'SMB' &&
                                       _domain != null)
                                     'domain': _domain,
                                 },
                               );
+                              debugPrint(
+                                  'NetworkConnectionDialog: Sending WebDAV connection event: $event');
                               _localBloc.add(event);
 
                               // Lưu thông tin đăng nhập nếu được chọn
@@ -806,6 +875,10 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
                                   additionalOptions: {
                                     if (_selectedService == 'WebDAV')
                                       'useSSL': _useSSL,
+                                    if (_selectedService == 'WebDAV' &&
+                                        _basePathController.text.isNotEmpty)
+                                      'basePath':
+                                          _basePathController.text.trim(),
                                   },
                                 );
                               }
