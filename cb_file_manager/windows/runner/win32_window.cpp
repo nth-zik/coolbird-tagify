@@ -197,7 +197,24 @@ bool Win32Window::Create(const std::wstring &title,
 
 bool Win32Window::Show()
 {
-  return ShowWindow(window_handle_, SW_SHOWMAXIMIZED);
+  if (!window_handle_)
+  {
+    return false;
+  }
+
+  // In PiP mode (desktop mini window), avoid maximizing on first show.
+  // Detect via environment variable set by the Dart side.
+  bool pip_mode = false;
+#if defined(_WIN32)
+  wchar_t buf[8];
+  DWORD len = GetEnvironmentVariableW(L"CB_PIP_MODE", buf, 8);
+  if (len > 0 && buf[0] == L'1')
+  {
+    pip_mode = true;
+  }
+#endif
+
+  return ShowWindow(window_handle_, pip_mode ? SW_SHOWNORMAL : SW_SHOWMAXIMIZED);
 }
 
 bool Win32Window::ShowMaximized()

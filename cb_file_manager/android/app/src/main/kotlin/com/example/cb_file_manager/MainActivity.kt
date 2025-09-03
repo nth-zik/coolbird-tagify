@@ -8,6 +8,9 @@ import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.net.Uri
+import android.os.Build
+import android.util.Rational
+import android.app.PictureInPictureParams
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -18,6 +21,8 @@ import com.coolbird.cb_file_manager.MemoryManagementPlugin
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "cb_file_manager/external_apps"
+    private val PIP_CHANNEL = "cb_file_manager/pip"
+    private lateinit var pipChannel: MethodChannel
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -45,6 +50,59 @@ class MainActivity : FlutterActivity() {
                     result.notImplemented()
                 }
             }
+        }
+
+        // Picture-in-Picture channel for Android
+        pipChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, PIP_CHANNEL)
+        pipChannel.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "enterPip" -> {
+                    try {
+                        val width = (call.argument<Int>("width") ?: 16).coerceAtLeast(1)
+                        val height = (call.argument<Int>("height") ?: 9).coerceAtLeast(1)
+                        enterPipModeSafe(width, height)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        result.error("PIP_ERROR", e.message, null)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode)
+        // Notify Flutter to toggle compact UI in PiP
+        try {
+            if (this::pipChannel.isInitialized) {
+                val payload: MutableMap<String, Any> = HashMap()
+                payload["inPip"] = isInPictureInPictureMode
+                pipChannel.invokeMethod("onPipChanged", payload)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun enterPipModeSafe(width: Int, height: Int) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val ratio = Rational(width, height)
+                val builder = PictureInPictureParams.Builder()
+                    .setAspectRatio(ratio)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    try { builder.setSeamlessResizeEnabled(true) } catch (_: Throwable) {}
+                }
+                val params = builder.build()
+                enterPictureInPictureMode(params)
+            } else {
+                @Suppress("DEPRECATION")
+                enterPictureInPictureMode()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 

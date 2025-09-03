@@ -47,27 +47,43 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
 
-  // Get work area dimensions (respects taskbar and title bar)
-  int screenWidth = 0;
-  int screenHeight = 0;
-  GetPrimaryMonitorWorkArea(&screenWidth, &screenHeight);
-
   FlutterWindow window(project);
+  
+  // Detect PiP mode via environment variable set by Dart side
+  bool pip_mode = false;
+  wchar_t pipBuf[8];
+  DWORD pipLen = GetEnvironmentVariableW(L"CB_PIP_MODE", pipBuf, 8);
+  if (pipLen > 0 && pipBuf[0] == L'1') {
+    pip_mode = true;
+  }
 
-  // Use (0,0) as origin to align with the monitor's work area top-left corner
+  // Prepare origin and size
   Win32Window::Point origin(0, 0);
+  Win32Window::Size size(0, 0);
 
-  // Use the work area dimensions to ensure window fits properly
-  Win32Window::Size size(screenWidth, screenHeight);
+  if (pip_mode) {
+    // Small initial window for PiP; will be adjusted by window_manager later
+    size = Win32Window::Size(384, 216);
+  } else {
+    // Get work area dimensions (respects taskbar and title bar)
+    int screenWidth = 0;
+    int screenHeight = 0;
+    GetPrimaryMonitorWorkArea(&screenWidth, &screenHeight);
+    size = Win32Window::Size(screenWidth, screenHeight);
+  }
 
-  if (!window.Create(L"CoolBird Tagify - File Manager", origin, size))
-  {
+  if (!window.Create(L"CoolBird Tagify - File Manager", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);
 
-  // Use ShowMaximized to properly maximize the window
-  window.ShowMaximized();
+  if (pip_mode) {
+    // Show as a normal window; the Dart side will set always-on-top & focus
+    window.Show();
+  } else {
+    // Use ShowMaximized to properly maximize the window for the main app
+    window.ShowMaximized();
+  }
 
   // Get the window handle
   HWND hwnd = window.GetHandle();

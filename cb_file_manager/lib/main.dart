@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:flutter/services.dart'; // For SystemUiOverlayStyle
 import 'package:flutter/foundation.dart'; // For kDebugMode
 import 'package:flutter/scheduler.dart'; // For frame scheduling
@@ -10,6 +11,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'helpers/tags/tag_manager.dart';
 import 'package:media_kit/media_kit.dart'; // Import Media Kit
 import 'package:window_manager/window_manager.dart'; // Import window_manager
+import 'ui/components/pip_window/desktop_pip_window.dart';
 import 'helpers/media/media_kit_audio_helper.dart'; // Import our audio helper
 import 'helpers/core/user_preferences.dart'; // Import user preferences
 import 'helpers/media/folder_thumbnail_service.dart'; // Import thumbnail service
@@ -34,6 +36,16 @@ void main() async {
   runZonedGuarded(() async {
     // Ensure Flutter is initialized before using platform plugins
     WidgetsFlutterBinding.ensureInitialized();
+
+    // If launched in PiP window mode (desktop), boot a minimal PiP app.
+    try {
+      final env = Platform.environment;
+      final isPip = env['CB_PIP_MODE'] == '1';
+      if (isPip && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+        await windowManager.ensureInitialized();
+        MediaKit.ensureInitialized();
+      }
+    } catch (_) {}
 
     // Configure frame timing and rendering for better performance
     // This helps prevent the "Reported frame time is older than the last one" error
@@ -83,36 +95,39 @@ void main() async {
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       await windowManager.ensureInitialized();
 
-      // Create window options with minimum size but still allow maximized state
-      WindowOptions windowOptions = const WindowOptions(
-        center: true,
-        backgroundColor: Colors.transparent,
-        titleBarStyle: TitleBarStyle.hidden,
-        windowButtonVisibility: true,
-        // Set minimum size but allow window to be resized
-        minimumSize: Size(800, 600),
-      );
+      final isPip = Platform.environment['CB_PIP_MODE'] == '1';
+      if (!isPip) {
+        // Create window options with minimum size but still allow maximized state
+        WindowOptions windowOptions = const WindowOptions(
+          center: true,
+          backgroundColor: Colors.transparent,
+          titleBarStyle: TitleBarStyle.hidden,
+          windowButtonVisibility: true,
+          // Set minimum size but allow window to be resized
+          minimumSize: Size(800, 600),
+        );
 
-      // Apply the window options
-      await windowManager.waitUntilReadyToShow(windowOptions);
+        // Apply the window options
+        await windowManager.waitUntilReadyToShow(windowOptions);
 
-      // For Windows, start maximized but allow toggling
-      if (Platform.isWindows) {
-        // Enable resizing so the window can be un-maximized
-        await windowManager.setResizable(true);
+        // For Windows, start maximized but allow toggling
+        if (Platform.isWindows) {
+          // Enable resizing so the window can be un-maximized
+          await windowManager.setResizable(true);
 
-        // Ensure the window is shown first
-        await windowManager.show();
+          // Ensure the window is shown first
+          await windowManager.show();
 
-        // Start maximized initially
-        await windowManager.maximize();
+          // Start maximized initially
+          await windowManager.maximize();
 
-        // Configure additional window properties
-        await windowManager.setPreventClose(false);
-        await windowManager.setSkipTaskbar(false);
+          // Configure additional window properties
+          await windowManager.setPreventClose(false);
+          await windowManager.setSkipTaskbar(false);
 
-        // Focus the window
-        await windowManager.focus();
+          // Focus the window
+          await windowManager.focus();
+        }
       }
     }
 
@@ -167,11 +182,28 @@ void main() async {
 
     // Streaming functionality is now handled directly by StreamingHelper with network services
 
+    // If PiP env flag is set, run lightweight PiP window instead of full app
+    final env = Platform.environment;
+    if (env['CB_PIP_MODE'] == '1' && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+      Map<String, dynamic> args = {};
+      final raw = env['CB_PIP_ARGS'];
+      if (raw != null && raw.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(raw);
+          if (decoded is Map<String, dynamic>) args = decoded;
+        } catch (_) {}
+      }
+      runApp(DesktopPipWindow(args: args));
+      return;
+    }
+
     runApp(const CBFileApp());
   }, (error, stackTrace) {
     debugPrint('Error during app initialization: $error');
   });
 }
+
+// no-op helper removed; using jsonDecode directly
 
 // Navigate directly to home screen - updated to use the tabbed interface
 void goHome(BuildContext context) {
@@ -207,6 +239,19 @@ Future<void> _requestPermissions() async {
       await Permission.manageExternalStorage.request();
     } catch (e) {
       debugPrint('Manage external storage permission not available: $e');
+    }
+
+    // For Android 13+ request granular media permissions if available
+    try {
+      // Permission.videos is supported on recent permission_handler versions
+      // Ignore if not available on this platform/SDK
+      // Requesting it alongside storage improves access to media files
+      // without MANAGE_EXTERNAL_STORAGE on API 33+.
+      // If the symbol doesn't exist, this will throw and be ignored below.
+      // ignore: deprecated_member_use
+      await Permission.videos.request();
+    } catch (e) {
+      debugPrint('Videos permission not available: $e');
     }
   }
 
