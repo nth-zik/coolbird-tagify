@@ -5,7 +5,7 @@ import 'dart:async';
 import '../../services/network_browsing/network_service_base.dart';
 import '../../services/network_browsing/mobile_smb_service.dart';
 import '../../services/network_browsing/i_smb_service.dart';
-import '../../ui/components/video_player/video_player.dart';
+import '../../ui/components/video/video_player/video_player.dart';
 import '../../ui/utils/file_type_utils.dart';
 import 'package:path/path.dart' as p;
 import '../files/file_type_helper.dart';

@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:cb_file_manager/services/streaming/streaming_speed_monitor.dart';
+import '../../../../services/streaming/streaming_speed_monitor.dart';
 
 /// Widget overlay hiển thị thông tin tốc độ stream trên video player
 class StreamingSpeedOverlay extends StatefulWidget {
@@ -162,7 +162,8 @@ class _StreamingSpeedOverlayState extends State<StreamingSpeedOverlay>
   }
 
   Widget _buildSpeedInfoCard() {
-    final bgColor = widget.backgroundColor ?? Colors.black.withValues(alpha: 0.8);
+    final bgColor =
+        widget.backgroundColor ?? Colors.black.withValues(alpha: 0.8);
     final textColor = widget.textColor ?? Colors.white;
 
     return Container(

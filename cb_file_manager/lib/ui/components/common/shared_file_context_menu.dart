@@ -1,21 +1,20 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
-import 'package:cb_file_manager/ui/screens/folder_list/file_details_screen.dart';
-import 'package:cb_file_manager/ui/screens/media_gallery/video_gallery_screen.dart';
-import 'package:cb_file_manager/ui/screens/media_gallery/image_viewer_screen.dart';
-import 'package:cb_file_manager/ui/dialogs/open_with_dialog.dart';
-import 'package:cb_file_manager/helpers/files/external_app_helper.dart';
-import 'package:cb_file_manager/helpers/files/trash_manager.dart';
+import '../../screens/folder_list/file_details_screen.dart';
+import '../../screens/media_gallery/video_gallery_screen.dart';
+import '../../screens/media_gallery/image_viewer_screen.dart';
+import '../../dialogs/open_with_dialog.dart';
+import '../../../helpers/files/external_app_helper.dart';
+import '../../../helpers/files/trash_manager.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
-import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
+import '../../screens/folder_list/folder_list_bloc.dart';
+import '../../screens/folder_list/folder_list_event.dart';
 import 'package:path/path.dart' as pathlib;
-import 'package:cb_file_manager/ui/tab_manager/components/tag_dialogs.dart'
-    as tag_dialogs;
-import 'package:cb_file_manager/services/network_browsing/webdav_service.dart';
-import 'package:cb_file_manager/helpers/network/streaming_helper.dart';
-import 'package:cb_file_manager/services/network_browsing/ftp_service.dart';
+import '../../tab_manager/components/tag_dialogs.dart' as tag_dialogs;
+import '../../../services/network_browsing/webdav_service.dart';
+import '../../../helpers/network/streaming_helper.dart';
+import '../../../services/network_browsing/ftp_service.dart';
 import 'package:file_picker/file_picker.dart';
 
 /// A shared context menu for files

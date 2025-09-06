@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:cb_file_manager/helpers/files/file_icon_helper.dart';
-import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart';
-import 'package:cb_file_manager/ui/widgets/lazy_video_thumbnail.dart';
+import '../../../helpers/files/file_icon_helper.dart';
+import '../../widgets/thumbnail_loader.dart';
+import '../../widgets/lazy_video_thumbnail.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 
 /// A reusable widget for optimized touch/mouse interactions

@@ -330,7 +330,7 @@ class VietnameseLocalizations implements AppLocalizations {
   @override
   String get version => 'Phiên bản: 1.0.0';
   @override
-  String get developer => 'Phát triển bởi CoolBird Team';
+  String get developer => 'Phát triển bởi CoolBird - ngtanhung41@gmail.com';
 
   // Empty state
   @override

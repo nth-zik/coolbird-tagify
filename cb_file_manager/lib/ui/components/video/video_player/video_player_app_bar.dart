@@ -2,8 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
-import 'package:cb_file_manager/ui/utils/fluent_background.dart';
-import 'package:cb_file_manager/ui/components/window_caption_buttons.dart';
+import '../../../utils/fluent_background.dart';
+import '../../common/window_caption_buttons.dart';
 import 'package:window_manager/window_manager.dart';
 
 /// Custom app bar for video player with window controls and glass blur effect

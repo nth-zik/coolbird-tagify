@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../files/file_type_helper.dart';
 import '../../services/network_browsing/i_smb_service.dart';
-import '../../ui/components/video_player/video_player.dart';
+import '../../ui/components/video/video_player/video_player.dart';
 // Unified player is StreamingMediaPlayer; this file only builds URLs.
 import '../../ui/utils/route.dart';
 

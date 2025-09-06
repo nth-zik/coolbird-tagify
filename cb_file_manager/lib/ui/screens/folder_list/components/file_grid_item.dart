@@ -6,8 +6,8 @@ import 'package:cb_file_manager/config/app_theme.dart';
 import 'package:cb_file_manager/helpers/files/external_app_helper.dart';
 import 'package:cb_file_manager/helpers/tags/tag_color_manager.dart';
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
-import 'package:cb_file_manager/ui/components/optimized_interaction_handler.dart';
-import 'package:cb_file_manager/ui/components/shared_file_context_menu.dart';
+import '../../../components/common/optimized_interaction_handler.dart';
+import '../../../components/common/shared_file_context_menu.dart';
 import 'package:cb_file_manager/ui/dialogs/open_with_dialog.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/components/thumbnail_content.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
@@ -53,7 +53,7 @@ class FileGridItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fileName = path.basename(file.path);
-    
+
     return Column(
       children: [
         // Thumbnail section
@@ -86,12 +86,13 @@ class FileGridItem extends StatelessWidget {
                               RawKeyboard.instance.keysPressed.contains(
                                 LogicalKeyboardKey.shiftRight,
                               );
-                      final isCtrlPressed = RawKeyboard.instance.keysPressed.contains(
-                            LogicalKeyboardKey.controlLeft,
-                          ) ||
+                      final isCtrlPressed =
                           RawKeyboard.instance.keysPressed.contains(
-                            LogicalKeyboardKey.controlRight,
-                          );
+                                LogicalKeyboardKey.controlLeft,
+                              ) ||
+                              RawKeyboard.instance.keysPressed.contains(
+                                LogicalKeyboardKey.controlRight,
+                              );
 
                       // If in selection mode or modifier keys pressed, handle selection
                       if (isSelectionMode || isShiftPressed || isCtrlPressed) {
@@ -115,7 +116,9 @@ class FileGridItem extends StatelessWidget {
                                 color: Theme.of(context).primaryColor,
                                 width: 2,
                               ),
-                              color: Theme.of(context).primaryColor.withOpacity(0.2),
+                              color: Theme.of(context)
+                                  .primaryColor
+                                  .withOpacity(0.2),
                             ),
                             child: Align(
                               alignment: Alignment.topRight,
@@ -136,15 +139,15 @@ class FileGridItem extends StatelessWidget {
             ],
           ),
         ),
-        
+
         // File name section
         Padding(
           padding: const EdgeInsets.only(top: 4.0, left: 4.0, right: 4.0),
           child: Text(
             fileName,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              fontSize: 12,
-            ),
+                  fontSize: 12,
+                ),
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,

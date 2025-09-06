@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path/path.dart' as pathlib;
 import 'package:flutter/services.dart';
-import 'package:cb_file_manager/ui/components/video_player/video_player.dart';
+import '../../components/video/video_player/video_player.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:cb_file_manager/ui/widgets/tag_management_section.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
@@ -95,23 +95,23 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
       actions: [
         if (!_inAndroidPip)
           IconButton(
-          icon: const Icon(EvaIcons.externalLinkOutline),
-          tooltip: localizations.openWith,
-          onPressed: () {
-            _showOpenWithDialog();
-          },
-        ),
+            icon: const Icon(EvaIcons.externalLinkOutline),
+            tooltip: localizations.openWith,
+            onPressed: () {
+              _showOpenWithDialog();
+            },
+          ),
         if (!_inAndroidPip)
           IconButton(
-          icon: const Icon(EvaIcons.shareOutline),
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(localizations.operationFailed),
-              ),
-            );
-          },
-        ),
+            icon: const Icon(EvaIcons.shareOutline),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(localizations.operationFailed),
+                ),
+              );
+            },
+          ),
       ],
       // When in PiP, avoid extra paddings/margins that could be captured.
       body: Container(

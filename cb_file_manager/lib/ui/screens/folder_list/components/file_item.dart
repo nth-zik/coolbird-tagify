@@ -18,11 +18,11 @@ import 'package:cb_file_manager/helpers/files/file_icon_helper.dart';
 // Import app theme
 import 'package:cb_file_manager/config/app_theme.dart';
 import 'package:cb_file_manager/ui/widgets/tag_chip.dart'; // Import the new TagChip widget
-import 'package:cb_file_manager/ui/components/shared_file_context_menu.dart';
+import '../../../components/common/shared_file_context_menu.dart';
 import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart'; // Import ThumbnailLoader
 import 'package:flutter/services.dart'; // Import for keyboard key detection
 // Import for RepaintBoundary
-import 'package:cb_file_manager/ui/components/optimized_interaction_handler.dart';
+import '../../../components/common/optimized_interaction_handler.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 import 'package:cb_file_manager/helpers/network/streaming_helper.dart';
 import 'package:cb_file_manager/services/network_browsing/webdav_service.dart';

@@ -16,7 +16,7 @@ import 'package:media_kit/media_kit.dart'; // Import Media Kit
 // you can import it here to bundle mpv DLLs. We avoid importing it directly
 // to prevent build failures when the package isn't present locally.
 import 'package:window_manager/window_manager.dart'; // Import window_manager
-import 'ui/components/pip_window/desktop_pip_window.dart';
+import 'ui/components/video/pip_window/desktop_pip_window.dart';
 import 'helpers/media/media_kit_audio_helper.dart'; // Import our audio helper
 import 'helpers/core/user_preferences.dart'; // Import user preferences
 import 'helpers/media/folder_thumbnail_service.dart'; // Import thumbnail service
@@ -24,7 +24,6 @@ import 'helpers/media/video_thumbnail_helper.dart'; // Import our video thumbnai
 import 'helpers/ui/frame_timing_optimizer.dart'; // Import our new frame timing optimizer
 import 'helpers/tags/batch_tag_manager.dart'; // Import batch tag manager
 import 'models/database/database_manager.dart'; // Import database manager
-import 'models/database/network_credentials.dart'; // Import network credentials model
 import 'services/network_credentials_service.dart'; // Import network credentials service
 import 'config/app_theme.dart'; // Import global theme configuration
 import 'package:flutter_localizations/flutter_localizations.dart'; // Import for localization

@@ -3,7 +3,7 @@ import 'dart:async'; // Add this import for Completer
 // For math operations with drag selection and min/max functions
 
 import 'package:cb_file_manager/helpers/ui/frame_timing_optimizer.dart';
-import 'package:cb_file_manager/ui/components/shared_action_bar.dart';
+import '../../components/common/shared_action_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart'; // Import for mouse buttons
 import 'package:flutter_bloc/flutter_bloc.dart';

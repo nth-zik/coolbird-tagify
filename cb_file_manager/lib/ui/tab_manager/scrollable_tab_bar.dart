@@ -5,7 +5,7 @@ import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:cb_file_manager/config/app_theme.dart'; // Import app theme
 import 'package:window_manager/window_manager.dart'; // Import window_manager
 import 'dart:io'; // Import dart:io for Platform check
-import 'package:cb_file_manager/ui/components/window_caption_buttons.dart';
+import '../components/common/window_caption_buttons.dart';
 
 /// A custom TabBar wrapper that translates vertical mouse wheel scrolling
 /// to horizontal scrolling of the tab bar, with modern styling.
@@ -72,8 +72,9 @@ class _ScrollableTabBarState extends State<ScrollableTabBar> {
         ? theme.colorScheme.surface.withAlpha((0.8 * 255).round())
         : theme.colorScheme.surface.withAlpha((0.8 * 255).round());
 
-    Widget windowCaptionButtons =
-        Platform.isWindows ? WindowCaptionButtons(theme: theme) : const SizedBox.shrink();
+    Widget windowCaptionButtons = Platform.isWindows
+        ? WindowCaptionButtons(theme: theme)
+        : const SizedBox.shrink();
 
     // Main container for the entire bar
     return Container(

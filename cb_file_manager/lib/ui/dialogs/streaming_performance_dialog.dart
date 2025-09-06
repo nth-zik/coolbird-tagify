@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cb_file_manager/services/network_browsing/optimized_smb_service.dart';
-import 'package:cb_file_manager/ui/components/stream_speed_indicator.dart';
+import '../components/streaming/stream_speed_indicator.dart';
 import '../utils/route.dart';
 
 /// Dialog to show detailed streaming performance information

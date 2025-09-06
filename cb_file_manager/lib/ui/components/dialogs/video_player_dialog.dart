@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:cb_file_manager/ui/components/video_player/video_player.dart';
+import '../video/video_player/video_player.dart';
 
 class VideoPlayerDialog extends StatefulWidget {
   final File videoFile;

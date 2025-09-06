@@ -689,7 +689,7 @@ class _CBDrawerState extends State<CBDrawer> {
             SizedBox(height: 16),
             Text('Version: 1.0.0'),
             SizedBox(height: 8),
-            Text('Developed by CoolBird Team'),
+            Text('Developed by CoolBird - ngtanhung41@gmail.com'),
           ],
         ),
         actions: [

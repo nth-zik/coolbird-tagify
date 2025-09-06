@@ -1,7 +1,6 @@
-import 'package:cb_file_manager/bloc/selection/selection.dart';
-import 'package:cb_file_manager/ui/tab_manager/components/index.dart'
-    as tab_components;
-import 'package:cb_file_manager/ui/utils/fluent_background.dart';
+import '../../../bloc/selection/selection.dart';
+import '../../tab_manager/components/index.dart' as tab_components;
+import '../../utils/fluent_background.dart';
 import 'package:flutter/material.dart';
 
 class ScreenScaffold extends StatelessWidget {

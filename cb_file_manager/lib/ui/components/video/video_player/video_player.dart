@@ -13,16 +13,16 @@ import 'package:window_manager/window_manager.dart';
 import 'package:path/path.dart' as pathlib;
 // Windows PiP uses a separate OS window (external process).
 
-import '../../../services/pip_window_service.dart';
-import '../../components/pip_window/windows_pip_overlay.dart';
-import '../../../services/streaming/smb_http_proxy_server.dart';
+import '../../../../services/pip_window_service.dart';
+import '../pip_window/windows_pip_overlay.dart';
+import '../../../../services/streaming/smb_http_proxy_server.dart';
 
-import '../../../helpers/files/file_type_helper.dart';
-import '../../../helpers/core/user_preferences.dart';
-import '../../../helpers/network/win32_smb_helper.dart';
-import '../stream_speed_indicator.dart';
-import '../buffer_info_widget.dart';
-import '../../utils/route.dart';
+import '../../../../helpers/files/file_type_helper.dart';
+import '../../../../helpers/core/user_preferences.dart';
+import '../../../../helpers/network/win32_smb_helper.dart';
+import '../../streaming/stream_speed_indicator.dart';
+import '../../streaming/buffer_info_widget.dart';
+import '../../../utils/route.dart';
 
 // Enums for new features
 enum LoopMode { none, single, all }
@@ -446,7 +446,10 @@ class _VideoPlayerState extends State<VideoPlayer> {
         'volume': volume,
         'playing': playing,
       },
-      onClose: ({required int positionMs, required double volume, required bool playing}) async {
+      onClose: (
+          {required int positionMs,
+          required double volume,
+          required bool playing}) async {
         try {
           if (_player != null) {
             await _player!.seek(Duration(milliseconds: positionMs));
@@ -3358,7 +3361,9 @@ class _VideoPlayerState extends State<VideoPlayer> {
       try {
         final up = UserPreferences.instance;
         await up.init();
-        preferExternal = await up.getVideoPlayerBool('windows_pip_external', defaultValue: true) ?? true;
+        preferExternal = await up.getVideoPlayerBool('windows_pip_external',
+                defaultValue: true) ??
+            true;
       } catch (_) {}
       final positionMs = _player != null
           ? _player!.state.position.inMilliseconds
@@ -3420,7 +3425,8 @@ class _VideoPlayerState extends State<VideoPlayer> {
               try {
                 if (_player != null && _player!.state.playing) {
                   await _player!.pause();
-                } else if (_vlcController != null && _vlcController!.value.isPlaying) {
+                } else if (_vlcController != null &&
+                    _vlcController!.value.isPlaying) {
                   await _vlcController!.pause();
                 }
               } catch (_) {}

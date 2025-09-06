@@ -4,8 +4,8 @@ import 'package:cb_file_manager/helpers/core/io_extensions.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:flutter/services.dart';
-import 'package:cb_file_manager/ui/components/shared_file_context_menu.dart';
-import 'package:cb_file_manager/ui/components/optimized_interaction_handler.dart';
+import '../../../components/common/shared_file_context_menu.dart';
+import '../../../components/common/optimized_interaction_handler.dart';
 
 class FolderDetailsItem extends StatefulWidget {
   final Directory folder;

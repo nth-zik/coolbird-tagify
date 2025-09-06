@@ -7,7 +7,7 @@ import 'package:cb_file_manager/helpers/ui/frame_timing_optimizer.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/image_gallery_screen.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/video_gallery_screen.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/image_viewer_screen.dart'; // Import the new ImageViewerScreen
-import 'package:cb_file_manager/ui/components/shared_action_bar.dart';
+import '../components/common/shared_action_bar.dart';
 import 'package:flutter/material.dart';
 // Add for scheduler bindings
 import 'package:flutter/gestures.dart'; // Import for mouse buttons
@@ -46,7 +46,7 @@ import 'package:flutter/foundation.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/helpers/files/folder_sort_manager.dart'; // Import for FolderSortManager
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
-import 'package:cb_file_manager/ui/components/screen_scaffold.dart';
+import '../components/common/screen_scaffold.dart';
 import '../utils/route.dart';
 
 // Add this class to cache thumbnails
