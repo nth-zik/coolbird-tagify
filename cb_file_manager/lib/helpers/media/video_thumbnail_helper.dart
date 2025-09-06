@@ -276,6 +276,12 @@ class VideoThumbnailHelper {
   // Expose a stream that widgets can listen to
   static Stream<void> get onCacheChanged => _cacheChangedController.stream;
 
+  // Stream to notify when a specific thumbnail is generated and ready
+  static final StreamController<String> _thumbnailReadyController =
+      StreamController<String>.broadcast();
+  static Stream<String> get onThumbnailReady =>
+      _thumbnailReadyController.stream;
+
   // Method to notify listeners that cache has changed
   static void _notifyCacheChanged() {
     _cacheChangedController.add(null);
@@ -284,6 +290,7 @@ class VideoThumbnailHelper {
   /// Dispose resources
   static void dispose() {
     _cacheChangedController.close();
+    _thumbnailReadyController.close();
   }
 
   // Track which paths have been logged to avoid spamming logs
@@ -621,8 +628,12 @@ class VideoThumbnailHelper {
         final request = _pendingQueue.removeAt(0);
 
         try {
-          final result = await _generateThumbnailInternal(request.videoPath,
-              forceRegenerate: request.forceRegenerate);
+          final result = await _generateThumbnailInternal(
+            request.videoPath,
+            forceRegenerate: request.forceRegenerate,
+            quality: request.quality,
+            thumbnailSize: request.thumbnailSize,
+          );
 
           if (result != null) {
             _fileCache[request.videoPath] = result;
@@ -635,6 +646,9 @@ class VideoThumbnailHelper {
               'VideoThumbnail: Error processing request for ${request.videoPath}: $e');
           request.completer.complete(null);
         }
+
+        // Short delay between thumbnails to avoid IO/CPU spikes
+        await Future.delayed(const Duration(milliseconds: 8));
       }
     } finally {
       _isProcessingQueue = false;
@@ -650,7 +664,10 @@ class VideoThumbnailHelper {
   }
 
   static Future<String?> _requestThumbnail(String videoPath,
-      {int priority = _defaultPriority, bool forceRegenerate = false}) {
+      {int priority = _defaultPriority,
+      bool forceRegenerate = false,
+      int? quality,
+      int? thumbnailSize}) {
     final existingPending = _pendingQueue.firstWhere(
         (req) => req.videoPath == videoPath,
         orElse: () => _ThumbnailRequest.empty());
@@ -680,6 +697,8 @@ class VideoThumbnailHelper {
       completer: completer,
       timestamp: DateTime.now(),
       forceRegenerate: forceRegenerate,
+      quality: quality,
+      thumbnailSize: thumbnailSize,
     );
 
     _pendingQueue.add(newRequest);
@@ -702,7 +721,7 @@ class VideoThumbnailHelper {
   }
 
   static Future<String?> _generateThumbnailInternal(String videoPath,
-      {bool forceRegenerate = false}) async {
+      {bool forceRegenerate = false, int? quality, int? thumbnailSize}) async {
     try {
       // Check if processing should stop before doing intensive work
       if (_shouldStopProcessing) {
@@ -761,8 +780,8 @@ class VideoThumbnailHelper {
         cacheFilename: cacheFilename,
         absoluteVideoPath: absoluteVideoPath,
         thumbnailPercentage: percentage,
-        quality: thumbnailQuality,
-        maxSize: maxThumbnailSize,
+        quality: quality ?? thumbnailQuality,
+        maxSize: thumbnailSize ?? maxThumbnailSize,
         isWindows: _isWindows,
         rootIsolateToken: rootToken,
         forceRegenerate: forceRegenerate,
@@ -789,6 +808,12 @@ class VideoThumbnailHelper {
         final resultFile = File(generatedPath);
         if (await resultFile.exists() && await resultFile.length() > 0) {
           await _addToFileCache(videoPath, generatedPath);
+          // Update in-memory for fast subsequent access
+          _inMemoryPathCache[videoPath] = generatedPath;
+          // Notify listeners this specific thumbnail is ready
+          try {
+            _thumbnailReadyController.add(videoPath);
+          } catch (_) {}
           _saveCacheToDiskThrottled();
           return generatedPath;
         } else {
@@ -930,8 +955,15 @@ class VideoThumbnailHelper {
 
     final priority = isPriority ? _visiblePriority : _defaultPriority;
 
+    // Choose sensible defaults if not provided
+    final effectiveQuality = quality ?? (isPriority ? 85 : 60);
+    final effectiveSize = thumbnailSize ?? (isPriority ? 260 : 160);
+
     final result = await _requestThumbnail(videoPath,
-        priority: priority, forceRegenerate: forceRegenerate);
+        priority: priority,
+        forceRegenerate: forceRegenerate,
+        quality: effectiveQuality,
+        thumbnailSize: effectiveSize);
 
     return result;
   }
@@ -1111,10 +1143,17 @@ class VideoThumbnailHelper {
           ),
         );
 
+    final requestedSize = (max(width, height).isFinite && max(width, height) > 0)
+        ? max(width, height).toInt()
+        : null;
+
     return FutureBuilder<String?>(
       key: key ?? ValueKey('thumb_$videoPath'),
       future: generateThumbnail(videoPath,
-          isPriority: isPriority, forceRegenerate: forceRegenerate),
+          isPriority: isPriority,
+          forceRegenerate: forceRegenerate,
+          thumbnailSize: requestedSize,
+          quality: isPriority ? 85 : 60),
       builder: (context, snapshot) {
         Widget content;
         final thumbnailPath = snapshot.data;
@@ -1141,9 +1180,9 @@ class VideoThumbnailHelper {
             fit: fit,
             // Add null checks and validation before converting to int
             cacheWidth:
-                (width.isFinite && width > 0) ? (width * 2).toInt() : null,
+                (width.isFinite && width > 0) ? (width).toInt() : null,
             cacheHeight:
-                (height.isFinite && height > 0) ? (height * 2).toInt() : null,
+                (height.isFinite && height > 0) ? (height).toInt() : null,
             filterQuality: FilterQuality.high,
             frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
               if (wasSynchronouslyLoaded) return child;
@@ -1353,21 +1392,24 @@ class VideoThumbnailHelper {
 
     // Thêm vào queue với độ ưu tiên thích hợp
     for (final path in visiblePaths) {
-      _requestThumbnail(path, priority: _visiblePriority);
+      _requestThumbnail(path,
+          priority: _visiblePriority, quality: 80, thumbnailSize: 240);
     }
 
     // Delay trước khi thêm nhóm kế tiếp để tránh nghẽn
     await Future.delayed(const Duration(milliseconds: 100));
 
     for (final path in nearPaths) {
-      _requestThumbnail(path, priority: _prefetchPriority);
+      _requestThumbnail(path,
+          priority: _prefetchPriority, quality: 70, thumbnailSize: 180);
     }
 
     // Delay dài hơn trước khi thêm nhóm cuối
     await Future.delayed(const Duration(milliseconds: 200));
 
     for (final path in otherPaths) {
-      _requestThumbnail(path, priority: _defaultPriority);
+      _requestThumbnail(path,
+          priority: _defaultPriority, quality: 55, thumbnailSize: 140);
     }
   }
 
@@ -1466,7 +1508,10 @@ class VideoThumbnailHelper {
       // Process visible files first with higher priority
       for (final videoPath in visibleFiles) {
         await _requestThumbnail(videoPath,
-            priority: _visiblePriority, forceRegenerate: true);
+            priority: _visiblePriority,
+            forceRegenerate: true,
+            quality: 85,
+            thumbnailSize: 260);
 
         // Small delay between each request to prevent system overload
         await Future.delayed(const Duration(milliseconds: 10));
@@ -1620,13 +1665,17 @@ class _ThumbnailRequest {
   final Completer<String?> completer;
   final DateTime timestamp;
   final bool forceRegenerate;
+  final int? quality;
+  final int? thumbnailSize;
 
   _ThumbnailRequest.empty()
       : videoPath = '',
         priority = -1,
         completer = Completer<String?>(),
         timestamp = DateTime(0),
-        forceRegenerate = false;
+        forceRegenerate = false,
+        quality = null,
+        thumbnailSize = null;
 
   _ThumbnailRequest({
     required this.videoPath,
@@ -1634,5 +1683,7 @@ class _ThumbnailRequest {
     required this.completer,
     required this.timestamp,
     required this.forceRegenerate,
+    this.quality,
+    this.thumbnailSize,
   });
 }

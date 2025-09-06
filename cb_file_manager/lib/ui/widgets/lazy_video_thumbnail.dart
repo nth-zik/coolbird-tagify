@@ -68,8 +68,15 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
   // Progress simulation timer
   Timer? _progressTimer;
 
+  // Lightweight cache polling to recover missed repaints
+  Timer? _cachePollTimer;
+  int _cachePollAttempts = 0;
+  static const int _maxCachePollAttempts = 10; // ~5s if 500ms interval
+
   // Stream subscription to cache clear events
   StreamSubscription? _cacheChangedSubscription;
+  // Subscription to per-file thumbnail ready notifications
+  StreamSubscription<String>? _thumbReadySubscription;
 
   // AutomaticKeepAliveClientMixin implementation
   @override
@@ -88,6 +95,29 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
     _cacheChangedSubscription = VideoThumbnailHelper.onCacheChanged.listen((_) {
       _handleCacheCleared();
     });
+
+    // Listen for specific thumbnail ready events for this video path
+    _thumbReadySubscription =
+        VideoThumbnailHelper.onThumbnailReady.listen((readyVideoPath) async {
+      if (!mounted) return;
+      if (readyVideoPath != widget.videoPath) return;
+
+      // If we don't yet show a thumbnail, update from cache and repaint
+      if (_thumbnailPathNotifier.value == null) {
+        try {
+          final cached = await VideoThumbnailHelper.getFromCache(widget.videoPath);
+          if (!mounted) return;
+          if (cached != null) {
+            _thumbnailPathNotifier.value = cached;
+            _isThumbnailGenerated = true;
+            _shouldRegenerateThumbnail = false;
+            _onThumbnailGenerated(cached);
+            _cachePollTimer?.cancel();
+            _cachePollAttempts = 0;
+          }
+        } catch (_) {}
+      }
+    });
   }
 
   @override
@@ -96,7 +126,9 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
     _thumbnailPathNotifier.dispose();
     _progressNotifier.dispose();
     _progressTimer?.cancel();
+    _cachePollTimer?.cancel();
     _cacheChangedSubscription?.cancel();
+    _thumbReadySubscription?.cancel();
     super.dispose();
   }
 
@@ -141,6 +173,7 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
 
         // Request with high priority and force regeneration
         _loadThumbnail(forceRegenerate: true, isPriority: true);
+        _startCachePolling();
       });
     }
   }
@@ -232,6 +265,9 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
         _isThumbnailGenerated = true;
         _shouldRegenerateThumbnail = false;
         _onThumbnailGenerated(path);
+        // Stop polling if running
+        _cachePollTimer?.cancel();
+        _cachePollAttempts = 0;
       } else {
         // Use the helper's throttled log method
         VideoThumbnailHelper.logWithThrottle(
@@ -242,6 +278,11 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
         // Call onError callback if provided
         if (widget.onError != null) {
           widget.onError!('Failed to generate thumbnail');
+        }
+
+        // Start polling cache while visible to recover missed updates
+        if (_visibilityNotifier.value) {
+          _startCachePolling();
         }
       }
 
@@ -331,15 +372,19 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
           !widget.placeholderOnly &&
           !_isThumbnailGenerated) {
         _loadThumbnail(isPriority: true);
+        _startCachePolling();
       } else if (_wasAttempted &&
           _thumbnailPathNotifier.value == null &&
           !_isLoading &&
           !widget.placeholderOnly &&
           !_isThumbnailGenerated) {
         _loadThumbnail(forceRegenerate: true, isPriority: true);
+        _startCachePolling();
       }
     } else if (_visibilityNotifier.value) {
       _visibilityNotifier.value = false;
+      _cachePollTimer?.cancel();
+      _cachePollAttempts = 0;
     }
   }
 
@@ -352,7 +397,8 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
 
     // Use a unique key for the VisibilityDetector based on video path
     // This helps Flutter identify and reuse this widget when possible
-    final String visibilityKey = 'vid-visibility-${widget.videoPath.hashCode}';
+    // Use collision-free key to ensure VisibilityDetector delivers events reliably
+    final Key visibilityKey = ValueKey('vid-visibility:${widget.videoPath}');
 
     return ValueListenableBuilder<String?>(
       valueListenable: _thumbnailPathNotifier,
@@ -364,7 +410,7 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
 
         // The main widget that detects visibility and loads thumbnails
         return VisibilityDetector(
-          key: Key(visibilityKey),
+          key: visibilityKey,
           onVisibilityChanged: _onVisibilityChanged,
           child: Stack(
             alignment: Alignment.center,
@@ -376,6 +422,42 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
         );
       },
     );
+  }
+
+  // Poll the cache briefly while visible to recover cases when background
+  // generation completed but this widget missed an event to repaint.
+  void _startCachePolling() {
+    _cachePollTimer?.cancel();
+    _cachePollAttempts = 0;
+
+    _cachePollTimer = Timer.periodic(const Duration(milliseconds: 500), (t) async {
+      if (!mounted || !_visibilityNotifier.value) {
+        t.cancel();
+        return;
+      }
+
+      if (_thumbnailPathNotifier.value != null || _isLoading) {
+        t.cancel();
+        return;
+      }
+
+      _cachePollAttempts++;
+      try {
+        final cached = await VideoThumbnailHelper.getFromCache(widget.videoPath);
+        if (cached != null) {
+          _thumbnailPathNotifier.value = cached;
+          _isThumbnailGenerated = true;
+          _shouldRegenerateThumbnail = false;
+          _onThumbnailGenerated(cached);
+          t.cancel();
+          return;
+        }
+      } catch (_) {}
+
+      if (_cachePollAttempts >= _maxCachePollAttempts) {
+        t.cancel();
+      }
+    });
   }
 
   /// Build circular progress indicator - kept for potential future use

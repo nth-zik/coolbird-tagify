@@ -247,6 +247,9 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
 
           // Load all unique tags in this directory (async)
           add(LoadAllTags(event.path));
+
+          // Prefetch thumbnails for the entire directory in background
+          _prefetchThumbnailsForDirectory(files, event.path);
         } catch (e) {
           // Handle specific permission errors
           if (e.toString().toLowerCase().contains('permission denied') ||
@@ -602,27 +605,13 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
 
         // Start thumbnail generation in background AFTER updating UI
         if (event.forceRegenerateThumbnails) {
-          // Find video files
-          final videoFiles = files.where((file) {
-            if (file is File) {
-              String extension = file.path.split('.').last.toLowerCase();
-              return [
-                'mp4',
-                'mov',
-                'avi',
-                'mkv',
-                'flv',
-                'wmv',
-                'webm',
-                '3gp',
-                'm4v',
-              ].contains(extension);
-            }
-            return false;
-          }).toList();
-
-          // Don't await here - process in background
-          _generateThumbnailsInBackground(videoFiles);
+          // Regenerate all thumbnails explicitly when requested
+          unawaited(
+            VideoThumbnailHelper.regenerateThumbnailsForDirectory(event.path),
+          );
+        } else {
+          // Default: prefetch thumbnails for the current directory (non-blocking)
+          _prefetchThumbnailsForDirectory(files, event.path);
         }
       } else {
         emit(
@@ -644,6 +633,38 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
       if (state.isLoading) {
         emit(state.copyWith(isLoading: false));
       }
+    }
+  }
+
+  // Prefetch all video thumbnails in a directory without blocking UI
+  void _prefetchThumbnailsForDirectory(
+      List<FileSystemEntity> files, String dirPath) {
+    try {
+      // Skip special/system paths
+      if (dirPath.startsWith('#')) return;
+
+      // Collect video file paths
+      final videoPaths = files
+          .whereType<File>()
+          .map((f) => f.path)
+          .where((p) => FileTypeUtils.isVideoFile(p))
+          .toList();
+
+      if (videoPaths.isEmpty) return;
+
+      // Inform helper about current directory to cancel other queues
+      VideoThumbnailHelper.setCurrentDirectory(dirPath);
+
+      // Queue preload with priority batching; do not await
+      unawaited(
+        VideoThumbnailHelper.optimizedBatchPreload(
+          videoPaths,
+          maxConcurrent: 2,
+          visibleCount: 30,
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error prefetching thumbnails for $dirPath: $e');
     }
   }
 
