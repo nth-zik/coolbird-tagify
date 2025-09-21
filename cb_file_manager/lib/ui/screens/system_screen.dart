@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cb_file_manager/ui/tab_manager/tab_manager.dart';
-import 'package:cb_file_manager/ui/tab_manager/tab_data.dart';
+import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
+import 'package:cb_file_manager/ui/tab_manager/core/tab_data.dart';
 
 /// A base class for all system screens in the application
 /// System screens are screens that are not tied to a file system path

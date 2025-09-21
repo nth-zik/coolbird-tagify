@@ -13,7 +13,7 @@ import '../../../bloc/network_browsing/network_browsing_state.dart';
 import '../../../services/network_browsing/network_discovery_service.dart';
 import '../../../services/network_browsing/network_service_registry.dart'; // Added import for registry
 import '../../../services/network_browsing/mobile_smb_service.dart'; // Added import for mobile SMB service
-import '../../tab_manager/tab_manager.dart';
+import '../../tab_manager/core/tab_manager.dart';
 import '../../utils/fluent_background.dart';
 import '../system_screen.dart';
 import 'network_connection_dialog.dart';

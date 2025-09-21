@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
-import 'tab_manager.dart';
-import 'tab_data.dart';
-import 'tabbed_folder_list_screen.dart';
+import '../core/tab_manager.dart';
+import '../core/tab_data.dart';
+import '../core/tabbed_folder_list_screen.dart';
 
 /// A widget that displays tabs and their content
 class TabView extends StatelessWidget {

@@ -1,18 +1,15 @@
 import 'dart:io';
 
-// ignore: unused_import
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
 import 'package:cb_file_manager/helpers/tags/tag_color_manager.dart';
-import 'package:cb_file_manager/models/database/database_manager.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/file_details_screen.dart';
-import 'package:cb_file_manager/ui/utils/base_screen.dart';
 import 'package:cb_file_manager/ui/widgets/tag_chip.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:path/path.dart' as pathlib;
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cb_file_manager/ui/tab_manager/tab_manager.dart';
-import 'package:cb_file_manager/ui/tab_manager/tab_data.dart';
+import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
+import 'package:cb_file_manager/ui/tab_manager/core/tab_data.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import '../../utils/route.dart';
 
@@ -33,8 +30,6 @@ class TagManagementScreen extends StatefulWidget {
 }
 
 class _TagManagementScreenState extends State<TagManagementScreen> {
-  // Database manager instance
-  final DatabaseManager _database = DatabaseManager.getInstance();
   // Tag manager instance
   // User preferences singleton instance
   // Tag color manager
@@ -61,6 +56,9 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
   String _sortCriteria = 'name'; // 'name', 'popularity', 'recent'
   bool _sortAscending = true;
 
+  // View mode options
+  bool _isGridView = false; // false = list view, true = grid view
+
   @override
   void initState() {
     super.initState();
@@ -71,8 +69,22 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
     _tagColorManager = TagColorManager.instance;
     _initTagColorManager();
 
+    // Set default view mode based on device type after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setDefaultViewMode();
+    });
+
     // Add listener to search controller
     _searchController.addListener(_filterTags);
+  }
+
+  // Set default view mode based on device type
+  void _setDefaultViewMode() {
+    if (!mounted) return;
+
+    // Check if device is tablet/desktop (screen width > 600)
+    final screenWidth = MediaQuery.of(context).size.width;
+    _isGridView = screenWidth > 600; // Desktop/tablet = grid, mobile = list
   }
 
   @override
@@ -112,12 +124,11 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
   // Load all tags from the database
   Future<void> _loadAllTags() async {
     try {
-      // Debug: Check database initialization status
-      debugPrint(
-          'TagManagementScreen: Database initialized: ${_database.isInitialized()}');
+      // Initialize TagManager to ensure it's using the correct storage
+      await TagManager.initialize();
 
-      // Get all unique tags from the database
-      final Set<String> tags = await _database.getAllUniqueTags();
+      // Get all unique tags using TagManager (which handles both ObjectBox and JSON)
+      final Set<String> tags = await TagManager.getAllUniqueTags("");
       debugPrint(
           'TagManagementScreen: Found ${tags.length} unique tags: $tags');
 
@@ -276,133 +287,14 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
     });
   }
 
-  // Phương thức tìm kiếm tag trực tiếp - đã được chứng minh hoạt động tốt
+  // Phương thức tìm kiếm tag trực tiếp - mở giao diện duyệt file với filter
   Future<void> _directTagSearch(String tag) async {
-    // When in a tab environment, prefer opening a new tab for tag search
-    final bool isInTabContext =
-        context.findAncestorWidgetOfExactType<BlocProvider<TabManagerBloc>>() !=
-            null;
-
-    if (isInTabContext) {
-      // Use the tab system for search instead of loading directly in this screen
-      _openTagSearchInNewTab(tag);
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _selectedTag = tag;
-      _filesBySelectedTag = [];
-    });
-
-    try {
-      // Hiển thị thông báo đang tìm kiếm
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Đang tìm kiếm trực tiếp các file có tag "$tag"...'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-
-      // Xóa cache để đảm bảo kết quả mới nhất
-      TagManager.clearCache();
-
-      // Kết hợp cả hai nguồn dữ liệu để đảm bảo có kết quả
-      final fileInfoList = <Map<String, dynamic>>[];
-
-      // 1. Try TagManager first
-      try {
-        final results = await TagManager.findFilesByTagGlobally(tag);
-
-        // Process results from TagManager
-        for (var entity in results) {
-          if (entity is File) {
-            try {
-              final path = entity.path;
-              // Use synchronous check for simplicity and to avoid too many async operations
-              if (entity.existsSync()) {
-                fileInfoList.add({
-                  'path': path,
-                  'name': pathlib.basename(path),
-                });
-              }
-            } catch (e) {
-              // Just log errors and continue
-            }
-          }
-        }
-      } catch (e) {}
-
-      // 2. Try database directly
-      try {
-        final taggedFiles = await _database.findFilesByTag(tag);
-
-        for (var path in taggedFiles) {
-          // Skip if we already have this path from TagManager
-          if (fileInfoList.any((item) => item['path'] == path)) {
-            continue;
-          }
-
-          try {
-            final file = File(path);
-            // Use synchronous check for consistency
-            if (file.existsSync()) {
-              fileInfoList.add({
-                'path': path,
-                'name': pathlib.basename(path),
-              });
-            }
-          } catch (e) {
-            // Just log errors and continue
-          }
-        }
-      } catch (e) {}
-
-      // Log detailed file info list for debugging
-      // Cập nhật UI
-      if (mounted) {
-        setState(() {
-          _filesBySelectedTag = List.from(
-              fileInfoList); // Create a new list to ensure state update
-          _isLoading = false;
-        });
-
-        // Hiển thị thông báo kết quả
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:
-                Text('Tìm thấy ${fileInfoList.length} file với tag "$tag"'),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Lỗi khi tìm kiếm: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  // Opens a global search in a new tab via the TabManager
-  void _openTagSearchInNewTab(String tag) {
     try {
       // Get the TabManagerBloc
       final tabManagerBloc = BlocProvider.of<TabManagerBloc>(context);
 
-      // Create a unique path for this tag search
-      final tagSearchPath = '#tag:$tag';
+      // Create a simple path for this tag search (avoid #tag: format to prevent infinite loop)
+      final tagSearchPath = '#search?tag=$tag';
 
       // Check if a tab with this tag search already exists
       final existingTab = tabManagerBloc.state.tabs.firstWhere(
@@ -413,8 +305,16 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
       if (existingTab.id.isNotEmpty) {
         // If the tab exists, switch to it
         tabManagerBloc.add(SwitchToTab(existingTab.id));
+
+        // Show message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Đã chuyển đến tab tìm kiếm tag "$tag"'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
       } else {
-        // Otherwise, create a new tab
+        // Otherwise, create a new tab with timeout protection
         tabManagerBloc.add(
           AddTab(
             path: tagSearchPath,
@@ -422,12 +322,21 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
             switchToTab: true,
           ),
         );
+
+        // Show loading message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Đang mở giao diện duyệt file với tag "$tag"...'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
     } catch (e) {
       // Handle error if the TabManagerBloc is not found
+      debugPrint('Error opening tag in new tab: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error opening tag in new tab: $e'),
+          content: Text('Lỗi khi mở tab tìm kiếm: $e'),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 3),
         ),
@@ -659,12 +568,12 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
   // Debug database and add sample tags
   Future<void> _debugDatabase() async {
     try {
-      // Check database status
-      final isInitialized = _database.isInitialized();
-      debugPrint('Database initialized: $isInitialized');
+      // Initialize TagManager and check status
+      await TagManager.initialize();
+      debugPrint('TagManager initialized');
 
-      // Get current tags
-      final currentTags = await _database.getAllUniqueTags();
+      // Get current tags using TagManager
+      final currentTags = await TagManager.getAllUniqueTags("");
       debugPrint('Current tags count: ${currentTags.length}');
       debugPrint('Current tags: $currentTags');
 
@@ -690,7 +599,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
         for (int i = 0; i < sampleFiles.length; i++) {
           final file = sampleFiles[i];
           final tag = sampleTags[i % sampleTags.length];
-          await _database.addTagToFile(file, tag);
+          await TagManager.addTag(file, tag);
           debugPrint('Added tag "$tag" to file "$file"');
         }
 
@@ -743,124 +652,9 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final AppLocalizations localizations = AppLocalizations.of(context)!;
-
-    // Create appropriate title
-    String title;
-    if (_selectedTag != null) {
-      title = localizations.filesWithTag.replaceAll('%s', _selectedTag!);
-    } else if (widget.startingDirectory.isNotEmpty) {
-      final dirName = pathlib.basename(widget.startingDirectory);
-      title = localizations.tagsInDirectory.replaceAll('%s', dirName);
-    } else {
-      title = localizations.allTags;
-    }
-
-    return BaseScreen(
-      title: title,
-      actions: [
-        // Show search icon
-        IconButton(
-          icon: Icon(_isSearching ? Icons.search_off : Icons.search),
-          onPressed: _toggleSearch,
-          tooltip: localizations.search,
-        ),
-        // Show about icon
-        IconButton(
-          icon: const Icon(Icons.info_outline),
-          onPressed: () => _showAboutDialog(context),
-          tooltip: localizations.aboutTags,
-        ),
-        IconButton(
-          icon: const Icon(Icons.refresh),
-          onPressed: _forceReloadTags,
-          tooltip: 'Force Reload Tags',
-        ),
-        // Show sort menu
-        PopupMenuButton<String>(
-          icon: const Icon(Icons.sort),
-          tooltip: localizations.sort,
-          onSelected: (value) {
-            setState(() {
-              if (_sortCriteria == value) {
-                // Toggle sort direction
-                _sortAscending = !_sortAscending;
-              } else {
-                // Change sort criteria
-                _sortCriteria = value;
-                _sortAscending = true;
-              }
-              _sortTags();
-              _updatePagination();
-            });
-          },
-          itemBuilder: (context) => [
-            PopupMenuItem<String>(
-              value: 'name',
-              child: Row(
-                children: [
-                  Icon(
-                    _sortCriteria == 'name'
-                        ? (_sortAscending
-                            ? Icons.arrow_upward
-                            : Icons.arrow_downward)
-                        : Icons.sort_by_alpha,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(localizations.sortByName),
-                ],
-              ),
-            ),
-            PopupMenuItem<String>(
-              value: 'popularity',
-              child: Row(
-                children: [
-                  Icon(
-                    _sortCriteria == 'popularity'
-                        ? (_sortAscending
-                            ? Icons.arrow_upward
-                            : Icons.arrow_downward)
-                        : Icons.trending_up,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(localizations.sortByPopularity),
-                ],
-              ),
-            ),
-            PopupMenuItem<String>(
-              value: 'recent',
-              child: Row(
-                children: [
-                  Icon(
-                    _sortCriteria == 'recent'
-                        ? (_sortAscending
-                            ? Icons.arrow_upward
-                            : Icons.arrow_downward)
-                        : Icons.history,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(localizations.sortByRecent),
-                ],
-              ),
-            ),
-          ],
-        ),
-        // Show delete button if a tag is selected
-        if (_selectedTag != null)
-          IconButton(
-            icon: const Icon(Icons.delete),
-            onPressed: () => _confirmDeleteTag(_selectedTag!),
-            tooltip: localizations.deleteTag,
-          ),
-      ],
-      body: Builder(
-        builder: (context) {
-          if (_isSearching) {
-            // Show search input at the top of the body
-            return Column(
+    return Scaffold(
+      body: _isSearching
+          ? Column(
               children: [
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -893,16 +687,24 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                           : _buildFilesByTagList(),
                 ),
               ],
-            );
-          } else {
-            return _isInitializing
-                ? const Center(child: CircularProgressIndicator())
-                : _selectedTag == null
-                    ? _buildTagsList()
-                    : _buildFilesByTagList();
-          }
-        },
-      ),
+            )
+          : _isInitializing
+              ? const Center(child: CircularProgressIndicator())
+              : _selectedTag == null
+                  ? _buildTagsList()
+                  : _buildFilesByTagList(),
+      floatingActionButton: _selectedTag == null && !_isSearching
+          ? FloatingActionButton(
+              onPressed: _showCreateTagDialog,
+              backgroundColor: Theme.of(context).primaryColor,
+              child: const Icon(
+                Icons.add_rounded,
+                color: Colors.white,
+                size: 28,
+              ),
+              tooltip: 'Tạo thẻ mới',
+            )
+          : null,
     );
   }
 
@@ -929,7 +731,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                   title: const Text('Mở trong tab mới'),
                   onTap: () {
                     Navigator.pop(context);
-                    _openTagSearchInNewTab(tag);
+                    _directTagSearch(tag);
                   },
                 ),
               ListTile(
@@ -969,8 +771,18 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Các thẻ được thêm vào tệp sẽ xuất hiện ở đây',
+              'Tạo thẻ mới để bắt đầu phân loại tệp',
               style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _showCreateTagDialog,
+              icon: const Icon(Icons.add),
+              label: const Text('Tạo thẻ mới'),
+              style: ElevatedButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              ),
             ),
           ],
         ),
@@ -1017,175 +829,222 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top section with stats and sorting options
+            // Top section with stats and sorting options - Modern design without border
             Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isDarkMode
-                    ? Theme.of(context).primaryColor.withOpacity(0.15)
-                    : Theme.of(context).primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Theme.of(context).primaryColor.withOpacity(0.2),
-                  width: 1.5,
-                ),
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Icon(
-                        Icons.sell_outlined,
-                        size: 24,
-                        color: Theme.of(context).primaryColor,
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Tất cả thẻ (${_filteredTags.length})',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: isDarkMode ? Colors.white : Colors.black87,
-                        ),
-                      ),
-                      const Spacer(),
-                      // Sort dropdown
                       Container(
+                        padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: isDarkMode
-                              ? Colors.black26
-                              : Colors.white.withOpacity(0.7),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: isDarkMode ? Colors.white24 : Colors.black12,
-                          ),
+                          color:
+                              Theme.of(context).primaryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        child: PopupMenuButton<String>(
-                          tooltip: 'Sắp xếp thẻ',
-                          onSelected: _changeSortCriteria,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.sort,
-                                  color: isDarkMode
-                                      ? Colors.white70
-                                      : Colors.black54,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Sắp xếp',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: isDarkMode
-                                        ? Colors.white70
-                                        : Colors.black54,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          itemBuilder: (context) => [
-                            PopupMenuItem(
-                              value: 'name',
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.sort_by_alpha,
-                                    color: _sortCriteria == 'name'
-                                        ? Theme.of(context).primaryColor
-                                        : null,
-                                    size: 18,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  const Text(
-                                    'Theo bảng chữ cái',
-                                    style: TextStyle(fontSize: 16),
-                                  ),
-                                  if (_sortCriteria == 'name')
-                                    Padding(
-                                      padding: const EdgeInsets.only(left: 8),
-                                      child: Icon(
-                                        _sortAscending
-                                            ? Icons.arrow_upward
-                                            : Icons.arrow_downward,
-                                        size: 16,
-                                      ),
-                                    ),
-                                ],
+                        child: Icon(
+                          Icons.sell_outlined,
+                          size: 24,
+                          color: Theme.of(context).primaryColor,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Quản lý thẻ',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w700,
+                                color:
+                                    isDarkMode ? Colors.white : Colors.black87,
                               ),
                             ),
-                            PopupMenuItem(
-                              value: 'popularity',
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.trending_up,
-                                    color: _sortCriteria == 'popularity'
-                                        ? Theme.of(context).primaryColor
-                                        : null,
-                                    size: 18,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  const Text(
-                                    'Theo phổ biến',
-                                    style: TextStyle(fontSize: 16),
-                                  ),
-                                  if (_sortCriteria == 'popularity')
-                                    Padding(
-                                      padding: const EdgeInsets.only(left: 8),
-                                      child: Icon(
-                                        _sortAscending
-                                            ? Icons.arrow_upward
-                                            : Icons.arrow_downward,
-                                        size: 16,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                            PopupMenuItem(
-                              value: 'recent',
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.history,
-                                    color: _sortCriteria == 'recent'
-                                        ? Theme.of(context).primaryColor
-                                        : null,
-                                    size: 18,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  const Text(
-                                    'Sử dụng gần đây',
-                                    style: TextStyle(fontSize: 16),
-                                  ),
-                                  if (_sortCriteria == 'recent')
-                                    Padding(
-                                      padding: const EdgeInsets.only(left: 8),
-                                      child: Icon(
-                                        _sortAscending
-                                            ? Icons.arrow_upward
-                                            : Icons.arrow_downward,
-                                        size: 16,
-                                      ),
-                                    ),
-                                ],
+                            const SizedBox(height: 4),
+                            Text(
+                              '${_filteredTags.length} thẻ đã tạo',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: isDarkMode
+                                    ? Colors.white70
+                                    : Colors.black54,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ],
                         ),
                       ),
+                      // Only show sort and view mode buttons on desktop/tablet
+                      if (MediaQuery.of(context).size.width > 600) ...[
+                        const SizedBox(width: 12),
+                        // Sort dropdown - Modern style
+                        Container(
+                          decoration: BoxDecoration(
+                            color: isDarkMode
+                                ? Colors.grey[800]?.withOpacity(0.6)
+                                : Colors.grey[100]?.withOpacity(0.8),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: PopupMenuButton<String>(
+                            tooltip: 'Sắp xếp thẻ',
+                            onSelected: _changeSortCriteria,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.sort_rounded,
+                                    color: isDarkMode
+                                        ? Colors.white70
+                                        : Colors.black54,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Sắp xếp',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: isDarkMode
+                                          ? Colors.white70
+                                          : Colors.black54,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            itemBuilder: (context) => [
+                              PopupMenuItem(
+                                value: 'name',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.sort_by_alpha,
+                                      color: _sortCriteria == 'name'
+                                          ? Theme.of(context).primaryColor
+                                          : null,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    const Text(
+                                      'Theo bảng chữ cái',
+                                      style: TextStyle(fontSize: 16),
+                                    ),
+                                    if (_sortCriteria == 'name')
+                                      Padding(
+                                        padding: const EdgeInsets.only(left: 8),
+                                        child: Icon(
+                                          _sortAscending
+                                              ? Icons.arrow_upward
+                                              : Icons.arrow_downward,
+                                          size: 16,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              PopupMenuItem(
+                                value: 'popularity',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.trending_up,
+                                      color: _sortCriteria == 'popularity'
+                                          ? Theme.of(context).primaryColor
+                                          : null,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    const Text(
+                                      'Theo phổ biến',
+                                      style: TextStyle(fontSize: 16),
+                                    ),
+                                    if (_sortCriteria == 'popularity')
+                                      Padding(
+                                        padding: const EdgeInsets.only(left: 8),
+                                        child: Icon(
+                                          _sortAscending
+                                              ? Icons.arrow_upward
+                                              : Icons.arrow_downward,
+                                          size: 16,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              PopupMenuItem(
+                                value: 'recent',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.history,
+                                      color: _sortCriteria == 'recent'
+                                          ? Theme.of(context).primaryColor
+                                          : null,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    const Text(
+                                      'Sử dụng gần đây',
+                                      style: TextStyle(fontSize: 16),
+                                    ),
+                                    if (_sortCriteria == 'recent')
+                                      Padding(
+                                        padding: const EdgeInsets.only(left: 8),
+                                        child: Icon(
+                                          _sortAscending
+                                              ? Icons.arrow_upward
+                                              : Icons.arrow_downward,
+                                          size: 16,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // View mode toggle button
+                        Container(
+                          decoration: BoxDecoration(
+                            color: isDarkMode
+                                ? Colors.grey[800]?.withOpacity(0.6)
+                                : Colors.grey[100]?.withOpacity(0.8),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _isGridView = !_isGridView;
+                              });
+                            },
+                            icon: Icon(
+                              _isGridView
+                                  ? Icons.view_list_rounded
+                                  : Icons.grid_view_rounded,
+                              color:
+                                  isDarkMode ? Colors.white70 : Colors.black54,
+                              size: 20,
+                            ),
+                            tooltip: _isGridView
+                                ? 'Chế độ danh sách'
+                                : 'Chế độ lưới',
+                            padding: const EdgeInsets.all(12),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'Nhấn vào thẻ để xem tất cả tệp có gắn thẻ đó. Nhấn giữ để hiện thêm tùy chọn.',
+                    'Nhấn vào thẻ để xem tất cả tệp có gắn thẻ đó. Sử dụng các nút bên phải để thay đổi màu hoặc xóa thẻ.',
                     style: TextStyle(color: Colors.grey, fontSize: 15),
                   ),
                 ],
@@ -1234,9 +1093,9 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
 
             const SizedBox(height: 8),
 
-            // Tags grid
+            // Tags list or grid
             Expanded(
-              child: _buildTagsGrid(),
+              child: _isGridView ? _buildTagsGridView() : _buildTagsListView(),
             ),
 
             // Bottom pagination controls
@@ -1370,118 +1229,249 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
     return indicators;
   }
 
-  Widget _buildTagsGrid() {
+  Widget _buildTagsListView() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     debugPrint(
-        'TagManagementScreen: _buildTagsGrid - _currentPageTags.length: ${_currentPageTags.length}');
+        'TagManagementScreen: _buildTagsListView - _currentPageTags.length: ${_currentPageTags.length}');
 
-    return GridView.builder(
-      padding: const EdgeInsets.all(12),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 300, // Larger cards
-        childAspectRatio: 3.0,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-      ),
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: _currentPageTags.length,
       itemBuilder: (context, index) {
         final tag = _currentPageTags[index];
         // Get current tag color
         final tagColor = TagColorManager.instance.getTagColor(tag);
 
-        return MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: Card(
-            elevation: 3,
-            shadowColor: isDarkMode ? Colors.black54 : Colors.black38,
-            shape: RoundedRectangleBorder(
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
               borderRadius: BorderRadius.circular(12),
-              side: BorderSide(
-                color: tagColor.withOpacity(0.4),
-                width: 1.5,
-              ),
-            ),
-            child: GestureDetector(
-              onSecondaryTap: () => _showTagOptions(tag),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () => _directTagSearch(tag),
-                onLongPress: () => _showTagOptions(tag),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12.0, vertical: 8.0),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.max,
-                    children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            // Color indicator dot
-                            Container(
-                              width: 14,
-                              height: 14,
-                              decoration: BoxDecoration(
-                                color: tagColor,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: tagColor.withOpacity(0.5),
-                                    blurRadius: 4,
-                                    spreadRadius: 1,
-                                  )
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            // Tag text
-                            Expanded(
-                              child: Text(
-                                tag,
-                                style: TextStyle(
-                                  fontSize: 16, // Larger text
-                                  fontWeight: FontWeight.w500,
-                                  color: isDarkMode
-                                      ? Colors.white
-                                      : Colors.black87,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
+              onTap: () => _directTagSearch(tag),
+              onLongPress: () => _showTagOptions(tag),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDarkMode
+                      ? Colors.grey[800]?.withOpacity(0.6)
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: tagColor.withOpacity(0.3),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    // Color indicator
+                    Container(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: tagColor,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: tagColor.withOpacity(0.5),
+                            blurRadius: 4,
+                            spreadRadius: 1,
+                          )
+                        ],
                       ),
-                      // Actions
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
+                    ),
+                    const SizedBox(width: 16),
+                    // Tag info
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          IconButton(
-                            icon: Icon(
-                              Icons.color_lens_outlined,
-                              size: 22, // Larger icon
+                          Text(
+                            tag,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: isDarkMode ? Colors.white : Colors.black87,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Nhấn để xem tệp',
+                            style: TextStyle(
+                              fontSize: 14,
                               color:
                                   isDarkMode ? Colors.white70 : Colors.black54,
                             ),
-                            onPressed: () => _showColorPickerDialog(tag),
-                            tooltip: 'Thay đổi màu thẻ',
-                            splashRadius: 24,
-                          ),
-                          IconButton(
-                            icon: Icon(
-                              Icons.delete_outline,
-                              size: 22, // Larger icon
-                              color: Colors.redAccent
-                                  .withOpacity(isDarkMode ? 0.8 : 0.7),
-                            ),
-                            onPressed: () => _confirmDeleteTag(tag),
-                            tooltip: 'Xóa thẻ này khỏi tất cả tệp',
-                            splashRadius: 24,
                           ),
                         ],
                       ),
+                    ),
+                    // Actions
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            Icons.color_lens_outlined,
+                            size: 24,
+                            color: isDarkMode ? Colors.white70 : Colors.black54,
+                          ),
+                          onPressed: () => _showColorPickerDialog(tag),
+                          tooltip: 'Thay đổi màu thẻ',
+                          splashRadius: 24,
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.delete_outline,
+                            size: 24,
+                            color: Colors.redAccent
+                                .withOpacity(isDarkMode ? 0.8 : 0.7),
+                          ),
+                          onPressed: () => _confirmDeleteTag(tag),
+                          tooltip: 'Xóa thẻ này khỏi tất cả tệp',
+                          splashRadius: 24,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTagsGridView() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    debugPrint(
+        'TagManagementScreen: _buildTagsGridView - _currentPageTags.length: ${_currentPageTags.length}');
+
+    return GridView.builder(
+      padding: EdgeInsets.all(12),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: screenWidth > 1200
+            ? 8
+            : screenWidth > 900
+                ? 6
+                : screenWidth > 600
+                    ? 5
+                    : 3,
+        childAspectRatio: 1.8, // Tăng tỷ lệ để làm item thấp hơn, nhỏ gọn hơn
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+      ),
+      itemCount: _currentPageTags.length,
+      itemBuilder: (context, index) {
+        final tag = _currentPageTags[index];
+        final tagColor = TagColorManager.instance.getTagColor(tag);
+
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () => _directTagSearch(tag),
+            onLongPress: () => _showTagOptions(tag),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isDarkMode
+                    ? Colors.grey[800]?.withOpacity(0.6)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: tagColor.withOpacity(0.3),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Color indicator
+                  Container(
+                    width: 16,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: tagColor,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: tagColor.withOpacity(0.5),
+                          blurRadius: 3,
+                          spreadRadius: 0.5,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  // Tag name
+                  Text(
+                    tag,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  // Action buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          Icons.color_lens_outlined,
+                          size: 16,
+                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                        ),
+                        onPressed: () => _showColorPickerDialog(tag),
+                        tooltip: 'Thay đổi màu',
+                        padding: const EdgeInsets.all(2),
+                        constraints: const BoxConstraints(
+                          minWidth: 24,
+                          minHeight: 24,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          Icons.delete_outline,
+                          size: 16,
+                          color: Colors.redAccent
+                              .withOpacity(isDarkMode ? 0.8 : 0.7),
+                        ),
+                        onPressed: () => _confirmDeleteTag(tag),
+                        tooltip: 'Xóa thẻ',
+                        padding: const EdgeInsets.all(2),
+                        constraints: const BoxConstraints(
+                          minWidth: 24,
+                          minHeight: 24,
+                        ),
+                      ),
                     ],
                   ),
-                ),
+                ],
               ),
             ),
           ),
@@ -1849,6 +1839,114 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
     );
   }
 
+  // Thêm thẻ mới
+  Future<void> _showCreateTagDialog() async {
+    final TextEditingController tagController = TextEditingController();
+
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Tạo thẻ mới'),
+          content: TextField(
+            controller: tagController,
+            decoration: const InputDecoration(
+              hintText: 'Nhập tên thẻ...',
+              prefixIcon: Icon(Icons.tag),
+            ),
+            autofocus: true,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (value) {
+              if (value.trim().isNotEmpty) {
+                Navigator.of(context).pop();
+                _createNewTag(value.trim());
+              }
+            },
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Hủy'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('Tạo'),
+              onPressed: () {
+                final tagName = tagController.text.trim();
+                if (tagName.isNotEmpty) {
+                  Navigator.of(context).pop();
+                  _createNewTag(tagName);
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Tạo thẻ mới trong database
+  Future<void> _createNewTag(String tagName) async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      // Kiểm tra xem thẻ đã tồn tại chưa
+      if (_allTags.contains(tagName)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Thẻ "$tagName" đã tồn tại'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      // Tạo một file tạm để thêm thẻ vào database
+      // (vì database cần có file để liên kết với thẻ)
+      final tempFilePath =
+          '/temp/tag_creation_placeholder_${DateTime.now().millisecondsSinceEpoch}';
+
+      // Thêm thẻ vào database với file tạm sử dụng TagManager
+      await TagManager.addTag(tempFilePath, tagName);
+
+      // Xóa file tạm khỏi database (chỉ giữ lại thẻ)
+      // Điều này sẽ để lại thẻ trong database mà không liên kết với file nào
+      await TagManager.removeTag(tempFilePath, tagName);
+
+      // Load lại danh sách thẻ
+      await _loadAllTags();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Đã tạo thẻ "$tagName" thành công'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error creating tag: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi khi tạo thẻ: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   // Mở thư mục chứa tệp tin
   void _openContainingFolder(String folderPath) {
     // Kiểm tra xem thư mục có tồn tại không
@@ -1904,3 +2002,4 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
     }
   }
 }
+

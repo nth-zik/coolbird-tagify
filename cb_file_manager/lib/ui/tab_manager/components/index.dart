@@ -12,3 +12,4 @@ export 'error_view.dart';
 export 'selection_app_bar.dart';
 export 'search_bar.dart'; // Added inline search bar
 export 'folder_context_menu.dart'; // Export the new component
+export 'address_bar_menu.dart'; // Export the address bar menu component

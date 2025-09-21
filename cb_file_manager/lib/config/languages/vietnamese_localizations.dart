@@ -508,4 +508,65 @@ class VietnameseLocalizations implements AppLocalizations {
   @override
   String get searchShortcutsDesc =>
       'Nhấn Enter để bắt đầu tìm kiếm. Dùng phím mũi tên để chọn tag từ gợi ý.';
+
+  // Permissions
+  @override
+  String get grantPermissionsToContinue => 'Cấp quyền để tiếp tục';
+
+  @override
+  String get permissionsDescription =>
+      'Để sử dụng ứng dụng mượt mà, vui lòng cấp các quyền sau đây. Bạn có thể bỏ qua và cấp sau trong Cài đặt.';
+
+  @override
+  String get storagePhotosPermission => 'Quyền lưu trữ/ảnh';
+
+  @override
+  String get storagePhotosDescription =>
+      'Ứng dụng cần quyền truy cập Ảnh/Tệp để hiển thị và phát nội dung cục bộ.';
+
+  @override
+  String get allFilesAccessPermission => 'Truy cập tất cả files (Quan trọng)';
+
+  @override
+  String get allFilesAccessDescription =>
+      'Cần quyền này để hiển thị đầy đủ tất cả files bao gồm APK, documents và các file khác trong thư mục Download.';
+
+  @override
+  String get installPackagesPermission => 'Cài đặt gói (APK)';
+
+  @override
+  String get installPackagesDescription =>
+      'Cần quyền này để mở và cài đặt các file APK thông qua Package Installer.';
+
+  @override
+  String get localNetworkPermission => 'Mạng cục bộ';
+
+  @override
+  String get localNetworkDescription =>
+      'Cho phép truy cập mạng nội bộ để duyệt SMB/NAS trong cùng mạng.';
+
+  @override
+  String get notificationsPermission => 'Thông báo (tùy chọn)';
+
+  @override
+  String get notificationsDescription =>
+      'Bật thông báo để nhận cập nhật phát và tác vụ nền.';
+
+  @override
+  String get grantAllPermissions => 'Cấp toàn bộ quyền';
+
+  @override
+  String get grantingPermissions => 'Đang cấp quyền...';
+
+  @override
+  String get enterApp => 'Vào app';
+
+  @override
+  String get skipEnterApp => 'Bỏ qua, vào app';
+
+  @override
+  String get granted => 'Đã cấp';
+
+  @override
+  String get grantPermission => 'Cấp quyền';
 }

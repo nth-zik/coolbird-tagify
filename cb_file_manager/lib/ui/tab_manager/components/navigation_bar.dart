@@ -2,7 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
-import '../tab_manager.dart';
+import '../core/tab_manager.dart';
+import 'address_bar_menu.dart';
 
 /// Navigation bar component that includes back/forward buttons and path input field
 class PathNavigationBar extends StatefulWidget {
@@ -11,6 +12,7 @@ class PathNavigationBar extends StatefulWidget {
   final Function(String) onPathSubmitted;
   final String currentPath;
   final bool isNetworkPath;
+  final List<AddressBarMenuItem>? menuItems;
 
   const PathNavigationBar({
     Key? key,
@@ -19,6 +21,7 @@ class PathNavigationBar extends StatefulWidget {
     required this.onPathSubmitted,
     required this.currentPath,
     this.isNetworkPath = false,
+    this.menuItems,
   }) : super(key: key);
 
   @override
@@ -259,6 +262,11 @@ class _PathNavigationBarState extends State<PathNavigationBar> {
             ),
           ),
         ],
+        if (widget.menuItems != null && widget.menuItems!.isNotEmpty)
+          AddressBarMenu(
+            items: widget.menuItems!,
+            tooltip: 'Tùy chọn',
+          ),
       ],
     );
   }

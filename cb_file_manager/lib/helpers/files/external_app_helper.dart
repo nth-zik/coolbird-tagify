@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'windows_app_icon.dart';
@@ -9,11 +10,13 @@ class AppInfo {
   final String packageName;
   final String appName;
   final Widget icon;
+  final bool isInstalled;
 
   AppInfo({
     required this.packageName,
     required this.appName,
     required this.icon,
+    this.isInstalled = false,
   });
 }
 
@@ -32,6 +35,138 @@ class ExternalAppHelper {
       return _getWindowsAppsForFile(filePath);
     }
     return [];
+  }
+
+  /// Test APK info for debugging
+  static Future<Map<String, dynamic>?> testApkInfo(String filePath) async {
+    if (!Platform.isAndroid) {
+      return null;
+    }
+
+    try {
+      final result = await _channel.invokeMethod('testApkInfo', {
+        'filePath': filePath,
+      });
+      return Map<String, dynamic>.from(result ?? {});
+    } catch (e) {
+      debugPrint('Error testing APK info: $e');
+      return null;
+    }
+  }
+
+  /// Get installed app info for APK file (shows the actual app icon if installed)
+  static Future<AppInfo?> getApkInstalledAppInfo(String filePath) async {
+    if (!Platform.isAndroid) {
+      debugPrint('APK_DEBUG: Not Android platform');
+      return null;
+    }
+
+    debugPrint('APK_DEBUG: Getting APK info for: $filePath');
+
+    try {
+      final result = await _channel.invokeMethod('getApkInstalledAppInfo', {
+        'filePath': filePath,
+      });
+
+      debugPrint('APK_DEBUG: Native result: $result');
+
+      if (result == null) {
+        debugPrint('APK_DEBUG: Native returned null');
+        return null;
+      }
+
+      final packageName = result['packageName'] as String?;
+      final appName = result['appName'] as String?;
+      final iconBytes = result['iconBytes'] as List<int>?;
+      final isInstalled = result['isInstalled'] as bool? ?? false;
+
+      debugPrint(
+          'APK_DEBUG: Package: $packageName, App: $appName, Installed: $isInstalled, IconBytes: ${iconBytes?.length}');
+
+      if (packageName == null || appName == null) {
+        debugPrint('APK_DEBUG: Missing package name or app name');
+        return null;
+      }
+
+      Widget icon;
+      if (iconBytes != null && iconBytes.isNotEmpty) {
+        debugPrint('APK_DEBUG: Creating icon from ${iconBytes.length} bytes');
+        debugPrint('APK_DEBUG: First 20 bytes: ${iconBytes.take(20).toList()}');
+
+        try {
+          final uint8List = Uint8List.fromList(iconBytes);
+          debugPrint(
+              'APK_DEBUG: Created Uint8List with ${uint8List.length} bytes');
+
+          icon = Image.memory(
+            uint8List,
+            width: 36,
+            height: 36,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              debugPrint('APK_DEBUG: Image.memory error: $error');
+              debugPrint('APK_DEBUG: StackTrace: $stackTrace');
+              return Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: isInstalled ? Colors.green : Colors.orange,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Icon(
+                  isInstalled ? Icons.android : Icons.install_mobile,
+                  size: 24,
+                  color: Colors.white,
+                ),
+              );
+            },
+          );
+          debugPrint('APK_DEBUG: Successfully created Image.memory widget');
+        } catch (e) {
+          debugPrint('APK_DEBUG: Error creating icon from bytes: $e');
+          icon = Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: isInstalled ? Colors.green : Colors.orange,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Icon(
+              isInstalled ? Icons.android : Icons.install_mobile,
+              size: 24,
+              color: Colors.white,
+            ),
+          );
+        }
+      } else {
+        debugPrint('APK_DEBUG: No icon bytes, using fallback icon');
+        // No icon bytes, use fallback icon
+        icon = Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: isInstalled ? Colors.green : Colors.orange,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Icon(
+            isInstalled ? Icons.android : Icons.install_mobile,
+            size: 24,
+            color: Colors.white,
+          ),
+        );
+      }
+
+      debugPrint('APK_DEBUG: Returning AppInfo for $appName');
+      return AppInfo(
+        packageName: packageName,
+        appName: appName,
+        icon: icon,
+        isInstalled: isInstalled,
+      );
+    } catch (e) {
+      debugPrint('APK_DEBUG: Error getting APK installed app info: $e');
+      return null;
+    }
   }
 
   /// Open file with a specific app

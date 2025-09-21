@@ -255,4 +255,24 @@ abstract class AppLocalizations {
   String get searchMultipleTagsDesc;
   String get globalSearchDesc;
   String get searchShortcutsDesc;
+
+  // Permissions
+  String get grantPermissionsToContinue;
+  String get permissionsDescription;
+  String get storagePhotosPermission;
+  String get storagePhotosDescription;
+  String get allFilesAccessPermission;
+  String get allFilesAccessDescription;
+  String get installPackagesPermission;
+  String get installPackagesDescription;
+  String get localNetworkPermission;
+  String get localNetworkDescription;
+  String get notificationsPermission;
+  String get notificationsDescription;
+  String get grantAllPermissions;
+  String get grantingPermissions;
+  String get enterApp;
+  String get skipEnterApp;
+  String get granted;
+  String get grantPermission;
 }

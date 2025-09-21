@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
-import '../../services/permission_state_service.dart';
-import '../screens/permissions/permission_explainer_screen.dart';
+import '../../../services/permission_state_service.dart';
+import '../../screens/permissions/permission_explainer_screen.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path_provider/path_provider.dart';
-import '../../bloc/network_browsing/network_browsing_bloc.dart';
+import '../../../bloc/network_browsing/network_browsing_bloc.dart';
 import 'tab_manager.dart';
 import 'tab_screen.dart';
 
@@ -50,10 +50,18 @@ class _TabMainScreenState extends State<TabMainScreen> {
       _checkedPerms = true;
       final hasStorage =
           await PermissionStateService.instance.hasStorageOrPhotosPermission();
+      final hasAllFiles = Platform.isAndroid
+          ? await PermissionStateService.instance.hasAllFilesAccessPermission()
+          : true;
+      final hasInstallPackages = Platform.isAndroid
+          ? await PermissionStateService.instance.hasInstallPackagesPermission()
+          : true;
       final hasLocal =
           await PermissionStateService.instance.hasLocalNetworkPermission();
-      final needsExplainer =
-          !hasStorage || (Platform.isIOS ? !hasLocal : false);
+      final needsExplainer = !hasStorage ||
+          !hasAllFiles ||
+          !hasInstallPackages ||
+          (Platform.isIOS ? !hasLocal : false);
       if (needsExplainer) {
         if (!mounted) return;
         await Navigator.of(context).push(

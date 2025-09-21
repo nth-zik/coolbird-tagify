@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:cb_file_manager/main.dart' show goHome, CBFileApp;
+import 'package:cb_file_manager/main.dart' show goHome;
 
 /// A wrapper widget that provides safe navigation handling
 /// This widget should wrap the entire app to catch navigation errors
@@ -29,7 +29,12 @@ class _SafeNavigationWrapperState extends State<SafeNavigationWrapper> {
       // Filter extremely noisy, non-fatal render/semantics assertions
       if (message.contains("semantics.parentDataDirty") ||
           message.contains("Semantics") &&
-              message.contains("parentDataDirty")) {
+              message.contains("parentDataDirty") ||
+          message.contains("_debugDoingThisLayout") ||
+          message.contains("layout") ||
+          message.contains("hasSize") ||
+          message.contains("RenderBox was not laid out") ||
+          message.contains("NEEDS-COMPOSITING-BITS-UPDATE")) {
         // Forward to default handler without extra logging to avoid log spam
         if (_previousOnError != null) {
           _previousOnError!(details);
@@ -61,14 +66,20 @@ class _SafeNavigationWrapperState extends State<SafeNavigationWrapper> {
 
   void _handleNavigationError() {
     try {
-      // Try to go home as a recovery mechanism
+      // Schedule the navigation recovery for the next frame to avoid layout conflicts
       if (mounted) {
-        goHome(context);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            try {
+              goHome(context);
+            } catch (e) {
+              debugPrint('Failed to recover from navigation error: $e');
+            }
+          }
+        });
       }
     } catch (e) {
-      debugPrint('Failed to recover from navigation error: $e');
-      // Last resort: restart the app
-      runApp(const CBFileApp());
+      debugPrint('Failed to schedule navigation recovery: $e');
     }
   }
 

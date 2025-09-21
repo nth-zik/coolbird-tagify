@@ -3,15 +3,15 @@ import 'dart:ui'; // Import for ImageFilter
 import 'package:flutter/material.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import './utils/route.dart';
-import './tab_manager/tab_main_screen.dart';
+import './tab_manager/core/tab_main_screen.dart';
 import 'package:cb_file_manager/ui/screens/settings/settings_screen.dart';
 import 'package:cb_file_manager/ui/screens/trash_bin/trash_bin_screen.dart'; // Import TrashBinScreen
 import 'package:cb_file_manager/helpers/core/filesystem_utils.dart';
 import 'package:cb_file_manager/helpers/core/io_extensions.dart'; // Add import for DirectoryProperties extension
 // Import TrashManager
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cb_file_manager/ui/tab_manager/tab_manager.dart';
-import 'package:cb_file_manager/ui/tab_manager/tab_data.dart'; // Import TabData
+import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
+import 'package:cb_file_manager/ui/tab_manager/core/tab_data.dart'; // Import TabData
 // Add UserPreferences import
 import 'package:cb_file_manager/config/app_theme.dart'; // Import theme configuration
 import 'package:cb_file_manager/config/translation_helper.dart'; // Import translation helper
@@ -580,6 +580,9 @@ class _CBDrawerState extends State<CBDrawer> {
   }
 
   void _openInCurrentTab(String path, String name) {
+    debugPrint(
+        'DRAWER_DEBUG: _openInCurrentTab called with path: $path, name: $name');
+
     // Check if we're already in a tab system
     TabManagerBloc? tabBloc;
     try {
@@ -592,8 +595,13 @@ class _CBDrawerState extends State<CBDrawer> {
     if (tabBloc != null) {
       // Lấy tab hiện tại và cập nhật đường dẫn
       final activeTab = tabBloc.state.activeTab;
+      debugPrint(
+          'DRAWER_DEBUG: Active tab: ${activeTab?.id}, current path: ${activeTab?.path}');
+
       if (activeTab != null) {
         // Update the tab path (this will automatically handle navigation history)
+        debugPrint(
+            'DRAWER_DEBUG: Updating tab path from ${activeTab.path} to $path');
         tabBloc.add(UpdateTabPath(activeTab.id, path));
 
         // Cập nhật tên tab để phản ánh thư mục mới
@@ -601,6 +609,7 @@ class _CBDrawerState extends State<CBDrawer> {
         tabBloc.add(UpdateTabName(activeTab.id, tabName));
       } else {
         // Nếu không có tab nào đang mở, tạo tab mới
+        debugPrint('DRAWER_DEBUG: No active tab, creating new tab');
         tabBloc.add(AddTab(path: path, name: _getNameFromPath(path)));
       }
     } else {

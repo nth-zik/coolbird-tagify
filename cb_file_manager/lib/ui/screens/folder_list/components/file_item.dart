@@ -279,8 +279,11 @@ class _FileItemState extends State<FileItem> {
     final bool isCtrlPressed =
         keyboard.isControlPressed || keyboard.isMetaPressed;
 
+    // Trong mobile mode, luôn sử dụng ctrlSelect để add to selection
+    final bool shouldCtrlSelect = widget.isDesktopMode ? isCtrlPressed : true;
+
     widget.toggleFileSelection(widget.file.path,
-        shiftSelect: isShiftPressed, ctrlSelect: isCtrlPressed);
+        shiftSelect: isShiftPressed, ctrlSelect: shouldCtrlSelect);
   }
 
   void _showContextMenu(BuildContext context) {
@@ -343,25 +346,38 @@ class _FileItemState extends State<FileItem> {
                           showFileTags: widget.showFileTags,
                         ),
                       ),
-                      // Interactive layer
-                      Positioned.fill(
+                      // Interactive layer cho icon (select)
+                      Positioned(
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: 80, // Vùng icon + padding
                         child: OptimizedInteractionLayer(
                           onTap: () {
-                            if (widget.isSelectionMode ||
-                                widget.isDesktopMode) {
-                              _handleSelection();
-                            } else {
-                              _openFile(isVideo, isImage);
-                            }
-                          },
-                          onDoubleTap: () {
-                            _openFile(isVideo, isImage);
+                            // Click vào icon sẽ select item
+                            _handleSelection();
                           },
                           onLongPress: () {
                             if (!widget.isSelectionMode) {
                               widget.toggleFileSelection(widget.file.path,
                                   shiftSelect: false, ctrlSelect: false);
                             }
+                          },
+                        ),
+                      ),
+                      // Interactive layer cho tên (open)
+                      Positioned(
+                        left: 80,
+                        top: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: OptimizedInteractionLayer(
+                          onTap: () {
+                            // Click vào tên sẽ open file
+                            _openFile(isVideo, isImage);
+                          },
+                          onDoubleTap: () {
+                            _openFile(isVideo, isImage);
                           },
                           onSecondaryTap: () => _showContextMenu(context),
                         ),

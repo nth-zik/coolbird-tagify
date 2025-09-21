@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'address_bar_menu.dart';
 
 class PathNavigationBar extends StatefulWidget {
   final String currentPath;
@@ -9,6 +10,7 @@ class PathNavigationBar extends StatefulWidget {
   final bool isNetworkPath;
   final TextEditingController pathController;
   final Function(String) onPathSubmitted;
+  final List<AddressBarMenuItem>? menuItems;
 
   const PathNavigationBar({
     Key? key,
@@ -17,6 +19,7 @@ class PathNavigationBar extends StatefulWidget {
     required this.isNetworkPath,
     required this.pathController,
     required this.onPathSubmitted,
+    this.menuItems,
   }) : super(key: key);
 
   @override
@@ -163,6 +166,17 @@ class _PathNavigationBarState extends State<PathNavigationBar> {
 
   @override
   Widget build(BuildContext context) {
-    return _isEditing ? _buildEditablePathField() : _buildPathSegments();
+    return Row(
+      children: [
+        Expanded(
+          child: _isEditing ? _buildEditablePathField() : _buildPathSegments(),
+        ),
+        if (widget.menuItems != null && widget.menuItems!.isNotEmpty)
+          AddressBarMenu(
+            items: widget.menuItems!,
+            tooltip: 'Tùy chọn',
+          ),
+      ],
+    );
   }
 }

@@ -77,13 +77,20 @@ class FileView extends StatelessWidget {
     // Optimize scrolling with frame timing
     FrameTimingOptimizer().optimizeScrolling();
 
+    final bool isMobile = Platform.isAndroid || Platform.isIOS;
+
     return ListView.builder(
-      // Add better scrolling physics for smoother scrolling
-      physics: const BouncingScrollPhysics(
-        parent: AlwaysScrollableScrollPhysics(),
-      ),
-      // Add caching for better performance during scrolling
-      cacheExtent: 500,
+      // Prefer lighter physics on Android for less jank
+      physics: isMobile
+          ? const ClampingScrollPhysics()
+          : const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
+      // Reduce offscreen cache on mobile to avoid overwork
+      cacheExtent: isMobile ? 350 : 800,
+      addAutomaticKeepAlives: false,
+      addRepaintBoundaries: true,
+      addSemanticIndexes: false,
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       itemCount: folders.length + files.length,
       itemBuilder: (context, index) {
@@ -132,6 +139,7 @@ class FileView extends StatelessWidget {
   Widget _buildDetailsView() {
     // Optimize scrolling with frame timing
     FrameTimingOptimizer().optimizeScrolling();
+    final bool isMobile = Platform.isAndroid || Platform.isIOS;
 
     // Define text style for headers once to be reused
     const TextStyle headerStyle = TextStyle(
@@ -268,10 +276,15 @@ class FileView extends StatelessWidget {
         // List of files and folders
         Expanded(
           child: ListView.builder(
-            physics: const BouncingScrollPhysics(
-              parent: AlwaysScrollableScrollPhysics(),
-            ),
-            cacheExtent: 500,
+            physics: isMobile
+                ? const ClampingScrollPhysics()
+                : const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  ),
+            cacheExtent: isMobile ? 350 : 800,
+            addAutomaticKeepAlives: false,
+            addRepaintBoundaries: true,
+            addSemanticIndexes: false,
             padding: const EdgeInsets.symmetric(vertical: 4.0),
             itemCount: folders.length + files.length,
             itemBuilder: (context, index) {
@@ -339,6 +352,7 @@ class FileView extends StatelessWidget {
   Widget _buildGridView() {
     // Optimize scrolling with frame timing
     FrameTimingOptimizer().optimizeScrolling();
+    final bool isMobile = Platform.isAndroid || Platform.isIOS;
 
     // Wrap the GridView with a Listener to detect mouse wheel events
     return Listener(
@@ -359,10 +373,15 @@ class FileView extends StatelessWidget {
         }
       },
       child: GridView.builder(
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-        cacheExtent: 1500,
+        physics: isMobile
+            ? const ClampingScrollPhysics()
+            : const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
+              ),
+        cacheExtent: isMobile ? 600 : 1500,
+        addAutomaticKeepAlives: false,
+        addRepaintBoundaries: true,
+        addSemanticIndexes: false,
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: state.gridZoomLevel,
           childAspectRatio: 0.8,

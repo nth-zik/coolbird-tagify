@@ -3,8 +3,8 @@ import 'package:cb_file_manager/ui/screens/system_screen.dart';
 import 'package:cb_file_manager/ui/screens/tag_management/tag_management_screen.dart';
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cb_file_manager/ui/tab_manager/tab_manager.dart';
-import 'package:cb_file_manager/ui/tab_manager/tab_data.dart';
+import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
+import 'package:cb_file_manager/ui/tab_manager/core/tab_data.dart';
 
 /// A tab component for the tag management screen
 /// This component wraps the TagManagementScreen inside our SystemScreen base class

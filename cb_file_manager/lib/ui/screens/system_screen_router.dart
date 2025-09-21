@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:cb_file_manager/ui/screens/tag_management/tag_management_tab.dart';
-import 'package:cb_file_manager/ui/tab_manager/tabbed_folder_list_screen.dart';
+import 'package:cb_file_manager/ui/tab_manager/core/tabbed_folder_list_screen.dart';
 import 'package:cb_file_manager/ui/screens/network_browsing/network_connection_screen.dart';
 import 'package:cb_file_manager/ui/screens/network_browsing/network_browser_screen.dart';
 import 'package:cb_file_manager/ui/screens/network_browsing/smb_browser_screen.dart';
@@ -9,7 +9,7 @@ import 'package:cb_file_manager/ui/screens/network_browsing/ftp_browser_screen.d
 import 'package:cb_file_manager/ui/screens/network_browsing/webdav_browser_screen.dart';
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cb_file_manager/ui/tab_manager/tab_manager.dart';
+import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
 import 'package:cb_file_manager/bloc/network_browsing/network_browsing_bloc.dart';
@@ -101,10 +101,19 @@ class SystemScreenRouter {
         // Log once for initialization
         _loggedKeys.add(cacheKey);
 
-        // Create a unique bloc for this search
+        // Create a unique bloc for this search with timeout protection
         return BlocProvider(
           // Use create with lazy=false to ensure the bloc is created only once
-          create: (_) => FolderListBloc()..add(SearchByTagGlobally(tag)),
+          create: (_) {
+            final bloc = FolderListBloc();
+            // Add timeout protection to prevent infinite loops
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (bloc.isClosed == false) {
+                bloc.add(SearchByTagGlobally(tag));
+              }
+            });
+            return bloc;
+          },
           lazy: false,
           child: TabbedFolderListScreen(
             key: ValueKey('tag_search_$cacheKey'), // Add a stable key
@@ -120,6 +129,32 @@ class SystemScreenRouter {
       _cachedWidgets[cacheKey] = tagSearchWidget;
 
       return tagSearchWidget;
+    } else if (path.startsWith('#search?tag=')) {
+      // Support hash-based tag search path: #search?tag=...
+      if (_cachedWidgets.containsKey(cacheKey)) {
+        if (!_loggedKeys.contains(cacheKey)) {
+          _loggedKeys.add(cacheKey);
+        }
+        return _cachedWidgets[cacheKey]!;
+      }
+
+      // Avoid recursion: don't pass a '#' path into TabbedFolderListScreen
+      // or it will call SystemScreenRouter again. Instead, parse the tag
+      // and drive the screen via searchTag + globalTagSearch.
+      final String raw = path.substring('#search?tag='.length);
+      final String tag = Uri.decodeComponent(raw);
+
+      final widgetToCache = TabbedFolderListScreen(
+        key: ValueKey('tag_search_$cacheKey'),
+        path: '',
+        tabId: tabId,
+        searchTag: tag,
+        globalTagSearch: true,
+      );
+
+      _cachedWidgets[cacheKey] = widgetToCache;
+      _loggedKeys.add(cacheKey);
+      return widgetToCache;
     }
 
     // Handle network paths that might follow special format #network/TYPE/HOST/...

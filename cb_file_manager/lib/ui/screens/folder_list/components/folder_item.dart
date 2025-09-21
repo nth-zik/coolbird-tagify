@@ -35,10 +35,53 @@ class _FolderItemState extends State<FolderItem> {
   // Use ValueNotifier for hover state to reduce rebuilds
   final ValueNotifier<bool> _isHovering = ValueNotifier<bool>(false);
 
+  // Lazy, cached folder stat to avoid I/O during fast scrolls
+  late Future<FileStat> _folderStatFuture;
+  static final Map<String, FileStat> _folderStatCache = <String, FileStat>{};
+  static const int _maxCacheSize = 100;
+
+  @override
+  void initState() {
+    super.initState();
+    _folderStatFuture = _getFolderStatLazy();
+  }
+
   @override
   void dispose() {
     _isHovering.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(FolderItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.folder.path != widget.folder.path) {
+      _folderStatFuture = _getFolderStatLazy();
+    }
+  }
+
+  Future<FileStat> _getFolderStatLazy() async {
+    final path = widget.folder.path;
+
+    // Skip stat for virtual network paths to prevent errors and jank
+    if (path.startsWith('#network/')) {
+      return Future.error('Network folder - no stat needed');
+    }
+
+    // Serve from cache if available
+    final cached = _folderStatCache[path];
+    if (cached != null) return cached;
+
+    // Small delay to prioritize smooth scrolling
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    final stat = await widget.folder.stat();
+    // Cache with simple size cap
+    if (_folderStatCache.length >= _maxCacheSize) {
+      _folderStatCache.remove(_folderStatCache.keys.first);
+    }
+    _folderStatCache[path] = stat;
+    return stat;
   }
 
   void _handleFolderSelection() {
@@ -50,9 +93,12 @@ class _FolderItemState extends State<FolderItem> {
     final bool isCtrlPressed =
         keyboard.isControlPressed || keyboard.isMetaPressed;
 
+    // Trong mobile mode, luôn sử dụng ctrlSelect để add to selection
+    final bool shouldCtrlSelect = widget.isDesktopMode ? isCtrlPressed : true;
+
     // Call toggleFolderSelection with appropriate parameters
     widget.toggleFolderSelection!(widget.folder.path,
-        shiftSelect: isShiftPressed, ctrlSelect: isCtrlPressed);
+        shiftSelect: isShiftPressed, ctrlSelect: shouldCtrlSelect);
   }
 
   void _showFolderContextMenu(BuildContext context) {
@@ -129,7 +175,7 @@ class _FolderItemState extends State<FolderItem> {
                               ),
                               const SizedBox(height: 4),
                               FutureBuilder<FileStat>(
-                                future: widget.folder.stat(),
+                                future: _folderStatFuture,
                                 builder: (context, snapshot) {
                                   if (snapshot.hasData) {
                                     return Text(
@@ -144,6 +190,20 @@ class _FolderItemState extends State<FolderItem> {
                                                 .colorScheme
                                                 .onSurface
                                                 .withOpacity(0.7),
+                                          ),
+                                    );
+                                  } else if (snapshot.hasError) {
+                                    // For network folders or stat errors
+                                    return Text(
+                                      '—',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurface
+                                                .withOpacity(0.5),
                                           ),
                                     );
                                   }
@@ -167,14 +227,36 @@ class _FolderItemState extends State<FolderItem> {
                       ],
                     ),
                   ),
-                  // Interactive layer
-                  Positioned.fill(
+                  // Interactive layer cho icon (select)
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: 80, // Vùng icon + padding
                     child: OptimizedInteractionLayer(
                       onTap: () {
-                        if (widget.isDesktopMode &&
-                            widget.toggleFolderSelection != null) {
+                        // Click vào icon sẽ select item
+                        if (widget.toggleFolderSelection != null) {
                           _handleFolderSelection();
-                        } else if (widget.onTap != null) {
+                        }
+                      },
+                      onLongPress: () {
+                        if (widget.toggleFolderSelection != null) {
+                          _handleFolderSelection();
+                        }
+                      },
+                    ),
+                  ),
+                  // Interactive layer cho tên (navigate)
+                  Positioned(
+                    left: 80,
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: OptimizedInteractionLayer(
+                      onTap: () {
+                        // Click vào tên sẽ navigate
+                        if (widget.onTap != null) {
                           widget.onTap!(widget.folder.path);
                         }
                       },
@@ -186,11 +268,6 @@ class _FolderItemState extends State<FolderItem> {
                               widget.onTap?.call(widget.folder.path);
                             }
                           : null,
-                      onLongPress: () {
-                        if (widget.toggleFolderSelection != null) {
-                          _handleFolderSelection();
-                        }
-                      },
                     ),
                   ),
                   // Selection indicator

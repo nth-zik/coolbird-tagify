@@ -5,7 +5,7 @@ import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
-import 'package:cb_file_manager/ui/tab_manager/tab_manager.dart'; // Add TabManager import
+import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart'; // Add TabManager import
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'dart:io';
 import 'package:path/path.dart' as pathlib;

@@ -6,7 +6,7 @@ import 'package:flutter/scheduler.dart'; // For frame scheduling
 import 'dart:async';
 import 'dart:io';
 
-import 'ui/tab_manager/tab_main_screen.dart';
+import 'ui/tab_manager/core/tab_main_screen.dart';
 import 'helpers/tags/tag_manager.dart';
 import 'package:media_kit/media_kit.dart'; // Import Media Kit
 // Ensure Windows video native libraries (mpv) are bundled.

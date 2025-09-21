@@ -81,8 +81,10 @@ class TabData {
         navigationHistory.removeRange(
             existingIndex + 1, navigationHistory.length);
       } else {
-        // Otherwise add the new path to history
-        navigationHistory.add(newPath);
+        // Only add the new path to history if it's different from the last path in history
+        if (navigationHistory.isEmpty || navigationHistory.last != newPath) {
+          navigationHistory.add(newPath);
+        }
 
         // Clear forward history since we're navigating to a new path
         forwardHistory.clear();
@@ -120,14 +122,17 @@ class TabData {
 
       // Check if the new current path is the same as the one we just removed
       // If so, keep going back until we find a different path
-      while (navigationHistory.length > 1 && navigationHistory.last == path) {
+      String? previousPath = path;
+      while (navigationHistory.length > 1 &&
+          navigationHistory.last == previousPath) {
         debugPrint(
             'TabData: Removing duplicate path from history: ${navigationHistory.last}');
+        previousPath = navigationHistory.last;
         navigationHistory.removeLast();
       }
 
       // Return the new current path (which was the previous one)
-      return navigationHistory.last;
+      return navigationHistory.isNotEmpty ? navigationHistory.last : null;
     }
     return null;
   }

@@ -5,6 +5,7 @@ import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/image_gallery_screen.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/video_gallery_screen.dart';
 import 'package:cb_file_manager/ui/tab_manager/components/tag_dialogs.dart';
+import 'package:cb_file_manager/helpers/files/file_icon_helper.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 
 class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -161,7 +162,7 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          onSelected: (value) {
+          onSelected: (value) async {
             switch (value) {
               case 'refresh':
                 refresh();
@@ -185,6 +186,16 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
                   context,
                   MaterialPageRoute(
                     builder: (context) => VideoGalleryScreen(path: currentPath),
+                  ),
+                );
+                break;
+              case 'debug_apk':
+                await FileIconHelper.debugApkIcons();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                        'APK icon cache cleared. Check console for debug info.'),
+                    duration: Duration(seconds: 2),
                   ),
                 );
                 break;
@@ -243,6 +254,17 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
                       size: 20, color: theme.iconTheme.color),
                   const SizedBox(width: 12),
                   const Text('Video Gallery'),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: 'debug_apk',
+              child: Row(
+                children: [
+                  Icon(EvaIcons.settingsOutline,
+                      size: 20, color: theme.iconTheme.color),
+                  const SizedBox(width: 12),
+                  const Text('Debug APK Icons'),
                 ],
               ),
             ),

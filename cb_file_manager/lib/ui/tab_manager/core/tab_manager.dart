@@ -167,14 +167,20 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
   }
 
   void _onUpdateTabPath(UpdateTabPath event, Emitter<TabManagerState> emit) {
+    debugPrint(
+        'BLOC_DEBUG: _onUpdateTabPath called for tab ${event.tabId}, newPath: ${event.newPath}');
+
     // Check if the path is actually changing
     final currentTab = state.tabs.firstWhere(
       (tab) => tab.id == event.tabId,
       orElse: () => TabData(id: '', name: '', path: ''),
     );
 
+    debugPrint('BLOC_DEBUG: Current tab path: ${currentTab.path}');
+
     // If the path is the same as the current path, don't update
     if (currentTab.path == event.newPath) {
+      debugPrint('BLOC_DEBUG: Path unchanged, skipping update');
       return;
     }
 
@@ -189,6 +195,7 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
       return tab;
     }).toList();
 
+    debugPrint('BLOC_DEBUG: Emitting new state with updated tab path');
     emit(state.copyWith(tabs: tabs));
   }
 

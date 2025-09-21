@@ -7,17 +7,18 @@ import 'dart:io';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart'; // Import Eva Icons
 import 'package:cb_file_manager/helpers/ui/frame_timing_optimizer.dart';
 import 'tab_manager.dart';
-import '../drawer.dart';
+import '../../drawer.dart';
 import 'package:cb_file_manager/helpers/core/user_preferences.dart';
 import 'tabbed_folder_list_screen.dart';
-import '../screens/settings/settings_screen.dart';
+import '../../screens/settings/settings_screen.dart';
 import 'package:flutter/gestures.dart'; // Import for mouse scrolling
-import 'scrollable_tab_bar.dart'; // Import our custom ScrollableTabBar
-import 'mobile_tab_view.dart'; // Import giao diện mobile kiểu Chrome
+import '../desktop/scrollable_tab_bar.dart'; // Import our custom ScrollableTabBar
+import '../mobile/mobile_tab_view.dart'; // Import giao diện mobile kiểu Chrome
 import 'package:cb_file_manager/config/translation_helper.dart'; // Import translation helper
 import 'package:cb_file_manager/ui/screens/system_screen_router.dart'; // Import system screen router
 // import 'package:cb_file_manager/widgets/test_native_streaming.dart'; // Test widget removed
-import '../utils/route.dart';
+import '../../utils/route.dart';
+import 'package:cb_file_manager/helpers/core/filesystem_utils.dart'; // Import filesystem utils
 
 // Create a custom scroll behavior that supports mouse wheel scrolling
 class TabBarMouseScrollBehavior extends MaterialScrollBehavior {
@@ -355,8 +356,30 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                       'TabScreen PopScope onPopInvokedWithResult: didPop=$didPop, result=$result');
                   if (!didPop) {
                     try {
-                      // Let the active tab handle the back navigation first
+                      // First, check if there are any screens pushed on the active tab's navigator
+                      // (like video player, image viewer, etc.)
                       final activeTab = state.activeTab;
+                      if (activeTab != null) {
+                        final tabNavigatorState =
+                            activeTab.navigatorKey.currentState;
+                        if (tabNavigatorState != null &&
+                            tabNavigatorState.canPop()) {
+                          debugPrint(
+                              'TabScreen: Popping tab navigator (video player, etc.)');
+                          tabNavigatorState.pop();
+                          return;
+                        }
+                      }
+
+                      // Then check main navigator
+                      final mainNavigator = Navigator.of(context);
+                      if (mainNavigator.canPop()) {
+                        debugPrint('TabScreen: Popping main navigator');
+                        mainNavigator.pop();
+                        return;
+                      }
+
+                      // Handle tab navigation history
                       if (activeTab != null) {
                         debugPrint(
                             'TabScreen: Active tab found: ${activeTab.id}, path: ${activeTab.path}');
@@ -393,21 +416,6 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
 
                           return;
                         }
-
-                        final navigatorState =
-                            activeTab.navigatorKey.currentState;
-                        if (navigatorState != null && navigatorState.canPop()) {
-                          debugPrint('TabScreen: Popping tab navigator');
-                          navigatorState.pop();
-                          return;
-                        }
-                      }
-
-                      // If no active tab or can't pop, check if we can pop the main navigator
-                      if (Navigator.of(context).canPop()) {
-                        debugPrint('TabScreen: Popping main navigator');
-                        Navigator.of(context).pop();
-                        return;
                       }
 
                       // If we're at the root and can't navigate back, don't allow back
@@ -715,7 +723,42 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
         return;
       }
 
-      // Xử lý cho các hệ điều hành khác
+      // Xử lý cho mobile (Android/iOS) - tự động browse đến bộ nhớ đầu tiên và thư mục root
+      if (Platform.isAndroid || Platform.isIOS) {
+        try {
+          // Import the filesystem utils to get storage locations
+          final storageLocations = await getAllStorageLocations();
+
+          if (storageLocations.isNotEmpty) {
+            // Lấy bộ nhớ đầu tiên trong danh sách
+            final firstStorage = storageLocations.first;
+            final storagePath = firstStorage.path;
+
+            if (mounted) {
+              final bloc = context.read<TabManagerBloc>();
+              // Tạo tab với đường dẫn đến bộ nhớ đầu tiên (root directory)
+              bloc.add(AddTab(
+                  path: storagePath,
+                  name: _getStorageDisplayName(storagePath)));
+
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  setState(() {});
+                }
+              });
+            }
+          } else {
+            // Fallback nếu không tìm thấy storage locations
+            _createFallbackTab();
+          }
+        } catch (e) {
+          debugPrint("Error getting storage locations: $e");
+          _createFallbackTab();
+        }
+        return;
+      }
+
+      // Xử lý cho các hệ điều hành khác (Linux, macOS)
       try {
         final directory = await getApplicationDocumentsDirectory();
 
@@ -740,14 +783,46 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
       }
     } catch (e) {
       // Last resort - try to display something
-      if (mounted) {
-        try {
-          context.read<TabManagerBloc>().add(AddTab(path: '', name: 'Browse'));
-        } catch (e) {
-          debugPrint("Failed to create fallback tab: $e");
+      _createFallbackTab();
+    }
+  }
+
+  /// Helper method to create fallback tab
+  void _createFallbackTab() {
+    if (mounted) {
+      try {
+        context.read<TabManagerBloc>().add(AddTab(path: '', name: 'Browse'));
+      } catch (e) {
+        debugPrint("Failed to create fallback tab: $e");
+      }
+    }
+  }
+
+  /// Helper method to get display name for storage path
+  String _getStorageDisplayName(String path) {
+    if (path.isEmpty) return 'Drives';
+
+    // For Android, try to extract meaningful name
+    if (Platform.isAndroid) {
+      if (path.contains('/storage/emulated/0')) {
+        return 'Internal Storage';
+      } else if (path.contains('/storage/')) {
+        // Extract UUID or storage identifier
+        final parts = path.split('/');
+        if (parts.length >= 3) {
+          final storageId = parts[2];
+          if (storageId.isNotEmpty && storageId != 'emulated') {
+            return 'Storage $storageId';
+          }
         }
       }
     }
+
+    // For iOS or other cases, use the last part of the path
+    final parts = path.split('/');
+    final lastPart =
+        parts.lastWhere((part) => part.isNotEmpty, orElse: () => '');
+    return lastPart.isEmpty ? 'Root' : lastPart;
   }
 
   void _showTabOptions(BuildContext context) {

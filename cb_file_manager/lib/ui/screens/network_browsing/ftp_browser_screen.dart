@@ -13,7 +13,7 @@ import '../../../services/network_browsing/ftp_service.dart';
 import '../../../services/network_browsing/ftp_tester.dart';
 import '../../../services/network_credentials_service.dart';
 import '../../../models/database/network_credentials.dart';
-import '../../tab_manager/tab_manager.dart';
+import '../../tab_manager/core/tab_manager.dart';
 import '../../utils/fluent_background.dart';
 import '../system_screen.dart';
 import 'network_connection_dialog.dart';

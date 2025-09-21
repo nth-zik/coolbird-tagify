@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../config/languages/app_localizations.dart';
 import '../../../services/permission_state_service.dart';
 
 class PermissionExplainerScreen extends StatefulWidget {
@@ -16,6 +17,8 @@ class PermissionExplainerScreen extends StatefulWidget {
 class _PermissionExplainerScreenState extends State<PermissionExplainerScreen> {
   bool _checking = true;
   bool _hasStorage = false;
+  bool _hasAllFilesAccess = false;
+  bool _hasInstallPackages = false;
   bool _hasLocalNet = true; // default true except iOS
   bool _notifGranted = false;
 
@@ -29,10 +32,14 @@ class _PermissionExplainerScreenState extends State<PermissionExplainerScreen> {
     setState(() => _checking = true);
     final svc = PermissionStateService.instance;
     final s = await svc.hasStorageOrPhotosPermission();
+    final a = await svc.hasAllFilesAccessPermission();
+    final i = await svc.hasInstallPackagesPermission();
     final n = await svc.hasNotificationsPermission();
     final ln = await svc.hasLocalNetworkPermission();
     setState(() {
       _hasStorage = s;
+      _hasAllFilesAccess = a;
+      _hasInstallPackages = i;
       _notifGranted = n;
       _hasLocalNet = ln;
       _checking = false;
@@ -41,12 +48,30 @@ class _PermissionExplainerScreenState extends State<PermissionExplainerScreen> {
 
   bool get _mandatorySatisfied {
     final storageOk = _hasStorage;
+    final allFilesOk = Platform.isAndroid ? _hasAllFilesAccess : true;
+    final installOk = Platform.isAndroid ? _hasInstallPackages : true;
     final localOk = Platform.isIOS ? _hasLocalNet : true;
-    return storageOk && localOk;
+    return storageOk && allFilesOk && installOk && localOk;
   }
 
   Future<void> _requestStorage() async {
     final ok = await PermissionStateService.instance.requestStorageOrPhotos();
+    if (!ok) {
+      await _openSettings();
+    }
+    await _refreshStates();
+  }
+
+  Future<void> _requestAllFilesAccess() async {
+    final ok = await PermissionStateService.instance.requestAllFilesAccess();
+    if (!ok) {
+      await _openSettings();
+    }
+    await _refreshStates();
+  }
+
+  Future<void> _requestInstallPackages() async {
+    final ok = await PermissionStateService.instance.requestInstallPackages();
     if (!ok) {
       await _openSettings();
     }
@@ -66,6 +91,25 @@ class _PermissionExplainerScreenState extends State<PermissionExplainerScreen> {
     await _refreshStates();
   }
 
+  Future<void> _requestAllPermissions() async {
+    setState(() => _checking = true);
+
+    final svc = PermissionStateService.instance;
+
+    // Request all permissions sequentially
+    await svc.requestStorageOrPhotos();
+    if (Platform.isAndroid) {
+      await svc.requestAllFilesAccess();
+      await svc.requestInstallPackages();
+    }
+    if (Platform.isIOS) {
+      await svc.requestLocalNetwork();
+    }
+    await svc.requestNotifications();
+
+    await _refreshStates();
+  }
+
   Future<void> _openSettings() async {
     final uri =
         Platform.isIOS ? Uri.parse('app-settings:') : Uri.parse('package:');
@@ -76,32 +120,46 @@ class _PermissionExplainerScreenState extends State<PermissionExplainerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     final cards = <Widget>[
       _PermissionCard(
-        title: 'Quyền lưu trữ/ảnh',
-        description:
-            'Ứng dụng cần quyền truy cập Ảnh/Tệp để hiển thị và phát nội dung cục bộ.',
+        title: l10n.storagePhotosPermission,
+        description: l10n.storagePhotosDescription,
         granted: _hasStorage,
         onRequest: _requestStorage,
       ),
+      if (Platform.isAndroid)
+        _PermissionCard(
+          title: l10n.allFilesAccessPermission,
+          description: l10n.allFilesAccessDescription,
+          granted: _hasAllFilesAccess,
+          onRequest: _requestAllFilesAccess,
+        ),
+      if (Platform.isAndroid)
+        _PermissionCard(
+          title: l10n.installPackagesPermission,
+          description: l10n.installPackagesDescription,
+          granted: _hasInstallPackages,
+          onRequest: _requestInstallPackages,
+        ),
       if (Platform.isIOS)
         _PermissionCard(
-          title: 'Mạng cục bộ',
-          description:
-              'Cho phép truy cập mạng nội bộ để duyệt SMB/NAS trong cùng mạng.',
+          title: l10n.localNetworkPermission,
+          description: l10n.localNetworkDescription,
           granted: _hasLocalNet,
           onRequest: _requestLocalNet,
         ),
       _PermissionCard(
-        title: 'Thông báo (tùy chọn)',
-        description: 'Bật thông báo để nhận cập nhật phát và tác vụ nền.',
+        title: l10n.notificationsPermission,
+        description: l10n.notificationsDescription,
         granted: _notifGranted,
         onRequest: _requestNotif,
       ),
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Cấp quyền để tiếp tục')),
+      appBar: AppBar(title: Text(l10n.grantPermissionsToContinue)),
       body: _checking
           ? const Center(child: CircularProgressIndicator())
           : Padding(
@@ -109,9 +167,9 @@ class _PermissionExplainerScreenState extends State<PermissionExplainerScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
-                    'Để sử dụng ứng dụng mượt mà, vui lòng cấp các quyền sau đây. Bạn có thể bỏ qua và cấp sau trong Cài đặt.',
-                    style: TextStyle(fontSize: 16),
+                  Text(
+                    l10n.permissionsDescription,
+                    style: const TextStyle(fontSize: 16),
                   ),
                   const SizedBox(height: 12),
                   Expanded(
@@ -121,6 +179,29 @@ class _PermissionExplainerScreenState extends State<PermissionExplainerScreen> {
                       itemBuilder: (_, i) => cards[i],
                     ),
                   ),
+                  // Grant All Permissions button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _checking ? null : _requestAllPermissions,
+                      icon: _checking
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.security),
+                      label: Text(_checking
+                          ? l10n.grantingPermissions
+                          : l10n.grantAllPermissions),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
@@ -128,14 +209,14 @@ class _PermissionExplainerScreenState extends State<PermissionExplainerScreen> {
                           onPressed: _mandatorySatisfied
                               ? () => Navigator.of(context).maybePop()
                               : null,
-                          child: const Text('Vào app'),
+                          child: Text(l10n.enterApp),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () => Navigator.of(context).maybePop(),
-                          child: const Text('Bỏ qua, vào app'),
+                          child: Text(l10n.skipEnterApp),
                         ),
                       ),
                     ],
@@ -163,6 +244,7 @@ class _PermissionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -187,7 +269,7 @@ class _PermissionCard extends StatelessWidget {
             const SizedBox(width: 12),
             ElevatedButton(
               onPressed: onRequest,
-              child: Text(granted ? 'Đã cấp' : 'Cấp quyền'),
+              child: Text(granted ? l10n.granted : l10n.grantPermission),
             )
           ],
         ),

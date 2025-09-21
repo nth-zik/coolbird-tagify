@@ -12,7 +12,7 @@ import '../../../bloc/network_browsing/network_browsing_state.dart';
 import '../../../services/network_browsing/network_service_base.dart';
 import '../../../services/network_credentials_service.dart';
 import '../../../models/database/network_credentials.dart';
-import '../../tab_manager/tab_manager.dart';
+import '../../tab_manager/core/tab_manager.dart';
 import '../../utils/fluent_background.dart';
 import '../system_screen.dart';
 import 'network_connection_dialog.dart';

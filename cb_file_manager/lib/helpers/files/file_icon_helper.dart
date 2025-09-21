@@ -18,11 +18,21 @@ class FileIconHelper {
   static Future<Widget> getIconForFile(File file, {double size = 24}) async {
     final String extension = _getFileExtension(file);
 
-    // Check if we already have a cached icon for this extension
-    final String cacheKey = '${extension}_$size';
+    // For APK files, use file-specific cache key to avoid cache conflicts
+    final String cacheKey =
+        extension == 'apk' ? '${file.path}_$size' : '${extension}_$size';
+    print('APK_ICON_DEBUG: Cache key: $cacheKey');
+    print(
+        'APK_ICON_DEBUG: Cache contains key: ${_iconCache.containsKey(cacheKey)}');
+
     if (_iconCache.containsKey(cacheKey)) {
-      return _iconCache[cacheKey]!;
+      print('APK_ICON_DEBUG: Using cached icon for: $cacheKey');
+      final cachedIcon = _iconCache[cacheKey]!;
+      print('APK_ICON_DEBUG: Cached icon type: ${cachedIcon.runtimeType}');
+      return cachedIcon;
     }
+
+    print('APK_ICON_DEBUG: No cached icon for: $cacheKey');
 
     // For images and videos, return a generic icon
     if (_isImageFile(extension)) {
@@ -39,16 +49,65 @@ class FileIconHelper {
 
     // Try to get the application icon for this file type
     try {
+      // For APK files on Android, try to get the installed app icon
+      if (extension == 'apk' && Platform.isAndroid) {
+        print('APK_ICON_DEBUG: Processing APK file: ${file.path}');
+
+        // Test APK info first
+        final testInfo = await ExternalAppHelper.testApkInfo(file.path);
+        if (testInfo != null) {
+          print('APK_ICON_DEBUG: Test info: $testInfo');
+        }
+
+        final appInfo =
+            await ExternalAppHelper.getApkInstalledAppInfo(file.path);
+        if (appInfo != null) {
+          print(
+              'APK_ICON_DEBUG: Got app info: ${appInfo.appName} (installed: ${appInfo.isInstalled})');
+          print('APK_ICON_DEBUG: App icon type: ${appInfo.icon.runtimeType}');
+
+          // Use the installed app icon
+          final Widget appIcon = SizedBox(
+            width: size,
+            height: size,
+            child: appInfo.icon,
+          );
+          print(
+              'APK_ICON_DEBUG: Created appIcon widget: ${appIcon.runtimeType}');
+          _iconCache[cacheKey] = appIcon;
+          print('APK_ICON_DEBUG: Cached appIcon with key: $cacheKey');
+          print('APK_ICON_DEBUG: Returning appIcon widget');
+          return appIcon;
+        } else {
+          print('APK_ICON_DEBUG: No app info returned for APK, using fallback');
+          // Use fallback APK icon
+          final Widget fallbackIcon = Icon(
+            EvaIcons.smartphoneOutline,
+            size: size,
+            color: Colors.green,
+          );
+          print(
+              'APK_ICON_DEBUG: Created fallback icon: ${fallbackIcon.runtimeType}');
+          _iconCache[cacheKey] = fallbackIcon;
+          print('APK_ICON_DEBUG: Cached fallback icon with key: $cacheKey');
+          print('APK_ICON_DEBUG: Returning fallback icon');
+          return fallbackIcon;
+        }
+      }
+
+      // For other file types or non-Android platforms
       String? appPath;
 
       // Check cache first
       if (_appPathCache.containsKey(extension)) {
         appPath = _appPathCache[extension];
       } else {
-        // Get the default application path for this extension
-        appPath = await WindowsAppIcon.getAssociatedAppPath(extension);
-        if (appPath != null && appPath.isNotEmpty) {
-          _appPathCache[extension] = appPath;
+        // Get the default application path for this extension (Windows only)
+        if (Platform.isWindows) {
+          appPath = await WindowsAppIcon.getAssociatedAppPath(extension);
+          if (appPath != null && appPath.isNotEmpty) {
+            _appPathCache[extension] = appPath;
+          }
         }
       }
 
@@ -83,11 +142,16 @@ class FileIconHelper {
       icon = Icon(EvaIcons.fileOutline, size: size, color: Colors.orange);
     } else if (_isPdfFile(extension)) {
       icon = Icon(EvaIcons.fileOutline, size: size, color: Colors.red[800]);
+    } else if (extension == 'apk') {
+      icon = Icon(EvaIcons.smartphoneOutline, size: size, color: Colors.green);
+      print('APK_ICON_DEBUG: Created generic APK icon: ${icon.runtimeType}');
     } else {
       icon = Icon(EvaIcons.fileOutline, size: size, color: Colors.grey);
     }
 
     _iconCache[cacheKey] = icon;
+    print('APK_ICON_DEBUG: Cached generic icon with key: $cacheKey');
+    print('APK_ICON_DEBUG: Returning generic icon');
     return icon;
   }
 
@@ -95,16 +159,34 @@ class FileIconHelper {
   static Future<Widget?> getDefaultAppIconForExtension(String extension,
       {double size = 24}) async {
     try {
+      // For APK files on Android, try to get the installed app icon
+      if (extension == 'apk' && Platform.isAndroid) {
+        final tempFile =
+            File('temp.$extension'); // Dummy file với extension cần thiết
+        final appInfo =
+            await ExternalAppHelper.getApkInstalledAppInfo(tempFile.path);
+        if (appInfo != null) {
+          return SizedBox(
+            width: size,
+            height: size,
+            child: appInfo.icon,
+          );
+        }
+      }
+
+      // For other file types or non-Android platforms
       String? appPath;
 
       // Check cache first
       if (_appPathCache.containsKey(extension)) {
         appPath = _appPathCache[extension];
       } else {
-        // Get the default application path for this extension
-        appPath = await WindowsAppIcon.getAssociatedAppPath(extension);
-        if (appPath != null && appPath.isNotEmpty) {
-          _appPathCache[extension] = appPath;
+        // Get the default application path for this extension (Windows only)
+        if (Platform.isWindows) {
+          appPath = await WindowsAppIcon.getAssociatedAppPath(extension);
+          if (appPath != null && appPath.isNotEmpty) {
+            _appPathCache[extension] = appPath;
+          }
         }
       }
 
@@ -132,6 +214,53 @@ class FileIconHelper {
   /// Clear the icon cache
   static void clearCache() {
     _iconCache.clear();
+  }
+
+  /// Clear cache for APK files specifically
+  static void clearApkCache() {
+    _iconCache.removeWhere((key, value) => key.contains('.apk_'));
+  }
+
+  /// Force refresh APK icon (bypass cache)
+  static Future<Widget> getApkIconForced(File file, {double size = 24}) async {
+    final String cacheKey = '${file.path}_$size';
+    _iconCache.remove(cacheKey); // Remove from cache first
+
+    print('APK_ICON_DEBUG: Force refreshing APK icon for: ${file.path}');
+    return await getIconForFile(file, size: size);
+  }
+
+  /// Test method to debug APK icon issues
+  static Future<void> debugApkIcons() async {
+    print('APK_ICON_DEBUG: === Starting APK Icon Debug ===');
+    print('APK_ICON_DEBUG: Cache size: ${_iconCache.length}');
+    print('APK_ICON_DEBUG: APK cache entries:');
+    _iconCache.forEach((key, value) {
+      if (key.contains('.apk')) {
+        print('APK_ICON_DEBUG:   $key -> ${value.runtimeType}');
+      }
+    });
+
+    // Clear all APK cache
+    clearApkCache();
+    print('APK_ICON_DEBUG: Cleared APK cache');
+    print('APK_ICON_DEBUG: New cache size: ${_iconCache.length}');
+
+    // Test creating a simple APK icon
+    print('APK_ICON_DEBUG: Testing simple APK icon creation...');
+    final testIcon = Icon(
+      EvaIcons.smartphoneOutline,
+      size: 24,
+      color: Colors.green,
+    );
+    print('APK_ICON_DEBUG: Test icon created: ${testIcon.runtimeType}');
+
+    // Force clear all cache
+    _iconCache.clear();
+    print('APK_ICON_DEBUG: Cleared ALL cache');
+    print('APK_ICON_DEBUG: Final cache size: ${_iconCache.length}');
+
+    print('APK_ICON_DEBUG: === End APK Icon Debug ===');
   }
 
   // Helper methods to identify file types using FileTypeUtils

@@ -3,6 +3,8 @@ package com.example.cb_file_manager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.PackageInfo
+import android.content.pm.ApplicationInfo
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -51,6 +53,14 @@ class MainActivity : FlutterActivity() {
                     val filePath = call.argument<String>("filePath") ?: ""
                     val extension = call.argument<String>("extension") ?: ""
                     result.success(getInstalledAppsForFile(filePath, extension))
+                }
+                "getApkInstalledAppInfo" -> {
+                    val filePath = call.argument<String>("filePath") ?: ""
+                    result.success(getApkInstalledAppInfo(filePath))
+                }
+                "testApkInfo" -> {
+                    val filePath = call.argument<String>("filePath") ?: ""
+                    result.success(testApkInfo(filePath))
                 }
                 "openFileWithApp" -> {
                     val filePath = call.argument<String>("filePath") ?: ""
@@ -299,7 +309,18 @@ class MainActivity : FlutterActivity() {
             "mp4" -> "video/mp4"
             "mp3" -> "audio/mp3"
             "txt" -> "text/plain"
-            else -> "*/*"
+            "apk" -> "application/vnd.android.package-archive"
+            "zip" -> "application/zip"
+            "rar" -> "application/x-rar-compressed"
+            "7z" -> "application/x-7z-compressed"
+            "tar" -> "application/x-tar"
+            "gz" -> "application/gzip"
+            "exe" -> "application/x-msdownload"
+            "deb" -> "application/x-debian-package"
+            "rpm" -> "application/x-rpm"
+            "ipa" -> "application/octet-stream"
+            "dmg" -> "application/x-apple-diskimage"
+            else -> "*/*"  // Generic fallback for all other file types
         }
     }
 
@@ -342,5 +363,131 @@ class MainActivity : FlutterActivity() {
             e.printStackTrace()
             return false
         }
+    }
+
+    private fun getApkInstalledAppInfo(filePath: String): Map<String, Any>? {
+        try {
+            val file = File(filePath)
+            if (!file.exists() || !filePath.lowercase().endsWith(".apk")) {
+                android.util.Log.d("APK_DEBUG", "File not found or not APK: $filePath")
+                return null
+            }
+
+            android.util.Log.d("APK_DEBUG", "Processing APK: $filePath")
+
+            // Get package info from APK file
+            val packageManager = packageManager
+            val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                packageManager.getPackageArchiveInfo(filePath, PackageManager.PackageInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                packageManager.getPackageArchiveInfo(filePath, 0)
+            }
+
+            if (packageInfo == null) {
+                android.util.Log.d("APK_DEBUG", "Cannot read package info from APK")
+                return null
+            }
+
+            val packageName = packageInfo.packageName
+            if (packageName.isNullOrEmpty()) {
+                android.util.Log.d("APK_DEBUG", "Package name is null or empty")
+                return null
+            }
+
+            android.util.Log.d("APK_DEBUG", "Package name: $packageName")
+
+            // Try to find the installed app with the same package name
+            return try {
+                val installedAppInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    packageManager.getApplicationInfo(packageName, PackageManager.ApplicationInfoFlags.of(0))
+                } else {
+                    @Suppress("DEPRECATION")
+                    packageManager.getApplicationInfo(packageName, 0)
+                }
+
+                val appName = packageManager.getApplicationLabel(installedAppInfo).toString()
+                val icon = packageManager.getApplicationIcon(installedAppInfo)
+
+                android.util.Log.d("APK_DEBUG", "Found installed app: $appName")
+
+                mapOf(
+                    "packageName" to packageName,
+                    "appName" to appName,
+                    "iconBytes" to drawableToByteArray(icon),
+                    "isInstalled" to true
+                )
+            } catch (e: Exception) {
+                // App is not installed, return APK info only
+                android.util.Log.d("APK_DEBUG", "App not installed, using APK info: ${e.message}")
+                
+                val appName = packageInfo.applicationInfo?.loadLabel(packageManager)?.toString() ?: packageName
+                val icon = try {
+                    packageInfo.applicationInfo?.loadIcon(packageManager) ?: packageManager.defaultActivityIcon
+                } catch (e2: Exception) {
+                    android.util.Log.d("APK_DEBUG", "Cannot load APK icon: ${e2.message}")
+                    packageManager.defaultActivityIcon
+                }
+
+                android.util.Log.d("APK_DEBUG", "Using APK info: $appName")
+
+                mapOf(
+                    "packageName" to packageName,
+                    "appName" to appName,
+                    "iconBytes" to drawableToByteArray(icon),
+                    "isInstalled" to false
+                )
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("APK_DEBUG", "Error processing APK: ${e.message}")
+            e.printStackTrace()
+            return null
+        }
+    }
+
+    private fun testApkInfo(filePath: String): Map<String, Any> {
+        val result = mutableMapOf<String, Any>()
+        
+        try {
+            val file = File(filePath)
+            result["fileExists"] = file.exists()
+            result["isApk"] = filePath.lowercase().endsWith(".apk")
+            result["fileSize"] = if (file.exists()) file.length() else 0
+            
+            if (file.exists() && filePath.lowercase().endsWith(".apk")) {
+                val packageManager = packageManager
+                val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    packageManager.getPackageArchiveInfo(filePath, PackageManager.PackageInfoFlags.of(0))
+                } else {
+                    @Suppress("DEPRECATION")
+                    packageManager.getPackageArchiveInfo(filePath, 0)
+                }
+                
+                result["canReadPackageInfo"] = packageInfo != null
+                if (packageInfo != null) {
+                    result["packageName"] = packageInfo.packageName ?: "null"
+                    result["appName"] = packageInfo.applicationInfo?.loadLabel(packageManager)?.toString() ?: "null"
+                    
+                    // Test if app is installed
+                    try {
+                        val installedAppInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            packageManager.getApplicationInfo(packageInfo.packageName, PackageManager.ApplicationInfoFlags.of(0))
+                        } else {
+                            @Suppress("DEPRECATION")
+                            packageManager.getApplicationInfo(packageInfo.packageName, 0)
+                        }
+                        result["isInstalled"] = true
+                        result["installedAppName"] = packageManager.getApplicationLabel(installedAppInfo).toString()
+                    } catch (e: Exception) {
+                        result["isInstalled"] = false
+                        result["installError"] = e.message ?: "Unknown error"
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            result["error"] = e.message ?: "Unknown error"
+        }
+        
+        return result
     }
 }

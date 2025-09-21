@@ -6,7 +6,7 @@ import 'package:cb_file_manager/helpers/core/filesystem_utils.dart';
 import 'package:win32/win32.dart' as win32;
 import 'package:ffi/ffi.dart';
 
-import '../tab_manager.dart';
+import '../core/tab_manager.dart';
 import '../../screens/folder_list/folder_list_bloc.dart';
 import '../../screens/folder_list/folder_list_event.dart';
 import '../../screens/folder_list/folder_list_state.dart';

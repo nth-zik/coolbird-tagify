@@ -437,7 +437,24 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
       } else if (path.startsWith('#network/')) {
         // For network files (SMB, FTP, etc)
         final thumbnailHelper = NetworkThumbnailHelper();
-        thumbPath = await thumbnailHelper.generateThumbnail(path, size: 256);
+        // Reduce work on mobile and limit concurrency
+        final bool isMobile = Platform.isAndroid || Platform.isIOS;
+        final int genSize = isMobile ? 128 : 256;
+        final int limit = isMobile ? 3 : _maxActiveLoaders;
+        if (_activeLoaders >= limit) {
+          // Back off briefly and retry via scheduler
+          await Future.delayed(const Duration(milliseconds: 120));
+        }
+        if (_activeLoaders >= limit) {
+          _scheduleLoad();
+          return;
+        }
+        _activeLoaders++;
+        try {
+          thumbPath = await thumbnailHelper.generateThumbnail(path, size: genSize);
+        } finally {
+          _activeLoaders--;
+        }
       }
 
       if (!_widgetMounted) return;
@@ -542,12 +559,14 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
 
       if (thumbnailPath != null && File(thumbnailPath).existsSync()) {
         // We have a thumbnail, display it
+        final bool isMobile = Platform.isAndroid || Platform.isIOS;
+        final filter = isMobile ? FilterQuality.medium : FilterQuality.high;
         return Image.file(
           File(thumbnailPath),
           width: widget.width,
           height: widget.height,
           fit: widget.fit,
-          filterQuality: FilterQuality.high,
+          filterQuality: filter,
           cacheWidth: widget.width.isInfinite ? null : widget.width.toInt(),
           cacheHeight: widget.height.isInfinite ? null : widget.height.toInt(),
           errorBuilder: (context, error, stackTrace) {
@@ -590,6 +609,13 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
       // No thumbnail yet, try to generate one
       if (!_cache.isGeneratingThumbnail(widget.filePath)) {
         _cache.markGeneratingThumbnail(widget.filePath);
+        final bool isMobile = Platform.isAndroid || Platform.isIOS;
+        final int limit = isMobile ? 3 : _maxActiveLoaders;
+        if (_activeLoaders >= limit) {
+          _cache.markThumbnailGenerated(widget.filePath);
+          _scheduleLoad();
+          return _buildFallbackWidget();
+        }
         _activeLoaders++;
 
         // Increment pending thumbnail count only when actually starting
@@ -599,10 +625,11 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
         );
 
         // Use NetworkThumbnailHelper to generate the thumbnail
+        final int genSize = (Platform.isAndroid || Platform.isIOS) ? 128 : 256;
         NetworkThumbnailHelper()
             .generateThumbnail(
               widget.filePath,
-              size: 256, // Larger size for better quality
+              size: genSize,
             )
             .timeout(const Duration(seconds: 8)) // Longer timeout for videos
             .then((path) {
@@ -687,12 +714,14 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
           _cache.cacheThumbnailPath(widget.filePath, thumbnailPath);
         }
 
+        final bool isMobile = Platform.isAndroid || Platform.isIOS;
+        final filter = isMobile ? FilterQuality.medium : FilterQuality.high;
         return Image.file(
           File(thumbnailPath),
           width: widget.width,
           height: widget.height,
           fit: widget.fit,
-          filterQuality: FilterQuality.high, // Tăng chất lượng lên high
+          filterQuality: filter, // Lower on mobile to reduce GPU cost
           cacheWidth: widget.width.isInfinite ? null : widget.width.toInt(),
           cacheHeight: widget.height.isInfinite ? null : widget.height.toInt(),
           errorBuilder: (context, error, stackTrace) {
@@ -722,6 +751,13 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
         // Trigger thumbnail generation if not already in progress
         if (!_cache.isGeneratingThumbnail(widget.filePath)) {
           _cache.markGeneratingThumbnail(widget.filePath);
+          final bool isMobile = Platform.isAndroid || Platform.isIOS;
+          final int limit = isMobile ? 3 : _maxActiveLoaders;
+          if (_activeLoaders >= limit) {
+            _cache.markThumbnailGenerated(widget.filePath);
+            _scheduleLoad();
+            return _buildFallbackWidget();
+          }
           _activeLoaders++;
 
           // Increment pending thumbnail count only when actually starting
@@ -730,8 +766,9 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
             ThumbnailLoader.pendingThumbnailCount,
           );
 
+          final int genSize = (Platform.isAndroid || Platform.isIOS) ? 128 : 256;
           NetworkThumbnailHelper()
-              .generateThumbnail(widget.filePath, size: 128)
+              .generateThumbnail(widget.filePath, size: genSize)
               .timeout(const Duration(seconds: 6))
               .then((path) {
             if (_widgetMounted && path != null) {
@@ -796,12 +833,14 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
     }
 
     // For local files, use the original logic
+    final bool isMobile = Platform.isAndroid || Platform.isIOS;
+    final filter = isMobile ? FilterQuality.medium : FilterQuality.high;
     return Image.file(
       File(widget.filePath),
       width: widget.width,
       height: widget.height,
       fit: widget.fit,
-      filterQuality: FilterQuality.high, // Tăng chất lượng lên high
+      filterQuality: filter, // Lower on mobile to reduce GPU cost
       cacheWidth: widget.width.isInfinite ? null : widget.width.toInt(),
       cacheHeight: widget.height.isInfinite ? null : widget.height.toInt(),
       errorBuilder: (context, error, stackTrace) {

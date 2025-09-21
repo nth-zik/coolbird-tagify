@@ -13,6 +13,7 @@ enum FileType {
   spreadsheet,
   presentation,
   text,
+  apk,
   unknown
 }
 
@@ -78,8 +79,23 @@ class FileTypeHelper {
       '.kt'
     ].contains(lowercaseExt)) {
       return FileType.code;
+    } else if (lowercaseExt == '.apk') {
+      return FileType.apk;
+    } else if ([
+      '.aab',
+      '.ipa',
+      '.exe',
+      '.msi',
+      '.deb',
+      '.rpm',
+      '.dmg',
+    ].contains(lowercaseExt)) {
+      // Add executable/app package formats
+      return FileType
+          .unknown; // We still categorize as unknown but they will be shown
     }
 
+    // Return unknown for ANY file extension, never hide files
     return FileType.unknown;
   }
 
@@ -106,6 +122,8 @@ class FileTypeHelper {
         return EvaIcons.monitorOutline;
       case FileType.text:
         return EvaIcons.textOutline;
+      case FileType.apk:
+        return EvaIcons.smartphoneOutline;
       case FileType.unknown:
       default:
         return EvaIcons.fileOutline;
@@ -135,6 +153,8 @@ class FileTypeHelper {
         return Colors.orange;
       case FileType.text:
         return Colors.blueGrey;
+      case FileType.apk:
+        return Colors.green;
       case FileType.unknown:
       default:
         return Colors.grey;

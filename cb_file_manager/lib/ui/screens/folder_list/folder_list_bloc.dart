@@ -10,6 +10,7 @@ import 'dart:async'; // Thêm import cho StreamSubscription
 import 'package:cb_file_manager/helpers/files/folder_sort_manager.dart';
 import 'package:cb_file_manager/models/database/database_manager.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
+import 'package:cb_file_manager/services/permission_state_service.dart';
 
 import 'folder_list_event.dart';
 import 'folder_list_state.dart';
@@ -182,6 +183,29 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
       final directory = Directory(event.path);
       if (await directory.exists()) {
         try {
+          // Debug: Check permission status
+          final permissionService = PermissionStateService.instance;
+          final hasPermission =
+              await permissionService.hasStorageOrPhotosPermission();
+          debugPrint('DEBUG: Storage permission status: $hasPermission');
+
+          // If no permission, try to request it
+          if (!hasPermission) {
+            debugPrint('DEBUG: No storage permission, requesting...');
+            final granted = await permissionService.requestStorageOrPhotos();
+            debugPrint('DEBUG: Permission request result: $granted');
+
+            // If still no permission, emit error state
+            if (!granted) {
+              emit(state.copyWith(
+                isLoading: false,
+                error:
+                    'Cần cấp quyền truy cập tất cả files để xem đầy đủ nội dung thư mục. Vui lòng vào Settings > Apps > CB File Manager > Permissions và bật "All files access".',
+              ));
+              return;
+            }
+          }
+
           // For mobile, add retry mechanism for directory listing
           List<FileSystemEntity> contents = [];
           int retryCount = 0;
@@ -207,18 +231,35 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
           final List<FileSystemEntity> folders = [];
           final List<FileSystemEntity> files = [];
 
+          debugPrint('DEBUG: Directory listing found ${contents.length} items');
+          debugPrint('DEBUG: Directory path: ${event.path}');
+
+          // Debug: Log all items first
+          for (var entity in contents) {
+            debugPrint(
+                'DEBUG: Raw item: ${entity.path} (${entity.runtimeType})');
+          }
+
           for (var entity in contents) {
             if (entity is Directory) {
               folders.add(entity);
+              debugPrint('DEBUG: Found folder: ${entity.path}');
             } else if (entity is File) {
+              debugPrint('DEBUG: Found file: ${entity.path}');
               // Skip tag files - no longer needed with global tags
               // Also skip hidden config files
               if (!entity.path.endsWith('.tags') &&
                   pathlib.basename(entity.path) != '.cbfile_config.json') {
                 files.add(entity);
+                debugPrint('DEBUG: Added file to list: ${entity.path}');
+              } else {
+                debugPrint('DEBUG: Skipped file (tag/config): ${entity.path}');
               }
             }
           }
+
+          debugPrint(
+              'DEBUG: Final result - ${folders.length} folders, ${files.length} files');
 
           // Load tags for all files
           Map<String, List<String>> fileTags = {};
@@ -258,17 +299,22 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
           );
 
           // Emit state with files and folders (sorting will be handled later)
-          emit(
-            state.copyWith(
-              isLoading: false,
-              folders: folders,
-              files: files,
-              fileTags: fileTags,
-              error: null, // Clear any previous errors
-              sortOption: folderSortOption ??
-                  state.sortOption, // Update the sort option if folder-specific
-            ),
+          final newState = state.copyWith(
+            isLoading: false,
+            folders: folders,
+            files: files,
+            fileTags: fileTags,
+            error: null, // Clear any previous errors
+            sortOption: folderSortOption ??
+                state.sortOption, // Update the sort option if folder-specific
           );
+
+          debugPrint(
+              'DEBUG: Emitting state with ${newState.files.length} files');
+          debugPrint('DEBUG: Current filter: ${newState.currentFilter}');
+          debugPrint('DEBUG: Filtered files: ${newState.filteredFiles.length}');
+
+          emit(newState);
 
           // Load all unique tags in this directory (async)
           add(LoadAllTags(event.path));

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -330,6 +331,9 @@ class _VideoPlayerState extends State<VideoPlayer> {
   bool _showControls = true;
   bool _showSpeedIndicator = false;
   bool _useFlutterVlc = false;
+
+  // Simplified loading state
+  String _loadingMessage = 'Loading...';
 
   // Seeking state to prevent loading indicator during seek
   bool _isSeeking = false;
@@ -766,6 +770,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
         _isLoading = true;
         _hasError = false;
         _errorMessage = '';
+        _loadingMessage = 'Loading...';
       });
 
       _initializationTimeout = Timer(const Duration(seconds: 30), () {
@@ -859,9 +864,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
 
     // Track buffering state - but ignore buffering during seek to prevent UI flicker
     _player!.stream.buffering.listen((buffering) {
-      // Only rebuild if value actually changes & not during seek
-      if (!mounted || _isSeeking) return;
-      if (_isLoading != buffering) {
+      if (!_isSeeking && mounted) {
         setState(() {
           _isLoading = buffering;
         });
@@ -1355,9 +1358,8 @@ class _VideoPlayerState extends State<VideoPlayer> {
   @override
   Widget build(BuildContext context) {
     // Determine the appropriate player widget
-    final Widget playerWidget = widget.file != null
-        ? _buildLocalFilePlayer()
-        : _buildStreamingPlayer();
+    final Widget playerWidget =
+        widget.file != null ? _buildLocalFilePlayer() : _buildStreamingPlayer();
     // Overlay a loading indicator when still initializing
     return Stack(
       children: [
@@ -1506,24 +1508,47 @@ class _VideoPlayerState extends State<VideoPlayer> {
       );
     } else if (_vlcController != null) {
       return RepaintBoundary(
-        child: FittedBox(
-          fit: boxFit,
-          child: VlcPlayer(
-            controller: _vlcController!,
-            aspectRatio:
-                16 / 9, // Default aspect ratio, will be overridden by FittedBox
-            placeholder: const Center(child: CircularProgressIndicator()),
-          ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Ensure we have valid constraints
+            if (constraints.maxWidth.isInfinite ||
+                constraints.maxHeight.isInfinite) {
+              return SizedBox(
+                width: 400,
+                height: 225,
+                child: VlcPlayer(
+                  controller: _vlcController!,
+                  aspectRatio: 16 / 9,
+                  placeholder: _buildVlcPlaceholder(),
+                ),
+              );
+            }
+
+            return FittedBox(
+              fit: boxFit,
+              child: SizedBox(
+                width: constraints.maxWidth,
+                height: constraints.maxHeight,
+                child: VlcPlayer(
+                  controller: _vlcController!,
+                  aspectRatio: 16 / 9,
+                  placeholder: _buildVlcPlaceholder(),
+                ),
+              ),
+            );
+          },
         ),
       );
     } else {
-      return const Center(child: CircularProgressIndicator());
+      // Show loading widget when VLC controller is not ready
+      return _buildLoadingWidget();
     }
   }
 
   Widget _buildVlcPlayer() {
     // Initialize VLC controller lazily for the active Android source type
     if (_vlcController == null) {
+      // Initialize VLC controller based on source type
       if (widget.smbMrl != null) {
         // SMB MRL with credentials support
         final original = widget.smbMrl!;
@@ -1597,6 +1622,9 @@ class _VideoPlayerState extends State<VideoPlayer> {
           }
         });
       }
+
+      // Show loading widget while VLC is initializing
+      return _buildLoadingWidget();
     }
 
     if (!_vlcListenerAttached) {
@@ -1688,12 +1716,37 @@ class _VideoPlayerState extends State<VideoPlayer> {
               if (_isFullScreen) _showControlsWithTimer();
             },
             onDoubleTap: _toggleFullScreen,
-            child: FittedBox(
-              fit: _getBoxFitFromString(_videoScaleMode),
-              child: VlcPlayer(
-                controller: _vlcController!,
-                aspectRatio: 16 / 9, // Default; FittedBox will scale
-                placeholder: const Center(child: CircularProgressIndicator()),
+            child: Container(
+              color: Colors.black,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Ensure we have valid constraints
+                  if (constraints.maxWidth.isInfinite ||
+                      constraints.maxHeight.isInfinite) {
+                    return SizedBox(
+                      width: 400,
+                      height: 225,
+                      child: VlcPlayer(
+                        controller: _vlcController!,
+                        aspectRatio: 16 / 9,
+                        placeholder: _buildVlcPlaceholder(),
+                      ),
+                    );
+                  }
+
+                  return FittedBox(
+                    fit: _getBoxFitFromString(_videoScaleMode),
+                    child: SizedBox(
+                      width: constraints.maxWidth,
+                      height: constraints.maxHeight,
+                      child: VlcPlayer(
+                        controller: _vlcController!,
+                        aspectRatio: 16 / 9,
+                        placeholder: _buildVlcPlaceholder(),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ),
@@ -1794,24 +1847,231 @@ class _VideoPlayerState extends State<VideoPlayer> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const CircularProgressIndicator(color: Colors.white),
-          const SizedBox(height: 16),
+          // Custom animated loading indicator
+          _buildAnimatedLoadingIndicator(),
+          const SizedBox(height: 24),
           Text(
-            'Loading media...',
-            style: Theme.of(context)
-                .textTheme
-                .bodyLarge
-                ?.copyWith(color: Colors.white),
+            _loadingMessage,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             widget.fileName,
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(color: Colors.white70),
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Colors.white70,
+                  fontWeight: FontWeight.w400,
+                ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 16),
+          // Loading progress dots
+          _buildLoadingDots(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAnimatedLoadingIndicator() {
+    // Simple white color for all loading states
+    Color primaryColor = Colors.white;
+    Color secondaryColor = Colors.white.withValues(alpha: 0.3);
+
+    return Container(
+      width: 80,
+      height: 80,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [
+            primaryColor.withValues(alpha: 0.1),
+            primaryColor.withValues(alpha: 0.05),
+          ],
+        ),
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Outer rotating ring
+          SizedBox(
+            width: 80,
+            height: 80,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              valueColor: AlwaysStoppedAnimation<Color>(secondaryColor),
+            ),
+          ),
+          // Inner pulsing circle
+          TweenAnimationBuilder<double>(
+            duration: const Duration(milliseconds: 1500),
+            tween: Tween(begin: 0.0, end: 1.0),
+            builder: (context, value, child) {
+              return Transform.scale(
+                scale:
+                    0.5 + (0.5 * (0.5 + 0.5 * math.sin(value * 2 * math.pi))),
+                child: Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: primaryColor.withValues(alpha: 0.8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: primaryColor.withValues(alpha: 0.3),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+            onEnd: () {
+              if (mounted) {
+                setState(() {});
+              }
+            },
+          ),
+          // Play icon in center
+          Icon(
+            Icons.play_arrow,
+            color: primaryColor.withValues(alpha: 0.9),
+            size: 24,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingDots() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(3, (index) {
+        return TweenAnimationBuilder<double>(
+          duration: const Duration(milliseconds: 600),
+          tween: Tween(begin: 0.0, end: 1.0),
+          builder: (context, value, child) {
+            final delay = index * 0.2;
+            final animationValue = (value - delay).clamp(0.0, 1.0);
+            final scale = 0.5 +
+                (0.5 * (0.5 + 0.5 * math.sin(animationValue * 2 * math.pi)));
+            final opacity = 0.3 +
+                (0.7 * (0.5 + 0.5 * math.sin(animationValue * 2 * math.pi)));
+
+            return Transform.scale(
+              scale: scale,
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: opacity),
+                ),
+              ),
+            );
+          },
+          onEnd: () {
+            if (mounted) {
+              setState(() {});
+            }
+          },
+        );
+      }),
+    );
+  }
+
+  Widget _buildVlcPlaceholder() {
+    return Container(
+      color: Colors.black,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // VLC-specific loading indicator
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    Colors.orange.withValues(alpha: 0.2),
+                    Colors.orange.withValues(alpha: 0.1),
+                  ],
+                ),
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // VLC-style loading ring
+                  SizedBox(
+                    width: 60,
+                    height: 60,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Colors.orange.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ),
+                  // VLC cone icon
+                  Icon(
+                    Icons.play_circle_outline,
+                    color: Colors.orange.withValues(alpha: 0.8),
+                    size: 20,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Loading...',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w400,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            // Simple loading dots for VLC
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(3, (index) {
+                return TweenAnimationBuilder<double>(
+                  duration: const Duration(milliseconds: 800),
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  builder: (context, value, child) {
+                    final delay = index * 0.3;
+                    final animationValue = (value - delay).clamp(0.0, 1.0);
+                    final opacity = 0.2 +
+                        (0.8 *
+                            (0.5 +
+                                0.5 * math.sin(animationValue * 2 * math.pi)));
+
+                    return Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.orange.withValues(alpha: opacity),
+                      ),
+                    );
+                  },
+                  onEnd: () {
+                    if (mounted) {
+                      setState(() {});
+                    }
+                  },
+                );
+              }),
+            ),
+          ],
+        ),
       ),
     );
   }

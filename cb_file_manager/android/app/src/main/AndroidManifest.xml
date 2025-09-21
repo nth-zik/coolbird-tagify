@@ -76,6 +76,7 @@
     <!-- Additional permissions for better file access -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

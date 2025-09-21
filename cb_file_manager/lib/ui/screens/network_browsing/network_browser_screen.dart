@@ -9,7 +9,7 @@ import 'package:flutter/gestures.dart'; // Import for mouse buttons
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/helpers/core/user_preferences.dart';
 import 'package:flutter/services.dart'; // Import for keyboard keys
-import 'package:cb_file_manager/ui/tab_manager/tab_manager.dart';
+import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
 import 'package:cb_file_manager/ui/utils/fluent_background.dart'; // Import the Fluent Design background
 
 // Import network browsing components
@@ -27,7 +27,7 @@ import 'package:cb_file_manager/bloc/selection/selection.dart';
 // Import tab manager components
 import 'package:cb_file_manager/ui/tab_manager/components/index.dart'
     as tab_components;
-import 'package:cb_file_manager/ui/tab_manager/tab_data.dart'; // Import TabData explicitly
+import 'package:cb_file_manager/ui/tab_manager/core/tab_data.dart'; // Import TabData explicitly
 
 // Add imports for hardware acceleration
 import 'package:flutter/rendering.dart' show RendererBinding;

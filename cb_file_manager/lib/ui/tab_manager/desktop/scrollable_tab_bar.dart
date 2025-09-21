@@ -5,7 +5,7 @@ import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:cb_file_manager/config/app_theme.dart'; // Import app theme
 import 'package:window_manager/window_manager.dart'; // Import window_manager
 import 'dart:io'; // Import dart:io for Platform check
-import '../components/common/window_caption_buttons.dart';
+import '../../components/common/window_caption_buttons.dart';
 
 /// A custom TabBar wrapper that translates vertical mouse wheel scrolling
 /// to horizontal scrolling of the tab bar, with modern styling.

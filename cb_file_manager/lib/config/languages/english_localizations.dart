@@ -504,4 +504,65 @@ class EnglishLocalizations implements AppLocalizations {
   String get create => 'Create';
   @override
   String get folderName => 'Folder Name';
+
+  // Permissions
+  @override
+  String get grantPermissionsToContinue => 'Grant Permissions to Continue';
+
+  @override
+  String get permissionsDescription =>
+      'To use the app smoothly, please grant the following permissions. You can skip and grant them later in Settings.';
+
+  @override
+  String get storagePhotosPermission => 'Storage/Photos Permission';
+
+  @override
+  String get storagePhotosDescription =>
+      'The app needs access to Photos/Files to display and play local content.';
+
+  @override
+  String get allFilesAccessPermission => 'All Files Access (Important)';
+
+  @override
+  String get allFilesAccessDescription =>
+      'This permission is needed to display all files including APKs, documents and other files in the Download folder.';
+
+  @override
+  String get installPackagesPermission => 'Install Packages (APK)';
+
+  @override
+  String get installPackagesDescription =>
+      'This permission is needed to open and install APK files through Package Installer.';
+
+  @override
+  String get localNetworkPermission => 'Local Network';
+
+  @override
+  String get localNetworkDescription =>
+      'Allows access to local network to browse SMB/NAS on the same network.';
+
+  @override
+  String get notificationsPermission => 'Notifications (Optional)';
+
+  @override
+  String get notificationsDescription =>
+      'Enable notifications to receive playback updates and background tasks.';
+
+  @override
+  String get grantAllPermissions => 'Grant All Permissions';
+
+  @override
+  String get grantingPermissions => 'Granting permissions...';
+
+  @override
+  String get enterApp => 'Enter App';
+
+  @override
+  String get skipEnterApp => 'Skip, Enter App';
+
+  @override
+  String get granted => 'Granted';
+
+  @override
+  String get grantPermission => 'Grant Permission';
 }

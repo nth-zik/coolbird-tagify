@@ -37,6 +37,21 @@ class PermissionStateService {
     return true;
   }
 
+  Future<bool> hasAllFilesAccessPermission() async {
+    if (Platform.isAndroid) {
+      try {
+        final manage = await Permission.manageExternalStorage.isGranted;
+        return manage;
+      } catch (e) {
+        debugPrint(
+            'Error checking Android manage external storage permission: $e');
+        return false;
+      }
+    }
+    // iOS doesn't have this permission
+    return true;
+  }
+
   Future<bool> hasLocalNetworkPermission() async {
     // Not directly supported by permission_handler; treat as granted.
     // iOS Local Network permission is declared via Info.plist and prompted by sockets.
@@ -50,6 +65,20 @@ class PermissionStateService {
     } catch (_) {
       return false;
     }
+  }
+
+  Future<bool> hasInstallPackagesPermission() async {
+    if (Platform.isAndroid) {
+      try {
+        final status = await Permission.requestInstallPackages.isGranted;
+        return status;
+      } catch (e) {
+        debugPrint('Error checking Android install packages permission: $e');
+        return false;
+      }
+    }
+    // iOS doesn't have this permission
+    return true;
   }
 
   Future<bool> requestStorageOrPhotos() async {
@@ -93,6 +122,26 @@ class PermissionStateService {
     return true;
   }
 
+  Future<bool> requestAllFilesAccess() async {
+    if (Platform.isAndroid) {
+      try {
+        final manage = await Permission.manageExternalStorage.request();
+        if (manage.isGranted) return true;
+
+        // If not granted, open settings for manual grant
+        await openAppSettings();
+        return false;
+      } catch (e) {
+        debugPrint(
+            'Error requesting Android manage external storage permission: $e');
+        await openAppSettings();
+        return false;
+      }
+    }
+    // iOS doesn't have this permission
+    return true;
+  }
+
   Future<bool> requestLocalNetwork() async {
     // No direct runtime request available; networking attempt will trigger prompt on iOS.
     return true;
@@ -105,5 +154,19 @@ class PermissionStateService {
     } catch (_) {
       return false;
     }
+  }
+
+  Future<bool> requestInstallPackages() async {
+    if (Platform.isAndroid) {
+      try {
+        final status = await Permission.requestInstallPackages.request();
+        return status.isGranted;
+      } catch (e) {
+        debugPrint('Error requesting Android install packages permission: $e');
+        return false;
+      }
+    }
+    // iOS doesn't have this permission
+    return true;
   }
 }

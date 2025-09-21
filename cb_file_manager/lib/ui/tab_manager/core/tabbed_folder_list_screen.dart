@@ -7,7 +7,7 @@ import 'package:cb_file_manager/helpers/ui/frame_timing_optimizer.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/image_gallery_screen.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/video_gallery_screen.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/image_viewer_screen.dart'; // Import the new ImageViewerScreen
-import '../components/common/shared_action_bar.dart';
+import '../../components/common/shared_action_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Add for HapticFeedback and keyboard keys
 // Add for scheduler bindings
@@ -19,22 +19,23 @@ import 'package:cb_file_manager/helpers/media/video_thumbnail_helper.dart'; // A
 import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart'; // Add import for ThumbnailLoader
 import 'package:cb_file_manager/ui/widgets/loading_skeleton.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
-import 'core/tab_manager.dart';
+import 'tab_manager.dart';
 import 'package:cb_file_manager/ui/utils/fluent_background.dart'; // Import the Fluent Design background
 
 // Import folder list components with explicit alias
-import '../screens/folder_list/folder_list_bloc.dart';
-import '../screens/folder_list/folder_list_event.dart';
-import '../screens/folder_list/folder_list_state.dart';
-import '../screens/folder_list/components/index.dart' as folder_list_components;
+import '../../screens/folder_list/folder_list_bloc.dart';
+import '../../screens/folder_list/folder_list_event.dart';
+import '../../screens/folder_list/folder_list_state.dart';
+import '../../screens/folder_list/components/index.dart'
+    as folder_list_components;
 
 // Import selection bloc
 import 'package:cb_file_manager/bloc/selection/selection.dart';
 
 // Import our new components with a clear namespace
-import 'components/index.dart' as tab_components;
-import 'components/address_bar_menu.dart';
-import 'core/tab_data.dart'; // Import TabData explicitly
+import '../components/index.dart' as tab_components;
+import '../components/address_bar_menu.dart';
+import 'tab_data.dart'; // Import TabData explicitly
 import 'package:cb_file_manager/ui/dialogs/open_with_dialog.dart';
 import 'package:cb_file_manager/helpers/files/external_app_helper.dart';
 import 'package:cb_file_manager/helpers/files/trash_manager.dart'; // Import for TrashManager
@@ -47,8 +48,8 @@ import 'package:flutter/foundation.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/helpers/files/folder_sort_manager.dart'; // Import for FolderSortManager
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
-import '../components/common/screen_scaffold.dart';
-import '../utils/route.dart';
+import '../../components/common/screen_scaffold.dart';
+import '../../utils/route.dart';
 
 // Add this class to cache thumbnails
 class ThumbnailCache {
@@ -950,23 +951,12 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
 
   // Centralized method to update path and reload folder contents
   void _updatePath(String newPath) {
-    debugPrint(
-        'UPDATE_PATH_DEBUG: _updatePath called with newPath: $newPath, currentPath: $_currentPath');
-
     if (_isHandlingPathUpdate) return; // Prevent recursive updates
 
     // Stop any ongoing thumbnail processing to prevent UI lag
     VideoThumbnailHelper.stopAllProcessing();
 
     _isHandlingPathUpdate = true;
-
-    // Clear SystemScreenRouter cache when transitioning from special path (#) to normal path
-    // This fixes the issue where switching from tag page to storage doesn't work
-    if (_currentPath.startsWith('#') && !newPath.startsWith('#')) {
-      SystemScreenRouter.clearWidgetCache(widget.tabId);
-      debugPrint(
-          'Cleared SystemScreenRouter cache for tab ${widget.tabId} when transitioning from ${_currentPath} to $newPath');
-    }
 
     setState(() {
       _currentPath = newPath;
@@ -1016,10 +1006,31 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint(
-        'BUILD_DEBUG: TabbedFolderListScreen build called for tab ${widget.tabId}, currentPath: $_currentPath');
+    // Always listen for tab path changes so we can switch between system and folder screens
+    return BlocProvider.value(
+      value: _selectionBloc,
+      child: BlocListener<TabManagerBloc, TabManagerState>(
+        listener: (context, tabManagerState) {
+          final currentTab = tabManagerState.tabs.firstWhere(
+            (tab) => tab.id == widget.tabId,
+            orElse: () => TabData(id: '', name: '', path: ''),
+          );
 
-    // If path is empty, show drive picker view
+          if (currentTab.id.isNotEmpty && currentTab.path != _currentPath) {
+            debugPrint(
+                'Tab path updated from $_currentPath to ${currentTab.path}');
+            _updatePath(currentTab.path);
+          }
+        },
+        child: _buildContentForCurrentPath(context),
+      ),
+    );
+  }
+
+  // Build appropriate content depending on current path. This keeps the tab listening
+  // active even when showing system screens like #tags.
+  Widget _buildContentForCurrentPath(BuildContext context) {
+    // Drive view (Windows only)
     if (_currentPath.isEmpty && Platform.isWindows) {
       return tab_components.DriveView(
         tabId: widget.tabId,
@@ -1030,63 +1041,26 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
             _pathController.text = path;
           });
         },
-        // Add handlers for mouse navigation buttons
         onBackButtonPressed: () => _handleMouseBackButton(),
         onForwardButtonPressed: () => _handleMouseForwardButton(),
-        // Pass the lazy loading flag
         isLazyLoading: _isLazyLoadingDrives,
       );
     }
 
-    // Check if the current path is a system path (starts with #)
-    if (_currentPath.startsWith('#')) {
-      // Special case: keep tag search on this screen to avoid routing recursion
-      if (_currentPath.startsWith('#search?tag=')) {
-        // Do not route; TabbedFolderListScreen handles global tag search itself
-      } else {
-        // Use SystemScreenRouter to handle other system paths like #tags, #tag:, #network/...
-        final systemWidget = SystemScreenRouter.routeSystemPath(
-            context, _currentPath, widget.tabId);
-        if (systemWidget != null) {
-          return systemWidget;
-        }
+    // Route system paths except the special inline tag-search variant
+    if (_currentPath.startsWith('#') &&
+        !_currentPath.startsWith('#search?tag=')) {
+      final systemWidget = SystemScreenRouter.routeSystemPath(
+          context, _currentPath, widget.tabId);
+      if (systemWidget != null) {
+        return systemWidget;
       }
     }
 
-    // Check if the current path is a network path (SMB, FTP, etc.)
+    // Folder/browser UI (default and for #search?tag=...)
     final bool isNetworkPath = _currentPath.startsWith('#network/');
 
-    // Add a BlocListener to actively listen for TabManagerBloc state changes
-    return BlocProvider.value(
-      value: _selectionBloc,
-      child: BlocListener<TabManagerBloc, TabManagerState>(
-        listener: (context, tabManagerState) {
-          debugPrint(
-              'BLOC_LISTENER_DEBUG: BlocListener triggered for tab ${widget.tabId}');
-          debugPrint(
-              'BLOC_LISTENER_DEBUG: Current state has ${tabManagerState.tabs.length} tabs');
-
-          // Find the current tab data
-          final currentTab = tabManagerState.tabs.firstWhere(
-            (tab) => tab.id == widget.tabId,
-            orElse: () => TabData(id: '', name: '', path: ''),
-          );
-
-          debugPrint(
-              'BLOC_LISTENER_DEBUG: Found tab: ${currentTab.id}, path: ${currentTab.path}, currentPath: $_currentPath');
-
-          // If the tab's path has changed and is different from our current path, update it
-          if (currentTab.id.isNotEmpty && currentTab.path != _currentPath) {
-            debugPrint(
-                'Tab path updated from $_currentPath to ${currentTab.path}');
-            // Use updatePath method to update our state and folder list
-            _updatePath(currentTab.path);
-          } else {
-            debugPrint(
-                'BLOC_LISTENER_DEBUG: No path change detected or tab not found');
-          }
-        },
-        child: PopScope(
+    return PopScope(
           canPop: false,
           onPopInvokedWithResult: (didPop, result) async {
             debugPrint(
@@ -1167,9 +1141,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
               ),
             ),
           ),
-        ),
-      ),
-    );
+        );
   }
 
   // New helper method that builds the UI with selection state from BLoC
@@ -1309,14 +1281,16 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
           : LoadingSkeleton.list(itemCount: 12);
 
       return FluentBackground.container(
-        context: context,
+                                  context: context,
+                                  enableBlur: isDesktopPlatform,
         child: skeleton,
       );
     }
 
     if (state.error != null) {
       return FluentBackground.container(
-        context: context,
+                                  context: context,
+                                  enableBlur: isDesktopPlatform,
         padding: const EdgeInsets.all(24.0),
         blurAmount: 5.0,
         child: tab_components.ErrorView(
@@ -1507,7 +1481,8 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
     // Empty directory check
     if (state.folders.isEmpty && state.files.isEmpty) {
       return FluentBackground.container(
-        context: context,
+                                  context: context,
+                                  enableBlur: isDesktopPlatform,
         child: Center(
           child: Text(AppLocalizations.of(context)!.emptyFolder,
               style: TextStyle(fontSize: 18)),
@@ -1627,7 +1602,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
         FluentBackground(
           blurAmount: 8.0,
           opacity: 0.2, // Very subtle background effect
-          enableBlur: true,
+          enableBlur: isDesktopPlatform,
           child: BlocBuilder<SelectionBloc, SelectionState>(
             builder: (context, selectionState) {
               // Access selection state directly from BLoC
@@ -1690,6 +1665,9 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                       physics: const ClampingScrollPhysics(),
                       // Enhanced caching for better scroll performance
                       cacheExtent: 1500,
+                      addAutomaticKeepAlives: false,
+                      addRepaintBoundaries: true,
+                      addSemanticIndexes: false,
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: state.gridZoomLevel,
                         crossAxisSpacing: 8,
@@ -1710,7 +1688,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                         // Wrap with LayoutBuilder to capture item positions
                         return LayoutBuilder(builder:
                             (BuildContext context, BoxConstraints constraints) {
-                          // Register item position code...
+                          if (isDesktopPlatform) {
                           WidgetsBinding.instance.addPostFrameCallback((_) {
                             try {
                               final RenderBox? renderBox =
@@ -1733,6 +1711,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                               debugPrint('Layout error in grid view: $e');
                             }
                           });
+                          }
 
                           if (index < state.folders.length) {
                             final folder = state.folders[index] as Directory;
@@ -1741,6 +1720,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                               child: RepaintBoundary(
                                 child: FluentBackground.container(
                                   context: context,
+                                  enableBlur: isDesktopPlatform,
                                   padding: EdgeInsets.zero,
                                   blurAmount: 5.0,
                                   opacity: isSelected ? 0.8 : 0.6,
@@ -1776,6 +1756,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                               child: RepaintBoundary(
                                 child: FluentBackground.container(
                                   context: context,
+                                  enableBlur: isDesktopPlatform,
                                   padding: EdgeInsets.zero,
                                   blurAmount: 5.0,
                                   opacity: isSelected ? 0.8 : 0.6,
@@ -1831,7 +1812,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
         FluentBackground(
           blurAmount: 8.0,
           opacity: 0.2, // Very subtle background effect
-          enableBlur: true,
+          enableBlur: isDesktopPlatform,
           child: BlocBuilder<SelectionBloc, SelectionState>(
             builder: (context, selectionState) {
               return GestureDetector(
@@ -1901,7 +1882,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
         FluentBackground(
           blurAmount: 8.0,
           opacity: 0.2, // Very subtle background effect
-          enableBlur: true,
+          enableBlur: isDesktopPlatform,
           child: BlocBuilder<SelectionBloc, SelectionState>(
             builder: (context, selectionState) {
               return GestureDetector(
@@ -1938,6 +1919,9 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                     physics: const ClampingScrollPhysics(),
                     // Enhanced caching for better scroll performance
                     cacheExtent: 800,
+                    addAutomaticKeepAlives: false,
+                    addRepaintBoundaries: true,
+                    addSemanticIndexes: false,
                     itemCount: state.folders.length + state.files.length,
                     itemBuilder: (context, index) {
                       // Get path for this item
@@ -1952,7 +1936,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                       // Wrap with LayoutBuilder to capture item positions
                       return LayoutBuilder(builder:
                           (BuildContext context, BoxConstraints constraints) {
-                        // Register item position code...
+                        if (isDesktopPlatform) {
                         WidgetsBinding.instance.addPostFrameCallback((_) {
                           try {
                             final RenderBox? renderBox =
@@ -1975,12 +1959,14 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                             debugPrint('Layout error in grid view: $e');
                           }
                         });
+                        }
 
                         if (index < state.folders.length) {
                           final folder = state.folders[index] as Directory;
                           return KeyedSubtree(
                             key: ValueKey("folder-${folder.path}"),
                             child: FluentBackground(
+                              enableBlur: isDesktopPlatform,
                               blurAmount: 3.0,
                               opacity: isSelected
                                   ? 0.7
@@ -2012,6 +1998,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                           return KeyedSubtree(
                             key: ValueKey("file-${file.path}"),
                             child: FluentBackground(
+                              enableBlur: isDesktopPlatform,
                               blurAmount: 3.0,
                               opacity: isSelected
                                   ? 0.7
@@ -2771,3 +2758,4 @@ class SelectionRectanglePainter extends CustomPainter {
         oldDelegate.borderColor != borderColor;
   }
 }
+

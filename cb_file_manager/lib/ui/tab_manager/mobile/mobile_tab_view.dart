@@ -3,17 +3,17 @@ import 'package:flutter/services.dart'; // Thêm import cho SystemUiOverlayStyle
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:io'; // Thêm import cho Platform
 import 'package:eva_icons_flutter/eva_icons_flutter.dart'; // Import Eva Icons
-import 'core/tab_manager.dart';
-import 'core/tab_data.dart';
-import '../screens/settings/settings_screen.dart';
-import 'tabbed_folder_list_screen.dart';
-import '../screens/network_browsing/network_connection_screen.dart';
-import '../screens/network_browsing/network_browser_screen.dart';
-import '../screens/network_browsing/smb_browser_screen.dart'; // Added import for SMBBrowserScreen
-import '../../bloc/network_browsing/network_browsing_bloc.dart';
-import '../utils/route.dart';
+import '../core/tab_manager.dart';
+import '../core/tab_data.dart';
+import '../../screens/settings/settings_screen.dart';
+import '../core/tabbed_folder_list_screen.dart';
+import '../../screens/network_browsing/network_connection_screen.dart';
+import '../../screens/network_browsing/network_browser_screen.dart';
+import '../../screens/network_browsing/smb_browser_screen.dart'; // Added import for SMBBrowserScreen
+import '../../../bloc/network_browsing/network_browsing_bloc.dart';
+import '../../utils/route.dart';
 import 'package:cb_file_manager/ui/state/video_ui_state.dart';
-import 'screen_menu_registry.dart';
+import '../shared/screen_menu_registry.dart';
 
 /// Giao diện kiểu Chrome cho thiết bị di động, hiển thị thanh địa chỉ ở trên
 /// và một nút hiển thị số lượng tab bên cạnh

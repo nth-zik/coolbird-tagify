@@ -155,6 +155,19 @@ class StreamingHelper {
       debugPrint('StreamingHelper: File extension: $fileExtension');
       debugPrint('StreamingHelper: File type: $fileType');
 
+      // Check immediately if this is an unsupported file type and return early
+      // to avoid lag on mobile
+      if (fileType == FileType.unknown ||
+          (!canStreamFile(remotePath) && !isDocumentFile(remotePath))) {
+        debugPrint(
+            'StreamingHelper: Unsupported file type detected, showing options dialog immediately');
+        return FileOpenResult(
+          success: true,
+          requiresUserChoice: true,
+          fileType: fileType,
+        );
+      }
+
       // Handle FTP by downloading to a temp file and opening with system default app
       if (service.serviceName == 'FTP') {
         try {
@@ -701,12 +714,19 @@ class StreamingHelper {
   ) async {
     if (!context.mounted) return;
 
+    // Extract file extension for better messaging
+    final fileExtension = p.extension(fileName).toLowerCase();
+    final fileTypeString = fileExtension.isNotEmpty
+        ? fileExtension.substring(1).toUpperCase()
+        : "This";
+
     await showDialog(
       context: context,
+      barrierDismissible: true,
       builder: (context) => AlertDialog(
-        title: Text('Open File: $fileName'),
-        content: const Text(
-          'This file type is not directly supported for streaming. What would you like to do?',
+        title: Text('Open $fileTypeString File'),
+        content: Text(
+          '$fileTypeString file type is not directly supported for streaming. Do you want to download it to your device?',
         ),
         actions: [
           TextButton(
@@ -839,5 +859,13 @@ class StreamingHelper {
   /// Kiểm tra xem có thể streaming file không
   bool canStreamFileWithService(String filePath) {
     return _currentNetworkService != null && canStreamFile(filePath);
+  }
+
+  /// Kiểm tra xem file có phải là document không
+  bool isDocumentFile(String filePath) {
+    return FileTypeUtils.isDocumentFile(filePath) ||
+        FileTypeUtils.isSpreadsheetFile(filePath) ||
+        FileTypeUtils.isPresentationFile(filePath) ||
+        filePath.toLowerCase().endsWith('.pdf');
   }
 }
