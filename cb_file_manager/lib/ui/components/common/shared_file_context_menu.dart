@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import '../../screens/folder_list/file_details_screen.dart';
 import '../../screens/media_gallery/video_gallery_screen.dart';
 import '../../screens/media_gallery/image_viewer_screen.dart';
@@ -88,10 +88,10 @@ class SharedFileContextMenu extends StatelessWidget {
             children: [
               Icon(
                 isVideo
-                    ? EvaIcons.videoOutline
+                    ? remix.Remix.video_line
                     : isImage
-                        ? EvaIcons.imageOutline
-                        : EvaIcons.fileOutline,
+                        ? remix.Remix.image_line
+                        : remix.Remix.file_3_line,
                 color: isVideo
                     ? Colors.red
                     : isImage
@@ -118,7 +118,7 @@ class SharedFileContextMenu extends StatelessWidget {
                       Row(
                         children: [
                           if (webDavSize != null) ...[
-                            const Icon(Icons.storage, size: 14),
+                            Icon(remix.Remix.hard_drive_2_line, size: 14),
                             const SizedBox(width: 4),
                             Text(webDavSize,
                                 style: TextStyle(
@@ -129,7 +129,7 @@ class SharedFileContextMenu extends StatelessWidget {
                           ],
                           if (webDavModified != null) ...[
                             const SizedBox(width: 12),
-                            const Icon(Icons.event, size: 14),
+                            Icon(remix.Remix.calendar_event_line, size: 14),
                             const SizedBox(width: 4),
                             Text(webDavModified,
                                 style: TextStyle(
@@ -145,7 +145,7 @@ class SharedFileContextMenu extends StatelessWidget {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.close),
+                icon: Icon(remix.Remix.close_line),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
@@ -155,7 +155,8 @@ class SharedFileContextMenu extends StatelessWidget {
         // Actions
         if (isVideo)
           ListTile(
-            leading: const Icon(EvaIcons.playCircleOutline, color: Colors.red),
+            leading:
+                const Icon(remix.Remix.play_circle_line, color: Colors.red),
             title: Text(
               'Play Video',
               style:
@@ -174,7 +175,7 @@ class SharedFileContextMenu extends StatelessWidget {
 
         if (isImage)
           ListTile(
-            leading: const Icon(EvaIcons.imageOutline, color: Colors.blue),
+            leading: const Icon(remix.Remix.image_line, color: Colors.blue),
             title: Text(
               'View Image',
               style:
@@ -192,7 +193,7 @@ class SharedFileContextMenu extends StatelessWidget {
           ),
 
         ListTile(
-          leading: const Icon(EvaIcons.eyeOutline),
+          leading: const Icon(remix.Remix.eye_line),
           title: Text(
             'Open File',
             style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
@@ -204,7 +205,7 @@ class SharedFileContextMenu extends StatelessWidget {
         ),
 
         ListTile(
-          leading: const Icon(EvaIcons.externalLinkOutline),
+          leading: const Icon(remix.Remix.external_link_line),
           title: Text(
             'Open With...',
             style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
@@ -221,7 +222,7 @@ class SharedFileContextMenu extends StatelessWidget {
         if ((currentService is WebDAVService || currentService is FTPService) &&
             remotePath != null)
           ListTile(
-            leading: const Icon(Icons.download, color: Colors.blue),
+            leading: Icon(remix.Remix.download_line, color: Colors.blue),
             title: Text(
               'Download',
               style:
@@ -257,7 +258,7 @@ class SharedFileContextMenu extends StatelessWidget {
 
         // Copy option
         ListTile(
-          leading: const Icon(EvaIcons.copyOutline),
+          leading: const Icon(remix.Remix.file_copy_line),
           title: Text(
             'Copy',
             style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
@@ -275,7 +276,7 @@ class SharedFileContextMenu extends StatelessWidget {
 
         // Cut option
         ListTile(
-          leading: const Icon(Icons.content_cut),
+          leading: Icon(remix.Remix.scissors_cut_line),
           title: Text(
             'Cut',
             style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
@@ -292,7 +293,7 @@ class SharedFileContextMenu extends StatelessWidget {
 
         // Rename option
         ListTile(
-          leading: const Icon(EvaIcons.editOutline),
+          leading: const Icon(remix.Remix.edit_line),
           title: Text(
             'Rename',
             style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
@@ -305,7 +306,7 @@ class SharedFileContextMenu extends StatelessWidget {
 
         // Tag management option - always show
         ListTile(
-          leading: const Icon(EvaIcons.bookmarkOutline, color: Colors.green),
+          leading: const Icon(remix.Remix.bookmark_line, color: Colors.green),
           title: Text(
             'Manage Tags',
             style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
@@ -322,7 +323,7 @@ class SharedFileContextMenu extends StatelessWidget {
 
         // File details
         ListTile(
-          leading: const Icon(EvaIcons.infoOutline),
+          leading: const Icon(remix.Remix.information_line),
           title: Text(
             'Properties',
             style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
@@ -340,7 +341,7 @@ class SharedFileContextMenu extends StatelessWidget {
 
         // Move to trash
         ListTile(
-          leading: const Icon(EvaIcons.trash2Outline, color: Colors.red),
+          leading: const Icon(remix.Remix.delete_bin_2_line, color: Colors.red),
           title: const Text(
             'Move to Trash',
             style: TextStyle(color: Colors.red),
@@ -522,7 +523,7 @@ class SharedFolderContextMenu extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(Icons.folder, color: Colors.amber[700]),
+              Icon(remix.Remix.folder_line, color: Colors.amber[700]),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -536,7 +537,7 @@ class SharedFolderContextMenu extends StatelessWidget {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.close),
+                icon: Icon(remix.Remix.close_line),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
@@ -545,7 +546,7 @@ class SharedFolderContextMenu extends StatelessWidget {
 
         // Action items
         ListTile(
-          leading: Icon(Icons.folder_open_outlined,
+          leading: Icon(remix.Remix.folder_open_line,
               color: isDarkMode ? Colors.white70 : Colors.black87),
           title: Text(
             'Open Folder',
@@ -567,7 +568,7 @@ class SharedFolderContextMenu extends StatelessWidget {
 
         // Copy option for folder
         ListTile(
-          leading: Icon(EvaIcons.copyOutline,
+          leading: Icon(remix.Remix.file_copy_line,
               color: isDarkMode ? Colors.white70 : Colors.black87),
           title: Text(
             'Copy',
@@ -586,7 +587,7 @@ class SharedFolderContextMenu extends StatelessWidget {
 
         // Cut option for folder
         ListTile(
-          leading: Icon(Icons.content_cut,
+          leading: Icon(remix.Remix.scissors_cut_line,
               color: isDarkMode ? Colors.white70 : Colors.black87),
           title: Text(
             'Cut',
@@ -605,7 +606,7 @@ class SharedFolderContextMenu extends StatelessWidget {
 
         // Paste option for folder (if there's something in clipboard)
         ListTile(
-          leading: Icon(Icons.content_paste,
+          leading: Icon(remix.Remix.clipboard_line,
               color: isDarkMode ? Colors.white70 : Colors.black87),
           title: Text(
             'Paste Here',
@@ -623,7 +624,7 @@ class SharedFolderContextMenu extends StatelessWidget {
 
         // Rename option for folder
         ListTile(
-          leading: Icon(EvaIcons.editOutline,
+          leading: Icon(remix.Remix.edit_line,
               color: isDarkMode ? Colors.white70 : Colors.black87),
           title: Text(
             'Rename',
@@ -637,7 +638,7 @@ class SharedFolderContextMenu extends StatelessWidget {
 
         // Tag management option
         ListTile(
-          leading: Icon(EvaIcons.bookmarkOutline, color: Colors.green),
+          leading: Icon(remix.Remix.bookmark_line, color: Colors.green),
           title: Text(
             'Manage Tags',
             style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
@@ -650,7 +651,7 @@ class SharedFolderContextMenu extends StatelessWidget {
 
         // Properties
         ListTile(
-          leading: Icon(Icons.info_outline,
+          leading: Icon(remix.Remix.information_line,
               color: isDarkMode ? Colors.white70 : Colors.black87),
           title: Text(
             'Properties',

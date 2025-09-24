@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as pathlib;
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:cb_file_manager/helpers/ui/frame_timing_optimizer.dart';
 import '../../components/video/thumbnail_strip.dart';
 import 'package:cb_file_manager/helpers/files/trash_manager.dart';
@@ -489,8 +489,8 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                     IconButton(
                       icon: Icon(
                         _showThumbnailStrip
-                            ? EvaIcons.gridOutline
-                            : EvaIcons.grid,
+                            ? remix.Remix.grid_line
+                            : remix.Remix.grid_line,
                         size: 22,
                       ),
                       tooltip: _showThumbnailStrip
@@ -500,7 +500,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                     ),
                     // Nút chỉnh sửa ảnh
                     IconButton(
-                      icon: const Icon(EvaIcons.editOutline, size: 22),
+                      icon: const Icon(remix.Remix.edit_line, size: 22),
                       tooltip: 'Edit image',
                       onPressed: _toggleEditMode,
                     ),
@@ -715,7 +715,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       IconButton(
-                        icon: const Icon(EvaIcons.refreshOutline, size: 22),
+                        icon: const Icon(remix.Remix.refresh_line, size: 22),
                         tooltip: 'Rotate',
                         color: Colors.white,
                         padding: const EdgeInsets.all(8),
@@ -724,7 +724,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                         onPressed: _rotateImage,
                       ),
                       IconButton(
-                        icon: const Icon(EvaIcons.shareOutline, size: 22),
+                        icon: const Icon(remix.Remix.share_line, size: 22),
                         tooltip: 'Share',
                         color: Colors.white,
                         padding: const EdgeInsets.all(8),
@@ -732,7 +732,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                         onPressed: _shareImage,
                       ),
                       IconButton(
-                        icon: const Icon(EvaIcons.trashOutline, size: 22),
+                        icon: const Icon(remix.Remix.delete_bin_line, size: 22),
                         tooltip: 'Delete',
                         color: Colors.white,
                         padding: const EdgeInsets.all(8),
@@ -740,7 +740,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                         onPressed: () => _deleteImage(context),
                       ),
                       IconButton(
-                        icon: const Icon(EvaIcons.infoOutline, size: 22),
+                        icon: const Icon(remix.Remix.information_line, size: 22),
                         tooltip: 'Info',
                         color: Colors.white,
                         padding: const EdgeInsets.all(8),
@@ -751,7 +751,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                       // Thêm nút chuyển chế độ toàn màn hình
                       IconButton(
                         icon: Icon(
-                          _isFullscreen ? EvaIcons.minimize : EvaIcons.maximize,
+                          _isFullscreen ? remix.Remix.fullscreen_exit_line : remix.Remix.fullscreen_line,
                           size: 22,
                         ),
                         tooltip:
@@ -786,7 +786,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                               }
                             : null,
                         child: Icon(
-                          EvaIcons.arrowIosBack,
+                          remix.Remix.arrow_left_s_line,
                           color: _currentIndex > 0 ? Colors.white : Colors.grey,
                           size: 20,
                         ),
@@ -807,7 +807,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                               }
                             : null,
                         child: Icon(
-                          EvaIcons.arrowIosForward,
+                          remix.Remix.arrow_right_s_line,
                           color: _currentIndex < _allImages.length - 1
                               ? Colors.white
                               : Colors.grey,
@@ -910,7 +910,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                   // Brightness slider
                   Row(
                     children: [
-                      const Icon(EvaIcons.sun, color: Colors.white, size: 20),
+                      const Icon(remix.Remix.sun_line, color: Colors.white, size: 20),
                       const SizedBox(width: 16),
                       Expanded(
                         child: Slider(
@@ -931,7 +931,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                   // Contrast slider
                   Row(
                     children: [
-                      const Icon(EvaIcons.colorPaletteOutline,
+                      const Icon(remix.Remix.palette_line,
                           color: Colors.white, size: 20),
                       const SizedBox(width: 16),
                       Expanded(
@@ -967,7 +967,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                               horizontal: 12, vertical: 8),
                           minimumSize: const Size(100, 36),
                         ),
-                        icon: const Icon(EvaIcons.refreshOutline, size: 18),
+                        icon: const Icon(remix.Remix.refresh_line, size: 18),
                         label: const Text('Reset'),
                       ),
                       const SizedBox(width: 16),
@@ -987,7 +987,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                               horizontal: 12, vertical: 8),
                           minimumSize: const Size(100, 36),
                         ),
-                        icon: const Icon(EvaIcons.saveOutline, size: 18),
+                        icon: const Icon(remix.Remix.save_3_line, size: 18),
                         label: const Text('Save Copy'),
                       ),
                     ],

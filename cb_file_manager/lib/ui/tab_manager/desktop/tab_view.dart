@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
+import 'package:cb_file_manager/config/translation_helper.dart';
 import '../core/tab_manager.dart';
 import '../core/tab_data.dart';
 import '../core/tabbed_folder_list_screen.dart';
@@ -40,7 +41,7 @@ class TabView extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(
-            EvaIcons.fileOutline,
+            remix.Remix.file_3_line,
             size: 64,
             color: Colors.grey,
           ),
@@ -50,14 +51,14 @@ class TabView extends StatelessWidget {
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Open a new tab to get started',
-            style: TextStyle(color: Colors.grey),
+          Text(
+            context.tr.openNewTabToStart,
+            style: const TextStyle(color: Colors.grey),
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
-            icon: const Icon(EvaIcons.plus),
-            label: const Text('New Tab'),
+            icon: const Icon(remix.Remix.add_line),
+            label: Text(context.tr.newTabButton),
             onPressed: () => onAddNewTab?.call(),
           ),
         ],
@@ -92,8 +93,8 @@ class TabView extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: const Icon(EvaIcons.plus),
-            tooltip: 'New Tab',
+            icon: const Icon(remix.Remix.add_line),
+            tooltip: context.tr.newTabButton,
             onPressed: () => onAddNewTab?.call(),
           ),
         ],
@@ -124,7 +125,7 @@ class TabView extends StatelessWidget {
         child: Row(
           children: [
             Icon(
-              tab.isPinned ? EvaIcons.pinOutline : tab.icon,
+              tab.isPinned ? remix.Remix.pushpin_line : tab.icon,
               size: 16,
               color: isActive
                   ? Theme.of(context).primaryColor
@@ -146,7 +147,7 @@ class TabView extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               child: const Padding(
                 padding: EdgeInsets.all(4.0),
-                child: Icon(EvaIcons.close, size: 14),
+                child: Icon(remix.Remix.close_line, size: 14),
               ),
             ),
           ],

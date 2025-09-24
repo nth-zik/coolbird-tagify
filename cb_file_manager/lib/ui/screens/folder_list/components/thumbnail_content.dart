@@ -31,36 +31,27 @@ class ThumbnailContent extends StatelessWidget {
         Expanded(
           child: Padding(
             padding: const EdgeInsets.all(8.0),
-            child: ThumbnailLoader(
-              key: ValueKey('thumb-loader-${file.path}'),
-              filePath: file.path,
-              isVideo: isVideo,
-              isImage: isImage,
-              width: double.infinity,
-              height: double.infinity,
-              fit: BoxFit.contain,
-              isPriority: true,
-              borderRadius: BorderRadius.circular(8.0),
-              showLoadingIndicator: false, // Disable spinner to reduce lag
-              fallbackBuilder: () => Icon(
-                icon,
-                size: iconSize,
-                color: Theme.of(context).colorScheme.secondary,
+            child: RepaintBoundary(
+              child: ThumbnailLoader(
+                key: ValueKey('thumb-loader-${file.path}'),
+                filePath: file.path,
+                isVideo: isVideo,
+                isImage: isImage,
+                width: double.infinity,
+                height: double.infinity,
+                fit: BoxFit.contain,
+                isPriority: true,
+                borderRadius: BorderRadius.circular(8.0),
+                showLoadingIndicator: true, // Re-enable skeleton loading
+                fallbackBuilder: () => Icon(
+                  icon,
+                  size: iconSize,
+                  color: Theme.of(context).colorScheme.secondary,
+                ),
               ),
             ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4.0),
-          child: Text(
-            p.basename(file.path),
-            style: Theme.of(context).textTheme.bodySmall,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
-        ),
-        const SizedBox(height: 4),
       ],
     );
   }

@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import '../core/tab_manager.dart';
 import 'address_bar_menu.dart';
 
@@ -208,7 +208,7 @@ class _PathNavigationBarState extends State<PathNavigationBar> {
     return Row(
       children: [
         IconButton(
-          icon: const Icon(EvaIcons.arrowBack),
+          icon: const Icon(remix.Remix.arrow_left_line),
           onPressed: _canNavigateBack
               ? () => BlocProvider.of<TabManagerBloc>(context)
                   .backNavigationToPath(widget.tabId)
@@ -216,7 +216,7 @@ class _PathNavigationBarState extends State<PathNavigationBar> {
           tooltip: 'Go back',
         ),
         IconButton(
-          icon: const Icon(EvaIcons.arrowForward),
+          icon: const Icon(remix.Remix.arrow_right_line),
           onPressed: _canNavigateForward
               ? () => BlocProvider.of<TabManagerBloc>(context)
                   .forwardNavigationToPath(widget.tabId)
@@ -226,7 +226,7 @@ class _PathNavigationBarState extends State<PathNavigationBar> {
 
         // Special display for network paths
         if (widget.isNetworkPath) ...[
-          const Icon(EvaIcons.wifi),
+          const Icon(remix.Remix.wifi_line),
           const SizedBox(width: 8),
           Expanded(
             child: Text(

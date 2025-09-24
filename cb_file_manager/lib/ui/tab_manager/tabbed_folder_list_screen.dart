@@ -14,7 +14,7 @@ import 'package:flutter/services.dart'; // Add for HapticFeedback and keyboard k
 import 'package:flutter/gestures.dart'; // Import for mouse buttons
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/helpers/core/user_preferences.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:cb_file_manager/helpers/media/video_thumbnail_helper.dart'; // Add import for VideoThumbnailHelper
 import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart'; // Add import for ThumbnailLoader
 import 'package:cb_file_manager/ui/widgets/loading_skeleton.dart';
@@ -711,13 +711,13 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   ListTile(
-                    leading: Icon(EvaIcons.search),
+                    leading: Icon(remix.Remix.search_line),
                     title: Text('Tìm kiếm theo tên'),
                     subtitle: Text('Gõ từ khóa để tìm tệp theo tên'),
                   ),
                   Divider(),
                   ListTile(
-                    leading: Icon(EvaIcons.shoppingBag),
+                    leading: Icon(remix.Remix.shopping_bag_3_line),
                     title: Text('Tìm kiếm theo tag'),
                     subtitle: Text('Gõ # và tên tag (ví dụ: #important)'),
                   ),
@@ -1258,7 +1258,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                   tab_components.showBatchAddTagDialog(
                       context, selectionState.selectedFilePaths.toList());
                 },
-                child: const Icon(EvaIcons.shoppingBag),
+                child: const Icon(remix.Remix.shopping_bag_3_line),
               ),
         showAppBar: widget.showAppBar,
         showSearchBar: _showSearchBar,
@@ -1281,7 +1281,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
         actions: [...actions, ..._getAppBarActions()],
         floatingActionButton: FloatingActionButton(
           onPressed: _toggleSelectionMode,
-          child: const Icon(EvaIcons.checkmarkSquare2Outline),
+          child: const Icon(remix.Remix.checkbox_line),
         ),
       );
     });
@@ -1406,8 +1406,8 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                   children: [
                     Icon(
                       state.currentSearchTag != null
-                          ? EvaIcons.shoppingBag
-                          : EvaIcons.search,
+                          ? remix.Remix.shopping_bag_3_line
+                          : remix.Remix.search_line,
                       color: Theme.of(context).colorScheme.primary,
                     ),
                     const SizedBox(width: 8.0),
@@ -1417,7 +1417,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                           : 'Không tìm thấy kết quả cho "${state.currentSearchQuery}"'),
                     ),
                     IconButton(
-                      icon: const Icon(EvaIcons.close),
+                      icon: const Icon(remix.Remix.close_line),
                       onPressed: () {
                         // If this is a search tag tab, close it instead of clearing search
                         if (_currentPath.startsWith('#search?tag=')) {
@@ -1441,7 +1441,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(EvaIcons.search, size: 64, color: Colors.grey),
+                    Icon(remix.Remix.search_line, size: 64, color: Colors.grey),
                     SizedBox(height: 16),
                     Text(
                       AppLocalizations.of(context)!.emptyFolder,
@@ -2374,7 +2374,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
   List<AddressBarMenuItem> _createTagManagementMenuItems() {
     return [
       AddressBarMenuItem(
-        icon: EvaIcons.search,
+        icon: remix.Remix.search_line,
         title: 'Tìm kiếm',
         onTap: () {
           // Trigger search mode in TagManagementScreen
@@ -2383,21 +2383,21 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
         },
       ),
       AddressBarMenuItem(
-        icon: EvaIcons.info,
+        icon: remix.Remix.information_line,
         title: 'Thông tin',
         onTap: () {
           _showTagManagementInfo();
         },
       ),
       AddressBarMenuItem(
-        icon: EvaIcons.refresh,
+        icon: remix.Remix.refresh_line,
         title: 'Làm mới',
         onTap: () {
           _refreshTagManagement();
         },
       ),
       AddressBarMenuItem(
-        icon: EvaIcons.options2,
+        icon: remix.Remix.settings_3_line,
         title: 'Sắp xếp',
         onTap: () {
           _showTagSortOptions();
@@ -2410,21 +2410,21 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
   List<AddressBarMenuItem> _createTagViewMenuItems() {
     return [
       AddressBarMenuItem(
-        icon: EvaIcons.search,
+        icon: remix.Remix.search_line,
         title: 'Tìm kiếm',
         onTap: () {
           // TODO: Implement search functionality
         },
       ),
       AddressBarMenuItem(
-        icon: EvaIcons.refresh,
+        icon: remix.Remix.refresh_line,
         title: 'Làm mới',
         onTap: () {
           // TODO: Force reload files
         },
       ),
       AddressBarMenuItem(
-        icon: EvaIcons.options2,
+        icon: remix.Remix.settings_3_line,
         title: 'Sắp xếp',
         onTap: () {
           // TODO: Show sort options

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../screens/folder_list/folder_list_state.dart';
 import '../../../helpers/core/user_preferences.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import '../../../config/app_theme.dart';
 
 class SharedActionBar {
@@ -33,7 +33,7 @@ class SharedActionBar {
           ),
           const Spacer(),
           if (option == currentOption)
-            const Icon(EvaIcons.checkmark, color: Colors.blue, size: 20),
+            const Icon(remix.Remix.check_line, color: Colors.blue, size: 20),
         ],
       ),
     );
@@ -121,7 +121,7 @@ class SharedActionBar {
             return AlertDialog(
               title: const Row(
                 children: [
-                  Icon(Icons.view_column, size: 24),
+                  Icon(remix.Remix.layout_column_line, size: 24),
                   SizedBox(width: 8),
                   Text('Tùy chỉnh hiển thị cột'),
                 ],
@@ -155,7 +155,7 @@ class SharedActionBar {
                           size = value ?? true;
                         });
                       },
-                      secondary: const Icon(Icons.storage),
+                      secondary: Icon(remix.Remix.hard_drive_2_line),
                       dense: true,
                     ),
                     const Divider(height: 1),
@@ -169,7 +169,7 @@ class SharedActionBar {
                           type = value ?? true;
                         });
                       },
-                      secondary: const Icon(Icons.description),
+                      secondary: Icon(remix.Remix.file_text_line),
                       dense: true,
                     ),
                     const Divider(height: 1),
@@ -183,7 +183,7 @@ class SharedActionBar {
                           dateModified = value ?? true;
                         });
                       },
-                      secondary: const Icon(Icons.update),
+                      secondary: Icon(remix.Remix.refresh_line),
                       dense: true,
                     ),
                     const Divider(height: 1),
@@ -196,7 +196,7 @@ class SharedActionBar {
                           dateCreated = value ?? false;
                         });
                       },
-                      secondary: const Icon(Icons.calendar_today),
+                      secondary: Icon(remix.Remix.calendar_line),
                       dense: true,
                     ),
                     const Divider(height: 1),
@@ -210,7 +210,7 @@ class SharedActionBar {
                           attributes = value ?? false;
                         });
                       },
-                      secondary: const Icon(Icons.info_outline),
+                      secondary: Icon(remix.Remix.information_line),
                       dense: true,
                     ),
                   ],
@@ -224,7 +224,7 @@ class SharedActionBar {
                   child: const Text('HỦY'),
                 ),
                 ElevatedButton.icon(
-                  icon: const Icon(Icons.check),
+                  icon: Icon(remix.Remix.check_line),
                   label: const Text('ÁP DỤNG'),
                   onPressed: () {
                     final newVisibility = ColumnVisibility(
@@ -254,7 +254,7 @@ class SharedActionBar {
     String? currentPath,
   }) {
     return PopupMenuButton<String>(
-      icon: const Icon(EvaIcons.moreVerticalOutline),
+      icon: const Icon(remix.Remix.more_2_line),
       tooltip: 'Thêm tùy chọn',
       offset: const Offset(0, 50),
       itemBuilder: (context) {
@@ -263,7 +263,7 @@ class SharedActionBar {
             value: 'selection_mode',
             child: Row(
               children: [
-                Icon(EvaIcons.checkmarkSquare2Outline, size: 20),
+                Icon(remix.Remix.checkbox_line, size: 20),
                 SizedBox(width: 10),
                 Text('Chọn nhiều file'),
               ],
@@ -278,7 +278,7 @@ class SharedActionBar {
               value: 'manage_tags',
               child: Row(
                 children: [
-                  Icon(EvaIcons.bookmarkOutline, size: 20),
+                  Icon(remix.Remix.bookmark_line, size: 20),
                   SizedBox(width: 10),
                   Text('Quản lý thẻ'),
                 ],
@@ -295,7 +295,7 @@ class SharedActionBar {
               value: 'image_gallery',
               child: Row(
                 children: [
-                  Icon(EvaIcons.imageOutline, size: 20),
+                  Icon(remix.Remix.image_line, size: 20),
                   SizedBox(width: 10),
                   Text('Xem thư viện ảnh'),
                 ],
@@ -307,7 +307,7 @@ class SharedActionBar {
               value: 'video_gallery',
               child: Row(
                 children: [
-                  Icon(EvaIcons.videoOutline, size: 20),
+                  Icon(remix.Remix.video_line, size: 20),
                   SizedBox(width: 10),
                   Text('Xem thư viện video'),
                 ],
@@ -365,7 +365,7 @@ class SharedActionBar {
     // Thêm nút tìm kiếm
     actions.add(
       IconButton(
-        icon: const Icon(EvaIcons.search),
+        icon: const Icon(remix.Remix.search_line),
         tooltip: 'Tìm kiếm',
         onPressed: onSearchPressed,
       ),
@@ -374,61 +374,77 @@ class SharedActionBar {
     // Thêm nút sắp xếp
     actions.add(
       PopupMenuButton<SortOption>(
-        icon: const Icon(EvaIcons.options2Outline),
+        icon: const Icon(remix.Remix.settings_3_line),
         tooltip: 'Sắp xếp theo',
         offset: const Offset(0, 50),
         initialValue: currentSortOption,
         onSelected: onSortOptionSelected,
         itemBuilder: (context) => [
           buildSortMenuItem(context, SortOption.nameAsc, 'Tên (A → Z)',
-              EvaIcons.textOutline, currentSortOption),
+              remix.Remix.file_text_line, currentSortOption),
           buildSortMenuItem(context, SortOption.nameDesc, 'Tên (Z → A)',
-              EvaIcons.textOutline, currentSortOption),
+              remix.Remix.file_text_line, currentSortOption),
           const PopupMenuDivider(),
           buildSortMenuItem(
               context,
               SortOption.dateAsc,
               'Ngày sửa (Cũ nhất trước)',
-              EvaIcons.calendarOutline,
+              remix.Remix.calendar_line,
               currentSortOption),
           buildSortMenuItem(
               context,
               SortOption.dateDesc,
               'Ngày sửa (Mới nhất trước)',
-              EvaIcons.calendarOutline,
+              remix.Remix.calendar_line,
               currentSortOption),
           const PopupMenuDivider(),
-          buildSortMenuItem(context, SortOption.dateCreatedAsc,
-              'Ngày tạo (Cũ nhất trước)', EvaIcons.clock, currentSortOption),
-          buildSortMenuItem(context, SortOption.dateCreatedDesc,
-              'Ngày tạo (Mới nhất trước)', EvaIcons.clock, currentSortOption),
+          buildSortMenuItem(
+              context,
+              SortOption.dateCreatedAsc,
+              'Ngày tạo (Cũ nhất trước)',
+              remix.Remix.time_line,
+              currentSortOption),
+          buildSortMenuItem(
+              context,
+              SortOption.dateCreatedDesc,
+              'Ngày tạo (Mới nhất trước)',
+              remix.Remix.time_line,
+              currentSortOption),
           buildSortMenuItem(
               context,
               SortOption.sizeAsc,
               'Kích thước (Nhỏ nhất trước)',
-              EvaIcons.activity,
+              remix.Remix.pulse_line,
               currentSortOption),
           buildSortMenuItem(
               context,
               SortOption.sizeDesc,
               'Kích thước (Lớn nhất trước)',
-              EvaIcons.activity,
+              remix.Remix.pulse_line,
               currentSortOption),
           const PopupMenuDivider(),
           buildSortMenuItem(context, SortOption.typeAsc, 'Loại tệp (A → Z)',
-              EvaIcons.fileOutline, currentSortOption),
+              remix.Remix.file_3_line, currentSortOption),
           buildSortMenuItem(context, SortOption.typeDesc, 'Loại tệp (Z → A)',
-              EvaIcons.fileOutline, currentSortOption),
+              remix.Remix.file_3_line, currentSortOption),
           const PopupMenuDivider(),
           buildSortMenuItem(context, SortOption.extensionAsc,
-              'Đuôi tệp (A → Z)', EvaIcons.atOutline, currentSortOption),
+              'Đuôi tệp (A → Z)', remix.Remix.at_line, currentSortOption),
           buildSortMenuItem(context, SortOption.extensionDesc,
-              'Đuôi tệp (Z → A)', EvaIcons.atOutline, currentSortOption),
+              'Đuôi tệp (Z → A)', remix.Remix.at_line, currentSortOption),
           const PopupMenuDivider(),
-          buildSortMenuItem(context, SortOption.attributesAsc,
-              'Thuộc tính (A → Z)', EvaIcons.infoOutline, currentSortOption),
-          buildSortMenuItem(context, SortOption.attributesDesc,
-              'Thuộc tính (Z → A)', EvaIcons.infoOutline, currentSortOption),
+          buildSortMenuItem(
+              context,
+              SortOption.attributesAsc,
+              'Thuộc tính (A → Z)',
+              remix.Remix.information_line,
+              currentSortOption),
+          buildSortMenuItem(
+              context,
+              SortOption.attributesDesc,
+              'Thuộc tính (Z → A)',
+              remix.Remix.information_line,
+              currentSortOption),
         ],
       ),
     );
@@ -437,7 +453,7 @@ class SharedActionBar {
     if (viewMode == ViewMode.grid && onGridSizePressed != null) {
       actions.add(
         IconButton(
-          icon: const Icon(EvaIcons.gridOutline),
+          icon: const Icon(remix.Remix.grid_line),
           tooltip: 'Điều chỉnh kích thước lưới',
           onPressed: onGridSizePressed,
         ),
@@ -448,7 +464,7 @@ class SharedActionBar {
     if (viewMode == ViewMode.details && onColumnSettingsPressed != null) {
       actions.add(
         IconButton(
-          icon: const Icon(EvaIcons.layoutOutline),
+          icon: const Icon(remix.Remix.layout_line),
           tooltip: 'Thiết lập hiển thị cột',
           onPressed: onColumnSettingsPressed,
         ),
@@ -458,7 +474,7 @@ class SharedActionBar {
     // Thêm nút chuyển đổi chế độ xem
     actions.add(
       PopupMenuButton<ViewMode>(
-        icon: const Icon(EvaIcons.eyeOutline),
+        icon: const Icon(remix.Remix.eye_line),
         tooltip: 'Chế độ xem',
         offset: const Offset(0, 50),
         initialValue: viewMode,
@@ -468,7 +484,7 @@ class SharedActionBar {
             child: Row(
               children: [
                 Icon(
-                  EvaIcons.menu2Outline,
+                  remix.Remix.menu_2_line,
                   size: 20,
                   color: viewMode == ViewMode.list ? Colors.blue : null,
                 ),
@@ -484,7 +500,8 @@ class SharedActionBar {
                 ),
                 const Spacer(),
                 if (viewMode == ViewMode.list)
-                  const Icon(EvaIcons.checkmark, color: Colors.blue, size: 20),
+                  const Icon(remix.Remix.check_line,
+                      color: Colors.blue, size: 20),
               ],
             ),
           ),
@@ -493,7 +510,7 @@ class SharedActionBar {
             child: Row(
               children: [
                 Icon(
-                  EvaIcons.gridOutline,
+                  remix.Remix.grid_line,
                   size: 20,
                   color: viewMode == ViewMode.grid ? Colors.blue : null,
                 ),
@@ -509,7 +526,8 @@ class SharedActionBar {
                 ),
                 const Spacer(),
                 if (viewMode == ViewMode.grid)
-                  const Icon(EvaIcons.checkmark, color: Colors.blue, size: 20),
+                  const Icon(remix.Remix.check_line,
+                      color: Colors.blue, size: 20),
               ],
             ),
           ),
@@ -518,7 +536,7 @@ class SharedActionBar {
             child: Row(
               children: [
                 Icon(
-                  EvaIcons.listOutline,
+                  remix.Remix.list_unordered,
                   size: 20,
                   color: viewMode == ViewMode.details ? Colors.blue : null,
                 ),
@@ -534,7 +552,8 @@ class SharedActionBar {
                 ),
                 const Spacer(),
                 if (viewMode == ViewMode.details)
-                  const Icon(EvaIcons.checkmark, color: Colors.blue, size: 20),
+                  const Icon(remix.Remix.check_line,
+                      color: Colors.blue, size: 20),
               ],
             ),
           ),
@@ -554,7 +573,7 @@ class SharedActionBar {
     // Thêm nút làm mới
     actions.add(
       IconButton(
-        icon: const Icon(EvaIcons.refresh),
+        icon: const Icon(remix.Remix.refresh_line),
         tooltip: 'Làm mới',
         onPressed: onRefresh,
       ),

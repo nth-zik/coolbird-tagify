@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/helpers/core/filesystem_utils.dart';
 import 'package:win32/win32.dart' as win32;
 import 'package:ffi/ffi.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 
 import '../core/tab_manager.dart';
 import '../../screens/folder_list/folder_list_bloc.dart';
@@ -203,7 +204,8 @@ class DriveView extends StatelessWidget {
                                 // Drive title and icon
                                 Row(
                                   children: [
-                                    const Icon(Icons.storage, size: 36),
+                                    Icon(remix.Remix.hard_drive_2_line,
+                                        size: 36),
                                     const SizedBox(width: 12),
                                     FutureBuilder<String>(
                                       future: getDriveLabel(drive.path),
@@ -228,7 +230,7 @@ class DriveView extends StatelessWidget {
                                         );
                                       },
                                     ),
-                                    const Icon(Icons.arrow_forward_ios,
+                                    Icon(remix.Remix.arrow_right_s_line,
                                         size: 16),
                                   ],
                                 ),

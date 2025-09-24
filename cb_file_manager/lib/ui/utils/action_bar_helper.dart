@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cb_file_manager/ui/utils/base_screen.dart';
 import 'package:cb_file_manager/main.dart' show goHome;
 import 'package:cb_file_manager/ui/utils/route.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 
 /// Helper class to standardize app bar functionality across the application
 class ActionBarHelper {
@@ -35,12 +35,12 @@ class ActionBarHelper {
 
     if (canPop) {
       return IconButton(
-        icon: const Icon(EvaIcons.arrowBack),
+        icon: const Icon(remix.Remix.arrow_left_line),
         onPressed: () => RouteUtils.safeBackNavigation(context),
       );
     } else {
       return IconButton(
-        icon: const Icon(EvaIcons.menu2Outline),
+        icon: const Icon(remix.Remix.menu_2_line),
         onPressed: () => BaseScreen.openDrawer(),
       );
     }
@@ -99,7 +99,7 @@ class ActionBarHelper {
   /// Creates a search action for the app bar
   static IconButton createSearchAction(VoidCallback onPressed) {
     return IconButton(
-      icon: const Icon(EvaIcons.searchOutline),
+      icon: const Icon(remix.Remix.search_line),
       tooltip: 'Search',
       onPressed: onPressed,
     );
@@ -108,7 +108,7 @@ class ActionBarHelper {
   /// Creates a settings action for the app bar
   static IconButton createSettingsAction(VoidCallback onPressed) {
     return IconButton(
-      icon: const Icon(EvaIcons.settings2Outline),
+      icon: const Icon(remix.Remix.settings_3_line),
       tooltip: 'Settings',
       onPressed: onPressed,
     );
@@ -176,7 +176,7 @@ class ActionBarHelper {
   }) {
     return AppBar(
       leading: IconButton(
-        icon: const Icon(EvaIcons.close),
+        icon: const Icon(remix.Remix.close_line),
         onPressed: onClose,
       ),
       title: Text('$selectedCount selected'),

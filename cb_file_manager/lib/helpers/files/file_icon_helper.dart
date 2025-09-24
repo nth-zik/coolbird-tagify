@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'external_app_helper.dart';
 import 'windows_app_icon.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
@@ -36,13 +36,13 @@ class FileIconHelper {
 
     // For images and videos, return a generic icon
     if (_isImageFile(extension)) {
-      final icon = Icon(EvaIcons.imageOutline, size: size, color: Colors.blue);
+      final icon = Icon(remix.Remix.image_line, size: size, color: Colors.blue);
       _iconCache[cacheKey] = icon;
       return icon;
     }
 
     if (_isVideoFile(extension)) {
-      final icon = Icon(EvaIcons.videoOutline, size: size, color: Colors.red);
+      final icon = Icon(remix.Remix.video_line, size: size, color: Colors.red);
       _iconCache[cacheKey] = icon;
       return icon;
     }
@@ -82,7 +82,7 @@ class FileIconHelper {
           print('APK_ICON_DEBUG: No app info returned for APK, using fallback');
           // Use fallback APK icon
           final Widget fallbackIcon = Icon(
-            EvaIcons.smartphoneOutline,
+            remix.Remix.smartphone_line,
             size: size,
             color: Colors.green,
           );
@@ -133,20 +133,21 @@ class FileIconHelper {
     Widget icon;
 
     if (_isAudioFile(extension)) {
-      icon = Icon(EvaIcons.musicOutline, size: size, color: Colors.purple);
+      icon = Icon(remix.Remix.music_2_line, size: size, color: Colors.purple);
     } else if (_isDocumentFile(extension)) {
-      icon = Icon(EvaIcons.fileTextOutline, size: size, color: Colors.indigo);
+      icon = Icon(remix.Remix.file_text_line, size: size, color: Colors.indigo);
     } else if (_isSpreadsheetFile(extension)) {
-      icon = Icon(EvaIcons.gridOutline, size: size, color: Colors.green);
+      icon =
+          Icon(remix.Remix.grid_line, size: size, color: Colors.green);
     } else if (_isPresentationFile(extension)) {
-      icon = Icon(EvaIcons.fileOutline, size: size, color: Colors.orange);
+      icon = Icon(remix.Remix.file_3_line, size: size, color: Colors.orange);
     } else if (_isPdfFile(extension)) {
-      icon = Icon(EvaIcons.fileOutline, size: size, color: Colors.red[800]);
+      icon = Icon(remix.Remix.file_3_line, size: size, color: Colors.red[800]);
     } else if (extension == 'apk') {
-      icon = Icon(EvaIcons.smartphoneOutline, size: size, color: Colors.green);
+      icon = Icon(remix.Remix.smartphone_line, size: size, color: Colors.green);
       print('APK_ICON_DEBUG: Created generic APK icon: ${icon.runtimeType}');
     } else {
-      icon = Icon(EvaIcons.fileOutline, size: size, color: Colors.grey);
+      icon = Icon(remix.Remix.file_3_line, size: size, color: Colors.grey);
     }
 
     _iconCache[cacheKey] = icon;
@@ -249,7 +250,7 @@ class FileIconHelper {
     // Test creating a simple APK icon
     print('APK_ICON_DEBUG: Testing simple APK icon creation...');
     final testIcon = Icon(
-      EvaIcons.smartphoneOutline,
+      remix.Remix.smartphone_line,
       size: 24,
       color: Colors.green,
     );

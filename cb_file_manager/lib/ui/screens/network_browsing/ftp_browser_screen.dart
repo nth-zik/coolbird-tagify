@@ -2,7 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
+import 'package:cb_file_manager/config/translation_helper.dart';
 
 import '../../../bloc/network_browsing/network_browsing_bloc.dart';
 import '../../../bloc/network_browsing/network_browsing_event.dart';
@@ -95,7 +96,9 @@ class _FTPBrowserScreenState extends State<FTPBrowserScreen>
       if (state.errorMessage != null && _connectingCredentialIds.isNotEmpty) {
         hadError = true;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi kết nối: ${state.errorMessage}')),
+          SnackBar(
+              content:
+                  Text('${context.tr.connectionError}: ${state.errorMessage}')),
         );
       }
 
@@ -133,7 +136,7 @@ class _FTPBrowserScreenState extends State<FTPBrowserScreen>
       _savedCredentials =
           _credentialsService.getCredentialsByServiceType('FTP');
     } catch (e) {
-      debugPrint('Lỗi khi tải thông tin đăng nhập đã lưu: $e');
+      debugPrint('${context.tr.loadCredentialsError}: $e');
     }
   }
 
@@ -174,20 +177,20 @@ class _FTPBrowserScreenState extends State<FTPBrowserScreen>
   @override
   Widget build(BuildContext context) {
     return SystemScreen(
-      title: 'FTP Connections',
+      title: context.tr.ftpConnections,
       systemId: '#ftp',
-      icon: EvaIcons.cloudUpload,
+      icon: remix.Remix.upload_cloud_2_line,
       showAppBar: true,
       actions: [
         IconButton(
-          icon: const Icon(EvaIcons.refresh),
+          icon: const Icon(remix.Remix.refresh_line),
           onPressed: _refreshData,
-          tooltip: 'Làm mới',
+          tooltip: context.tr.refreshData,
         ),
         IconButton(
-          icon: const Icon(EvaIcons.plus),
+          icon: const Icon(remix.Remix.add_line),
           onPressed: _connectToFTPServer,
-          tooltip: 'Add Connection',
+          tooltip: context.tr.addConnection,
         ),
       ],
       child: BlocBuilder<NetworkBrowsingBloc, NetworkBrowsingState>(
@@ -198,7 +201,7 @@ class _FTPBrowserScreenState extends State<FTPBrowserScreen>
               .toList();
 
           if (activeConnections.isEmpty && _savedCredentials.isEmpty) {
-            return const Center(child: Text('Không có kết nối FTP nào.'));
+            return Center(child: Text(context.tr.noFtpConnections));
           }
 
           return ListView(
@@ -208,7 +211,7 @@ class _FTPBrowserScreenState extends State<FTPBrowserScreen>
                 Padding(
                   padding: const EdgeInsets.symmetric(
                       vertical: 8.0, horizontal: 8.0),
-                  child: Text('Kết nối đang hoạt động',
+                  child: Text(context.tr.activeConnections,
                       style: Theme.of(context).textTheme.titleSmall),
                 ),
                 ...activeConnections.map(_buildActiveConnectionItem),
@@ -218,7 +221,7 @@ class _FTPBrowserScreenState extends State<FTPBrowserScreen>
                 Padding(
                   padding: const EdgeInsets.symmetric(
                       vertical: 8.0, horizontal: 8.0),
-                  child: Text('Kết nối đã lưu',
+                  child: Text(context.tr.savedConnections,
                       style: Theme.of(context).textTheme.titleSmall),
                 ),
                 ..._savedCredentials.map(_buildSavedConnectionItem),
@@ -232,15 +235,15 @@ class _FTPBrowserScreenState extends State<FTPBrowserScreen>
 
   Widget _buildActiveConnectionItem(
       MapEntry<String, NetworkServiceBase> entry) {
-    String host = 'Unknown';
+    String host = context.tr.unknown;
     try {
       host = Uri.parse(entry.value.basePath).host;
     } catch (_) {}
 
     return ListTile(
-      leading: const Icon(EvaIcons.monitor, color: Colors.green),
+      leading: const Icon(remix.Remix.computer_line, color: Colors.green),
       title: Text(host),
-      subtitle: const Text('Đang kết nối'),
+      subtitle: Text(context.tr.connecting),
       onTap: () => _openTabForConnection(entry.key, host),
     );
   }
@@ -249,7 +252,7 @@ class _FTPBrowserScreenState extends State<FTPBrowserScreen>
     final isConnecting = _connectingCredentialIds.contains(credentials.id);
 
     return ListTile(
-      leading: const Icon(EvaIcons.cloudUpload, color: Colors.blue),
+      leading: const Icon(remix.Remix.upload_cloud_2_line, color: Colors.blue),
       title: Text(credentials.host),
       subtitle: Text(credentials.username),
       trailing: IconButton(
@@ -258,7 +261,8 @@ class _FTPBrowserScreenState extends State<FTPBrowserScreen>
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(strokeWidth: 2.0))
-            : const Icon(EvaIcons.arrowCircleRight, color: Colors.green),
+            : const Icon(remix.Remix.arrow_right_circle_line,
+                color: Colors.green),
         onPressed: isConnecting
             ? null
             : () => _connectWithSavedCredentials(credentials),

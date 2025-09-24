@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'tag_dialogs.dart';
 
 /// AppBar component displayed when in selection mode
@@ -49,7 +49,7 @@ class SelectionAppBar extends StatelessWidget implements PreferredSizeWidget {
       title: Text(
           '$selectedCount ${selectedCount == 1 ? 'item' : 'items'} selected'),
       leading: IconButton(
-        icon: const Icon(EvaIcons.close),
+        icon: const Icon(remix.Remix.close_line),
         onPressed: onClearSelection,
         tooltip: 'Cancel Selection',
       ),
@@ -71,32 +71,32 @@ class SelectionAppBar extends StatelessWidget implements PreferredSizeWidget {
               const PopupMenuItem<String>(
                 value: 'add_tags',
                 child: ListTile(
-                  leading: Icon(EvaIcons.plusCircle),
+                  leading: Icon(remix.Remix.add_circle_line),
                   title: Text('Add Tags'),
                 ),
               ),
               const PopupMenuItem<String>(
                 value: 'remove_tags',
                 child: ListTile(
-                  leading: Icon(EvaIcons.closeCircle),
+                  leading: Icon(remix.Remix.close_circle_line),
                   title: Text('Remove Tags'),
                 ),
               ),
               const PopupMenuItem<String>(
                 value: 'manage_all_tags',
                 child: ListTile(
-                  leading: Icon(EvaIcons.settingsOutline),
+                  leading: Icon(remix.Remix.settings_2_line),
                   title: Text('Manage Tags'),
                 ),
               ),
             ],
-            icon: const Icon(EvaIcons.shoppingBag),
+            icon: const Icon(remix.Remix.shopping_bag_3_line),
             tooltip: 'Tag Actions',
           ),
 
         // Delete button always shown
         IconButton(
-          icon: const Icon(EvaIcons.trash2),
+          icon: const Icon(remix.Remix.delete_bin_2_line),
           onPressed: () => showDeleteConfirmationDialog(context),
           tooltip: 'Delete Selected Items',
         ),

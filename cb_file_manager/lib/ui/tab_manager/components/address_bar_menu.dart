@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 
 /// Menu ba chấm trong thanh địa chỉ với các action dynamic tùy theo màn hình
 class AddressBarMenu extends StatelessWidget {
@@ -19,7 +19,7 @@ class AddressBarMenu extends StatelessWidget {
     }
 
     return PopupMenuButton<AddressBarMenuItem>(
-      icon: const Icon(EvaIcons.moreVertical, size: 20),
+      icon: const Icon(remix.Remix.more_2_line, size: 20),
       tooltip: tooltip ?? 'Tùy chọn',
       onSelected: (item) {
         item.onTap();
@@ -102,7 +102,7 @@ class AddressBarMenuItems {
   }) {
     return AddressBarMenuItem(
       title: 'Tìm kiếm',
-      icon: EvaIcons.search,
+      icon: remix.Remix.search_line,
       onTap: onTap,
       enabled: enabled,
     );
@@ -115,7 +115,7 @@ class AddressBarMenuItems {
   }) {
     return AddressBarMenuItem(
       title: 'Sắp xếp',
-      icon: EvaIcons.options2,
+      icon: remix.Remix.settings_3_line,
       onTap: onTap,
       enabled: enabled,
     );
@@ -128,7 +128,7 @@ class AddressBarMenuItems {
   }) {
     return AddressBarMenuItem(
       title: 'Làm mới',
-      icon: EvaIcons.refresh,
+      icon: remix.Remix.refresh_line,
       onTap: onTap,
       enabled: enabled,
     );
@@ -141,7 +141,7 @@ class AddressBarMenuItems {
   }) {
     return AddressBarMenuItem(
       title: 'Thông tin',
-      icon: EvaIcons.infoOutline,
+      icon: remix.Remix.information_line,
       onTap: onTap,
       enabled: enabled,
     );
@@ -154,7 +154,7 @@ class AddressBarMenuItems {
   }) {
     return AddressBarMenuItem(
       title: 'Xóa',
-      icon: EvaIcons.trash2,
+      icon: remix.Remix.delete_bin_2_line,
       onTap: onTap,
       enabled: enabled,
     );
@@ -167,7 +167,7 @@ class AddressBarMenuItems {
   }) {
     return AddressBarMenuItem(
       title: 'Thay đổi màu',
-      icon: EvaIcons.colorPalette,
+      icon: remix.Remix.palette_line,
       onTap: onTap,
       enabled: enabled,
     );
@@ -180,7 +180,7 @@ class AddressBarMenuItems {
   }) {
     return AddressBarMenuItem(
       title: 'Mở trong tab mới',
-      icon: EvaIcons.grid,
+      icon: remix.Remix.grid_line,
       onTap: onTap,
       enabled: enabled,
     );

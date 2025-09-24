@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import '../../../utils/fluent_background.dart';
 import '../../common/window_caption_buttons.dart';
 import 'package:window_manager/window_manager.dart';
@@ -60,7 +60,7 @@ class _VideoPlayerAppBarState extends State<VideoPlayerAppBar> {
   Widget _buildTitle() {
     final content = Row(
       children: [
-        const Icon(EvaIcons.video, color: Colors.white70, size: 20),
+        const Icon(remix.Remix.video_line, color: Colors.white70, size: 20),
         const SizedBox(width: 8),
         Expanded(
           child: Text(

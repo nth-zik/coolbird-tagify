@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 
 class BreadcrumbNavigation extends StatelessWidget {
   final String currentPath;
@@ -25,9 +26,9 @@ class BreadcrumbNavigation extends StatelessWidget {
       // Add separator except for the first item
       if (i > 0) {
         breadcrumbs.add(
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(horizontal: 4.0),
-            child: Icon(Icons.chevron_right, size: 16),
+            child: Icon(remix.Remix.arrow_right_s_line, size: 16),
           ),
         );
       }

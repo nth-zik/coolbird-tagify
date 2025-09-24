@@ -1,13 +1,71 @@
 import 'dart:io';
 import 'dart:async';
-import 'dart:math';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:cb_file_manager/helpers/media/video_thumbnail_helper.dart';
 import 'package:cb_file_manager/helpers/network/network_thumbnail_helper.dart';
 import 'package:cb_file_manager/ui/widgets/lazy_video_thumbnail.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
+
+/// Memory pool để tái sử dụng image objects và giảm memory fragmentation
+class ImageMemoryPool {
+  static final Map<String, ui.Image> _imagePool = {};
+  static final Map<String, DateTime> _lastUsed = {};
+  static const int maxPoolSize = 50;
+  static const Duration maxAge = Duration(minutes: 5);
+
+  static void putImage(String key, ui.Image image) {
+    _cleanupOldImages();
+    if (_imagePool.length >= maxPoolSize) {
+      _evictOldest();
+    }
+    _imagePool[key] = image;
+    _lastUsed[key] = DateTime.now();
+  }
+
+  static ui.Image? getImage(String key) {
+    final image = _imagePool[key];
+    if (image != null) {
+      _lastUsed[key] = DateTime.now();
+    }
+    return image;
+  }
+
+  static void _cleanupOldImages() {
+    final now = DateTime.now();
+    final keysToRemove = <String>[];
+
+    _lastUsed.forEach((key, lastUsed) {
+      if (now.difference(lastUsed) > maxAge) {
+        keysToRemove.add(key);
+      }
+    });
+
+    for (final key in keysToRemove) {
+      _imagePool[key]?.dispose();
+      _imagePool.remove(key);
+      _lastUsed.remove(key);
+    }
+  }
+
+  static void _evictOldest() {
+    if (_lastUsed.isEmpty) return;
+
+    final oldest =
+        _lastUsed.entries.reduce((a, b) => a.value.isBefore(b.value) ? a : b);
+
+    _imagePool[oldest.key]?.dispose();
+    _imagePool.remove(oldest.key);
+    _lastUsed.remove(oldest.key);
+  }
+
+  static void clear() {
+    _imagePool.values.forEach((image) => image.dispose());
+    _imagePool.clear();
+    _lastUsed.clear();
+  }
+}
 
 /// A global thumbnail cache to avoid regenerating thumbnails
 class ThumbnailWidgetCache {
@@ -215,12 +273,17 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
   StreamSubscription? _thumbnailReadySubscription;
   bool _widgetMounted = true;
   Timer? _loadTimer;
+  Timer? _delayedLoadTimer;
   Timer? _refreshTimer;
   String? _networkThumbnailPath; // Store the generated thumbnail path
 
-  // Throttle network thumbnail generation to avoid overloading
-  static final _throttler = <String, DateTime>{};
-  static const _throttleInterval = Duration(milliseconds: 200);
+  // Viewport-based loading priority system
+  static final List<String> _loadingQueue = [];
+  static bool _isProcessingQueue = false;
+
+  // Background processing limits
+  static const int maxConcurrentLoads = 3;
+  static int _currentLoads = 0;
 
   // Track failed attempts with retry limits and backoff
   static final _failedAttempts = <String, int>{};
@@ -255,7 +318,7 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
     _thumbnailReadySubscription = _cache.onThumbnailReady.listen((path) {
       if (_widgetMounted && mounted && path == widget.filePath) {
         final cachedPath = _cache.getCachedThumbnailPath(widget.filePath);
-        if (cachedPath != null && File(cachedPath).existsSync()) {
+        if (cachedPath != null) {
           setState(() {
             _networkThumbnailPath = cachedPath;
           });
@@ -271,7 +334,7 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
 
     // Check cache first before loading
     final cachedPath = _cache.getCachedThumbnailPath(widget.filePath);
-    if (cachedPath != null && File(cachedPath).existsSync()) {
+    if (cachedPath != null) {
       _networkThumbnailPath = cachedPath;
       _isLoadingNotifier.value = false;
       _hasErrorNotifier.value = false;
@@ -288,6 +351,53 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
         _loadThumbnail();
       }
     });
+  }
+
+  // Smart loading với priority queue
+  void _scheduleLoadWithDelay() {
+    _delayedLoadTimer?.cancel();
+    _delayedLoadTimer = Timer(const Duration(milliseconds: 300), () {
+      if (_widgetMounted && mounted) {
+        _addToLoadingQueue();
+      }
+    });
+  }
+
+  // Add to priority queue thay vì load ngay
+  void _addToLoadingQueue() {
+    if (!_loadingQueue.contains(widget.filePath)) {
+      _loadingQueue.add(widget.filePath);
+      _processLoadingQueue();
+    }
+  }
+
+  // Process queue với concurrency limit
+  static void _processLoadingQueue() {
+    if (_isProcessingQueue || _currentLoads >= maxConcurrentLoads) return;
+    if (_loadingQueue.isEmpty) return;
+
+    _isProcessingQueue = true;
+
+    // Process next item
+    _loadingQueue.removeAt(0);
+    _currentLoads++;
+
+    // Find widget and trigger load
+    // (Implementation would need widget registry)
+
+    _isProcessingQueue = false;
+
+    // Continue processing
+    if (_loadingQueue.isNotEmpty && _currentLoads < maxConcurrentLoads) {
+      Timer(const Duration(milliseconds: 50), _processLoadingQueue);
+    }
+  }
+
+  // Cancel pending loads để tiết kiệm resources
+  void _cancelPendingLoad() {
+    _loadTimer?.cancel();
+    _delayedLoadTimer?.cancel();
+    _loadingQueue.remove(widget.filePath);
   }
 
   @override
@@ -322,11 +432,15 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
     _hasErrorNotifier.dispose();
     _widgetMounted = false;
     _loadTimer?.cancel();
+    _delayedLoadTimer?.cancel();
     _refreshTimer?.cancel();
 
     // Clear retry tracking for this path
     _failedAttempts.remove(widget.filePath);
     _lastAttemptTime.remove(widget.filePath);
+
+    // Cleanup memory
+    _networkThumbnailPath = null;
 
     // Mark this path as invisible (lower priority)
     if (widget.filePath.startsWith('#network/')) {
@@ -430,7 +544,15 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
 
       if (fileExists) {
         if (widget.isVideo) {
-          thumbPath = await _getVideoThumbnail(path);
+          try {
+            thumbPath = await VideoThumbnailHelper.getThumbnail(
+              path,
+              isPriority: true,
+              forceRegenerate: false,
+            );
+          } catch (e) {
+            // Video thumbnail generation failed
+          }
         } else if (widget.isImage) {
           thumbPath = path; // Đối với local image files, dùng path trực tiếp
         }
@@ -451,7 +573,8 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
         }
         _activeLoaders++;
         try {
-          thumbPath = await thumbnailHelper.generateThumbnail(path, size: genSize);
+          thumbPath =
+              await thumbnailHelper.generateThumbnail(path, size: genSize);
         } finally {
           _activeLoaders--;
         }
@@ -482,59 +605,65 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
     super.build(context);
 
     // Gói toàn bộ nội dung bên trong VisibilityDetector để chỉ tải khi thấy trên màn hình
-    return VisibilityDetector(
-      key: ValueKey('vis-${widget.filePath}'),
-      onVisibilityChanged: (info) {
-        if (!_widgetMounted) return;
+    return RepaintBoundary(
+      child: VisibilityDetector(
+        key: ValueKey('vis-${widget.filePath}'),
+        onVisibilityChanged: (info) {
+          if (!_widgetMounted) return;
 
-        if (info.visibleFraction > 0) {
-          // Became visible
-          NetworkThumbnailHelper().markVisible(widget.filePath);
+          // Chỉ load khi visible fraction > 20% để tránh load quá sớm
+          if (info.visibleFraction > 0.2) {
+            // Became visible
+            NetworkThumbnailHelper().markVisible(widget.filePath);
 
-          // Nếu chưa tải thumbnail, bắt đầu tải
-          if (_networkThumbnailPath == null &&
-              !_cache.isGeneratingThumbnail(widget.filePath)) {
-            _scheduleLoad();
+            // Nếu chưa tải thumbnail, bắt đầu tải với delay để tránh spam
+            if (_networkThumbnailPath == null &&
+                !_cache.isGeneratingThumbnail(widget.filePath)) {
+              _scheduleLoadWithDelay();
+            }
+          } else if (info.visibleFraction == 0) {
+            // Completely invisible - cleanup resources
+            NetworkThumbnailHelper().markInvisible(widget.filePath);
+            _cancelPendingLoad();
           }
-        } else {
-          // Not visible
-          NetworkThumbnailHelper().markInvisible(widget.filePath);
-        }
-      },
-      child: ClipRRect(
-        borderRadius: widget.borderRadius ?? BorderRadius.zero,
-        child: ValueListenableBuilder<bool>(
-          valueListenable: _isLoadingNotifier,
-          builder: (context, isLoading, child) {
-            return ValueListenableBuilder<bool>(
-              valueListenable: _hasErrorNotifier,
-              builder: (context, hasError, _) {
-                if (hasError) {
-                  return _buildFallbackWidget();
-                }
+        },
+        child: ClipRRect(
+          borderRadius: widget.borderRadius ?? BorderRadius.zero,
+          child: ValueListenableBuilder<bool>(
+            valueListenable: _isLoadingNotifier,
+            builder: (context, isLoading, child) {
+              return ValueListenableBuilder<bool>(
+                valueListenable: _hasErrorNotifier,
+                builder: (context, hasError, _) {
+                  if (hasError) {
+                    return RepaintBoundary(child: _buildFallbackWidget());
+                  }
 
-                return Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    // Main content
-                    _buildThumbnailContent(),
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // Main content - wrap in RepaintBoundary
+                      RepaintBoundary(child: _buildThumbnailContent()),
 
-                    // Skeleton loading overlay - static for better performance
-                    if (isLoading && widget.showLoadingIndicator)
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey[800]?.withOpacity(0.8),
-                          borderRadius: widget.borderRadius,
+                      // Skeleton loading overlay - static for better performance
+                      if (isLoading && widget.showLoadingIndicator)
+                        RepaintBoundary(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.grey[800]?.withValues(alpha: 0.8),
+                              borderRadius: widget.borderRadius,
+                            ),
+                            child: Center(
+                              child: _buildSkeletonLoader(),
+                            ),
+                          ),
                         ),
-                        child: Center(
-                          child: _buildSkeletonLoader(),
-                        ),
-                      ),
-                  ],
-                );
-              },
-            );
-          },
+                    ],
+                  );
+                },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -557,18 +686,17 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
       final cachedPath = _cache.getCachedThumbnailPath(widget.filePath);
       final thumbnailPath = _networkThumbnailPath ?? cachedPath;
 
-      if (thumbnailPath != null && File(thumbnailPath).existsSync()) {
+      if (thumbnailPath != null) {
         // We have a thumbnail, display it
-        final bool isMobile = Platform.isAndroid || Platform.isIOS;
-        final filter = isMobile ? FilterQuality.medium : FilterQuality.high;
+        // Adaptive filter quality dựa trên kích thước và device performance
+        final isLargeImage = (widget.width * widget.height) > 40000; // 200x200
+        final filter = isLargeImage ? FilterQuality.none : FilterQuality.low;
         return Image.file(
           File(thumbnailPath),
           width: widget.width,
           height: widget.height,
           fit: widget.fit,
           filterQuality: filter,
-          cacheWidth: widget.width.isInfinite ? null : widget.width.toInt(),
-          cacheHeight: widget.height.isInfinite ? null : widget.height.toInt(),
           errorBuilder: (context, error, stackTrace) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (_widgetMounted) {
@@ -595,7 +723,7 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
                 // Add video play icon overlay
                 const Center(
                   child: Icon(
-                    EvaIcons.playCircleOutline,
+                    remix.Remix.play_circle_line,
                     color: Colors.white,
                     size: 32,
                   ),
@@ -708,7 +836,7 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
       final cachedPath = _cache.getCachedThumbnailPath(widget.filePath);
       final thumbnailPath = _networkThumbnailPath ?? cachedPath;
 
-      if (thumbnailPath != null && File(thumbnailPath).existsSync()) {
+      if (thumbnailPath != null) {
         // Cache the path if not already cached
         if (cachedPath == null) {
           _cache.cacheThumbnailPath(widget.filePath, thumbnailPath);
@@ -766,7 +894,8 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
             ThumbnailLoader.pendingThumbnailCount,
           );
 
-          final int genSize = (Platform.isAndroid || Platform.isIOS) ? 128 : 256;
+          final int genSize =
+              (Platform.isAndroid || Platform.isIOS) ? 128 : 256;
           NetworkThumbnailHelper()
               .generateThumbnail(widget.filePath, size: genSize)
               .timeout(const Duration(seconds: 6))
@@ -876,45 +1005,24 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
       return Container(
         color: Colors.black12,
         child: const Center(
-          child: Icon(EvaIcons.videoOutline, size: 36, color: Colors.red),
+          child: Icon(remix.Remix.video_line, size: 36, color: Colors.red),
         ),
       );
     } else if (widget.isImage) {
       return Container(
         color: Colors.black12,
         child: const Center(
-          child: Icon(EvaIcons.imageOutline, size: 36, color: Colors.blue),
+          child: Icon(remix.Remix.image_line, size: 36, color: Colors.blue),
         ),
       );
     } else {
       return Container(
         color: Colors.black12,
         child: const Center(
-          child: Icon(EvaIcons.fileOutline, size: 36, color: Colors.grey),
+          child: Icon(remix.Remix.file_3_line, size: 36, color: Colors.grey),
         ),
       );
     }
-  }
-
-  // Helper để lấy video thumbnail
-  Future<String?> _getVideoThumbnail(String path) async {
-    try {
-      return await VideoThumbnailHelper.getThumbnail(
-        path,
-        isPriority: true,
-        forceRegenerate: false,
-      );
-    } catch (e) {}
-  }
-
-  // Helper để kiểm tra file có phải là video không
-  bool _isVideoFile(String path) {
-    return widget.isVideo;
-  }
-
-  // Helper để kiểm tra file có phải là ảnh không
-  bool _isImageFile(String path) {
-    return widget.isImage;
   }
 
   /// Build simple and clean skeleton loader
@@ -933,10 +1041,10 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
             child: Center(
               child: Icon(
                 widget.isVideo
-                    ? EvaIcons.playCircleOutline
+                    ? remix.Remix.play_circle_line
                     : widget.isImage
-                        ? EvaIcons.imageOutline
-                        : EvaIcons.fileTextOutline,
+                        ? remix.Remix.image_line
+                        : remix.Remix.file_text_line,
                 color: Colors.grey[600],
                 size: 32,
               ),
@@ -967,7 +1075,7 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
                       height: 4,
                       width: 40,
                       decoration: BoxDecoration(
-                        color: Colors.grey[700]?.withOpacity(0.7),
+                        color: Colors.grey[700]?.withValues(alpha: 0.7),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),

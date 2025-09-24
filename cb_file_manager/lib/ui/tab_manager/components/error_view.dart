@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 
 /// Component to display error messages with appropriate styling and actions
 class ErrorView extends StatelessWidget {
@@ -23,7 +23,7 @@ class ErrorView extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            isNetworkPath ? EvaIcons.wifiOff : EvaIcons.alertCircle,
+            isNetworkPath ? remix.Remix.wifi_off_line : remix.Remix.error_warning_line,
             size: 72,
             color: Colors.grey,
           ),

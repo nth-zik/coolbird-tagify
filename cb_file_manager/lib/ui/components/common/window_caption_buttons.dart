@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:window_manager/window_manager.dart';
 
 /// Reusable Windows/Mac/Linux window caption buttons: Minimize, Maximize/Restore, Close
@@ -37,7 +37,7 @@ class WindowCaptionButtons extends StatelessWidget {
         children: [
           const SizedBox(width: 8),
           _CaptionButton(
-            icon: EvaIcons.minus,
+            icon: remix.Remix.subtract_line,
             tooltip: 'Minimize',
             theme: effectiveTheme,
             onPressed: () async {
@@ -47,7 +47,7 @@ class WindowCaptionButtons extends StatelessWidget {
             },
           ),
           _CaptionButton(
-            icon: EvaIcons.squareOutline, // Will be replaced dynamically
+            icon: remix.Remix.checkbox_blank_line, // Will be replaced dynamically
             tooltip: 'Maximize',
             theme: effectiveTheme,
             listensMaximize: true,
@@ -63,7 +63,7 @@ class WindowCaptionButtons extends StatelessWidget {
             },
           ),
           _CaptionButton(
-            icon: EvaIcons.close,
+            icon: remix.Remix.close_line,
             tooltip: 'Close',
             isCloseButton: true,
             theme: effectiveTheme,
@@ -135,7 +135,7 @@ class _CaptionButtonState extends State<_CaptionButton> {
       final isMax = await windowManager.isMaximized();
       if (!mounted) return;
       setState(() {
-        _dynamicIcon = isMax ? EvaIcons.collapseOutline : EvaIcons.expandOutline;
+        _dynamicIcon = isMax ? remix.Remix.fullscreen_exit_line : remix.Remix.fullscreen_line;
         _dynamicTooltip = isMax ? 'Restore' : 'Maximize';
       });
     } catch (_) {}

@@ -6,7 +6,7 @@ import 'dart:developer';
 
 import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:image/image.dart' as img;
@@ -124,7 +124,7 @@ class SMBService implements ISmbService {
   String get serviceDescription => 'Windows Shared Folders (SMB via Win32)';
 
   @override
-  IconData get serviceIcon => EvaIcons.folder;
+  IconData get serviceIcon => remix.Remix.folder_3_line;
 
   @override
   bool isAvailable() => Platform.isWindows;

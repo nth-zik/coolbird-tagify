@@ -275,4 +275,146 @@ abstract class AppLocalizations {
   String get skipEnterApp;
   String get granted;
   String get grantPermission;
+
+  // Home screen
+  String get welcomeToFileManager;
+  String get welcomeDescription;
+  String get quickActions;
+  String get browseFiles;
+  String get browseFilesDescription;
+  String get manageMedia;
+  String get manageMediaDescription;
+  String get tagFiles;
+  String get tagFilesDescription;
+  String get networkAccess;
+  String get networkAccessDescription;
+  String get keyFeatures;
+  String get fileManagement;
+  String get fileManagementDescription;
+  String get smartTagging;
+  String get smartTaggingDescription;
+  String get mediaGallery;
+  String get mediaGalleryDescription;
+  String get networkSupport;
+  String get networkSupportDescription;
+
+  // Settings screen
+  String get interface;
+  String get selectInterfaceTheme;
+  String get chooseInterface;
+  String get interfaceDescription;
+  String get showFileTags;
+  String get showFileTagsDescription;
+  String get showFileTagsToggle;
+  String get showFileTagsToggleDescription;
+  String get cacheManagement;
+  String get cacheManagementDescription;
+  String get cacheFolder;
+  String get networkThumbnails;
+  String get videoThumbnailsCache;
+  String get tempFiles;
+  String get notInitialized;
+  String get refreshCacheInfo;
+  String get cacheInfoUpdated;
+  String get clearVideoThumbnailsCache;
+  String get clearVideoThumbnailsDescription;
+  String get clearNetworkThumbnailsCache;
+  String get clearNetworkThumbnailsDescription;
+  String get clearTempFilesCache;
+  String get clearTempFilesDescription;
+  String get clearAllCache;
+  String get clearAllCacheDescription;
+  String get videoCacheCleared;
+  String get networkCacheCleared;
+  String get tempFilesCleared;
+  String get allCacheCleared;
+  String get errorClearingCache;
+  String get processing;
+  String get regenerateThumbnailsWithNewPosition;
+  String get thumbnailPositionUpdated;
+  String get fileTagsEnabled;
+  String get fileTagsDisabled;
+
+  // System screen router
+  String get unknownSystemPath;
+  String get ftpConnectionRequired;
+  String get ftpConnectionDescription;
+  String get goToFtpConnections;
+  String get cannotOpenNetworkPath;
+  String get goBack;
+  String get tagPrefix;
+
+  // Network browsing
+  String get ftpConnections;
+  String get smbNetwork;
+  String get refreshData;
+  String get addConnection;
+  String get noFtpConnections;
+  String get activeConnections;
+  String get savedConnections;
+  String get connecting;
+  String get connect;
+  String get unknown;
+  String get connectionError;
+  String get loadCredentialsError;
+  String get networkScanFailed;
+  String get smbVersionUnknown;
+  String get connectionInfoUnavailable;
+  String get networkSettingsOpened;
+  String get cannotOpenNetworkSettings;
+  String get networkDiscoveryDisabled;
+  String get networkDiscoveryDescription;
+  String get openSettings;
+  String get activeConnectionsTitle;
+  String get activeConnectionsDescription;
+  String get discoveredSmbServers;
+  String get discoveredSmbServersDescription;
+  String get noActiveSmbConnections;
+  String get connectToSmbServer;
+  String get connected;
+  String get openConnection;
+  String get disconnect;
+  String get scanningForSmbServers;
+  String get devicesWillAppear;
+  String get scanningMayTakeTime;
+  String get noSmbServersFound;
+  String get tryScanningAgain;
+  String get scanAgain;
+  String get readyToScan;
+  String get clickRefreshToScan;
+  String get startScan;
+  String get foundDevices;
+  String get scanning;
+  String get scanComplete;
+  String get smbVersion;
+  String get netbios;
+
+  // Drawer menu items
+  String get networksMenu;
+  String get networkTab;
+  String get about;
+
+  // Tab manager
+  String get newTabButton;
+  String get openNewTabToStart;
+
+  // Home screen
+  String get welcomeTitle;
+  String get welcomeSubtitle;
+  String get quickActionsTip;
+  String get quickActionsHome;
+  String get startHere;
+  String get newTabAction;
+  String get newTabActionDesc;
+  String get tagsAction;
+  String get tagsActionDesc;
+  String get imageGalleryTab;
+  String get videoGalleryTab;
+  String get drivesTab;
+  String get browseTab;
+  String get documentsTab;
+  String get homeTab;
+  String get internalStorage;
+  String get storagePrefix;
+  String get rootFolder;
 }

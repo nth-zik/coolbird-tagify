@@ -8,7 +8,7 @@ import 'package:cb_file_manager/ui/screens/media_gallery/video_gallery_screen.da
 import 'package:cb_file_manager/ui/screens/media_gallery/image_viewer_screen.dart';
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart'; // Import TagManager để lắng nghe thay đổi
 import 'package:flutter/material.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
@@ -552,7 +552,7 @@ class _FileItemContentState extends State<_FileItemContent> {
                       color: Colors.grey.shade100,
                     ),
                     child: Icon(
-                      isVideo ? EvaIcons.videoOutline : EvaIcons.imageOutline,
+                      isVideo ? remix.Remix.video_line : remix.Remix.image_line,
                       size: 36,
                       color: isVideo ? Colors.red : Colors.blue,
                     ),
@@ -573,7 +573,7 @@ class _FileItemContentState extends State<_FileItemContent> {
                       color: Colors.grey.shade200,
                     ),
                     child: const Icon(
-                      EvaIcons.fileOutline,
+                      remix.Remix.file_3_line,
                       size: 36,
                       color: Colors.grey,
                     ),
@@ -600,7 +600,7 @@ class _FileItemContentState extends State<_FileItemContent> {
               children: [
                 Text(sizeText, style: Theme.of(context).textTheme.bodySmall),
                 const SizedBox(width: 12),
-                const Icon(Icons.calendar_today, size: 12, color: Colors.grey),
+                Icon(remix.Remix.calendar_line, size: 12, color: Colors.grey),
                 const SizedBox(width: 4),
                 Text(modifiedText,
                     style: Theme.of(context).textTheme.bodySmall),
@@ -620,7 +620,7 @@ class _FileItemContentState extends State<_FileItemContent> {
             children: [
               Text(sizeText, style: Theme.of(context).textTheme.bodySmall),
               const SizedBox(width: 12),
-              const Icon(Icons.calendar_today, size: 12, color: Colors.grey),
+              Icon(remix.Remix.calendar_line, size: 12, color: Colors.grey),
               const SizedBox(width: 4),
               Text(modifiedText, style: Theme.of(context).textTheme.bodySmall),
             ],
@@ -683,7 +683,7 @@ class _FileItemContentState extends State<_FileItemContent> {
         ),
         if (widget.showFileTags && widget.fileTags.isNotEmpty) ...[
           const SizedBox(width: 16),
-          const Icon(EvaIcons.bookmarkOutline,
+          const Icon(remix.Remix.bookmark_line,
               size: 14, color: AppTheme.primaryBlue),
           const SizedBox(width: 4),
           if (tagsToShow.isEmpty)

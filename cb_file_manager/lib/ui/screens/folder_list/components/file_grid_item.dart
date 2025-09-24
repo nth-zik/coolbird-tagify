@@ -3,11 +3,12 @@ import 'package:path/path.dart' as path;
 
 import '../../../components/common/shared_file_context_menu.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
+import 'thumbnail_only.dart';
 
 class FileGridItem extends StatelessWidget {
   final FileSystemEntity file;
@@ -65,116 +66,125 @@ class FileGridItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final fileName = path.basename(file.path);
 
-    return Column(
-      children: [
-        // Thumbnail section
-        Expanded(
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // The content that does NOT change on selection
-              ThumbnailLoader(
-                filePath: file.path,
-                isVideo: FileTypeUtils.isVideoFile(file.path),
-                isImage: FileTypeUtils.isImageFile(file.path),
-                width: double.infinity,
-                height: double.infinity,
-                fit: BoxFit.cover,
-                onThumbnailLoaded: onThumbnailGenerated,
-              ),
+    return RepaintBoundary(
+      child: Column(
+        children: [
+          // Thumbnail section
+          Expanded(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // Use ThumbnailOnly to prevent rebuilds when selection changes
+                ThumbnailOnly(
+                  key: ValueKey('thumb-only-${file.path}'),
+                  file: file,
+                  iconSize: 48.0,
+                ),
 
-              // The content that DOES change on selection
-              Positioned.fill(
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(8.0),
-                    onTap: () {
-                      final isShiftPressed =
-                          RawKeyboard.instance.keysPressed.contains(
-                                LogicalKeyboardKey.shiftLeft,
-                              ) ||
-                              RawKeyboard.instance.keysPressed.contains(
-                                LogicalKeyboardKey.shiftRight,
-                              );
-                      final isCtrlPressed =
-                          RawKeyboard.instance.keysPressed.contains(
-                                LogicalKeyboardKey.controlLeft,
-                              ) ||
-                              RawKeyboard.instance.keysPressed.contains(
-                                LogicalKeyboardKey.controlRight,
-                              );
+                // Selection overlay with tap handling
+                Positioned.fill(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8.0),
+                      onTap: () {
+                        final isShiftPressed = HardwareKeyboard
+                                .instance.logicalKeysPressed
+                                .contains(
+                              LogicalKeyboardKey.shiftLeft,
+                            ) ||
+                            HardwareKeyboard.instance.logicalKeysPressed
+                                .contains(
+                              LogicalKeyboardKey.shiftRight,
+                            );
+                        final isCtrlPressed = HardwareKeyboard
+                                .instance.logicalKeysPressed
+                                .contains(
+                              LogicalKeyboardKey.controlLeft,
+                            ) ||
+                            HardwareKeyboard.instance.logicalKeysPressed
+                                .contains(
+                              LogicalKeyboardKey.controlRight,
+                            );
 
-                      // If in selection mode or modifier keys pressed, handle selection
-                      if (isSelectionMode || isShiftPressed || isCtrlPressed) {
-                        toggleFileSelection(
-                          file.path,
-                          shiftSelect: isShiftPressed,
-                          ctrlSelect: isCtrlPressed,
-                        );
-                      } else {
-                        // Single tap opens file when not in selection mode
-                        onFileTap?.call(file as File, false);
-                      }
-                    },
-                    onLongPress: toggleSelectionMode,
-                    onDoubleTap: () => onFileTap?.call(file as File, false),
-                    onSecondaryTap: () => _showContextMenu(context),
-                    child: isSelected
-                        ? Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8.0),
-                              border: Border.all(
-                                color: Theme.of(context).primaryColor,
-                                width: 2,
-                              ),
-                              color: Theme.of(context)
-                                  .primaryColor
-                                  .withOpacity(0.2),
-                            ),
-                            child: Align(
-                              alignment: Alignment.topRight,
-                              child: Padding(
-                                padding: const EdgeInsets.all(4.0),
-                                child: Icon(
-                                  EvaIcons.checkmarkCircle2,
-                                  color: Theme.of(context).primaryColor,
-                                  size: 24,
-                                ),
-                              ),
-                            ),
-                          )
-                        : const SizedBox.shrink(),
+                        // If in selection mode or modifier keys pressed, handle selection
+                        if (isSelectionMode ||
+                            isShiftPressed ||
+                            isCtrlPressed) {
+                          toggleFileSelection(
+                            file.path,
+                            shiftSelect: isShiftPressed,
+                            ctrlSelect: isCtrlPressed,
+                          );
+                        } else {
+                          // Single tap opens file when not in selection mode
+                          onFileTap?.call(file as File, false);
+                        }
+                      },
+                      onLongPress: () {
+                        HapticFeedback.mediumImpact();
+                        toggleFileSelection(file.path);
+                        if (!isSelectionMode) {
+                          toggleSelectionMode();
+                        }
+                      },
+                      onSecondaryTap: () => _showContextMenu(context),
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
 
-        // File name section
-        Padding(
-          padding: const EdgeInsets.only(top: 4.0, left: 4.0, right: 4.0),
-          child: Column(
-            children: [
-              Text(
-                fileName,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontSize: 12,
+                // Selection indicator overlay - only show when selected
+                if (isSelected)
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8.0),
+                      border: Border.all(
+                        color: Theme.of(context).primaryColor,
+                        width: 2,
+                      ),
+                      color:
+                          Theme.of(context).primaryColor.withValues(alpha: 0.2),
                     ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              // Show tags if enabled and available
-              if (showFileTags && state != null) ...[
-                const SizedBox(height: 2),
-                _buildTagsDisplay(context),
+                    child: Align(
+                      alignment: Alignment.topRight,
+                      child: Padding(
+                        padding: const EdgeInsets.all(4.0),
+                        child: Icon(
+                          remix.Remix.checkbox_circle_line,
+                          color: Theme.of(context).primaryColor,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
-            ],
+            ),
           ),
-        ),
-      ],
+
+          // File name section
+          Padding(
+            padding: const EdgeInsets.only(top: 4.0, left: 4.0, right: 4.0),
+            child: Column(
+              children: [
+                Text(
+                  fileName,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontSize: 12,
+                      ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                // Show tags if enabled and available
+                if (showFileTags && state != null) ...[
+                  const SizedBox(height: 2),
+                  _buildTagsDisplay(context),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

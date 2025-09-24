@@ -14,7 +14,7 @@ import 'package:flutter/services.dart'; // Add for HapticFeedback and keyboard k
 import 'package:flutter/gestures.dart'; // Import for mouse buttons
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/helpers/core/user_preferences.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:cb_file_manager/helpers/media/video_thumbnail_helper.dart'; // Add import for VideoThumbnailHelper
 import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart'; // Add import for ThumbnailLoader
 import 'package:cb_file_manager/ui/widgets/loading_skeleton.dart';
@@ -712,13 +712,13 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   ListTile(
-                    leading: Icon(EvaIcons.search),
+                    leading: Icon(remix.Remix.search_line),
                     title: Text('Tìm kiếm theo tên'),
                     subtitle: Text('Gõ từ khóa để tìm tệp theo tên'),
                   ),
                   Divider(),
                   ListTile(
-                    leading: Icon(EvaIcons.shoppingBag),
+                    leading: Icon(remix.Remix.shopping_bag_3_line),
                     title: Text('Tìm kiếm theo tag'),
                     subtitle: Text('Gõ # và tên tag (ví dụ: #important)'),
                   ),
@@ -1061,87 +1061,84 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
     final bool isNetworkPath = _currentPath.startsWith('#network/');
 
     return PopScope(
-          canPop: false,
-          onPopInvokedWithResult: (didPop, result) async {
-            debugPrint(
-                'TabbedFolderListScreen PopScope onPopInvokedWithResult: didPop=$didPop, result=$result');
-            if (!didPop) {
-              debugPrint(
-                  'Gesture navigation detected - calling _handleBackButton');
-              await _handleBackButton();
-            }
-          },
-          // Wrap with Listener to detect mouse button events
-          child: Listener(
-            onPointerDown: (PointerDownEvent event) {
-              // Mouse button 4 is usually the back button (button value is 8)
-              if (event.buttons == 8) {
-                _handleMouseBackButton();
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        debugPrint(
+            'TabbedFolderListScreen PopScope onPopInvokedWithResult: didPop=$didPop, result=$result');
+        if (!didPop) {
+          debugPrint('Gesture navigation detected - calling _handleBackButton');
+          await _handleBackButton();
+        }
+      },
+      // Wrap with Listener to detect mouse button events
+      child: Listener(
+        onPointerDown: (PointerDownEvent event) {
+          // Mouse button 4 is usually the back button (button value is 8)
+          if (event.buttons == 8) {
+            _handleMouseBackButton();
+          }
+          // Mouse button 5 is usually the forward button (button value is 16)
+          else if (event.buttons == 16) {
+            _handleMouseForwardButton();
+          }
+        },
+        child: BlocProvider<FolderListBloc>.value(
+          value: _folderListBloc,
+          child: BlocListener<FolderListBloc, FolderListState>(
+            listener: (context, folderState) {
+              // Check if there are any video/image files in the current directory
+              final hasVideoOrImageFiles = _hasVideoOrImageFiles(folderState);
+
+              // If no video/image files and we have pending thumbnails, reset the count
+              if (!hasVideoOrImageFiles && _hasPendingThumbnails) {
+                debugPrint(
+                    "TabbedFolderListScreen: No video/image files found, resetting pending thumbnail count");
+                ThumbnailLoader.resetPendingCount();
+                _hasPendingThumbnails = false;
               }
-              // Mouse button 5 is usually the forward button (button value is 16)
-              else if (event.buttons == 16) {
-                _handleMouseForwardButton();
-              }
+
+              // Only show tab loading when there are actual thumbnail tasks
+              // Folder loading should not show in tab loading indicator
+              final isLoading = _hasPendingThumbnails;
+
+              context.read<TabManagerBloc>().add(
+                    UpdateTabLoading(widget.tabId, isLoading),
+                  );
             },
-            child: BlocProvider<FolderListBloc>.value(
-              value: _folderListBloc,
-              child: BlocListener<FolderListBloc, FolderListState>(
-                listener: (context, folderState) {
-                  // Check if there are any video/image files in the current directory
-                  final hasVideoOrImageFiles =
-                      _hasVideoOrImageFiles(folderState);
+            child: BlocBuilder<FolderListBloc, FolderListState>(
+              builder: (context, state) {
+                _currentSearchTag = state.currentSearchTag;
+                _currentFilter = state.currentFilter;
 
-                  // If no video/image files and we have pending thumbnails, reset the count
-                  if (!hasVideoOrImageFiles && _hasPendingThumbnails) {
-                    debugPrint(
-                        "TabbedFolderListScreen: No video/image files found, resetting pending thumbnail count");
-                    ThumbnailLoader.resetPendingCount();
-                    _hasPendingThumbnails = false;
-                  }
+                // Debug: Log filter state
+                if (_currentFilter != null) {
+                  debugPrint('DEBUG: Filter is active: $_currentFilter');
+                  debugPrint('DEBUG: Total files: ${state.files.length}');
+                  debugPrint(
+                      'DEBUG: Filtered files: ${state.filteredFiles.length}');
+                }
 
-                  // Only show tab loading when there are actual thumbnail tasks
-                  // Folder loading should not show in tab loading indicator
-                  final isLoading = _hasPendingThumbnails;
+                // Debug: Log all files in state
+                debugPrint('DEBUG: All files in state:');
+                for (int i = 0; i < state.files.length; i++) {
+                  debugPrint('DEBUG: File $i: ${state.files[i].path}');
+                }
 
-                  context.read<TabManagerBloc>().add(
-                        UpdateTabLoading(widget.tabId, isLoading),
-                      );
-                },
-                child: BlocBuilder<FolderListBloc, FolderListState>(
-                  builder: (context, state) {
-                    _currentSearchTag = state.currentSearchTag;
-                    _currentFilter = state.currentFilter;
+                // Debug: Log search state
+                debugPrint(
+                    'DEBUG: currentSearchTag: ${state.currentSearchTag}');
+                debugPrint(
+                    'DEBUG: searchResults.length: ${state.searchResults.length}');
+                debugPrint('DEBUG: isGlobalSearch: $isGlobalSearch');
+                debugPrint('DEBUG: _currentSearchTag: $_currentSearchTag');
 
-                    // Debug: Log filter state
-                    if (_currentFilter != null) {
-                      debugPrint('DEBUG: Filter is active: $_currentFilter');
-                      debugPrint('DEBUG: Total files: ${state.files.length}');
-                      debugPrint(
-                          'DEBUG: Filtered files: ${state.filteredFiles.length}');
-                    }
-
-                    // Debug: Log all files in state
-                    debugPrint('DEBUG: All files in state:');
-                    for (int i = 0; i < state.files.length; i++) {
-                      debugPrint('DEBUG: File $i: ${state.files[i].path}');
-                    }
-
-                    // Debug: Log search state
-                    debugPrint(
-                        'DEBUG: currentSearchTag: ${state.currentSearchTag}');
-                    debugPrint(
-                        'DEBUG: searchResults.length: ${state.searchResults.length}');
-                    debugPrint('DEBUG: isGlobalSearch: $isGlobalSearch');
-                    debugPrint('DEBUG: _currentSearchTag: $_currentSearchTag');
-
-                    return _buildWithSelectionState(
-                        context, state, isNetworkPath);
-                  },
-                ),
-              ),
+                return _buildWithSelectionState(context, state, isNetworkPath);
+              },
             ),
           ),
-        );
+        ),
+      ),
+    );
   }
 
   // New helper method that builds the UI with selection state from BLoC
@@ -1230,7 +1227,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                   tab_components.showBatchAddTagDialog(
                       context, selectionState.selectedFilePaths.toList());
                 },
-                child: const Icon(EvaIcons.shoppingBag),
+                child: const Icon(remix.Remix.shopping_bag_3_line),
               ),
         showAppBar: widget.showAppBar,
         showSearchBar: _showSearchBar,
@@ -1253,7 +1250,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
         actions: [...actions, ..._getAppBarActions()],
         floatingActionButton: FloatingActionButton(
           onPressed: _toggleSelectionMode,
-          child: const Icon(EvaIcons.checkmarkSquare2Outline),
+          child: const Icon(remix.Remix.checkbox_line),
         ),
       );
     });
@@ -1281,16 +1278,16 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
           : LoadingSkeleton.list(itemCount: 12);
 
       return FluentBackground.container(
-                                  context: context,
-                                  enableBlur: isDesktopPlatform,
+        context: context,
+        enableBlur: isDesktopPlatform,
         child: skeleton,
       );
     }
 
     if (state.error != null) {
       return FluentBackground.container(
-                                  context: context,
-                                  enableBlur: isDesktopPlatform,
+        context: context,
+        enableBlur: isDesktopPlatform,
         padding: const EdgeInsets.all(24.0),
         blurAmount: 5.0,
         child: tab_components.ErrorView(
@@ -1380,8 +1377,8 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                   children: [
                     Icon(
                       state.currentSearchTag != null
-                          ? EvaIcons.shoppingBag
-                          : EvaIcons.search,
+                          ? remix.Remix.shopping_bag_3_line
+                          : remix.Remix.search_line,
                       color: Theme.of(context).colorScheme.primary,
                     ),
                     const SizedBox(width: 8.0),
@@ -1391,7 +1388,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                           : 'Không tìm thấy kết quả cho "${state.currentSearchQuery}"'),
                     ),
                     IconButton(
-                      icon: const Icon(EvaIcons.close),
+                      icon: const Icon(remix.Remix.close_line),
                       onPressed: () {
                         // If this is a search tag tab, close it instead of clearing search
                         if (_currentPath.startsWith('#search?tag=')) {
@@ -1415,7 +1412,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(EvaIcons.search, size: 64, color: Colors.grey),
+                    Icon(remix.Remix.search_line, size: 64, color: Colors.grey),
                     SizedBox(height: 16),
                     Text(
                       AppLocalizations.of(context)!.emptyFolder,
@@ -1441,7 +1438,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                 Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
             child: Row(
               children: [
-                Icon(Icons.filter_list, size: 16),
+                Icon(remix.Remix.filter_3_line, size: 16),
                 const SizedBox(width: 8),
                 Text('Filtered by: $_currentFilter'),
                 const Spacer(),
@@ -1481,8 +1478,8 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
     // Empty directory check
     if (state.folders.isEmpty && state.files.isEmpty) {
       return FluentBackground.container(
-                                  context: context,
-                                  enableBlur: isDesktopPlatform,
+        context: context,
+        enableBlur: isDesktopPlatform,
         child: Center(
           child: Text(AppLocalizations.of(context)!.emptyFolder,
               style: TextStyle(fontSize: 18)),
@@ -1689,28 +1686,28 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                         return LayoutBuilder(builder:
                             (BuildContext context, BoxConstraints constraints) {
                           if (isDesktopPlatform) {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            try {
-                              final RenderBox? renderBox =
-                                  context.findRenderObject() as RenderBox?;
-                              if (renderBox != null &&
-                                  renderBox.hasSize &&
-                                  renderBox.attached) {
-                                final position =
-                                    renderBox.localToGlobal(Offset.zero);
-                                _registerItemPosition(
-                                    itemPath,
-                                    Rect.fromLTWH(
-                                        position.dx,
-                                        position.dy,
-                                        renderBox.size.width,
-                                        renderBox.size.height));
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              try {
+                                final RenderBox? renderBox =
+                                    context.findRenderObject() as RenderBox?;
+                                if (renderBox != null &&
+                                    renderBox.hasSize &&
+                                    renderBox.attached) {
+                                  final position =
+                                      renderBox.localToGlobal(Offset.zero);
+                                  _registerItemPosition(
+                                      itemPath,
+                                      Rect.fromLTWH(
+                                          position.dx,
+                                          position.dy,
+                                          renderBox.size.width,
+                                          renderBox.size.height));
+                                }
+                              } catch (e) {
+                                // Silently ignore layout errors to prevent crashes
+                                debugPrint('Layout error in grid view: $e');
                               }
-                            } catch (e) {
-                              // Silently ignore layout errors to prevent crashes
-                              debugPrint('Layout error in grid view: $e');
-                            }
-                          });
+                            });
                           }
 
                           if (index < state.folders.length) {
@@ -1937,28 +1934,28 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                       return LayoutBuilder(builder:
                           (BuildContext context, BoxConstraints constraints) {
                         if (isDesktopPlatform) {
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          try {
-                            final RenderBox? renderBox =
-                                context.findRenderObject() as RenderBox?;
-                            if (renderBox != null &&
-                                renderBox.hasSize &&
-                                renderBox.attached) {
-                              final position =
-                                  renderBox.localToGlobal(Offset.zero);
-                              _registerItemPosition(
-                                  itemPath,
-                                  Rect.fromLTWH(
-                                      position.dx,
-                                      position.dy,
-                                      renderBox.size.width,
-                                      renderBox.size.height));
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            try {
+                              final RenderBox? renderBox =
+                                  context.findRenderObject() as RenderBox?;
+                              if (renderBox != null &&
+                                  renderBox.hasSize &&
+                                  renderBox.attached) {
+                                final position =
+                                    renderBox.localToGlobal(Offset.zero);
+                                _registerItemPosition(
+                                    itemPath,
+                                    Rect.fromLTWH(
+                                        position.dx,
+                                        position.dy,
+                                        renderBox.size.width,
+                                        renderBox.size.height));
+                              }
+                            } catch (e) {
+                              // Silently ignore layout errors to prevent crashes
+                              debugPrint('Layout error in grid view: $e');
                             }
-                          } catch (e) {
-                            // Silently ignore layout errors to prevent crashes
-                            debugPrint('Layout error in grid view: $e');
-                          }
-                        });
+                          });
                         }
 
                         if (index < state.folders.length) {
@@ -2361,7 +2358,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
   List<AddressBarMenuItem> _createTagManagementMenuItems() {
     return [
       AddressBarMenuItem(
-        icon: EvaIcons.search,
+        icon: remix.Remix.search_line,
         title: 'Tìm kiếm',
         onTap: () {
           // Trigger search mode in TagManagementScreen
@@ -2370,21 +2367,21 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
         },
       ),
       AddressBarMenuItem(
-        icon: EvaIcons.info,
+        icon: remix.Remix.information_line,
         title: 'Thông tin',
         onTap: () {
           _showTagManagementInfo();
         },
       ),
       AddressBarMenuItem(
-        icon: EvaIcons.refresh,
+        icon: remix.Remix.refresh_line,
         title: 'Làm mới',
         onTap: () {
           _refreshTagManagement();
         },
       ),
       AddressBarMenuItem(
-        icon: EvaIcons.options2,
+        icon: remix.Remix.settings_3_line,
         title: 'Sắp xếp',
         onTap: () {
           _showTagSortOptions();
@@ -2397,21 +2394,21 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
   List<AddressBarMenuItem> _createTagViewMenuItems() {
     return [
       AddressBarMenuItem(
-        icon: EvaIcons.search,
+        icon: remix.Remix.search_line,
         title: 'Tìm kiếm',
         onTap: () {
           // TODO: Implement search functionality
         },
       ),
       AddressBarMenuItem(
-        icon: EvaIcons.refresh,
+        icon: remix.Remix.refresh_line,
         title: 'Làm mới',
         onTap: () {
           // TODO: Force reload files
         },
       ),
       AddressBarMenuItem(
-        icon: EvaIcons.options2,
+        icon: remix.Remix.settings_3_line,
         title: 'Sắp xếp',
         onTap: () {
           // TODO: Show sort options
@@ -2438,7 +2435,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
         content: TextField(
           decoration: const InputDecoration(
             hintText: 'Nhập tên thẻ...',
-            prefixIcon: Icon(Icons.search),
+            prefixIcon: Icon(remix.Remix.search_line),
           ),
           autofocus: true,
           onSubmitted: (value) {
@@ -2499,7 +2496,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
           children: [
             ListTile(
               title: const Text('Theo tên (A-Z)'),
-              leading: const Icon(Icons.sort_by_alpha),
+              leading: Icon(remix.Remix.sort_asc),
               onTap: () {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -2509,7 +2506,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
             ),
             ListTile(
               title: const Text('Theo độ phổ biến'),
-              leading: const Icon(Icons.trending_up),
+              leading: Icon(remix.Remix.line_chart_line),
               onTap: () {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -2519,7 +2516,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
             ),
             ListTile(
               title: const Text('Theo thời gian gần đây'),
-              leading: const Icon(Icons.history),
+              leading: Icon(remix.Remix.history_line),
               onTap: () {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -2758,4 +2755,3 @@ class SelectionRectanglePainter extends CustomPainter {
         oldDelegate.borderColor != borderColor;
   }
 }
-

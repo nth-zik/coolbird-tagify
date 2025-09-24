@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:path/path.dart' as path;
 import 'ftp_client/index.dart';
 
@@ -46,7 +46,7 @@ class FTPService implements NetworkServiceBase {
   String get serviceDescription => 'File Transfer Protocol (FTP)';
 
   @override
-  IconData get serviceIcon => EvaIcons.cloudUpload;
+  IconData get serviceIcon => remix.Remix.upload_cloud_2_line;
 
   @override
   bool isAvailable() => true; // Available on all platforms

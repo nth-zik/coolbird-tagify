@@ -5,7 +5,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
@@ -125,17 +125,17 @@ class FolderContextMenu {
         PopupMenuItem<String>(
           value: 'refresh',
           child: _buildIconMenuItemContent(
-              title: 'Refresh', icon: EvaIcons.refresh),
+              title: 'Refresh', icon: remix.Remix.refresh_line),
         ),
         PopupMenuItem<String>(
           value: 'new_folder',
           child: _buildIconMenuItemContent(
-              title: 'New Folder', icon: EvaIcons.folderAdd),
+              title: 'New Folder', icon: remix.Remix.folder_add_line),
         ),
         PopupMenuItem<String>(
           value: 'new_file',
           child: _buildIconMenuItemContent(
-              title: 'New File', icon: EvaIcons.fileAdd),
+              title: 'New File', icon: remix.Remix.file_add_line),
         ),
         PopupMenuItem<String>(
           value: 'paste',

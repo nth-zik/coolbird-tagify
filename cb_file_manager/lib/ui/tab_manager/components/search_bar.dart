@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Thêm import để xử lý sự kiện bàn phím
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
@@ -230,7 +230,7 @@ class _SearchBarState extends State<SearchBar> {
                           child: Padding(
                             padding: const EdgeInsets.all(4.0),
                             child: Icon(
-                              EvaIcons.close,
+                              remix.Remix.close_line,
                               size: 16,
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
@@ -275,7 +275,7 @@ class _SearchBarState extends State<SearchBar> {
                                   child: Row(
                                     children: [
                                       Icon(
-                                        EvaIcons.shoppingBag,
+                                        remix.Remix.shopping_bag_3_line,
                                         size: 16,
                                         color: isSelected
                                             ? theme.colorScheme.primary
@@ -300,7 +300,7 @@ class _SearchBarState extends State<SearchBar> {
                                       ),
                                       if (isSelected)
                                         Icon(
-                                          EvaIcons.arrowRight,
+                                          remix.Remix.arrow_right_line,
                                           size: 14,
                                           color: theme.colorScheme.primary,
                                         ),
@@ -473,7 +473,7 @@ class _SearchBarState extends State<SearchBar> {
       builder: (context) => AlertDialog(
         title: Row(
           children: [
-            Icon(EvaIcons.infoOutline, color: theme.colorScheme.primary),
+            Icon(remix.Remix.information_line, color: theme.colorScheme.primary),
             const SizedBox(width: 8),
             Text(localizations.searchTipsTitle),
           ],
@@ -484,31 +484,31 @@ class _SearchBarState extends State<SearchBar> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildTipItem(
-                icon: EvaIcons.text,
+                icon: remix.Remix.text,
                 title: localizations.searchByFilename,
                 description: localizations.searchByFilenameDesc,
               ),
               const Divider(),
               _buildTipItem(
-                icon: EvaIcons.shoppingBag,
+                icon: remix.Remix.shopping_bag_3_line,
                 title: localizations.searchByTags,
                 description: localizations.searchByTagsDesc,
               ),
               const Divider(),
               _buildTipItem(
-                icon: EvaIcons.hash,
+                icon: remix.Remix.hashtag,
                 title: localizations.searchMultipleTags,
                 description: localizations.searchMultipleTagsDesc,
               ),
               const Divider(),
               _buildTipItem(
-                icon: EvaIcons.globe2Outline,
+                icon: remix.Remix.global_line,
                 title: localizations.globalSearch,
                 description: localizations.globalSearchDesc,
               ),
               const Divider(),
               _buildTipItem(
-                icon: EvaIcons.menu,
+                icon: remix.Remix.menu_line,
                 title: localizations.searchShortcuts,
                 description: localizations.searchShortcutsDesc,
               ),
@@ -655,12 +655,12 @@ class _SearchBarState extends State<SearchBar> {
             },
             child: _isSearchingTags
                 ? Icon(
-                    EvaIcons.shoppingBag,
+                    remix.Remix.shopping_bag_3_line,
                     key: const ValueKey('tagIcon'),
                     color: theme.colorScheme.primary,
                   )
                 : Icon(
-                    EvaIcons.search,
+                    remix.Remix.search_line,
                     key: const ValueKey('searchIcon'),
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -747,7 +747,7 @@ class _SearchBarState extends State<SearchBar> {
                 child: Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: Icon(
-                    EvaIcons.infoOutline,
+                    remix.Remix.information_line,
                     color: theme.colorScheme.onSurfaceVariant,
                     size: 20,
                   ),
@@ -775,7 +775,7 @@ class _SearchBarState extends State<SearchBar> {
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Icon(
-                      EvaIcons.listOutline,
+                      remix.Remix.list_unordered,
                       color: theme.colorScheme.primary,
                       size: 20,
                     ),
@@ -818,13 +818,13 @@ class _SearchBarState extends State<SearchBar> {
                     duration: const Duration(milliseconds: 300),
                     child: _isGlobalSearch
                         ? Icon(
-                            EvaIcons.globe2Outline,
+                            remix.Remix.global_line,
                             key: const ValueKey('globalIcon'),
                             color: theme.colorScheme.primary,
                             size: 20,
                           )
                         : Icon(
-                            EvaIcons.folderOutline,
+                            remix.Remix.folder_3_line,
                             key: const ValueKey('folderIcon'),
                             size: 20,
                             color: theme.colorScheme.onSurfaceVariant,
@@ -844,7 +844,7 @@ class _SearchBarState extends State<SearchBar> {
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Icon(
-                  EvaIcons.search,
+                  remix.Remix.search_line,
                   color: theme.colorScheme.primary,
                   size: 20,
                 ),
@@ -863,7 +863,7 @@ class _SearchBarState extends State<SearchBar> {
                 child: Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: Icon(
-                    EvaIcons.close,
+                    remix.Remix.close_line,
                     color: theme.colorScheme.onSurfaceVariant,
                     size: 20,
                   ),

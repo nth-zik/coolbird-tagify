@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 
 enum FileType {
@@ -103,30 +103,30 @@ class FileTypeHelper {
   static IconData getIconForFileType(FileType type) {
     switch (type) {
       case FileType.image:
-        return EvaIcons.imageOutline;
+        return remix.Remix.image_line;
       case FileType.video:
-        return EvaIcons.videoOutline;
+        return remix.Remix.video_line;
       case FileType.audio:
-        return EvaIcons.musicOutline;
+        return remix.Remix.music_2_line;
       case FileType.document:
-        return EvaIcons.fileTextOutline;
+        return remix.Remix.file_text_line;
       case FileType.pdf:
-        return EvaIcons.fileOutline;
+        return remix.Remix.file_3_line;
       case FileType.archive:
-        return EvaIcons.archiveOutline;
+        return remix.Remix.archive_2_line;
       case FileType.code:
-        return EvaIcons.code;
+        return remix.Remix.code_line;
       case FileType.spreadsheet:
-        return EvaIcons.gridOutline;
+        return remix.Remix.grid_line;
       case FileType.presentation:
-        return EvaIcons.monitorOutline;
+        return remix.Remix.computer_line;
       case FileType.text:
-        return EvaIcons.textOutline;
+        return remix.Remix.file_text_line;
       case FileType.apk:
-        return EvaIcons.smartphoneOutline;
+        return remix.Remix.smartphone_line;
       case FileType.unknown:
       default:
-        return EvaIcons.fileOutline;
+        return remix.Remix.file_3_line;
     }
   }
 

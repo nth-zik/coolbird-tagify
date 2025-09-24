@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cb_file_manager/helpers/files/external_app_helper.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:file_picker/file_picker.dart';
 
 class OpenWithDialog extends StatefulWidget {
@@ -36,7 +37,7 @@ class _OpenWithDialogState extends State<OpenWithDialog> {
           children: [
             Row(
               children: [
-                Icon(Icons.open_in_new,
+                Icon(remix.Remix.external_link_line,
                     color: isDarkMode ? Colors.white70 : Colors.black87),
                 const SizedBox(width: 8),
                 Text(
@@ -146,7 +147,7 @@ class _OpenWithDialogState extends State<OpenWithDialog> {
                       ),
                       const Divider(),
                       ListTile(
-                        leading: const Icon(Icons.more_horiz),
+                        leading: Icon(remix.Remix.more_line),
                         title: const Text('Choose another app...'),
                         onTap: () async {
                           // Close the dialog

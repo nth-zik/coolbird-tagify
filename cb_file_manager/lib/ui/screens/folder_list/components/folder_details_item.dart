@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cb_file_manager/helpers/core/io_extensions.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:flutter/services.dart';
 import '../../../components/common/shared_file_context_menu.dart';
 import '../../../components/common/optimized_interaction_handler.dart';
@@ -158,7 +158,7 @@ class _FolderDetailsItemState extends State<FolderDetailsItem> {
                           horizontal: 12.0, vertical: 10.0),
                       child: Row(
                         children: [
-                          const Icon(EvaIcons.folderOutline,
+                          const Icon(remix.Remix.folder_3_line,
                               color: Colors.amber),
                           const SizedBox(width: 12),
                           Expanded(

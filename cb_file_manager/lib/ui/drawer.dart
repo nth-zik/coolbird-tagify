@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:ui'; // Import for ImageFilter
 import 'package:flutter/material.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import './utils/route.dart';
 import './tab_manager/core/tab_main_screen.dart';
 import 'package:cb_file_manager/ui/screens/settings/settings_screen.dart';
@@ -121,15 +121,33 @@ class _CBDrawerState extends State<CBDrawer> {
                       // Main navigation items
                       _buildNavigationItem(
                         context,
-                        icon: EvaIcons.homeOutline,
+                        icon: remix.Remix.home_3_line,
                         title: context.tr.home,
                         onTap: () {
                           // Only pop the Navigator when drawer is not pinned
                           if (!widget.isPinned) {
                             RouteUtils.safePopDialog(context);
                           }
-                          RouteUtils.safeNavigate(
-                              context, const TabMainScreen());
+
+                          // Navigate current tab to home instead of opening new tab
+                          final tabBloc =
+                              BlocProvider.of<TabManagerBloc>(context);
+                          final activeTab = tabBloc.state.activeTab;
+
+                          if (activeTab != null) {
+                            // Navigate current tab to #home
+                            tabBloc.add(UpdateTabPath(activeTab.id, '#home'));
+                            tabBloc.add(UpdateTabName(activeTab.id, 'Home'));
+                          } else {
+                            // If no active tab, create a new one with home
+                            tabBloc.add(
+                              AddTab(
+                                path: '#home',
+                                name: 'Home',
+                                switchToTab: true,
+                              ),
+                            );
+                          }
                         },
                       ),
 
@@ -138,7 +156,7 @@ class _CBDrawerState extends State<CBDrawer> {
                       // Storage section with expansion
                       _buildExpansionSection(
                         context,
-                        icon: EvaIcons.hardDriveOutline,
+                        icon: remix.Remix.hard_drive_2_line,
                         title: 'Storage',
                       ),
 
@@ -147,7 +165,7 @@ class _CBDrawerState extends State<CBDrawer> {
                       // Tags section
                       _buildNavigationItem(
                         context,
-                        icon: EvaIcons.pricetags,
+                        icon: remix.Remix.price_tag_3_line,
                         title: context.tr.tags,
                         onTap: () {
                           // Only pop the Navigator when drawer is not pinned
@@ -183,8 +201,8 @@ class _CBDrawerState extends State<CBDrawer> {
 
                       _buildNavigationItem(
                         context,
-                        icon: EvaIcons.wifi,
-                        title: 'Networks',
+                        icon: remix.Remix.wifi_line,
+                        title: context.tr.networksMenu,
                         onTap: () {
                           // Only pop the Navigator when drawer is not pinned
                           if (!widget.isPinned) {
@@ -209,7 +227,7 @@ class _CBDrawerState extends State<CBDrawer> {
                             tabBloc.add(
                               AddTab(
                                 path: '#network',
-                                name: 'Network',
+                                name: context.tr.networkTab,
                                 switchToTab: true,
                               ),
                             );
@@ -229,7 +247,7 @@ class _CBDrawerState extends State<CBDrawer> {
                       // Settings and info section
                       _buildNavigationItem(
                         context,
-                        icon: EvaIcons.settings2Outline,
+                        icon: remix.Remix.settings_3_line,
                         title: context.tr.settings,
                         onTap: () {
                           // Only pop the Navigator when drawer is not pinned
@@ -243,8 +261,8 @@ class _CBDrawerState extends State<CBDrawer> {
 
                       _buildNavigationItem(
                         context,
-                        icon: EvaIcons.infoOutline,
-                        title: 'About',
+                        icon: remix.Remix.information_line,
+                        title: context.tr.about,
                         onTap: () {
                           // Only pop the Navigator when drawer is not pinned
                           if (!widget.isPinned) {
@@ -321,7 +339,9 @@ class _CBDrawerState extends State<CBDrawer> {
               if (!isSmallScreen)
                 IconButton(
                   icon: Icon(
-                    widget.isPinned ? EvaIcons.pin : EvaIcons.pinOutline,
+                    widget.isPinned
+                        ? remix.Remix.pushpin_fill
+                        : remix.Remix.pushpin_line,
                     color: Colors.white,
                     size: 20,
                   ),
@@ -433,7 +453,7 @@ class _CBDrawerState extends State<CBDrawer> {
               // Add Trash Bin entry
               _buildStorageLocationItem(
                 context,
-                icon: EvaIcons.trash2Outline,
+                icon: remix.Remix.delete_bin_2_line,
                 title: 'Trash Bin',
                 iconColor: Colors.red[400],
                 onTap: () async {
@@ -544,7 +564,7 @@ class _CBDrawerState extends State<CBDrawer> {
           contentPadding: const EdgeInsets.only(left: 56, right: 16),
           title: const Text('No storage locations found'),
           trailing: IconButton(
-            icon: const Icon(EvaIcons.refresh),
+            icon: const Icon(remix.Remix.refresh_line),
             onPressed: _loadStorageLocations,
           ),
         )
@@ -789,41 +809,41 @@ class _CBDrawerState extends State<CBDrawer> {
     // Icons for different storage types
     if (Platform.isWindows && path.contains(':')) {
       if (path.startsWith('C:')) {
-        return EvaIcons.monitor;
+        return remix.Remix.computer_line;
       }
-      return EvaIcons.hardDriveOutline;
+      return remix.Remix.hard_drive_2_line;
     }
 
     // Android/Linux paths
     if (path == '/') {
-      return EvaIcons.shieldOutline;
+      return remix.Remix.shield_line;
     }
 
     if (path == '/storage/emulated/0' || path == '/sdcard') {
-      return EvaIcons.smartphone;
+      return remix.Remix.smartphone_line;
     }
 
     if (path.startsWith('/storage/') && path != '/storage') {
-      return EvaIcons.saveOutline;
+      return remix.Remix.save_3_line;
     }
 
     if (path == '/storage') {
-      return EvaIcons.hardDriveOutline;
+      return remix.Remix.hard_drive_2_line;
     }
 
     if (path == '/system') {
-      return EvaIcons.settingsOutline;
+      return remix.Remix.settings_2_line;
     }
 
     if (path == '/data') {
-      return EvaIcons.activity;
+      return remix.Remix.pulse_line;
     }
 
     if (path.startsWith('/mnt/')) {
-      return EvaIcons.folderAddOutline;
+      return remix.Remix.folder_add_line;
     }
 
     // Default icon
-    return EvaIcons.folderOutline;
+    return remix.Remix.folder_3_line;
   }
 }

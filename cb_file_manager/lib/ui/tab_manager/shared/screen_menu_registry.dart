@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
 
 /// Menu item cho dynamic menu system
@@ -49,37 +49,37 @@ class ScreenMenuRegistry {
       ScreenMenuItem.divider(),
       ScreenMenuItem(
         title: 'Tạo thẻ mới',
-        icon: EvaIcons.plus,
+        icon: remix.Remix.add_line,
         onTap: () => _TagManagementHelper.showCreateTagDialog(context),
       ),
       ScreenMenuItem(
         title: 'Tìm kiếm thẻ',
-        icon: EvaIcons.search,
+        icon: remix.Remix.search_line,
         onTap: () => _TagManagementHelper.showTagSearchDialog(context),
       ),
       ScreenMenuItem(
         title: 'Thông tin quản lý thẻ',
-        icon: EvaIcons.info,
+        icon: remix.Remix.information_line,
         onTap: () => _TagManagementHelper.showTagManagementInfo(context),
       ),
       ScreenMenuItem(
         title: 'Làm mới danh sách thẻ',
-        icon: EvaIcons.refresh,
+        icon: remix.Remix.refresh_line,
         onTap: () => _TagManagementHelper.refreshTagManagement(context),
       ),
       ScreenMenuItem(
         title: 'Sắp xếp thẻ',
-        icon: EvaIcons.options2,
+        icon: remix.Remix.settings_3_line,
         onTap: () => _TagManagementHelper.showTagSortOptions(context),
       ),
       ScreenMenuItem(
         title: 'Chế độ lưới',
-        icon: EvaIcons.grid,
+        icon: remix.Remix.grid_line,
         onTap: () => _TagManagementHelper.toggleViewMode(context),
       ),
       ScreenMenuItem(
         title: 'Chế độ danh sách',
-        icon: EvaIcons.list,
+        icon: remix.Remix.list_unordered,
         onTap: () => _TagManagementHelper.toggleViewMode(context),
       ),
     ];
@@ -91,27 +91,27 @@ class ScreenMenuRegistry {
       ScreenMenuItem.divider(),
       ScreenMenuItem(
         title: 'Tạo thư mục mới',
-        icon: EvaIcons.folderAdd,
+        icon: remix.Remix.folder_add_line,
         onTap: () => _FileBrowserHelper.createNewFolder(context),
       ),
       ScreenMenuItem(
         title: 'Tạo file mới',
-        icon: EvaIcons.fileAdd,
+        icon: remix.Remix.file_add_line,
         onTap: () => _FileBrowserHelper.createNewFile(context),
       ),
       ScreenMenuItem(
         title: 'Dán file',
-        icon: EvaIcons.copy,
+        icon: remix.Remix.file_copy_line,
         onTap: () => _FileBrowserHelper.pasteFiles(context),
       ),
       ScreenMenuItem(
         title: 'Sắp xếp',
-        icon: EvaIcons.options2,
+        icon: remix.Remix.settings_3_line,
         onTap: () => _FileBrowserHelper.showSortOptions(context),
       ),
       ScreenMenuItem(
         title: 'Thay đổi chế độ xem',
-        icon: EvaIcons.grid,
+        icon: remix.Remix.grid_line,
         onTap: () => _FileBrowserHelper.toggleViewMode(context),
       ),
     ];
@@ -123,17 +123,17 @@ class ScreenMenuRegistry {
       ScreenMenuItem.divider(),
       ScreenMenuItem(
         title: 'Xuất cài đặt',
-        icon: EvaIcons.download,
+        icon: remix.Remix.download_line,
         onTap: () => _SettingsHelper.exportSettings(context),
       ),
       ScreenMenuItem(
         title: 'Nhập cài đặt',
-        icon: EvaIcons.upload,
+        icon: remix.Remix.upload_line,
         onTap: () => _SettingsHelper.importSettings(context),
       ),
       ScreenMenuItem(
         title: 'Đặt lại cài đặt',
-        icon: EvaIcons.refresh,
+        icon: remix.Remix.refresh_line,
         onTap: () => _SettingsHelper.resetSettings(context),
       ),
     ];
@@ -145,17 +145,17 @@ class ScreenMenuRegistry {
       ScreenMenuItem.divider(),
       ScreenMenuItem(
         title: 'Thêm kết nối mới',
-        icon: EvaIcons.plus,
+        icon: remix.Remix.add_line,
         onTap: () => _NetworkHelper.addNewConnection(context),
       ),
       ScreenMenuItem(
         title: 'Quét mạng',
-        icon: EvaIcons.search,
+        icon: remix.Remix.search_line,
         onTap: () => _NetworkHelper.scanNetwork(context),
       ),
       ScreenMenuItem(
         title: 'Làm mới danh sách',
-        icon: EvaIcons.refresh,
+        icon: remix.Remix.refresh_line,
         onTap: () => _NetworkHelper.refreshConnections(context),
       ),
     ];

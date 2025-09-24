@@ -7,8 +7,11 @@ import 'package:cb_file_manager/helpers/media/video_thumbnail_helper.dart'; // A
 import 'package:cb_file_manager/helpers/network/network_thumbnail_helper.dart'; // Add import for NetworkThumbnailHelper
 import 'package:cb_file_manager/helpers/network/win32_smb_helper.dart'; // Add import for Win32SmbHelper
 import 'package:cb_file_manager/ui/screens/settings/database_settings_screen.dart'; // Import for database settings screen
+import 'package:cb_file_manager/ui/screens/settings/theme_settings_screen.dart'; // Import for theme settings screen
 import 'package:file_picker/file_picker.dart'; // Import for FilePicker
 import 'package:intl/intl.dart'; // Import for DateFormat
+import 'package:remixicon/remixicon.dart' as remix;
+import 'package:cb_file_manager/config/languages/app_localizations.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -284,7 +287,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             child: Row(
               children: [
-                const Icon(Icons.language, size: 24),
+                Icon(remix.Remix.global_line, size: 24),
                 const SizedBox(width: 16),
                 Text(
                   context.tr.language,
@@ -310,13 +313,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildLanguageOption(
             title: context.tr.vietnameseLanguage,
             value: LanguageController.vietnamese,
-            icon: Icons.language,
+            icon: remix.Remix.global_line,
             flagEmoji: '🇻🇳',
           ),
           _buildLanguageOption(
             title: context.tr.englishLanguage,
             value: LanguageController.english,
-            icon: Icons.language,
+            icon: remix.Remix.global_line,
             flagEmoji: '🇬🇧',
           ),
           const SizedBox(height: 8),
@@ -326,48 +329,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildThemeSection(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Text(
-            context.tr.theme,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              children: [
+                Icon(remix.Remix.palette_line, size: 24),
+                const SizedBox(width: 16),
+                Text(
+                  context.tr.interface,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Text(
-            context.tr.selectTheme,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.grey,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+            child: Text(
+              context.tr.selectInterfaceTheme,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+              ),
             ),
           ),
-        ),
-        _buildThemeOption(
-          title: context.tr.systemMode,
-          subtitle: context.tr.systemThemeDescription,
-          value: ThemePreference.system,
-          icon: Icons.brightness_auto,
-        ),
-        _buildThemeOption(
-          title: context.tr.lightMode,
-          subtitle: context.tr.lightThemeDescription,
-          value: ThemePreference.light,
-          icon: Icons.light_mode,
-        ),
-        _buildThemeOption(
-          title: context.tr.darkMode,
-          subtitle: context.tr.darkThemeDescription,
-          value: ThemePreference.dark,
-          icon: Icons.dark_mode,
-        ),
-      ],
+          const SizedBox(height: 16),
+          ListTile(
+            title: Text(context.tr.chooseInterface),
+            subtitle: Text(context.tr.interfaceDescription),
+            leading: Icon(remix.Remix.palette_line),
+            trailing: Icon(remix.Remix.arrow_right_s_line, size: 16),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ThemeSettingsScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
     );
   }
 
@@ -381,7 +391,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             child: Row(
               children: [
-                const Icon(Icons.videocam_outlined, size: 24),
+                Icon(remix.Remix.video_line, size: 24),
                 const SizedBox(width: 16),
                 Text(
                   context.tr.videoThumbnails,
@@ -496,7 +506,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(Icons.refresh, size: 16),
+                        : Icon(remix.Remix.refresh_line, size: 16),
                     label: Text(_isClearingCache
                         ? 'Đang xử lý...'
                         : 'Tạo lại thumbnail với vị trí mới'),
@@ -545,7 +555,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           )
-                        : const Icon(Icons.cleaning_services_outlined),
+                        : Icon(remix.Remix.brush_line),
                     label: Text(_isClearingCache
                         ? context.tr.clearing
                         : context.tr.clearThumbnailCache),
@@ -572,10 +582,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             child: Row(
               children: [
-                const Icon(Icons.label_outline, size: 24),
+                Icon(remix.Remix.price_tag_3_line, size: 24),
                 const SizedBox(width: 16),
                 Text(
-                  'Hiển thị tag của file',
+                  context.tr.showFileTags,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -587,7 +597,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
             child: Text(
-              'Hiển thị các tag của file bên ngoài danh sách file trong tất cả các chế độ xem',
+              context.tr.showFileTagsDescription,
               style: const TextStyle(
                 fontSize: 14,
                 color: Colors.grey,
@@ -596,14 +606,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 16),
           SwitchListTile(
-            title: const Text('Hiển thị tag của file'),
-            subtitle:
-                const Text('Bật/tắt hiển thị tag bên ngoài danh sách file'),
+            title: Text(context.tr.showFileTagsToggle),
+            subtitle: Text(context.tr.showFileTagsToggleDescription),
             value: _showFileTags,
             onChanged: (value) {
               _updateShowFileTags(value);
             },
-            secondary: const Icon(Icons.label),
+            secondary: Icon(remix.Remix.price_tag_3_line),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           ),
           const SizedBox(height: 8),
@@ -622,10 +631,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             child: Row(
               children: [
-                const Icon(Icons.cleaning_services, size: 24),
+                Icon(remix.Remix.brush_line, size: 24),
                 const SizedBox(width: 16),
                 Text(
-                  'Quản lý bộ nhớ cache',
+                  context.tr.cacheManagement,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -637,7 +646,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
             child: Text(
-              'Xóa dữ liệu cache để giải phóng bộ nhớ',
+              context.tr.cacheManagementDescription,
               style: const TextStyle(
                 fontSize: 14,
                 color: Colors.grey,
@@ -662,12 +671,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.folder_special,
+                        Icon(remix.Remix.folder_settings_line,
                             size: 18,
                             color: Theme.of(context).colorScheme.primary),
                         const SizedBox(width: 8),
                         Text(
-                          'Thư mục cache:',
+                          context.tr.cacheFolder,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: Theme.of(context).colorScheme.onSurface,
@@ -682,14 +691,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.image, size: 16),
+                          Icon(remix.Remix.image_line, size: 16),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Thumbnail mạng:',
+                                  context.tr.networkThumbnails,
                                   style: TextStyle(
                                     fontWeight: FontWeight.w500,
                                     fontSize: 13,
@@ -700,7 +709,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  _networkCachePath ?? 'Chưa khởi tạo',
+                                  _networkCachePath ??
+                                      context.tr.notInitialized,
                                   style: const TextStyle(fontSize: 12),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -726,14 +736,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.video_file, size: 16),
+                        Icon(remix.Remix.video_line, size: 16),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Thumbnail video:',
+                                context.tr.videoThumbnailsCache,
                                 style: TextStyle(
                                   fontWeight: FontWeight.w500,
                                   fontSize: 13,
@@ -759,7 +769,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.folder_zip, size: 16),
+                        Icon(remix.Remix.folder_zip_line, size: 16),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Column(
@@ -803,7 +813,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             );
                           }
                         },
-                        icon: const Icon(Icons.refresh, size: 16),
+                        icon: Icon(remix.Remix.refresh_line, size: 16),
                         label: const Text('Làm mới',
                             style: TextStyle(fontSize: 12)),
                       ),
@@ -820,14 +830,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListTile(
             title: const Text('Xóa cache video thumbnails'),
             subtitle: const Text('Xóa các thumbnail video đã tạo'),
-            leading: const Icon(Icons.video_library),
+            leading: Icon(remix.Remix.video_line),
             trailing: _isClearingVideoCache
                 ? const SizedBox(
                     width: 24,
                     height: 24,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(Icons.delete_forever),
+                : Icon(remix.Remix.delete_bin_line),
             onTap: _isClearingVideoCache
                 ? null
                 : () async {
@@ -872,14 +882,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListTile(
             title: const Text('Xóa cache SMB/network thumbnails'),
             subtitle: const Text('Xóa các thumbnail mạng đã tạo'),
-            leading: const Icon(Icons.cloud),
+            leading: Icon(remix.Remix.cloud_line),
             trailing: _isClearingNetworkCache
                 ? const SizedBox(
                     width: 24,
                     height: 24,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(Icons.delete_forever),
+                : Icon(remix.Remix.delete_bin_line),
             onTap: _isClearingNetworkCache
                 ? null
                 : () async {
@@ -925,14 +935,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListTile(
             title: const Text('Xóa các file tạm'),
             subtitle: const Text('Xóa file tạm từ chia sẻ mạng'),
-            leading: const Icon(Icons.folder_delete),
+            leading: Icon(remix.Remix.folder_reduce_line),
             trailing: _isClearingTempFiles
                 ? const SizedBox(
                     width: 24,
                     height: 24,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(Icons.delete_forever),
+                : Icon(remix.Remix.delete_bin_line),
             onTap: _isClearingTempFiles
                 ? null
                 : () async {
@@ -978,7 +988,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListTile(
             title: const Text('Xóa tất cả cache'),
             subtitle: const Text('Xóa tất cả dữ liệu cache'),
-            leading: const Icon(Icons.cleaning_services),
+            leading: Icon(remix.Remix.brush_line),
             trailing: _isClearingVideoCache ||
                     _isClearingNetworkCache ||
                     _isClearingTempFiles ||
@@ -988,7 +998,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     height: 24,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(Icons.delete_sweep),
+                : Icon(remix.Remix.delete_bin_2_line),
             onTap: _isClearingVideoCache ||
                     _isClearingNetworkCache ||
                     _isClearingTempFiles ||
@@ -1053,7 +1063,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             child: Row(
               children: [
-                const Icon(Icons.storage, size: 24),
+                Icon(remix.Remix.database_2_line, size: 24),
                 const SizedBox(width: 16),
                 Text(
                   context.tr.databaseSettings,
@@ -1079,8 +1089,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListTile(
             title: Text(context.tr.databaseSettings),
             subtitle: Text(context.tr.databaseDescription),
-            leading: const Icon(Icons.settings_applications),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            leading: Icon(remix.Remix.settings_3_line),
+            trailing: Icon(remix.Remix.arrow_right_s_line, size: 16),
             onTap: () {
               Navigator.push(
                 context,
@@ -1096,7 +1106,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListTile(
             title: Text(context.tr.settingsData),
             subtitle: Text(context.tr.viewManageSettings),
-            leading: const Icon(Icons.data_usage),
+            leading: Icon(remix.Remix.pie_chart_line),
             onTap: () {
               final settingsData = _preferences.getAllSettings();
               showDialog(
@@ -1142,7 +1152,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ListTile(
           title: Text(context.tr.exportSettings),
           subtitle: Text(context.tr.exportDescription),
-          leading: const Icon(Icons.upload_file),
+          leading: Icon(remix.Remix.upload_line),
           onTap: () async {
             try {
               // Ask the user to select where to save the file
@@ -1194,7 +1204,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ListTile(
           title: Text(context.tr.importSettings),
           subtitle: Text(context.tr.importDescription),
-          leading: const Icon(Icons.file_download),
+          leading: Icon(remix.Remix.download_line),
           onTap: () async {
             try {
               final success = await _preferences.importPreferences();
@@ -1237,7 +1247,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ListTile(
           title: Text(context.tr.completeBackup),
           subtitle: Text(context.tr.exportAllData),
-          leading: const Icon(Icons.backup),
+          leading: Icon(remix.Remix.save_line),
           onTap: () async {
             try {
               final dirPath = await _preferences.exportAllData();
@@ -1277,7 +1287,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ListTile(
           title: Text(context.tr.completeRestore),
           subtitle: Text(context.tr.importAllData),
-          leading: const Icon(Icons.restore),
+          leading: Icon(remix.Remix.restart_line),
           onTap: () async {
             try {
               final success = await _preferences.importAllData();
@@ -1337,7 +1347,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
       trailing: isSelected
-          ? Icon(Icons.check_circle, color: Theme.of(context).primaryColor)
+          ? Icon(remix.Remix.checkbox_circle_line,
+              color: Theme.of(context).primaryColor)
           : null,
       onTap: () => _updateLanguage(value),
       selected: isSelected,
@@ -1358,7 +1369,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       subtitle: Text(subtitle),
       leading: Icon(icon),
       trailing: isSelected
-          ? Icon(Icons.check_circle, color: Theme.of(context).primaryColor)
+          ? Icon(remix.Remix.checkbox_circle_line,
+              color: Theme.of(context).primaryColor)
           : null,
       onTap: () => _updateThemePreference(value),
       selected: isSelected,

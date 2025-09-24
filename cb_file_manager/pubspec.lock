@@ -233,14 +233,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.7"
-  eva_icons_flutter:
-    dependency: "direct main"
-    description:
-      name: eva_icons_flutter
-      sha256: "6d48a10b93590ab83eb092bee5adacdeb14f3d83f527a4b9e4092c363d56e2a8"
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.1.0"
   fake_async:
     dependency: transitive
     description:
@@ -829,7 +821,7 @@ packages:
     source: hosted
     version: "6.0.2"
   provider:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: provider
       sha256: "4abbd070a04e9ddc287673bf5a030c7ca8b685ff70218720abab8b092f53dd84"
@@ -860,6 +852,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.0.0"
+  remixicon:
+    dependency: "direct main"
+    description:
+      name: remixicon
+      sha256: "9a0e6a67d622a1d6ddc5e5cff4898f9711ec8880fc2ebeb720f6e0bc268ea905"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.4.1"
   rxdart:
     dependency: transitive
     description:

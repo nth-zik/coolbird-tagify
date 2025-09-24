@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart'; // For kDebugMode
 import 'package:flutter/scheduler.dart'; // For frame scheduling
 import 'dart:async';
 import 'dart:io';
+import 'package:provider/provider.dart';
 
 import 'ui/tab_manager/core/tab_main_screen.dart';
 import 'helpers/tags/tag_manager.dart';
@@ -24,7 +25,8 @@ import 'helpers/ui/frame_timing_optimizer.dart'; // Import our new frame timing 
 import 'helpers/tags/batch_tag_manager.dart'; // Import batch tag manager
 import 'models/database/database_manager.dart'; // Import database manager
 import 'services/network_credentials_service.dart'; // Import network credentials service
-import 'config/app_theme.dart'; // Import global theme configuration
+import 'providers/theme_provider.dart'; // Import theme provider
+import 'config/theme_config.dart'; // Import theme config
 import 'package:flutter_localizations/flutter_localizations.dart'; // Import for localization
 import 'config/language_controller.dart'; // Import our language controller
 import 'config/languages/app_localizations_delegate.dart'; // Import our localization delegate
@@ -214,7 +216,12 @@ void main() async {
       return;
     }
 
-    runApp(const CBFileApp());
+    runApp(
+      ChangeNotifierProvider(
+        create: (context) => ThemeProvider(),
+        child: const CBFileApp(),
+      ),
+    );
   }, (error, stackTrace) {
     debugPrint('Error during app initialization: $error');
   });
@@ -254,11 +261,6 @@ class CBFileApp extends StatefulWidget {
 }
 
 class _CBFileAppState extends State<CBFileApp> with WidgetsBindingObserver {
-  final UserPreferences _preferences = UserPreferences.instance;
-  // Change from late initialization to default value
-  ThemeMode _themeMode = ThemeMode.system;
-  StreamSubscription<ThemeMode>? _themeSubscription;
-
   // Language controller for handling language changes
   final LanguageController _languageController = LanguageController();
   ValueNotifier<Locale>? _localeNotifier;
@@ -267,7 +269,6 @@ class _CBFileAppState extends State<CBFileApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _loadThemePreference();
 
     // Initialize the frame timing optimizer once the app is loaded
     SchedulerBinding.instance.addPostFrameCallback((_) {
@@ -279,41 +280,13 @@ class _CBFileAppState extends State<CBFileApp> with WidgetsBindingObserver {
     _localeNotifier?.addListener(() {
       setState(() {});
     });
-
-    // Listen for theme changes
-    _themeSubscription =
-        _preferences.themeChangeStream.listen((ThemeMode newThemeMode) {
-      setState(() {
-        _themeMode = newThemeMode;
-      });
-    });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _themeSubscription?.cancel();
     _localeNotifier?.removeListener(() {});
     super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      // Refresh theme when app is resumed (in case system theme changed)
-      _loadThemePreference();
-    }
-    super.didChangeAppLifecycleState(state);
-  }
-
-  Future<void> _loadThemePreference() async {
-    await _preferences.init();
-    if (mounted) {
-      final themeMode = await _preferences.getThemeMode();
-      setState(() {
-        _themeMode = themeMode;
-      });
-    }
   }
 
   @override
@@ -324,9 +297,20 @@ class _CBFileAppState extends State<CBFileApp> with WidgetsBindingObserver {
         // Always start at main; we'll push explainer modally if needed
         home: const TabMainScreen(),
         navigatorKey: navigatorKey, // Add navigator key for global access
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: _themeMode,
+        // Dynamic theming: use selected theme for light, and selected dark theme for dark
+        theme:
+            context.watch<ThemeProvider>().currentTheme == AppThemeType.dark ||
+                    context.watch<ThemeProvider>().currentTheme ==
+                        AppThemeType.amoled
+                ? ThemeConfig.lightTheme
+                : context.watch<ThemeProvider>().themeData,
+        darkTheme:
+            context.watch<ThemeProvider>().currentTheme == AppThemeType.dark ||
+                    context.watch<ThemeProvider>().currentTheme ==
+                        AppThemeType.amoled
+                ? context.watch<ThemeProvider>().themeData
+                : ThemeConfig.darkTheme,
+        themeMode: context.watch<ThemeProvider>().themeMode,
         debugShowCheckedModeBanner: false,
 
         // Add localization support

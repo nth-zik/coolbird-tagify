@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:cb_file_manager/ui/shared/address_bar_widget.dart';
 
 class MobileEmptyChromeBar extends StatelessWidget {
@@ -38,7 +38,7 @@ class MobileEmptyChromeBar extends StatelessWidget {
       child: Row(
         children: [
           IconButton(
-            icon: Icon(EvaIcons.menu, color: textColor),
+            icon: Icon(remix.Remix.menu_line, color: textColor),
             onPressed: onMenu,
           ),
           Expanded(
@@ -51,12 +51,12 @@ class MobileEmptyChromeBar extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: Icon(EvaIcons.plus, color: textColor),
+            icon: Icon(remix.Remix.add_line, color: textColor),
             tooltip: 'Add new tab',
             onPressed: onAddNewTab,
           ),
           IconButton(
-            icon: Icon(EvaIcons.moreVertical, color: textColor),
+            icon: Icon(remix.Remix.more_2_line, color: textColor),
             onPressed: onMore,
           ),
         ],

@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/helpers/ui/frame_timing_optimizer.dart';
 import 'package:flutter/gestures.dart'; // Import for PointerSignalEvent
-import 'package:flutter/services.dart'; // Import for RawKeyboard
+import 'package:flutter/services.dart'; // Import for HardwareKeyboard
+import 'package:remixicon/remixicon.dart' as remix;
 
 import 'file_item.dart';
 import 'file_grid_item.dart';
@@ -78,16 +79,22 @@ class FileView extends StatelessWidget {
     FrameTimingOptimizer().optimizeScrolling();
 
     final bool isMobile = Platform.isAndroid || Platform.isIOS;
+    final bool isDesktop =
+        Platform.isWindows || Platform.isMacOS || Platform.isLinux;
 
     return ListView.builder(
-      // Prefer lighter physics on Android for less jank
-      physics: isMobile
-          ? const ClampingScrollPhysics()
-          : const BouncingScrollPhysics(
+      // Optimized physics for desktop smooth scrolling
+      physics: isDesktop
+          ? const FixedExtentScrollPhysics(
               parent: AlwaysScrollableScrollPhysics(),
-            ),
-      // Reduce offscreen cache on mobile to avoid overwork
-      cacheExtent: isMobile ? 350 : 800,
+            )
+          : isMobile
+              ? const ClampingScrollPhysics()
+              : const ClampingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
+                ),
+      // Increased cache for desktop smooth scrolling
+      cacheExtent: isDesktop ? 1500 : (isMobile ? 350 : 1200),
       addAutomaticKeepAlives: false,
       addRepaintBoundaries: true,
       addSemanticIndexes: false,
@@ -140,6 +147,8 @@ class FileView extends StatelessWidget {
     // Optimize scrolling with frame timing
     FrameTimingOptimizer().optimizeScrolling();
     final bool isMobile = Platform.isAndroid || Platform.isIOS;
+    final bool isDesktop =
+        Platform.isWindows || Platform.isMacOS || Platform.isLinux;
 
     // Define text style for headers once to be reused
     const TextStyle headerStyle = TextStyle(
@@ -176,7 +185,7 @@ class FileView extends StatelessWidget {
                             style: headerStyle,
                           ),
                           SizedBox(width: 4),
-                          Icon(Icons.arrow_downward,
+                          Icon(remix.Remix.arrow_down_line,
                               size: 16, color: Colors.black87),
                         ],
                       ),
@@ -264,7 +273,7 @@ class FileView extends StatelessWidget {
                 message:
                     'Nhấn nút cài đặt cột ở thanh công cụ trên cùng để tùy chỉnh các cột hiển thị',
                 child: Icon(
-                  Icons.info_outline,
+                  remix.Remix.information_line,
                   size: 16,
                   color: Colors.grey.shade600,
                 ),
@@ -276,12 +285,16 @@ class FileView extends StatelessWidget {
         // List of files and folders
         Expanded(
           child: ListView.builder(
-            physics: isMobile
-                ? const ClampingScrollPhysics()
-                : const BouncingScrollPhysics(
+            physics: isDesktop
+                ? const FixedExtentScrollPhysics(
                     parent: AlwaysScrollableScrollPhysics(),
-                  ),
-            cacheExtent: isMobile ? 350 : 800,
+                  )
+                : isMobile
+                    ? const ClampingScrollPhysics()
+                    : const ClampingScrollPhysics(
+                        parent: AlwaysScrollableScrollPhysics(),
+                      ),
+            cacheExtent: isDesktop ? 1500 : (isMobile ? 350 : 1200),
             addAutomaticKeepAlives: false,
             addRepaintBoundaries: true,
             addSemanticIndexes: false,
@@ -353,6 +366,8 @@ class FileView extends StatelessWidget {
     // Optimize scrolling with frame timing
     FrameTimingOptimizer().optimizeScrolling();
     final bool isMobile = Platform.isAndroid || Platform.isIOS;
+    final bool isDesktop =
+        Platform.isWindows || Platform.isMacOS || Platform.isLinux;
 
     // Wrap the GridView with a Listener to detect mouse wheel events
     return Listener(
@@ -362,9 +377,9 @@ class FileView extends StatelessWidget {
 
         // Handle mouse wheel events with Ctrl key
         if (event is PointerScrollEvent) {
-          if (RawKeyboard.instance.keysPressed
+          if (HardwareKeyboard.instance.logicalKeysPressed
                   .contains(LogicalKeyboardKey.controlLeft) ||
-              RawKeyboard.instance.keysPressed
+              HardwareKeyboard.instance.logicalKeysPressed
                   .contains(LogicalKeyboardKey.controlRight)) {
             final int direction = event.scrollDelta.dy > 0 ? 1 : -1;
             onZoomChanged!(direction);
@@ -373,12 +388,16 @@ class FileView extends StatelessWidget {
         }
       },
       child: GridView.builder(
-        physics: isMobile
-            ? const ClampingScrollPhysics()
-            : const BouncingScrollPhysics(
+        physics: isDesktop
+            ? const ClampingScrollPhysics(
                 parent: AlwaysScrollableScrollPhysics(),
-              ),
-        cacheExtent: isMobile ? 600 : 1500,
+              )
+            : isMobile
+                ? const ClampingScrollPhysics()
+                : const ClampingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  ),
+        cacheExtent: isDesktop ? 2500 : (isMobile ? 600 : 2000),
         addAutomaticKeepAlives: false,
         addRepaintBoundaries: true,
         addSemanticIndexes: false,

@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:cb_file_manager/helpers/media/folder_thumbnail_service.dart';
 import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart';
 
@@ -151,7 +151,7 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
     if (_thumbnailPath == null || _loadFailed) {
       return Center(
         child: Icon(
-          EvaIcons.folderOutline,
+          remix.Remix.folder_3_line,
           size: widget.size * 0.7,
           color: Colors.amber[700],
         ),
@@ -193,7 +193,7 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
                   color: Colors.blueGrey[900],
                   child: Center(
                     child: Icon(
-                      EvaIcons.videoOutline,
+                      remix.Remix.video_line,
                       size: widget.size * 0.4,
                       color: Colors.white70,
                     ),
@@ -264,7 +264,7 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
   Widget _buildFolderIcon() {
     return Center(
       child: Icon(
-        EvaIcons.folderOutline,
+        remix.Remix.folder_3_line,
         size: widget.size * 0.7,
         color: Colors.amber[700],
       ),

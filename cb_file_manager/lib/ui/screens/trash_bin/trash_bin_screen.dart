@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:path/path.dart' as pathlib;
 import 'package:cb_file_manager/helpers/files/trash_manager.dart';
 import 'package:intl/intl.dart';
@@ -417,34 +417,34 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
         actions: [
           if (_isSelectionMode) ...[
             IconButton(
-              icon: const Icon(EvaIcons.checkmarkSquare2Outline),
+              icon: const Icon(remix.Remix.checkbox_line),
               tooltip: 'Select All',
               onPressed: _selectAll,
             ),
             IconButton(
-              icon: const Icon(EvaIcons.refreshOutline),
+              icon: const Icon(remix.Remix.refresh_line),
               tooltip: 'Restore Selected',
               onPressed: _selectedItems.isEmpty ? null : _restoreSelectedItems,
             ),
             IconButton(
-              icon: const Icon(EvaIcons.trash2Outline),
+              icon: const Icon(remix.Remix.delete_bin_2_line),
               tooltip: 'Delete Selected',
               onPressed: _selectedItems.isEmpty ? null : _deleteSelectedItems,
             ),
           ] else ...[
             IconButton(
-              icon: const Icon(EvaIcons.checkmarkSquare2Outline),
+              icon: const Icon(remix.Remix.checkbox_line),
               tooltip: 'Select Items',
               onPressed: _trashItems.isEmpty ? null : _toggleSelectionMode,
             ),
             if (Platform.isWindows && _showSystemOptions)
               IconButton(
-                icon: const Icon(EvaIcons.externalLinkOutline),
+                icon: const Icon(remix.Remix.external_link_line),
                 tooltip: 'Open Recycle Bin',
                 onPressed: _openSystemRecycleBin,
               ),
             IconButton(
-              icon: const Icon(EvaIcons.trashOutline),
+              icon: const Icon(remix.Remix.delete_bin_line),
               tooltip: 'Empty Trash',
               onPressed: _trashItems.isEmpty ? null : _emptyTrash,
             ),
@@ -470,7 +470,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Icon(
-                EvaIcons.alertTriangleOutline,
+                remix.Remix.alert_line,
                 color: Colors.red,
                 size: 48,
               ),
@@ -483,7 +483,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: _loadTrashItems,
-                icon: const Icon(EvaIcons.refreshOutline),
+                icon: const Icon(remix.Remix.refresh_line),
                 label: const Text('Try Again'),
               ),
             ],
@@ -498,7 +498,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(
-              EvaIcons.trash2Outline,
+              remix.Remix.delete_bin_2_line,
               size: 64,
               color: Colors.grey,
             ),
@@ -520,7 +520,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: _loadTrashItems,
-              icon: const Icon(EvaIcons.refreshOutline),
+              icon: const Icon(remix.Remix.refresh_line),
               label: const Text('Refresh'),
             ),
           ],
@@ -598,12 +598,12 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: const Icon(EvaIcons.refreshOutline, size: 20),
+                        icon: const Icon(remix.Remix.refresh_line, size: 20),
                         tooltip: 'Restore',
                         onPressed: () => _restoreItem(item),
                       ),
                       IconButton(
-                        icon: const Icon(EvaIcons.trash2Outline, size: 20),
+                        icon: const Icon(remix.Remix.delete_bin_2_line, size: 20),
                         tooltip: 'Delete permanently',
                         onPressed: () => _deleteItem(item),
                       ),
@@ -629,7 +629,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
     if (FileTypeUtils.isImageFile(fileName)) {
       return const CircleAvatar(
         backgroundColor: Colors.blue,
-        child: Icon(EvaIcons.imageOutline, color: Colors.white),
+        child: Icon(remix.Remix.image_line, color: Colors.white),
       );
     }
 
@@ -637,7 +637,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
     if (FileTypeUtils.isVideoFile(fileName)) {
       return const CircleAvatar(
         backgroundColor: Colors.red,
-        child: Icon(EvaIcons.videoOutline, color: Colors.white),
+        child: Icon(remix.Remix.video_line, color: Colors.white),
       );
     }
 
@@ -645,7 +645,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
     if (FileTypeUtils.isAudioFile(fileName)) {
       return const CircleAvatar(
         backgroundColor: Colors.purple,
-        child: Icon(EvaIcons.musicOutline, color: Colors.white),
+        child: Icon(remix.Remix.music_2_line, color: Colors.white),
       );
     }
 
@@ -655,14 +655,14 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
         FileTypeUtils.isPresentationFile(fileName)) {
       return const CircleAvatar(
         backgroundColor: Colors.orange,
-        child: Icon(EvaIcons.fileTextOutline, color: Colors.white),
+        child: Icon(remix.Remix.file_text_line, color: Colors.white),
       );
     }
 
     // Default icon
     return const CircleAvatar(
       backgroundColor: Colors.grey,
-      child: Icon(EvaIcons.fileOutline, color: Colors.white),
+      child: Icon(remix.Remix.file_3_line, color: Colors.white),
     );
   }
 }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:cb_file_manager/ui/screens/tag_management/tag_management_tab.dart';
 import 'package:cb_file_manager/ui/tab_manager/core/tabbed_folder_list_screen.dart';
 import 'package:cb_file_manager/ui/screens/network_browsing/network_connection_screen.dart';
@@ -7,6 +7,8 @@ import 'package:cb_file_manager/ui/screens/network_browsing/network_browser_scre
 import 'package:cb_file_manager/ui/screens/network_browsing/smb_browser_screen.dart';
 import 'package:cb_file_manager/ui/screens/network_browsing/ftp_browser_screen.dart';
 import 'package:cb_file_manager/ui/screens/network_browsing/webdav_browser_screen.dart';
+import 'package:cb_file_manager/ui/screens/media_gallery/image_gallery_screen.dart';
+import 'package:cb_file_manager/ui/screens/media_gallery/video_gallery_screen.dart';
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
@@ -15,6 +17,8 @@ import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
 import 'package:cb_file_manager/bloc/network_browsing/network_browsing_bloc.dart';
 import 'package:cb_file_manager/services/network_browsing/network_service_registry.dart';
 import 'package:cb_file_manager/ui/screens/trash_bin/trash_bin_screen.dart';
+import 'package:cb_file_manager/ui/screens/home/home_screen.dart';
+import 'package:cb_file_manager/config/translation_helper.dart';
 import '../utils/route.dart';
 
 /// A router that handles system screens and special paths
@@ -55,7 +59,10 @@ class SystemScreenRouter {
     // Create a cache key from the tab ID and path
     final String cacheKey = '$tabId:$path';
 
-    if (path == '#tags') {
+    if (path == '#home') {
+      // Route to the home screen
+      return HomeScreen(tabId: tabId);
+    } else if (path == '#tags') {
       // Route to the tag management screen - no caching needed for this screen
       return TagManagementTab(tabId: tabId);
     } else if (path == '#network') {
@@ -76,6 +83,18 @@ class SystemScreenRouter {
     } else if (path == '#webdav') {
       // Route to the WebDAV browser screen
       return WebDAVBrowserScreen(tabId: tabId);
+    } else if (path == '#gallery:images') {
+      // Route to the image gallery screen
+      return const ImageGalleryScreen(
+        path: '',
+        recursive: true,
+      );
+    } else if (path == '#gallery:videos') {
+      // Route to the video gallery screen
+      return const VideoGalleryScreen(
+        path: '',
+        recursive: true,
+      );
     } else if (path.startsWith('#tag:')) {
       // Check if we already have a cached widget for this tab+path
       if (_cachedWidgets.containsKey(cacheKey)) {
@@ -93,7 +112,7 @@ class SystemScreenRouter {
       Widget tagSearchWidget = Builder(builder: (context) {
         // Update the tab name to show the tag being searched
         final tabBloc = BlocProvider.of<TabManagerBloc>(context);
-        tabBloc.add(UpdateTabName(tabId, 'Tag: $tag'));
+        tabBloc.add(UpdateTabName(tabId, '${context.tr.tagPrefix}: $tag'));
 
         // Clear TagManager cache once (not on every rebuild)
         TagManager.clearCache();
@@ -164,7 +183,7 @@ class SystemScreenRouter {
     }
 
     // Fallback for unknown system paths
-    return _buildErrorWidget(context, 'Unknown system path: $path',
+    return _buildErrorWidget(context, '${context.tr.unknownSystemPath}: $path',
         cacheKey: cacheKey);
   }
 
@@ -206,20 +225,20 @@ class SystemScreenRouter {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(
-                    EvaIcons.cloudUploadOutline,
+                    remix.Remix.upload_cloud_2_line,
                     size: 64,
                     color: Colors.blue,
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'FTP Connection Required',
-                    style: TextStyle(fontSize: 24),
+                  Text(
+                    context.tr.ftpConnectionRequired,
+                    style: const TextStyle(fontSize: 24),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'You need to connect to an FTP server first.',
-                    style: TextStyle(fontSize: 16),
+                  Text(
+                    context.tr.ftpConnectionDescription,
+                    style: const TextStyle(fontSize: 16),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
@@ -227,9 +246,10 @@ class SystemScreenRouter {
                     onPressed: () {
                       // Open FTP browser screen in this tab
                       tabBloc.add(UpdateTabPath(tabId, '#ftp'));
-                      tabBloc.add(UpdateTabName(tabId, 'FTP Connections'));
+                      tabBloc
+                          .add(UpdateTabName(tabId, context.tr.ftpConnections));
                     },
-                    child: const Text('Go to FTP Connections'),
+                    child: Text(context.tr.goToFtpConnections),
                   ),
                 ],
               ),
@@ -261,7 +281,8 @@ class SystemScreenRouter {
     } catch (e) {
       _loggedKeys.add(cacheKey);
       // Fallback for navigation errors
-      return _buildErrorWidget(context, 'Không thể mở đường dẫn mạng: $path',
+      return _buildErrorWidget(
+          context, '${context.tr.cannotOpenNetworkPath}: $path',
           cacheKey: cacheKey);
     }
   }
@@ -320,7 +341,7 @@ class SystemScreenRouter {
                 }
               }
             },
-            child: const Text('Quay lại'),
+            child: Text(context.tr.goBack),
           ),
         ],
       ),

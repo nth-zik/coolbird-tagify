@@ -6,7 +6,7 @@ import 'package:cb_file_manager/ui/screens/media_gallery/image_gallery_screen.da
 import 'package:cb_file_manager/ui/screens/media_gallery/video_gallery_screen.dart';
 import 'package:cb_file_manager/ui/tab_manager/components/tag_dialogs.dart';
 import 'package:cb_file_manager/helpers/files/file_icon_helper.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 
 class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String currentPath;
@@ -93,12 +93,12 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
         // Action buttons for selection mode
         TextButton.icon(
-          icon: Icon(EvaIcons.plusCircleOutline, size: 18),
+          icon: Icon(remix.Remix.add_circle_line, size: 18),
           label: const Text('Tag'),
           onPressed: () => showBatchAddTagDialog(context, selectedFiles),
         ),
         TextButton.icon(
-          icon: Icon(EvaIcons.trash2Outline, size: 18),
+          icon: Icon(remix.Remix.delete_bin_2_line, size: 18),
           label: const Text('Delete'),
           style: TextButton.styleFrom(
             foregroundColor: Colors.red[400],
@@ -110,7 +110,7 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
           },
         ),
         IconButton(
-          icon: Icon(EvaIcons.close, size: 24),
+          icon: Icon(remix.Remix.close_line, size: 24),
           tooltip: 'Cancel selection',
           onPressed: clearSelection,
         ),
@@ -121,7 +121,7 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
         // View toggle button
         IconButton(
           icon: Icon(
-            isGridView ? EvaIcons.listOutline : EvaIcons.gridOutline,
+            isGridView ? remix.Remix.list_unordered : remix.Remix.grid_line,
             size: 24,
           ),
           tooltip: isGridView ? 'Switch to list view' : 'Switch to grid view',
@@ -151,13 +151,13 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
         // Search button
         IconButton(
-          icon: Icon(EvaIcons.searchOutline, size: 24),
+          icon: Icon(remix.Remix.search_line, size: 24),
           tooltip: 'Search',
           onPressed: showSearchScreen,
         ),
         // More actions menu
         PopupMenuButton<String>(
-          icon: Icon(EvaIcons.moreVerticalOutline, size: 24),
+          icon: Icon(remix.Remix.more_2_line, size: 24),
           elevation: 2,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -206,7 +206,7 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
               value: 'refresh',
               child: Row(
                 children: [
-                  Icon(EvaIcons.refreshOutline,
+                  Icon(remix.Remix.refresh_line,
                       size: 20, color: theme.iconTheme.color),
                   const SizedBox(width: 12),
                   const Text('Refresh'),
@@ -217,7 +217,7 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
               value: 'select_all',
               child: Row(
                 children: [
-                  Icon(EvaIcons.checkmarkSquare2Outline,
+                  Icon(remix.Remix.checkbox_line,
                       size: 20, color: theme.iconTheme.color),
                   const SizedBox(width: 12),
                   const Text('Select All'),
@@ -228,7 +228,7 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
               value: 'manage_tags',
               child: Row(
                 children: [
-                  Icon(EvaIcons.pricetags,
+                  Icon(remix.Remix.price_tag_3_line,
                       size: 20, color: theme.iconTheme.color),
                   const SizedBox(width: 12),
                   const Text('Manage Tags'),
@@ -239,7 +239,7 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
               value: 'photo_gallery',
               child: Row(
                 children: [
-                  Icon(EvaIcons.imageOutline,
+                  Icon(remix.Remix.image_line,
                       size: 20, color: theme.iconTheme.color),
                   const SizedBox(width: 12),
                   const Text('Photo Gallery'),
@@ -250,7 +250,7 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
               value: 'video_gallery',
               child: Row(
                 children: [
-                  Icon(EvaIcons.videoOutline,
+                  Icon(remix.Remix.video_line,
                       size: 20, color: theme.iconTheme.color),
                   const SizedBox(width: 12),
                   const Text('Video Gallery'),
@@ -261,7 +261,7 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
               value: 'debug_apk',
               child: Row(
                 children: [
-                  Icon(EvaIcons.settingsOutline,
+                  Icon(remix.Remix.settings_2_line,
                       size: 20, color: theme.iconTheme.color),
                   const SizedBox(width: 12),
                   const Text('Debug APK Icons'),

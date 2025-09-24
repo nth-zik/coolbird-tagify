@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:path/path.dart'
     as path_utils; // Aliased to avoid conflict with 'path' in _openSavedConnection
 import 'package:url_launcher/url_launcher.dart';
@@ -420,7 +420,7 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
     return SystemScreen(
       title: 'SMB Network',
       systemId: '#smb',
-      icon: EvaIcons.monitor,
+      icon: remix.Remix.computer_line,
       showAppBar: true,
       actions: [
         // Nút làm mới
@@ -434,13 +434,13 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                     valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
                 )
-              : const Icon(EvaIcons.refresh),
+              : const Icon(remix.Remix.refresh_line),
           onPressed: _isScanning ? null : _resetAndScan,
           tooltip: 'Refresh',
         ),
         // Nút kết nối mới
         IconButton(
-          icon: const Icon(EvaIcons.plus),
+          icon: const Icon(remix.Remix.add_line),
           onPressed: () {
             // Lấy TabManagerBloc từ context trước khi mở dialog
             final tabBloc =
@@ -488,7 +488,7 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                       padding: const EdgeInsets.all(12.0),
                       child: Row(
                         children: [
-                          const Icon(EvaIcons.alertCircleOutline,
+                          const Icon(remix.Remix.error_warning_line,
                               color: Colors.orange),
                           const SizedBox(width: 8),
                           Expanded(
@@ -550,7 +550,7 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                         child: Row(
                           children: [
                             Icon(
-                              EvaIcons.infoOutline,
+                              remix.Remix.information_line,
                               size: 16,
                               color: Theme.of(context).colorScheme.primary,
                             ),
@@ -595,7 +595,7 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                               )
                             else
                               IconButton(
-                                icon: const Icon(EvaIcons.refreshOutline,
+                                icon: const Icon(remix.Remix.refresh_line,
                                     size: 16),
                                 onPressed: _updateSmbVersionInfo,
                                 tooltip: 'Refresh SMB version info',
@@ -670,7 +670,7 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
           ),
           child: Row(
             children: [
-              Icon(EvaIcons.info, color: Colors.grey[600], size: 20),
+              Icon(remix.Remix.information_line, color: Colors.grey[600], size: 20),
               SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -720,7 +720,7 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                 color: Colors.blue.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(EvaIcons.monitor, color: Colors.blue, size: 20),
+              child: Icon(remix.Remix.computer_line, color: Colors.blue, size: 20),
             ),
             title: Text(
               serverName,
@@ -752,12 +752,12 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  icon: const Icon(EvaIcons.arrowForward, color: Colors.blue),
+                  icon: const Icon(remix.Remix.arrow_right_line, color: Colors.blue),
                   onPressed: () => _openSavedConnection(path),
                   tooltip: 'Open Connection',
                 ),
                 IconButton(
-                  icon: const Icon(EvaIcons.closeCircle, color: Colors.red),
+                  icon: const Icon(remix.Remix.close_circle_line, color: Colors.red),
                   onPressed: () {
                     // Disconnect from this server
                     _networkBloc.add(NetworkDisconnectRequested(path));
@@ -821,7 +821,7 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(EvaIcons.wifiOff, size: 48, color: Colors.grey),
+                  const Icon(remix.Remix.wifi_off_line, size: 48, color: Colors.grey),
                   const SizedBox(height: 16),
                   const Text('No SMB servers found'),
                   const SizedBox(height: 8),
@@ -833,7 +833,7 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
                     onPressed: _resetAndScan,
-                    icon: const Icon(EvaIcons.refresh, size: 16),
+                    icon: const Icon(remix.Remix.refresh_line, size: 16),
                     label: const Text('Scan Again'),
                   ),
                 ],
@@ -851,7 +851,7 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(EvaIcons.search, size: 48, color: Colors.grey),
+                const Icon(remix.Remix.search_line, size: 48, color: Colors.grey),
                 const SizedBox(height: 16),
                 const Text('Ready to scan'),
                 const SizedBox(height: 8),
@@ -863,7 +863,7 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: _resetAndScan,
-                  icon: const Icon(EvaIcons.refresh, size: 16),
+                  icon: const Icon(remix.Remix.refresh_line, size: 16),
                   label: const Text('Start Scan'),
                 ),
               ],
@@ -939,7 +939,7 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                         color: Colors.blue.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(EvaIcons.monitor,
+                      child: const Icon(remix.Remix.computer_line,
                           color: Colors.blue, size: 20),
                     ),
                     title: Text(
@@ -1007,7 +1007,7 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                       ],
                     ),
                     trailing:
-                        const Icon(EvaIcons.arrowForward, color: Colors.blue),
+                        const Icon(remix.Remix.arrow_right_line, color: Colors.blue),
                     onTap: () =>
                         _connectToSMBServer(device.ipAddress, device.name),
                   ),

@@ -13,7 +13,7 @@ import 'package:path/path.dart' as path;
 // import 'package:ffmpeg_helper/ffmpeg_helper.dart';
 import 'package:cb_file_manager/helpers/core/user_preferences.dart';
 import 'package:cb_file_manager/helpers/core/app_path_helper.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 
 import 'fc_native_video_thumbnail.dart';
 
@@ -304,7 +304,8 @@ class VideoThumbnailHelper {
   static final _pendingQueue = <_ThumbnailRequest>[];
 
   // Reduce maximum concurrent processes to prevent system overload
-  static const int _maxConcurrentProcesses = 1;
+  // Use slightly higher concurrency on Windows to speed up generation
+  static int get _maxConcurrentProcesses => Platform.isWindows ? 3 : 1;
 
   // Add throttling for native Windows thumbnail operations
 
@@ -625,30 +626,67 @@ class VideoThumbnailHelper {
 
     try {
       while (_pendingQueue.isNotEmpty) {
-        final request = _pendingQueue.removeAt(0);
-
-        try {
-          final result = await _generateThumbnailInternal(
-            request.videoPath,
-            forceRegenerate: request.forceRegenerate,
-            quality: request.quality,
-            thumbnailSize: request.thumbnailSize,
-          );
-
-          if (result != null) {
-            _fileCache[request.videoPath] = result;
-            request.completer.complete(result);
-          } else {
-            request.completer.complete(null);
-          }
-        } catch (e) {
-          debugPrint(
-              'VideoThumbnail: Error processing request for ${request.videoPath}: $e');
-          request.completer.complete(null);
+        // Respect stop flag early
+        if (_shouldStopProcessing) {
+          _log('VideoThumbnail: Stopping queue processing due to stop flag');
+          break;
         }
 
-        // Short delay between thumbnails to avoid IO/CPU spikes
-        await Future.delayed(const Duration(milliseconds: 8));
+        // Pull a batch up to the concurrency limit
+        final batchSize = _maxConcurrentProcesses.clamp(1, 8);
+        final currentBatch = <_ThumbnailRequest>[];
+        while (currentBatch.length < batchSize && _pendingQueue.isNotEmpty) {
+          currentBatch.add(_pendingQueue.removeAt(0));
+        }
+
+        // Track processing requests for cancellation awareness
+        _processingQueue.addAll(currentBatch);
+
+        // Launch batch with slight staggering to reduce spikes
+        final futures = <Future<void>>[];
+        for (var i = 0; i < currentBatch.length; i++) {
+          final request = currentBatch[i];
+          futures.add(() async {
+            try {
+              // Stagger start a little between tasks
+              if (i > 0) {
+                await Future.delayed(Duration(milliseconds: 6 * i));
+              }
+
+              final result = await _generateThumbnailInternal(
+                request.videoPath,
+                forceRegenerate: request.forceRegenerate,
+                quality: request.quality,
+                thumbnailSize: request.thumbnailSize,
+              );
+
+              if (result != null) {
+                _fileCache[request.videoPath] = result;
+                if (!request.completer.isCompleted) {
+                  request.completer.complete(result);
+                }
+              } else {
+                if (!request.completer.isCompleted) {
+                  request.completer.complete(null);
+                }
+              }
+            } catch (e) {
+              debugPrint(
+                  'VideoThumbnail: Error processing request for ${request.videoPath}: $e');
+              if (!request.completer.isCompleted) {
+                request.completer.complete(null);
+              }
+            } finally {
+              _processingQueue.remove(request);
+            }
+          }());
+        }
+
+        // Wait for this batch to complete
+        await Future.wait(futures);
+
+        // Short delay between batches to avoid IO/CPU spikes
+        await Future.delayed(const Duration(milliseconds: 12));
       }
     } finally {
       _isProcessingQueue = false;
@@ -1143,9 +1181,10 @@ class VideoThumbnailHelper {
           ),
         );
 
-    final requestedSize = (max(width, height).isFinite && max(width, height) > 0)
-        ? max(width, height).toInt()
-        : null;
+    final requestedSize =
+        (max(width, height).isFinite && max(width, height) > 0)
+            ? max(width, height).toInt()
+            : null;
 
     return FutureBuilder<String?>(
       key: key ?? ValueKey('thumb_$videoPath'),
@@ -1179,8 +1218,7 @@ class VideoThumbnailHelper {
             height: height,
             fit: fit,
             // Add null checks and validation before converting to int
-            cacheWidth:
-                (width.isFinite && width > 0) ? (width).toInt() : null,
+            cacheWidth: (width.isFinite && width > 0) ? (width).toInt() : null,
             cacheHeight:
                 (height.isFinite && height > 0) ? (height).toInt() : null,
             filterQuality: FilterQuality.high,
@@ -1197,7 +1235,7 @@ class VideoThumbnailHelper {
                     // Add video play icon overlay
                     const Center(
                       child: Icon(
-                        EvaIcons.playCircleOutline,
+                        remix.Remix.play_circle_line,
                         color: Colors.white,
                         size: 32,
                       ),

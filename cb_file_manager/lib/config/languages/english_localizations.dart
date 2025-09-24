@@ -565,4 +565,413 @@ class EnglishLocalizations implements AppLocalizations {
 
   @override
   String get grantPermission => 'Grant Permission';
+
+  // Home screen
+  @override
+  String get welcomeToFileManager => 'Welcome to CoolBird File Manager';
+
+  @override
+  String get welcomeDescription => 'Your powerful file management companion';
+
+  @override
+  String get quickActions => 'Quick Actions';
+
+  @override
+  String get browseFiles => 'Browse Files';
+
+  @override
+  String get browseFilesDescription => 'Explore your local files and folders';
+
+  @override
+  String get manageMedia => 'Manage Media';
+
+  @override
+  String get manageMediaDescription => 'View images and videos in gallery';
+
+  @override
+  String get tagFiles => 'Tag Files';
+
+  @override
+  String get tagFilesDescription => 'Organize files with smart tags';
+
+  @override
+  String get networkAccess => 'Network Access';
+
+  @override
+  String get networkAccessDescription => 'Browse network drives and shares';
+
+  @override
+  String get keyFeatures => 'Key Features';
+
+  @override
+  String get fileManagement => 'File Management';
+
+  @override
+  String get fileManagementDescription =>
+      'Browse and organize your files with ease';
+
+  @override
+  String get smartTagging => 'Smart Tagging';
+
+  @override
+  String get smartTaggingDescription => 'Tag files for lightning-fast search';
+
+  @override
+  String get mediaGallery => 'Media Gallery';
+
+  @override
+  String get mediaGalleryDescription =>
+      'Beautiful gallery for images and videos';
+
+  @override
+  String get networkSupport => 'Network Support';
+
+  @override
+  String get networkSupportDescription => 'Seamless access to network drives';
+
+  // Settings screen
+  @override
+  String get interface => 'Interface';
+
+  @override
+  String get selectInterfaceTheme => 'Select interface and favorite colors';
+
+  @override
+  String get chooseInterface => 'Choose Interface';
+
+  @override
+  String get interfaceDescription => 'Various colors and styles';
+
+  @override
+  String get showFileTags => 'Show File Tags';
+
+  @override
+  String get showFileTagsDescription =>
+      'Display file tags outside file list in all view modes';
+
+  @override
+  String get showFileTagsToggle => 'Show file tags';
+
+  @override
+  String get showFileTagsToggleDescription =>
+      'Enable/disable showing tags outside file list';
+
+  @override
+  String get cacheManagement => 'Cache Management';
+
+  @override
+  String get cacheManagementDescription => 'Clear cache data to free up memory';
+
+  @override
+  String get cacheFolder => 'Cache folder:';
+
+  @override
+  String get networkThumbnails => 'Network thumbnails:';
+
+  @override
+  String get videoThumbnailsCache => 'Video thumbnails:';
+
+  @override
+  String get tempFiles => 'Temp files:';
+
+  @override
+  String get notInitialized => 'Not initialized';
+
+  @override
+  String get refreshCacheInfo => 'Refresh';
+
+  @override
+  String get cacheInfoUpdated => 'Cache info updated';
+
+  @override
+  String get clearVideoThumbnailsCache => 'Clear video thumbnails cache';
+
+  @override
+  String get clearVideoThumbnailsDescription =>
+      'Clear generated video thumbnails';
+
+  @override
+  String get clearNetworkThumbnailsCache =>
+      'Clear SMB/network thumbnails cache';
+
+  @override
+  String get clearNetworkThumbnailsDescription =>
+      'Clear generated network thumbnails';
+
+  @override
+  String get clearTempFilesCache => 'Clear temp files';
+
+  @override
+  String get clearTempFilesDescription =>
+      'Clear temp files from network shares';
+
+  @override
+  String get clearAllCache => 'Clear all cache';
+
+  @override
+  String get clearAllCacheDescription => 'Clear all cache data';
+
+  @override
+  String get videoCacheCleared => 'Video thumbnails cache cleared';
+
+  @override
+  String get networkCacheCleared => 'Network thumbnails cache cleared';
+
+  @override
+  String get tempFilesCleared => 'Temp files cleared';
+
+  @override
+  String get allCacheCleared => 'All cache data cleared';
+
+  @override
+  String get errorClearingCache => 'Error: ';
+
+  @override
+  String get processing => 'Processing...';
+
+  @override
+  String get regenerateThumbnailsWithNewPosition =>
+      'Regenerate thumbnails with new position';
+
+  @override
+  String get thumbnailPositionUpdated =>
+      'Cleared cache and will regenerate thumbnails at ';
+
+  @override
+  String get fileTagsEnabled => 'File tags display enabled';
+
+  @override
+  String get fileTagsDisabled => 'File tags display disabled';
+
+  // System screen router
+  @override
+  String get unknownSystemPath => 'Unknown system path';
+
+  @override
+  String get ftpConnectionRequired => 'FTP Connection Required';
+
+  @override
+  String get ftpConnectionDescription =>
+      'You need to connect to an FTP server first.';
+
+  @override
+  String get goToFtpConnections => 'Go to FTP Connections';
+
+  @override
+  String get cannotOpenNetworkPath => 'Cannot open network path';
+
+  @override
+  String get goBack => 'Go Back';
+
+  @override
+  String get tagPrefix => 'Tag';
+
+  // Network browsing
+  @override
+  String get ftpConnections => 'FTP Connections';
+
+  @override
+  String get smbNetwork => 'SMB Network';
+
+  @override
+  String get refreshData => 'Refresh';
+
+  @override
+  String get addConnection => 'Add Connection';
+
+  @override
+  String get noFtpConnections => 'No FTP connections.';
+
+  @override
+  String get activeConnections => 'Active connections';
+
+  @override
+  String get savedConnections => 'Saved connections';
+
+  @override
+  String get connecting => 'Connecting';
+
+  @override
+  String get connect => 'Connect';
+
+  @override
+  String get unknown => 'Unknown';
+
+  @override
+  String get connectionError => 'Connection error';
+
+  @override
+  String get loadCredentialsError => 'Error loading saved credentials';
+
+  @override
+  String get networkScanFailed => 'Network scan failed';
+
+  @override
+  String get smbVersionUnknown => 'Unknown';
+
+  @override
+  String get connectionInfoUnavailable => 'Connection info unavailable';
+
+  @override
+  String get networkSettingsOpened => 'Network settings opened';
+
+  @override
+  String get cannotOpenNetworkSettings =>
+      'Cannot open network settings, please open manually';
+
+  @override
+  String get networkDiscoveryDisabled => 'Network discovery may not be enabled';
+
+  @override
+  String get networkDiscoveryDescription =>
+      'Enable network discovery in Windows settings to scan for SMB servers';
+
+  @override
+  String get openSettings => 'Open Settings';
+
+  @override
+  String get activeConnectionsTitle => 'Active Connections';
+
+  @override
+  String get activeConnectionsDescription => 'SMB servers you are connected to';
+
+  @override
+  String get discoveredSmbServers => 'Discovered SMB Servers';
+
+  @override
+  String get discoveredSmbServersDescription =>
+      'Servers discovered on your local network';
+
+  @override
+  String get noActiveSmbConnections => 'No active SMB connections';
+
+  @override
+  String get connectToSmbServer => 'Connect to an SMB server to see it here';
+
+  @override
+  String get connected => 'Connected';
+
+  @override
+  String get openConnection => 'Open Connection';
+
+  @override
+  String get disconnect => 'Disconnect';
+
+  @override
+  String get scanningForSmbServers => 'Scanning for SMB servers...';
+
+  @override
+  String get devicesWillAppear =>
+      'Devices will appear here as they are discovered';
+
+  @override
+  String get scanningMayTakeTime => 'This may take a few moments';
+
+  @override
+  String get noSmbServersFound => 'No SMB servers found';
+
+  @override
+  String get tryScanningAgain =>
+      'Try scanning again or check your network settings';
+
+  @override
+  String get scanAgain => 'Scan Again';
+
+  @override
+  String get readyToScan => 'Ready to scan';
+
+  @override
+  String get clickRefreshToScan =>
+      'Click the refresh button to start scanning for SMB servers';
+
+  @override
+  String get startScan => 'Start Scan';
+
+  @override
+  String get foundDevices => 'Found';
+
+  @override
+  String get scanning => 'Scanning...';
+
+  @override
+  String get scanComplete => 'Scan Complete';
+
+  @override
+  String get smbVersion => 'SMB Version';
+
+  @override
+  String get netbios => 'NetBIOS';
+
+  // Drawer menu items
+  @override
+  String get networksMenu => 'Networks';
+
+  @override
+  String get networkTab => 'Network';
+
+  @override
+  String get about => 'About';
+
+  // Tab manager
+  @override
+  String get newTabButton => 'New Tab';
+
+  @override
+  String get openNewTabToStart => 'Open a new tab to get started';
+
+  // Home screen
+  @override
+  String get welcomeTitle => 'Welcome to CoolBird Tagify';
+
+  @override
+  String get welcomeSubtitle => 'Your powerful file management companion';
+
+  @override
+  String get quickActionsTip =>
+      'Tip: Use quick actions below to get started quickly';
+
+  @override
+  String get quickActionsHome => 'Quick Actions';
+
+  @override
+  String get startHere => 'Start here';
+
+  @override
+  String get newTabAction => 'New Tab';
+
+  @override
+  String get newTabActionDesc => 'Open a new file browser tab';
+
+  @override
+  String get tagsAction => 'Tags';
+
+  @override
+  String get tagsActionDesc => 'Organize with smart tags';
+
+  @override
+  String get imageGalleryTab => 'Image Gallery';
+
+  @override
+  String get videoGalleryTab => 'Video Gallery';
+
+  @override
+  String get drivesTab => 'Drives';
+
+  @override
+  String get browseTab => 'Browse';
+
+  @override
+  String get documentsTab => 'Documents';
+
+  @override
+  String get homeTab => 'Home';
+
+  @override
+  String get internalStorage => 'Internal Storage';
+
+  @override
+  String get storagePrefix => 'Storage';
+
+  @override
+  String get rootFolder => 'Root';
 }

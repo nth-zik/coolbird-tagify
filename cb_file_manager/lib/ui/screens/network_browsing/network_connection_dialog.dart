@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:flutter/foundation.dart';
 
 import '../../../bloc/network_browsing/network_browsing_bloc.dart';
@@ -651,7 +651,7 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
                                     children: [
                                       IconButton(
                                         icon:
-                                            const Icon(EvaIcons.edit, size: 16),
+                                            const Icon(remix.Remix.edit_line, size: 16),
                                         onPressed: () {
                                           // Stop dropdown from closing
                                           RouteUtils.safePopDialog(context);
@@ -695,7 +695,7 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
                           border: const OutlineInputBorder(),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              _showPassword ? EvaIcons.eye : EvaIcons.eyeOff,
+                              _showPassword ? remix.Remix.eye_line : remix.Remix.eye_off_line,
                             ),
                             onPressed: isLoading
                                 ? null

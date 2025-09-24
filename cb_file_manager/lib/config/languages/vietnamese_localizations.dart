@@ -569,4 +569,411 @@ class VietnameseLocalizations implements AppLocalizations {
 
   @override
   String get grantPermission => 'Cấp quyền';
+
+  // Home screen
+  @override
+  String get welcomeToFileManager => 'Chào mừng đến với CoolBird File Manager';
+
+  @override
+  String get welcomeDescription => 'Trợ lý quản lý tệp mạnh mẽ của bạn';
+
+  @override
+  String get quickActions => 'Thao tác nhanh';
+
+  @override
+  String get browseFiles => 'Duyệt tệp';
+
+  @override
+  String get browseFilesDescription => 'Khám phá các tệp và thư mục cục bộ';
+
+  @override
+  String get manageMedia => 'Quản lý phương tiện';
+
+  @override
+  String get manageMediaDescription => 'Xem hình ảnh và video trong thư viện';
+
+  @override
+  String get tagFiles => 'Gắn thẻ tệp';
+
+  @override
+  String get tagFilesDescription => 'Tổ chức tệp bằng thẻ thông minh';
+
+  @override
+  String get networkAccess => 'Truy cập mạng';
+
+  @override
+  String get networkAccessDescription => 'Duyệt ổ đĩa và chia sẻ mạng';
+
+  @override
+  String get keyFeatures => 'Tính năng chính';
+
+  @override
+  String get fileManagement => 'Quản lý tệp';
+
+  @override
+  String get fileManagementDescription =>
+      'Duyệt và tổ chức tệp một cách dễ dàng';
+
+  @override
+  String get smartTagging => 'Gắn thẻ thông minh';
+
+  @override
+  String get smartTaggingDescription =>
+      'Gắn thẻ tệp để tìm kiếm nhanh như chớp';
+
+  @override
+  String get mediaGallery => 'Thư viện phương tiện';
+
+  @override
+  String get mediaGalleryDescription => 'Thư viện đẹp cho hình ảnh và video';
+
+  @override
+  String get networkSupport => 'Hỗ trợ mạng';
+
+  @override
+  String get networkSupportDescription => 'Truy cập liền mạch vào ổ đĩa mạng';
+
+  // Settings screen
+  @override
+  String get interface => 'Giao diện';
+
+  @override
+  String get selectInterfaceTheme => 'Chọn giao diện và màu sắc yêu thích';
+
+  @override
+  String get chooseInterface => 'Chọn giao diện';
+
+  @override
+  String get interfaceDescription => 'Nhiều màu sắc và kiểu dáng khác nhau';
+
+  @override
+  String get showFileTags => 'Hiển thị tag của file';
+
+  @override
+  String get showFileTagsDescription =>
+      'Hiển thị các tag của file bên ngoài danh sách file trong tất cả các chế độ xem';
+
+  @override
+  String get showFileTagsToggle => 'Hiển thị tag của file';
+
+  @override
+  String get showFileTagsToggleDescription =>
+      'Bật/tắt hiển thị tag bên ngoài danh sách file';
+
+  @override
+  String get cacheManagement => 'Quản lý bộ nhớ cache';
+
+  @override
+  String get cacheManagementDescription =>
+      'Xóa dữ liệu cache để giải phóng bộ nhớ';
+
+  @override
+  String get cacheFolder => 'Thư mục cache:';
+
+  @override
+  String get networkThumbnails => 'Thumbnail mạng:';
+
+  @override
+  String get videoThumbnailsCache => 'Thumbnail video:';
+
+  @override
+  String get tempFiles => 'File tạm:';
+
+  @override
+  String get notInitialized => 'Chưa khởi tạo';
+
+  @override
+  String get refreshCacheInfo => 'Làm mới';
+
+  @override
+  String get cacheInfoUpdated => 'Đã cập nhật thông tin cache';
+
+  @override
+  String get clearVideoThumbnailsCache => 'Xóa cache video thumbnails';
+
+  @override
+  String get clearVideoThumbnailsDescription =>
+      'Xóa các thumbnail video đã tạo';
+
+  @override
+  String get clearNetworkThumbnailsCache => 'Xóa cache SMB/network thumbnails';
+
+  @override
+  String get clearNetworkThumbnailsDescription =>
+      'Xóa các thumbnail mạng đã tạo';
+
+  @override
+  String get clearTempFilesCache => 'Xóa các file tạm';
+
+  @override
+  String get clearTempFilesDescription => 'Xóa file tạm từ chia sẻ mạng';
+
+  @override
+  String get clearAllCache => 'Xóa tất cả cache';
+
+  @override
+  String get clearAllCacheDescription => 'Xóa tất cả dữ liệu cache';
+
+  @override
+  String get videoCacheCleared => 'Đã xóa cache thumbnails video';
+
+  @override
+  String get networkCacheCleared => 'Đã xóa cache thumbnails mạng';
+
+  @override
+  String get tempFilesCleared => 'Đã xóa các file tạm';
+
+  @override
+  String get allCacheCleared => 'Đã xóa tất cả dữ liệu cache';
+
+  @override
+  String get errorClearingCache => 'Lỗi: ';
+
+  @override
+  String get processing => 'Đang xử lý...';
+
+  @override
+  String get regenerateThumbnailsWithNewPosition =>
+      'Tạo lại thumbnail với vị trí mới';
+
+  @override
+  String get thumbnailPositionUpdated =>
+      'Đã xóa cache và sẽ tạo lại thumbnail với vị trí ';
+
+  @override
+  String get fileTagsEnabled => 'Đã bật hiển thị tag của file';
+
+  @override
+  String get fileTagsDisabled => 'Đã tắt hiển thị tag của file';
+
+  // System screen router
+  @override
+  String get unknownSystemPath => 'Đường dẫn hệ thống không xác định';
+
+  @override
+  String get ftpConnectionRequired => 'Cần kết nối FTP';
+
+  @override
+  String get ftpConnectionDescription =>
+      'Bạn cần kết nối đến máy chủ FTP trước.';
+
+  @override
+  String get goToFtpConnections => 'Đi đến kết nối FTP';
+
+  @override
+  String get cannotOpenNetworkPath => 'Không thể mở đường dẫn mạng';
+
+  @override
+  String get goBack => 'Quay lại';
+
+  @override
+  String get tagPrefix => 'Tag';
+
+  // Network browsing
+  @override
+  String get ftpConnections => 'Kết nối FTP';
+
+  @override
+  String get smbNetwork => 'Mạng SMB';
+
+  @override
+  String get refreshData => 'Làm mới';
+
+  @override
+  String get addConnection => 'Thêm kết nối';
+
+  @override
+  String get noFtpConnections => 'Không có kết nối FTP nào.';
+
+  @override
+  String get activeConnections => 'Kết nối đang hoạt động';
+
+  @override
+  String get savedConnections => 'Kết nối đã lưu';
+
+  @override
+  String get connecting => 'Đang kết nối';
+
+  @override
+  String get connect => 'Kết nối';
+
+  @override
+  String get unknown => 'Không xác định';
+
+  @override
+  String get connectionError => 'Lỗi kết nối';
+
+  @override
+  String get loadCredentialsError => 'Lỗi khi tải thông tin đăng nhập đã lưu';
+
+  @override
+  String get networkScanFailed => 'Quét mạng thất bại';
+
+  @override
+  String get smbVersionUnknown => 'Không xác định';
+
+  @override
+  String get connectionInfoUnavailable => 'Thông tin kết nối không khả dụng';
+
+  @override
+  String get networkSettingsOpened => 'Đã mở cài đặt mạng';
+
+  @override
+  String get cannotOpenNetworkSettings =>
+      'Không thể mở cài đặt mạng, vui lòng mở thủ công';
+
+  @override
+  String get networkDiscoveryDisabled => 'Khám phá mạng có thể chưa được bật';
+
+  @override
+  String get networkDiscoveryDescription =>
+      'Bật khám phá mạng trong cài đặt Windows để quét máy chủ SMB';
+
+  @override
+  String get openSettings => 'Mở cài đặt';
+
+  @override
+  String get activeConnectionsTitle => 'Kết nối đang hoạt động';
+
+  @override
+  String get activeConnectionsDescription => 'Máy chủ SMB bạn đang kết nối';
+
+  @override
+  String get discoveredSmbServers => 'Máy chủ SMB đã khám phá';
+
+  @override
+  String get discoveredSmbServersDescription =>
+      'Máy chủ được khám phá trên mạng cục bộ';
+
+  @override
+  String get noActiveSmbConnections => 'Không có kết nối SMB đang hoạt động';
+
+  @override
+  String get connectToSmbServer => 'Kết nối đến máy chủ SMB để xem tại đây';
+
+  @override
+  String get connected => 'Đã kết nối';
+
+  @override
+  String get openConnection => 'Mở kết nối';
+
+  @override
+  String get disconnect => 'Ngắt kết nối';
+
+  @override
+  String get scanningForSmbServers => 'Đang quét máy chủ SMB...';
+
+  @override
+  String get devicesWillAppear =>
+      'Thiết bị sẽ xuất hiện ở đây khi được khám phá';
+
+  @override
+  String get scanningMayTakeTime => 'Quá trình này có thể mất vài phút';
+
+  @override
+  String get noSmbServersFound => 'Không tìm thấy máy chủ SMB nào';
+
+  @override
+  String get tryScanningAgain => 'Thử quét lại hoặc kiểm tra cài đặt mạng';
+
+  @override
+  String get scanAgain => 'Quét lại';
+
+  @override
+  String get readyToScan => 'Sẵn sàng quét';
+
+  @override
+  String get clickRefreshToScan =>
+      'Nhấp nút làm mới để bắt đầu quét máy chủ SMB';
+
+  @override
+  String get startScan => 'Bắt đầu quét';
+
+  @override
+  String get foundDevices => 'Tìm thấy';
+
+  @override
+  String get scanning => 'Đang quét...';
+
+  @override
+  String get scanComplete => 'Quét hoàn tất';
+
+  @override
+  String get smbVersion => 'Phiên bản SMB';
+
+  @override
+  String get netbios => 'NetBIOS';
+
+  // Drawer menu items
+  @override
+  String get networksMenu => 'Mạng';
+
+  @override
+  String get networkTab => 'Mạng';
+
+  @override
+  String get about => 'Giới thiệu';
+
+  // Tab manager
+  @override
+  String get newTabButton => 'Tab mới';
+
+  @override
+  String get openNewTabToStart => 'Mở tab mới để bắt đầu';
+
+  // Home screen
+  @override
+  String get welcomeTitle => 'Chào mừng đến với CoolBird Tagify';
+
+  @override
+  String get welcomeSubtitle => 'Trợ lý quản lý tệp mạnh mẽ của bạn';
+
+  @override
+  String get quickActionsTip =>
+      'Mẹo: Sử dụng các hành động nhanh bên dưới để bắt đầu nhanh chóng';
+
+  @override
+  String get quickActionsHome => 'Hành động nhanh';
+
+  @override
+  String get startHere => 'Bắt đầu tại đây';
+
+  @override
+  String get newTabAction => 'Tab mới';
+
+  @override
+  String get newTabActionDesc => 'Mở tab trình duyệt tệp mới';
+
+  @override
+  String get tagsAction => 'Thẻ';
+
+  @override
+  String get tagsActionDesc => 'Tổ chức với thẻ thông minh';
+
+  @override
+  String get imageGalleryTab => 'Thư viện ảnh';
+
+  @override
+  String get videoGalleryTab => 'Thư viện video';
+
+  @override
+  String get drivesTab => 'Ổ đĩa';
+
+  @override
+  String get browseTab => 'Duyệt';
+
+  @override
+  String get documentsTab => 'Tài liệu';
+
+  @override
+  String get homeTab => 'Trang chủ';
+
+  @override
+  String get internalStorage => 'Bộ nhớ trong';
+
+  @override
+  String get storagePrefix => 'Bộ nhớ';
+
+  @override
+  String get rootFolder => 'Thư mục gốc';
 }

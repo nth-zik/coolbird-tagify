@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 
 import '../../../bloc/network_browsing/network_browsing_bloc.dart';
 import '../../../bloc/network_browsing/network_browsing_event.dart';
@@ -46,7 +46,7 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(EvaIcons.alertTriangle,
+                  const Icon(remix.Remix.alert_line,
                       size: 48, color: Colors.red),
                   const SizedBox(height: 16),
                   Text('Error: ${state.errorMessage}',
@@ -99,7 +99,7 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showConnectionDialog(context),
-        child: const Icon(EvaIcons.plus),
+        child: const Icon(remix.Remix.add_line),
         tooltip: 'Add Connection',
       ),
     );
@@ -113,7 +113,7 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(EvaIcons.wifiOffOutline, size: 48, color: Colors.grey),
+              Icon(remix.Remix.wifi_off_line, size: 48, color: Colors.grey),
               SizedBox(height: 16),
               Text(
                 'No active network connections',
@@ -160,7 +160,7 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
           title: Text(displayName, overflow: TextOverflow.ellipsis),
           subtitle: Text(subtitle),
           trailing: IconButton(
-            icon: const Icon(EvaIcons.closeCircleOutline, color: Colors.red),
+            icon: const Icon(remix.Remix.close_circle_line, color: Colors.red),
             onPressed: () => _disconnectService(path),
             tooltip: 'Disconnect',
           ),

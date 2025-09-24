@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:path/path.dart' as path;
 
 import '../../../bloc/network_browsing/network_browsing_bloc.dart';
@@ -412,16 +412,16 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
     return SystemScreen(
       title: 'WebDAV Connections',
       systemId: '#webdav',
-      icon: EvaIcons.globe,
+      icon: remix.Remix.global_line,
       showAppBar: true,
       actions: [
         IconButton(
-          icon: const Icon(EvaIcons.refresh),
+          icon: const Icon(remix.Remix.refresh_line),
           onPressed: _refreshData,
           tooltip: 'Làm mới',
         ),
         IconButton(
-          icon: const Icon(EvaIcons.plus),
+          icon: const Icon(remix.Remix.add_line),
           onPressed: _connectToWebDAVServer,
           tooltip: 'Add Connection',
         ),
@@ -439,7 +439,7 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    EvaIcons.globe,
+                    remix.Remix.global_line,
                     size: 64,
                     color: Colors.grey.shade400,
                   ),
@@ -516,7 +516,7 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
     } catch (_) {}
 
     return ListTile(
-      leading: const Icon(EvaIcons.globe, color: Colors.green),
+      leading: const Icon(remix.Remix.global_line, color: Colors.green),
       title: Text(host),
       subtitle: const Text('Đang kết nối'),
       onTap: () => _openTabForConnection(entry.key, host),
@@ -527,7 +527,7 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
     final isConnecting = _connectingCredentialIds.contains(credentials.id);
 
     return ListTile(
-      leading: const Icon(EvaIcons.globe, color: Colors.blue),
+      leading: const Icon(remix.Remix.global_line, color: Colors.blue),
       title: Text(credentials.host),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -558,7 +558,7 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
               tooltip: 'Delete Connection',
             ),
             IconButton(
-              icon: const Icon(EvaIcons.arrowCircleRight, color: Colors.green),
+              icon: const Icon(remix.Remix.arrow_right_circle_line, color: Colors.green),
               onPressed: () => _connectWithSavedCredentials(credentials),
               tooltip: 'Kết nối',
             ),

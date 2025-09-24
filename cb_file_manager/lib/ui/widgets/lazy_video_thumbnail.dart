@@ -5,7 +5,7 @@ import 'package:flutter/scheduler.dart';
 import '../../helpers/media/video_thumbnail_helper.dart';
 import '../../helpers/ui/frame_timing_optimizer.dart';
 import 'package:visibility_detector/visibility_detector.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 
 /// A widget that efficiently displays a video thumbnail with lazy loading
 /// and background processing to avoid UI thread blocking during scrolling
@@ -105,7 +105,8 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
       // If we don't yet show a thumbnail, update from cache and repaint
       if (_thumbnailPathNotifier.value == null) {
         try {
-          final cached = await VideoThumbnailHelper.getFromCache(widget.videoPath);
+          final cached =
+              await VideoThumbnailHelper.getFromCache(widget.videoPath);
           if (!mounted) return;
           if (cached != null) {
             _thumbnailPathNotifier.value = cached;
@@ -286,11 +287,8 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
         }
       }
 
-      // Update UI
+      // Update UI - no need for setState since we use ValueListenableBuilder
       _progressNotifier.value = 1.0;
-      if (mounted) {
-        setState(() {});
-      }
     }).catchError((error) {
       if (!mounted) return;
 
@@ -307,10 +305,7 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
       if (widget.onError != null) {
         widget.onError!(error);
       }
-
-      if (mounted) {
-        setState(() {});
-      }
+      // No setState needed - ValueListenableBuilder will handle UI updates
     });
   }
 
@@ -351,10 +346,7 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
       });
     }
 
-    // Force an immediate UI update to show the thumbnail
-    if (mounted) {
-      setState(() {});
-    }
+    // No need for setState - ValueListenableBuilder will handle UI updates automatically
   }
 
   /// Visibility change handler that triggers thumbnail loading when widget becomes visible
@@ -362,6 +354,10 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
     if (!mounted) return;
 
     final isNowVisible = info.visibleFraction > 0;
+    final wasVisible = _visibilityNotifier.value;
+
+    // Only process if visibility actually changed to reduce unnecessary operations
+    if (isNowVisible == wasVisible) return;
 
     if (isNowVisible) {
       _visibilityNotifier.value = true;
@@ -371,17 +367,31 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
           !_isLoading &&
           !widget.placeholderOnly &&
           !_isThumbnailGenerated) {
-        _loadThumbnail(isPriority: true);
-        _startCachePolling();
+        // Add small delay to avoid loading during fast scrolling
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted &&
+              _visibilityNotifier.value &&
+              _thumbnailPathNotifier.value == null) {
+            _loadThumbnail(isPriority: true);
+            _startCachePolling();
+          }
+        });
       } else if (_wasAttempted &&
           _thumbnailPathNotifier.value == null &&
           !_isLoading &&
           !widget.placeholderOnly &&
           !_isThumbnailGenerated) {
-        _loadThumbnail(forceRegenerate: true, isPriority: true);
-        _startCachePolling();
+        // Add delay for retry attempts too
+        Future.delayed(const Duration(milliseconds: 150), () {
+          if (mounted &&
+              _visibilityNotifier.value &&
+              _thumbnailPathNotifier.value == null) {
+            _loadThumbnail(forceRegenerate: true, isPriority: true);
+            _startCachePolling();
+          }
+        });
       }
-    } else if (_visibilityNotifier.value) {
+    } else {
       _visibilityNotifier.value = false;
       _cachePollTimer?.cancel();
       _cachePollAttempts = 0;
@@ -400,27 +410,24 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
     // Use collision-free key to ensure VisibilityDetector delivers events reliably
     final Key visibilityKey = ValueKey('vid-visibility:${widget.videoPath}');
 
-    return ValueListenableBuilder<String?>(
-      valueListenable: _thumbnailPathNotifier,
-      builder: (context, thumbnailPath, _) {
-        // First check if we have a valid thumbnail to display
-        if (thumbnailPath != null) {
-          return _buildThumbnailImage(thumbnailPath);
-        }
+    return RepaintBoundary(
+      child: ValueListenableBuilder<String?>(
+        valueListenable: _thumbnailPathNotifier,
+        builder: (context, thumbnailPath, _) {
+          // First check if we have a valid thumbnail to display
+          if (thumbnailPath != null) {
+            return _buildThumbnailImage(thumbnailPath);
+          }
 
-        // The main widget that detects visibility and loads thumbnails
-        return VisibilityDetector(
-          key: visibilityKey,
-          onVisibilityChanged: _onVisibilityChanged,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // The fallback widget provided by the consumer
-              widget.fallbackBuilder(),
-            ],
-          ),
-        );
-      },
+          // The main widget that detects visibility and loads thumbnails
+          return VisibilityDetector(
+            key: visibilityKey,
+            onVisibilityChanged: _onVisibilityChanged,
+            child: widget
+                .fallbackBuilder(), // Simplified - no need for Stack with single child
+          );
+        },
+      ),
     );
   }
 
@@ -430,7 +437,9 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
     _cachePollTimer?.cancel();
     _cachePollAttempts = 0;
 
-    _cachePollTimer = Timer.periodic(const Duration(milliseconds: 500), (t) async {
+    _cachePollTimer =
+        Timer.periodic(const Duration(milliseconds: 1000), (t) async {
+      // Increased from 500ms to reduce polling frequency
       if (!mounted || !_visibilityNotifier.value) {
         t.cancel();
         return;
@@ -443,7 +452,8 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
 
       _cachePollAttempts++;
       try {
-        final cached = await VideoThumbnailHelper.getFromCache(widget.videoPath);
+        final cached =
+            await VideoThumbnailHelper.getFromCache(widget.videoPath);
         if (cached != null) {
           _thumbnailPathNotifier.value = cached;
           _isThumbnailGenerated = true;
@@ -458,26 +468,6 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
         t.cancel();
       }
     });
-  }
-
-  /// Build circular progress indicator - kept for potential future use
-  Widget _buildProgressIndicator() {
-    return ValueListenableBuilder<double>(
-      valueListenable: _progressNotifier,
-      builder: (context, progress, _) {
-        return SizedBox(
-          width: 32,
-          height: 32,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            value: progress > 0 ? progress : null,
-            valueColor: AlwaysStoppedAnimation<Color>(
-              Theme.of(context).primaryColor.withOpacity(0.8),
-            ),
-          ),
-        );
-      },
-    );
   }
 
   /// Build the actual thumbnail image
@@ -550,7 +540,8 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
             }
 
             return AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
+              duration: const Duration(
+                  milliseconds: 50), // Reduced from 200ms to avoid flickering
               child: frame != null
                   ? Stack(
                       fit: StackFit.expand,
@@ -559,7 +550,7 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
                         // Add video play icon overlay for local videos
                         const Center(
                           child: Icon(
-                            EvaIcons.playCircleOutline,
+                            remix.Remix.play_circle_line,
                             color: Colors.white,
                             size: 32,
                           ),

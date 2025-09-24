@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Thêm import cho SystemUiOverlayStyle
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:io'; // Thêm import cho Platform
-import 'package:eva_icons_flutter/eva_icons_flutter.dart'; // Import Eva Icons
+import 'package:remixicon/remixicon.dart' as remix; 
 import 'core/tab_manager.dart';
 import 'core/tab_data.dart';
 import '../screens/settings/settings_screen.dart';
@@ -105,7 +105,7 @@ class MobileTabView extends StatelessWidget {
         children: [
           // Nút menu
           IconButton(
-            icon: Icon(EvaIcons.menu, color: textColor),
+            icon: Icon(remix.Remix.menu_line, color: textColor),
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
 
@@ -128,7 +128,7 @@ class MobileTabView extends StatelessWidget {
 
           // Nút tạo tab mới nhanh (đặt trước nút số lượng tab)
           IconButton(
-            icon: Icon(EvaIcons.plus, color: textColor),
+            icon: Icon(remix.Remix.add_line, color: textColor),
             tooltip: 'New tab',
             onPressed: onAddNewTab,
           ),
@@ -138,7 +138,7 @@ class MobileTabView extends StatelessWidget {
 
           // Nút menu tùy chọn
           IconButton(
-            icon: Icon(EvaIcons.moreVertical, color: textColor),
+            icon: Icon(remix.Remix.more_2_line, color: textColor),
             onPressed: () => _showMobileTabOptions(context),
           ),
         ],
@@ -168,7 +168,7 @@ class MobileTabView extends StatelessWidget {
         children: [
           // Nút menu để mở drawer
           IconButton(
-            icon: Icon(EvaIcons.menu, color: textColor),
+            icon: Icon(remix.Remix.menu_line, color: textColor),
             onPressed: () {
               // Mở Scaffold drawer
               Scaffold.of(context).openDrawer();
@@ -189,7 +189,7 @@ class MobileTabView extends StatelessWidget {
 
           // Nút thêm tab mới nhanh (đặt trước nút số lượng tab)
           IconButton(
-            icon: Icon(EvaIcons.plus, color: textColor),
+            icon: Icon(remix.Remix.add_line, color: textColor),
             tooltip: 'New tab',
             onPressed: onAddNewTab,
           ),
@@ -199,7 +199,7 @@ class MobileTabView extends StatelessWidget {
 
           // Nút menu tùy chọn
           IconButton(
-            icon: Icon(EvaIcons.moreVertical, color: textColor),
+            icon: Icon(remix.Remix.more_2_line, color: textColor),
             onPressed: () {
               _showMobileTabOptions(context);
             },
@@ -266,7 +266,7 @@ class MobileTabView extends StatelessWidget {
                   children: [
                     // Thêm tab mới
                     ListTile(
-                      leading: const Icon(EvaIcons.plus),
+                      leading: const Icon(remix.Remix.add_line),
                       title: const Text('Thêm tab mới'),
                       onTap: () {
                         Navigator.pop(bottomSheetContext);
@@ -277,7 +277,7 @@ class MobileTabView extends StatelessWidget {
                     // Làm mới tab hiện tại
                     if (activeTab != null)
                       ListTile(
-                        leading: const Icon(EvaIcons.refresh),
+                        leading: const Icon(remix.Remix.refresh_line),
                         title: const Text('Làm mới tab'),
                         onTap: () {
                           Navigator.pop(bottomSheetContext);
@@ -289,7 +289,7 @@ class MobileTabView extends StatelessWidget {
                     // Xem thông tin chi tiết về tab
                     if (activeTab != null)
                       ListTile(
-                        leading: const Icon(EvaIcons.infoOutline),
+                        leading: const Icon(remix.Remix.information_line),
                         title: const Text('Thông tin tab'),
                         onTap: () {
                           Navigator.pop(bottomSheetContext);
@@ -300,7 +300,7 @@ class MobileTabView extends StatelessWidget {
                     // Đóng tất cả các tab
                     if (state.tabs.isNotEmpty)
                       ListTile(
-                        leading: const Icon(EvaIcons.close),
+                        leading: const Icon(remix.Remix.close_line),
                         title: const Text('Đóng tất cả các tab'),
                         onTap: () {
                           RouteUtils.safePopDialog(bottomSheetContext);
@@ -318,7 +318,7 @@ class MobileTabView extends StatelessWidget {
 
                     // Cài đặt
                     ListTile(
-                      leading: const Icon(EvaIcons.settings2Outline),
+                      leading: const Icon(remix.Remix.settings_3_line),
                       title: const Text('Cài đặt'),
                       onTap: () {
                         RouteUtils.safePopDialog(bottomSheetContext);
@@ -487,7 +487,7 @@ class MobileTabView extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Icon(
-              EvaIcons.fileOutline,
+              remix.Remix.file_3_line,
               size: 16,
               color: textColor,
             ),
@@ -540,7 +540,7 @@ class MobileTabView extends StatelessWidget {
                         const Spacer(),
                         // Nút thêm tab mới
                         IconButton(
-                          icon: const Icon(EvaIcons.plus),
+                          icon: const Icon(remix.Remix.add_line),
                           tooltip: 'Add new tab',
                           onPressed: () {
                             Navigator.pop(newContext); // Đóng bottom sheet
@@ -671,7 +671,7 @@ class MobileTabView extends StatelessWidget {
                   Row(
                     children: [
                       Icon(
-                        tab.isPinned ? EvaIcons.pin : EvaIcons.folderOutline,
+                        tab.isPinned ? remix.Remix.pushpin_fill : remix.Remix.folder_3_line,
                         size: 18,
                         color: isActive
                             ? theme.colorScheme.primary
@@ -705,7 +705,7 @@ class MobileTabView extends StatelessWidget {
                       ),
                       alignment: Alignment.center,
                       child: Icon(
-                        EvaIcons.fileTextOutline,
+                        remix.Remix.file_text_line,
                         size: 28,
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -744,7 +744,7 @@ class MobileTabView extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(
-            EvaIcons.fileOutline,
+            remix.Remix.file_3_line,
             size: 64,
             color: Colors.grey,
           ),
@@ -760,7 +760,7 @@ class MobileTabView extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
-            icon: const Icon(EvaIcons.plus),
+            icon: const Icon(remix.Remix.add_line),
             label: const Text('New Tab'),
             onPressed: onAddNewTab,
           ),
@@ -904,7 +904,7 @@ class MobileTabView extends StatelessWidget {
                       const Spacer(),
                       // Nút đóng
                       IconButton(
-                        icon: Icon(EvaIcons.close, color: textColor),
+                        icon: Icon(remix.Remix.close_line, color: textColor),
                         onPressed: () => Navigator.pop(newContext),
                       ),
                     ],
@@ -1185,7 +1185,7 @@ class AddressBarWidget extends StatelessWidget {
         child: Row(
           children: [
             Icon(
-              EvaIcons.search,
+              remix.Remix.search_line,
               size: 18,
               color: isDarkMode ? Colors.white70 : Colors.black87,
             ),
@@ -1200,7 +1200,7 @@ class AddressBarWidget extends StatelessWidget {
               ),
             ),
             Icon(
-              EvaIcons.chevronDown,
+              remix.Remix.arrow_down_s_line,
               size: 20,
               color: isDarkMode ? Colors.white54 : Colors.black54,
             ),

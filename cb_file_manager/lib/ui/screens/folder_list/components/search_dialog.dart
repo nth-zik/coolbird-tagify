@@ -5,6 +5,7 @@ import 'package:cb_file_manager/helpers/core/io_extensions.dart';
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/file_details_screen.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 
 class SearchDialog extends StatefulWidget {
   final String currentPath;
@@ -191,7 +192,7 @@ class _SearchDialogState extends State<SearchDialog> {
               itemCount: tags.length,
               itemBuilder: (context, index) {
                 return ListTile(
-                  leading: const Icon(Icons.local_offer),
+                  leading: Icon(remix.Remix.price_tag_3_line),
                   title: Text(tags[index]),
                   onTap: () {
                     // Insert tag into search query
@@ -317,8 +318,8 @@ class _SearchDialogState extends State<SearchDialog> {
             border: InputBorder.none,
             hintStyle: const TextStyle(color: Colors.white70),
             prefixIcon: _isSearchingTags
-                ? const Icon(Icons.local_offer, color: Colors.white70)
-                : const Icon(Icons.search, color: Colors.white70),
+                ? Icon(remix.Remix.price_tag_3_line, color: Colors.white70)
+                : Icon(remix.Remix.search_line, color: Colors.white70),
           ),
           style: const TextStyle(color: Colors.white),
           autofocus: true,
@@ -398,7 +399,7 @@ class _SearchDialogState extends State<SearchDialog> {
 
   Widget _buildFolderItem(Directory folder) {
     return ListTile(
-      leading: const Icon(Icons.folder, color: Colors.amber),
+      leading: Icon(remix.Remix.folder_line, color: Colors.amber),
       title: Text(folder.basename()),
       onTap: () {
         Navigator.pop(context); // Close search dialog
@@ -414,21 +415,21 @@ class _SearchDialogState extends State<SearchDialog> {
 
     // Determine file type and icon using FileTypeUtils
     if (FileTypeUtils.isImageFile(file.path)) {
-      icon = Icons.image;
+      icon = remix.Remix.image_line;
       iconColor = Colors.blue;
     } else if (FileTypeUtils.isVideoFile(file.path)) {
-      icon = Icons.videocam;
+      icon = remix.Remix.video_line;
       iconColor = Colors.red;
     } else if (FileTypeUtils.isAudioFile(file.path)) {
-      icon = Icons.audiotrack;
+      icon = remix.Remix.music_line;
       iconColor = Colors.purple;
     } else if (FileTypeUtils.isDocumentFile(file.path) ||
         FileTypeUtils.isSpreadsheetFile(file.path) ||
         FileTypeUtils.isPresentationFile(file.path)) {
-      icon = Icons.description;
+      icon = remix.Remix.file_text_line;
       iconColor = Colors.indigo;
     } else {
-      icon = Icons.insert_drive_file;
+      icon = remix.Remix.file_line;
       iconColor = Colors.grey;
     }
 

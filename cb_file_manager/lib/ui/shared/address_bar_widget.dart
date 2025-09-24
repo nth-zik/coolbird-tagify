@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 
 /// Widget hiển thị thanh địa chỉ có thể nhấn để thay đổi đường dẫn
 /// Component này có thể tái sử dụng trong nhiều màn hình khác nhau
@@ -42,7 +42,7 @@ class AddressBarWidget extends StatelessWidget {
         child: Row(
           children: [
             Icon(
-              EvaIcons.folderOutline,
+              remix.Remix.folder_3_line,
               size: 16,
               color: isDarkMode ? Colors.white70 : Colors.black87,
             ),
@@ -66,7 +66,7 @@ class AddressBarWidget extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  EvaIcons.arrowDownOutline,
+                  remix.Remix.arrow_down_lineOutline,
                   size: 20,
                   color: theme.colorScheme.primary,
                 ),
@@ -84,7 +84,7 @@ class AddressBarWidget extends StatelessWidget {
     if (path.isEmpty) {
       return Row(
         children: [
-          Icon(EvaIcons.monitorOutline,
+          Icon(remix.Remix.computer_lineOutline,
               size: 14, color: theme.colorScheme.primary),
           const SizedBox(width: 4),
           Text(

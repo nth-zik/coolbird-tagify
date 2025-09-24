@@ -26,6 +26,9 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <filesystem>
+#include <fstream>
+#include <algorithm>
 
 const std::string kGetThumbnailFailedExtraction = "Failed extraction";
 
@@ -37,6 +40,13 @@ const std::string kGetThumbnailFailedExtraction = "Failed extraction";
 
 namespace fc_native_video_thumbnail
 {
+
+  // Static member definitions
+  std::mutex FcNativeVideoThumbnailPlugin::gdiMutex_;
+  bool FcNativeVideoThumbnailPlugin::gdiInitialized_ = false;
+  ULONG_PTR FcNativeVideoThumbnailPlugin::gdiplusToken_ = 0;
+  int FcNativeVideoThumbnailPlugin::instanceCount_ = 0;
+  std::mutex FcNativeVideoThumbnailPlugin::ffmpegMutex_;
 
   const flutter::EncodableValue *ValueOrNull(const flutter::EncodableMap &map, const char *key)
   {
@@ -605,9 +615,77 @@ namespace fc_native_video_thumbnail
     registrar->AddPlugin(std::move(plugin));
   }
 
-  FcNativeVideoThumbnailPlugin::FcNativeVideoThumbnailPlugin() {}
+  FcNativeVideoThumbnailPlugin::FcNativeVideoThumbnailPlugin() : shutdown_(false)
+  {
+    // Initialize shared GDI+ resources
+    {
+      std::lock_guard<std::mutex> lock(gdiMutex_);
+      instanceCount_++;
+      if (!gdiInitialized_)
+      {
+        Gdiplus::GdiplusStartupInput gdiplusStartupInput;
+        if (Gdiplus::GdiplusStartup(&gdiplusToken_, &gdiplusStartupInput, nullptr) == Gdiplus::Ok)
+        {
+          gdiInitialized_ = true;
+        }
+      }
+    }
 
-  FcNativeVideoThumbnailPlugin::~FcNativeVideoThumbnailPlugin() {}
+    // Initialize MediaFoundation
+    MFStartup(MF_VERSION);
+
+    // Create worker threads (use hardware concurrency, but limit to reasonable number)
+    const size_t numThreads = std::min(std::thread::hardware_concurrency(), 4u);
+    workers_.reserve(numThreads);
+
+    for (size_t i = 0; i < numThreads; ++i)
+    {
+      workers_.emplace_back(&FcNativeVideoThumbnailPlugin::WorkerThread, this);
+    }
+  }
+
+  FcNativeVideoThumbnailPlugin::~FcNativeVideoThumbnailPlugin()
+  {
+    // Signal shutdown
+    shutdown_ = true;
+
+    // Clear all pending requests to prevent processing during shutdown
+    {
+      std::lock_guard<std::mutex> lock(queueMutex_);
+      requestQueue_.clear();
+    }
+
+    // Clear active requests
+    {
+      std::lock_guard<std::mutex> lock(activeRequestsMutex_);
+      activeRequests_.clear();
+    }
+
+    queueCondition_.notify_all();
+
+    // Wait for all worker threads to finish
+    for (auto &worker : workers_)
+    {
+      if (worker.joinable())
+      {
+        worker.join();
+      }
+    }
+
+    // Cleanup MediaFoundation
+    MFShutdown();
+
+    // Cleanup shared GDI+ resources
+    {
+      std::lock_guard<std::mutex> lock(gdiMutex_);
+      instanceCount_--;
+      if (instanceCount_ == 0 && gdiInitialized_)
+      {
+        Gdiplus::GdiplusShutdown(gdiplusToken_);
+        gdiInitialized_ = false;
+      }
+    }
+  }
 
   void FcNativeVideoThumbnailPlugin::HandleMethodCall(
       const flutter::MethodCall<flutter::EncodableValue> &method_call,
@@ -616,70 +694,501 @@ namespace fc_native_video_thumbnail
     const auto *argsPtr = std::get_if<flutter::EncodableMap>(method_call.arguments());
     assert(argsPtr);
     auto args = *argsPtr;
+
     if (method_call.method_name().compare("getVideoThumbnail") == 0)
     {
-      const auto *src_file =
-          std::get_if<std::string>(ValueOrNull(args, "srcFile"));
+      const auto *src_file = std::get_if<std::string>(ValueOrNull(args, "srcFile"));
       assert(src_file);
 
-      const auto *dest_file =
-          std::get_if<std::string>(ValueOrNull(args, "destFile"));
+      const auto *dest_file = std::get_if<std::string>(ValueOrNull(args, "destFile"));
       assert(dest_file);
 
-      const auto *width =
-          std::get_if<int>(ValueOrNull(args, "width"));
+      const auto *width = std::get_if<int>(ValueOrNull(args, "width"));
       assert(width);
 
-      const auto *outType =
-          std::get_if<std::string>(ValueOrNull(args, "format"));
+      const auto *outType = std::get_if<std::string>(ValueOrNull(args, "format"));
       assert(outType);
 
-      int *timeSeconds = nullptr;
-      int timeSecondsValue = 0;
+      // Check cache first - this prevents unnecessary re-rendering
+      if (IsThumbnailCached(*src_file, *dest_file))
+      {
+        result->Success(flutter::EncodableValue(true));
+        return;
+      }
+
+      // Check if thumbnail file already exists (even if not in cache)
+      if (std::filesystem::exists(*dest_file))
+      {
+        // File exists, update cache and return success to avoid re-rendering
+        UpdateCache(*src_file, *dest_file);
+        result->Success(flutter::EncodableValue(true));
+        return;
+      }
+
+      // Create async request
+      auto request = std::make_unique<ThumbnailRequest>();
+      request->srcFile = *src_file;
+      request->destFile = *dest_file;
+      request->width = *width;
+      request->format = *outType;
+      request->result = std::move(result);
+
+      // Handle timeSeconds parameter
       const auto *time_seconds_val = ValueOrNull(args, "timeSeconds");
       if (time_seconds_val != nullptr && std::holds_alternative<int>(*time_seconds_val))
       {
-        timeSecondsValue = std::get<int>(*time_seconds_val);
-        timeSeconds = &timeSecondsValue;
-      }
-
-      int quality = 95; // Default quality
-      const auto *quality_val = ValueOrNull(args, "quality");
-      if (quality_val != nullptr && std::holds_alternative<int>(*quality_val))
-      {
-        quality = std::get<int>(*quality_val);
-        // Clamp quality to valid range
-        if (quality < 1)
-          quality = 1;
-        if (quality > 100)
-          quality = 100;
-      }
-
-      auto oper_res = SaveThumbnail(
-          Utf16FromUtf8(*src_file).c_str(),
-          Utf16FromUtf8(*dest_file).c_str(),
-          *width,
-          outType->compare("png") == 0 ? Gdiplus::ImageFormatPNG : Gdiplus::ImageFormatJPEG,
-          timeSeconds,
-          quality);
-
-      if (oper_res == kGetThumbnailFailedExtraction)
-      {
-        result->Success(flutter::EncodableValue(false));
-      }
-      else if (oper_res != "")
-      {
-        result->Error("PluginError", "Operation failed. " + oper_res);
+        request->timeSeconds = std::get<int>(*time_seconds_val);
       }
       else
       {
-        result->Success(flutter::EncodableValue(true));
+        request->timeSeconds = -1; // Use default
       }
+
+      // Handle quality parameter
+      const auto *quality_val = ValueOrNull(args, "quality");
+      if (quality_val != nullptr && std::holds_alternative<int>(*quality_val))
+      {
+        request->quality = std::get<int>(*quality_val);
+        // Clamp quality to valid range
+        if (request->quality < 1)
+          request->quality = 1;
+        if (request->quality > 100)
+          request->quality = 100;
+      }
+      else
+      {
+        request->quality = 95; // Default quality
+      }
+
+      // Handle priority parameter
+      const auto *priority_val = ValueOrNull(args, "priority");
+      if (priority_val != nullptr && std::holds_alternative<int>(*priority_val))
+      {
+        int priorityInt = std::get<int>(*priority_val);
+        request->priority = static_cast<ThumbnailPriority>(std::clamp(priorityInt, 0, 3));
+      }
+      else
+      {
+        // Determine priority based on visibility
+        request->priority = DeterminePriority(*src_file);
+      }
+
+      // Generate unique request ID for tracking
+      request->requestId = GenerateCacheKey(*src_file, *width, *outType);
+
+      // Check if request is already being processed
+      {
+        std::lock_guard<std::mutex> lock(activeRequestsMutex_);
+        if (activeRequests_.find(request->requestId) != activeRequests_.end())
+        {
+          // Request already in progress, return immediately
+          result->Success(flutter::EncodableValue(false));
+          return;
+        }
+        activeRequests_.insert(request->requestId);
+      }
+
+      // Queue the request for async processing
+      {
+        std::lock_guard<std::mutex> lock(queueMutex_);
+
+        // If queue is getting too large, remove low priority requests to prevent lag
+        if (requestQueue_.size() >= QUEUE_CLEANUP_THRESHOLD)
+        {
+          auto removeIt = std::remove_if(requestQueue_.begin(), requestQueue_.end(),
+                                         [](const std::unique_ptr<ThumbnailRequest> &req)
+                                         {
+                                           return req->priority == ThumbnailPriority::NORMAL;
+                                         });
+
+          // Cleanup active requests for removed items
+          for (auto it = removeIt; it != requestQueue_.end(); ++it)
+          {
+            std::lock_guard<std::mutex> activeLock(activeRequestsMutex_);
+            activeRequests_.erase((*it)->requestId);
+          }
+
+          requestQueue_.erase(removeIt, requestQueue_.end());
+        }
+
+        // Don't add if queue is at max capacity and this is low priority
+        if (requestQueue_.size() >= MAX_QUEUE_SIZE && request->priority == ThumbnailPriority::NORMAL)
+        {
+          std::lock_guard<std::mutex> activeLock(activeRequestsMutex_);
+          activeRequests_.erase(request->requestId);
+          result->Success(flutter::EncodableValue(false));
+          return;
+        }
+
+        requestQueue_.push_back(std::move(request));
+
+        // Insert request in correct position to maintain sorted order (more efficient than full sort)
+        if (requestQueue_.size() > 1)
+        {
+          auto insertPos = std::upper_bound(requestQueue_.begin(), requestQueue_.end() - 1, requestQueue_.back(),
+                                            [](const std::unique_ptr<ThumbnailRequest> &a, const std::unique_ptr<ThumbnailRequest> &b)
+                                            {
+                                              // Higher priority first
+                                              if (a->priority != b->priority)
+                                              {
+                                                return static_cast<int>(a->priority) > static_cast<int>(b->priority);
+                                              }
+                                              // If same priority, older requests first (FIFO within same priority)
+                                              return a->requestTime < b->requestTime;
+                                            });
+
+          // Move the last element to correct position
+          if (insertPos != requestQueue_.end() - 1)
+          {
+            std::rotate(insertPos, requestQueue_.end() - 1, requestQueue_.end());
+          }
+        }
+      }
+      queueCondition_.notify_one();
+    }
+    else if (method_call.method_name().compare("setVisibleThumbnails") == 0)
+    {
+      const auto *visible_files = std::get_if<std::vector<flutter::EncodableValue>>(ValueOrNull(args, "visibleFiles"));
+      if (visible_files)
+      {
+        std::vector<std::string> files;
+        for (const auto &file : *visible_files)
+        {
+          if (const auto *str = std::get_if<std::string>(&file))
+          {
+            files.push_back(*str);
+          }
+        }
+        SetVisibleThumbnails(files);
+      }
+      result->Success(flutter::EncodableValue(true));
+    }
+    else if (method_call.method_name().compare("setFocusedThumbnail") == 0)
+    {
+      const auto *focused_file = std::get_if<std::string>(ValueOrNull(args, "focusedFile"));
+      if (focused_file)
+      {
+        SetFocusedThumbnail(*focused_file);
+      }
+      result->Success(flutter::EncodableValue(true));
     }
     else
     {
       result->NotImplemented();
     }
+  }
+
+  // Worker thread function
+  void FcNativeVideoThumbnailPlugin::WorkerThread()
+  {
+    while (!shutdown_)
+    {
+      std::unique_ptr<ThumbnailRequest> request;
+
+      // Wait for work
+      {
+        std::unique_lock<std::mutex> lock(queueMutex_);
+        queueCondition_.wait(lock, [this]
+                             { return !requestQueue_.empty() || shutdown_; });
+
+        if (shutdown_)
+          break;
+
+        if (!requestQueue_.empty())
+        {
+          // Get highest priority request (first element after sorting)
+          request = std::move(requestQueue_.front());
+          requestQueue_.erase(requestQueue_.begin());
+        }
+      }
+
+      // Validate request before processing
+      if (request && !request->srcFile.empty() && !request->destFile.empty())
+      {
+        // Check if source file still exists
+        if (!std::filesystem::exists(request->srcFile))
+        {
+          // Cleanup and skip invalid request
+          {
+            std::lock_guard<std::mutex> lock(activeRequestsMutex_);
+            activeRequests_.erase(request->requestId);
+          }
+          if (request->result)
+          {
+            request->result->Error("FileNotFound", "Source file does not exist");
+          }
+          continue;
+        }
+
+        ProcessThumbnailAsync(std::move(request));
+      }
+      else if (request)
+      {
+        // Cleanup invalid request
+        {
+          std::lock_guard<std::mutex> lock(activeRequestsMutex_);
+          activeRequests_.erase(request->requestId);
+        }
+        if (request->result)
+        {
+          request->result->Error("InvalidRequest", "Invalid request parameters");
+        }
+      }
+    }
+  }
+
+  // Process thumbnail request asynchronously
+  void FcNativeVideoThumbnailPlugin::ProcessThumbnailAsync(std::unique_ptr<ThumbnailRequest> request)
+  {
+    // Ensure cleanup of active requests on exit
+    auto cleanup = [this, &request]()
+    {
+      std::lock_guard<std::mutex> lock(activeRequestsMutex_);
+      activeRequests_.erase(request->requestId);
+    };
+
+    try
+    {
+      int *timeSeconds = nullptr;
+      int timeSecondsValue = request->timeSeconds;
+      if (timeSecondsValue >= 0)
+      {
+        timeSeconds = &timeSecondsValue;
+      }
+
+      // Protect FFmpeg operations with global mutex for thread safety
+      std::lock_guard<std::mutex> ffmpegLock(ffmpegMutex_);
+
+      auto oper_res = SaveThumbnail(
+          Utf16FromUtf8(request->srcFile).c_str(),
+          Utf16FromUtf8(request->destFile).c_str(),
+          request->width,
+          request->format.compare("png") == 0 ? Gdiplus::ImageFormatPNG : Gdiplus::ImageFormatJPEG,
+          timeSeconds,
+          request->quality);
+
+      if (oper_res == kGetThumbnailFailedExtraction)
+      {
+        request->result->Success(flutter::EncodableValue(false));
+      }
+      else if (oper_res != "")
+      {
+        request->result->Error("PluginError", "Operation failed. " + oper_res);
+      }
+      else
+      {
+        // Update cache on success
+        UpdateCache(request->srcFile, request->destFile);
+        request->result->Success(flutter::EncodableValue(true));
+      }
+    }
+    catch (const std::exception &e)
+    {
+      request->result->Error("PluginError", std::string("Exception: ") + e.what());
+    }
+    catch (...)
+    {
+      request->result->Error("PluginError", "Unknown exception occurred");
+    }
+
+    // Always cleanup active requests
+    cleanup();
+  }
+
+  // Check if thumbnail is cached and valid
+  bool FcNativeVideoThumbnailPlugin::IsThumbnailCached(const std::string &srcFile, const std::string &destFile)
+  {
+    std::lock_guard<std::mutex> lock(cacheMutex_);
+
+    // Check if thumbnail file exists
+    if (!std::filesystem::exists(destFile))
+    {
+      return false;
+    }
+
+    // Check cache entry using proper cache key that includes file path
+    auto cacheKey = destFile; // Use destination file path as cache key for better uniqueness
+    auto it = thumbnailCache_.find(cacheKey);
+
+    if (it == thumbnailCache_.end())
+    {
+      return false;
+    }
+
+    // Check if source file has been modified
+    try
+    {
+      auto fileTime = std::filesystem::last_write_time(srcFile);
+      auto fileSize = std::filesystem::file_size(srcFile);
+
+      // Convert file_time_type to system_clock::time_point for comparison
+      auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+          fileTime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
+
+      if (it->second.lastModified != std::chrono::duration_cast<std::chrono::seconds>(sctp.time_since_epoch()).count() ||
+          it->second.fileSize != static_cast<int64_t>(fileSize))
+      {
+        // File has been modified, remove from cache
+        thumbnailCache_.erase(it);
+        return false;
+      }
+
+      return true;
+    }
+    catch (const std::filesystem::filesystem_error &)
+    {
+      return false;
+    }
+  }
+
+  // Update cache with new thumbnail info
+  void FcNativeVideoThumbnailPlugin::UpdateCache(const std::string &srcFile, const std::string &destFile)
+  {
+    std::lock_guard<std::mutex> lock(cacheMutex_);
+
+    try
+    {
+      auto fileTime = std::filesystem::last_write_time(srcFile);
+      auto fileSize = std::filesystem::file_size(srcFile);
+
+      // Convert file_time_type to system_clock::time_point
+      auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+          fileTime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
+
+      CacheEntry entry;
+      entry.thumbnailPath = destFile;
+      entry.lastModified = std::chrono::duration_cast<std::chrono::seconds>(sctp.time_since_epoch()).count();
+      entry.fileSize = static_cast<int64_t>(fileSize);
+      entry.cacheTime = std::chrono::system_clock::now();
+
+      auto cacheKey = destFile; // Use destination file path as cache key for consistency
+      thumbnailCache_[cacheKey] = entry;
+
+      // Clean up old cache entries (keep only last 1000 entries)
+      if (thumbnailCache_.size() > 1000)
+      {
+        auto oldest = thumbnailCache_.begin();
+        for (auto it = thumbnailCache_.begin(); it != thumbnailCache_.end(); ++it)
+        {
+          if (it->second.cacheTime < oldest->second.cacheTime)
+          {
+            oldest = it;
+          }
+        }
+        thumbnailCache_.erase(oldest);
+      }
+    }
+    catch (const std::filesystem::filesystem_error &)
+    {
+      // Ignore filesystem errors for cache updates
+    }
+  }
+
+  // Generate cache key for thumbnail
+  std::string FcNativeVideoThumbnailPlugin::GenerateCacheKey(const std::string &srcFile, int width, const std::string &format)
+  {
+    std::hash<std::string> hasher;
+    std::string combined = srcFile + "_" + std::to_string(width) + "_" + format;
+    return std::to_string(hasher(combined));
+  }
+
+  // Update priority of a specific request
+  void FcNativeVideoThumbnailPlugin::UpdateRequestPriority(const std::string &requestId, ThumbnailPriority priority)
+  {
+    std::lock_guard<std::mutex> lock(priorityMutex_);
+    requestPriorities_[requestId] = priority;
+  }
+
+  // Set visible thumbnails for priority management
+  void FcNativeVideoThumbnailPlugin::SetVisibleThumbnails(const std::vector<std::string> &visibleFiles)
+  {
+    auto now = std::chrono::steady_clock::now();
+
+    // Fast scroll detection
+    {
+      std::lock_guard<std::mutex> lock(visibilityMutex_);
+
+      // Reset scroll count if window expired
+      if (now - lastScrollTime_ > FAST_SCROLL_WINDOW_MS)
+      {
+        scrollEventCount_ = 0;
+      }
+
+      scrollEventCount_++;
+      lastScrollTime_ = now;
+
+      // If scrolling too fast, only process urgent/high priority requests
+      if (scrollEventCount_ > FAST_SCROLL_THRESHOLD)
+      {
+        // During fast scroll, skip normal priority updates
+        return;
+      }
+    }
+
+    // Debounce visibility updates to prevent excessive re-rendering during fast scrolling
+    {
+      std::lock_guard<std::mutex> lock(visibilityMutex_);
+      if (now - lastVisibilityUpdate_ < VISIBILITY_DEBOUNCE_MS)
+      {
+        return; // Skip update if too frequent
+      }
+      lastVisibilityUpdate_ = now;
+    }
+
+    std::lock_guard<std::mutex> lock(visibilityMutex_);
+
+    // Only update if the visible files actually changed
+    std::unordered_set<std::string> newVisibleFiles;
+    for (const auto &file : visibleFiles)
+    {
+      newVisibleFiles.insert(file);
+    }
+
+    // Check if there's any difference
+    if (newVisibleFiles.size() == visibleFiles_.size())
+    {
+      bool same = true;
+      for (const auto &file : newVisibleFiles)
+      {
+        if (visibleFiles_.find(file) == visibleFiles_.end())
+        {
+          same = false;
+          break;
+        }
+      }
+      if (same)
+        return; // No change, skip update
+    }
+
+    visibleFiles_ = std::move(newVisibleFiles);
+  }
+
+  // Set focused thumbnail for highest priority
+  void FcNativeVideoThumbnailPlugin::SetFocusedThumbnail(const std::string &focusedFile)
+  {
+    std::lock_guard<std::mutex> lock(visibilityMutex_);
+    focusedFile_ = focusedFile;
+  }
+
+  // Determine priority based on visibility and focus
+  ThumbnailPriority FcNativeVideoThumbnailPlugin::DeterminePriority(const std::string &srcFile)
+  {
+    std::lock_guard<std::mutex> lock(visibilityMutex_);
+
+    // Highest priority for focused file
+    if (!focusedFile_.empty() && srcFile == focusedFile_)
+    {
+      return ThumbnailPriority::URGENT;
+    }
+
+    // High priority for visible files
+    if (visibleFiles_.find(srcFile) != visibleFiles_.end())
+    {
+      return ThumbnailPriority::HIGH;
+    }
+
+    // Normal priority for others
+    return ThumbnailPriority::NORMAL;
   }
 
 } // namespace fc_native_video_thumbnail

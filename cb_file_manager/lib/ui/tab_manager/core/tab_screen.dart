@@ -4,7 +4,7 @@ import 'package:flutter/services.dart'; // Import for keyboard shortcuts
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart'; // Import Eva Icons
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:cb_file_manager/helpers/ui/frame_timing_optimizer.dart';
 import 'tab_manager.dart';
 import '../../drawer.dart';
@@ -19,6 +19,7 @@ import 'package:cb_file_manager/ui/screens/system_screen_router.dart'; // Import
 // import 'package:cb_file_manager/widgets/test_native_streaming.dart'; // Test widget removed
 import '../../utils/route.dart';
 import 'package:cb_file_manager/helpers/core/filesystem_utils.dart'; // Import filesystem utils
+import '../../screens/home/home_screen.dart'; // Import home screen
 
 // Create a custom scroll behavior that supports mouse wheel scrolling
 class TabBarMouseScrollBehavior extends MaterialScrollBehavior {
@@ -482,9 +483,9 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                                           ],
                                           Icon(
                                             tab.isPinned
-                                                ? EvaIcons.pin
+                                                ? remix.Remix.pushpin_fill
                                                 : tab.icon ??
-                                                    EvaIcons.folderOutline,
+                                                    remix.Remix.folder_3_line,
                                             size: 16,
                                           ),
                                           const SizedBox(width: 8),
@@ -508,7 +509,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                               padding: const EdgeInsets.only(right: 8.0),
                               child: IconButton(
                                 icon: Icon(
-                                  EvaIcons.moreVertical,
+                                  remix.Remix.more_2_line,
                                   color: isDarkMode
                                       ? Colors.white.withOpacity(0.8)
                                       : theme.colorScheme.primary,
@@ -583,7 +584,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: const Icon(
-                            EvaIcons.plus,
+                            remix.Remix.add_line,
                             size: 24,
                           ),
                         )
@@ -603,7 +604,9 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
     // Giao diện cho tablet sử dụng UI hiện tại
     if (isTablet) {
       if (state.tabs.isEmpty) {
-        return _buildEmptyTabsView(context);
+        return HomeScreen(
+          tabId: 'home', // Use a special ID for home screen
+        );
       }
       return _buildTabContent(state);
     }
@@ -615,81 +618,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
     }
   }
 
-  Widget _buildEmptyTabsView(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
-
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.all(32),
-        decoration: BoxDecoration(
-          color: isDarkMode
-              ? theme.colorScheme.surface.withOpacity(0.4)
-              : theme.colorScheme.surface.withOpacity(0.7),
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        constraints: const BoxConstraints(maxWidth: 400),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              EvaIcons.folderOutline,
-              size: 64,
-              color: theme.colorScheme.primary.withOpacity(0.8),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'No tabs open',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w600,
-                color: theme.textTheme.titleLarge?.color,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Open a new tab to start browsing your files',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 15,
-                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
-              ),
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              icon: const Icon(EvaIcons.plus, size: 18),
-              label: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Text(
-                  context.tr.newFolder,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onPressed: _handleAddNewTab,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // ...existing code...
 
   Widget _buildTabContent(TabManagerState state) {
     final activeTab = state.activeTab;
@@ -864,7 +793,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                     const Spacer(),
                     IconButton(
                       icon: Icon(
-                        EvaIcons.close,
+                        remix.Remix.close_line,
                         size: 20,
                         color: textColor?.withOpacity(0.7),
                       ),
@@ -886,7 +815,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
               // Option items
               _buildOptionItem(
                 context,
-                icon: EvaIcons.plusCircleOutline,
+                icon: remix.Remix.add_circle_line,
                 text: 'New tab',
                 onTap: () {
                   RouteUtils.safePopDialog(context);
@@ -895,28 +824,27 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
               ),
               _buildOptionItem(
                 context,
-                icon: EvaIcons.close,
+                icon: remix.Remix.close_line,
                 text: 'Close current tab',
                 onTap: () {
                   RouteUtils.safePopDialog(context);
                   _handleCloseCurrentTab();
                 },
               ),
+              // Removed SMB Network and Network browsing entries.
+              // Add 'Close all tabs' option
               _buildOptionItem(
                 context,
-                icon: EvaIcons.wifi,
-                text: 'Network browsing',
-                onTap: _navigateToNetworkBrowsing,
+                icon: remix.Remix.close_circle_line,
+                text: 'Close all tabs',
+                onTap: () {
+                  RouteUtils.safePopDialog(context);
+                  _handleCloseAllTabs();
+                },
               ),
               _buildOptionItem(
                 context,
-                icon: EvaIcons.monitor,
-                text: 'SMB Network',
-                onTap: _navigateToSMBBrowsing,
-              ),
-              _buildOptionItem(
-                context,
-                icon: EvaIcons.settings2Outline,
+                icon: remix.Remix.settings_3_line,
                 text: 'Settings',
                 onTap: () {
                   RouteUtils.safePopDialog(context);
@@ -934,6 +862,19 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
         ),
       ),
     );
+  }
+
+  // Close all open tabs
+  void _handleCloseAllTabs() {
+    try {
+      final state = context.read<TabManagerBloc>().state;
+      final tabs = List.of(state.tabs);
+      for (final tab in tabs) {
+        context.read<TabManagerBloc>().add(CloseTab(tab.id));
+      }
+    } catch (e) {
+      debugPrint('Error closing all tabs: $e');
+    }
   }
 
   // Helper method to build menu options
@@ -983,25 +924,5 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
     );
   }
 
-  // New method to navigate to network browsing screen
-  void _navigateToNetworkBrowsing() {
-    // Close the tab options dialog if it's open
-    RouteUtils.safePopDialog(context);
-
-    // Add a new tab with the network path
-    context.read<TabManagerBloc>().add(
-          AddTab(path: '#network', name: 'Network', switchToTab: true),
-        );
-  }
-
-  // New method to navigate to SMB browsing screen
-  void _navigateToSMBBrowsing() {
-    // Close the tab options dialog if it's open
-    RouteUtils.safePopDialog(context);
-
-    // Add a new tab with the SMB path
-    context.read<TabManagerBloc>().add(
-          AddTab(path: '#smb', name: 'SMB Network', switchToTab: true),
-        );
-  }
+  // ...existing code...
 }

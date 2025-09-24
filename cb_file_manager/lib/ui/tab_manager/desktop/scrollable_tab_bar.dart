@@ -1,7 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Added import for HapticFeedback
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:cb_file_manager/config/app_theme.dart'; // Import app theme
 import 'package:window_manager/window_manager.dart'; // Import window_manager
 import 'dart:io'; // Import dart:io for Platform check
@@ -283,7 +283,7 @@ class _ModernTabBarState extends State<_ModernTabBar> {
                         ),
                         child: Center(
                           child: Icon(
-                            EvaIcons.plus,
+                            remix.Remix.add_line,
                             size: 18,
                             color: isDarkMode
                                 ? Colors.white70
@@ -525,7 +525,7 @@ class _ModernTabState extends State<_ModernTab>
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
-                                EvaIcons.close,
+                                remix.Remix.close_line,
                                 size: 16,
                                 color: isDarkMode
                                     ? Colors.white

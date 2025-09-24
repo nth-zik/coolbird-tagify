@@ -9,7 +9,7 @@ import 'package:flutter/rendering.dart';
 import 'package:path/path.dart' as pathlib;
 import 'package:flutter/services.dart';
 import '../../components/video/video_player/video_player.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:cb_file_manager/ui/widgets/tag_management_section.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
@@ -95,7 +95,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
       actions: [
         if (!_inAndroidPip)
           IconButton(
-            icon: const Icon(EvaIcons.externalLinkOutline),
+            icon: const Icon(remix.Remix.external_link_line),
             tooltip: localizations.openWith,
             onPressed: () {
               _showOpenWithDialog();
@@ -103,7 +103,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
           ),
         if (!_inAndroidPip)
           IconButton(
-            icon: const Icon(EvaIcons.shareOutline),
+            icon: const Icon(remix.Remix.share_line),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -187,7 +187,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
                         Row(
                           children: [
                             Icon(
-                              EvaIcons.bookmarkOutline,
+                              remix.Remix.bookmark_line,
                               color: textColor,
                               size: 20,
                             ),
@@ -233,7 +233,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
                     child: Column(
                       children: [
                         ListTile(
-                          leading: Icon(EvaIcons.externalLinkOutline,
+                          leading: Icon(remix.Remix.external_link_line,
                               color: textColor),
                           title: Text(localizations.openWith,
                               style: TextStyle(color: textColor)),
@@ -241,8 +241,8 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
                         ),
                         const Divider(height: 1),
                         ListTile(
-                          leading:
-                              Icon(EvaIcons.fileTextOutline, color: textColor),
+                          leading: Icon(remix.Remix.file_text_line,
+                              color: textColor),
                           title: Text(localizations.createCopy,
                               style: TextStyle(color: textColor)),
                           onTap: () {
@@ -255,7 +255,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
                         ),
                         const Divider(height: 1),
                         ListTile(
-                          leading: Icon(EvaIcons.trash2Outline,
+                          leading: Icon(remix.Remix.delete_bin_2_line,
                               color: Colors.red[300]),
                           title: Text(localizations.deleteFile,
                               style: TextStyle(color: Colors.red[300])),
@@ -292,22 +292,22 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
 
     // Set icon based on file type using FileTypeUtils
     if (FileTypeUtils.isImageFile(widget.file.path)) {
-      fileIcon = EvaIcons.imageOutline;
+      fileIcon = remix.Remix.image_line;
       iconColor = Colors.blue;
     } else if (FileTypeUtils.isVideoFile(widget.file.path)) {
-      fileIcon = EvaIcons.videoOutline;
+      fileIcon = remix.Remix.video_line;
       iconColor = Colors.red;
     } else if (FileTypeUtils.isAudioFile(widget.file.path)) {
-      fileIcon = EvaIcons.musicOutline;
+      fileIcon = remix.Remix.music_2_line;
       iconColor = Colors.purple;
     } else if (FileTypeUtils.isDocumentFile(widget.file.path)) {
-      fileIcon = EvaIcons.fileTextOutline;
+      fileIcon = remix.Remix.file_text_line;
       iconColor = Colors.blue;
     } else if (FileTypeUtils.isSpreadsheetFile(widget.file.path)) {
-      fileIcon = EvaIcons.gridOutline;
+      fileIcon = remix.Remix.grid_line;
       iconColor = Colors.green;
     } else {
-      fileIcon = EvaIcons.fileOutline;
+      fileIcon = remix.Remix.file_3_line;
       iconColor = Colors.grey;
     }
 
@@ -466,7 +466,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
               color: Colors.purple.withOpacity(0.2),
               shape: BoxShape.circle,
             ),
-            child: const Icon(EvaIcons.musicOutline,
+            child: const Icon(remix.Remix.music_2_line,
                 size: 64, color: Colors.purpleAccent),
           ),
           const SizedBox(height: 16),

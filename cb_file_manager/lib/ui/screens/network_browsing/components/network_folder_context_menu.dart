@@ -1,4 +1,4 @@
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:flutter/material.dart';
 
 class NetworkFolderContextMenu {
@@ -24,7 +24,7 @@ class NetworkFolderContextMenu {
         PopupMenuItem(
           onTap: onRefresh,
           child: const ListTile(
-            leading: Icon(EvaIcons.refresh),
+            leading: Icon(remix.Remix.refresh_line),
             title: Text('Refresh'),
           ),
         ),
@@ -32,14 +32,14 @@ class NetworkFolderContextMenu {
         PopupMenuItem(
           onTap: onCreateFolder,
           child: const ListTile(
-            leading: Icon(EvaIcons.folderAdd),
+            leading: Icon(remix.Remix.folder_add_line),
             title: Text('Create Folder'),
           ),
         ),
         PopupMenuItem(
           onTap: onUploadFile,
           child: const ListTile(
-            leading: Icon(EvaIcons.upload),
+            leading: Icon(remix.Remix.upload_line),
             title: Text('Upload File'),
           ),
         ),

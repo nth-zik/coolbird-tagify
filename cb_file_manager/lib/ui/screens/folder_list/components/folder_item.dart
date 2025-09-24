@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cb_file_manager/helpers/core/io_extensions.dart';
 import '../../../components/common/shared_file_context_menu.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import '../../../components/common/optimized_interaction_handler.dart';
 
 class FolderItem extends StatefulWidget {
@@ -151,7 +151,7 @@ class _FolderItemState extends State<FolderItem> {
                           ),
                           child: Center(
                             child: Icon(
-                              EvaIcons.folderOutline,
+                              remix.Remix.folder_3_line,
                               color: Colors.amber[600],
                               size: 28,
                             ),

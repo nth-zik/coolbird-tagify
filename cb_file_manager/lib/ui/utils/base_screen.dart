@@ -4,7 +4,7 @@ import 'package:cb_file_manager/main.dart' show goHome, CBFileApp;
 import 'package:cb_file_manager/ui/drawer.dart';
 import 'package:cb_file_manager/helpers/core/user_preferences.dart'; // Add UserPreferences import
 import 'package:cb_file_manager/config/translation_helper.dart'; // Import translation helper
-import 'package:eva_icons_flutter/eva_icons_flutter.dart'; // Import EvaIcons
+import 'package:remixicon/remixicon.dart' as remix; 
 import 'package:cb_file_manager/ui/utils/route.dart'; // Import RouteUtils
 // For Platform check
 
@@ -173,13 +173,13 @@ class _BaseScreenState extends State<BaseScreen> {
           actions: <Widget>[
             // // Always add the menu button as the first action
             // IconButton(
-            //   icon: const Icon(EvaIcons.menu2Outline),
+            //   icon: const Icon(remix.Remix.menu_2_line),
             //   onPressed: () => _scaffoldKey.currentState?.openDrawer(),
             // ),
 
             // // Home button for emergency navigation
             // IconButton(
-            //   icon: const Icon(EvaIcons.homeOutline),
+            //   icon: const Icon(remix.Remix.home_3_line),
             //   tooltip: context.tr.home,
             //   onPressed: () => goHome(context),
             // ),
@@ -208,7 +208,7 @@ class _BaseScreenState extends State<BaseScreen> {
   /// Build the leading icon based on the navigation state
   Widget _buildLeadingIcon(BuildContext context) {
     return IconButton(
-      icon: const Icon(EvaIcons.arrowBack),
+      icon: const Icon(remix.Remix.arrow_left_line),
       onPressed: () => RouteUtils.safeBackNavigation(context),
     );
   }

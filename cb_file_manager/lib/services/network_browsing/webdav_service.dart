@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:path/path.dart' as path;
 
 import 'network_service_base.dart';
@@ -71,7 +71,7 @@ class WebDAVService implements NetworkServiceBase {
   String get serviceDescription => 'Web Distributed Authoring and Versioning';
 
   @override
-  IconData get serviceIcon => EvaIcons.globe;
+  IconData get serviceIcon => remix.Remix.global_line;
 
   @override
   bool isAvailable() => true; // Available on all platforms
