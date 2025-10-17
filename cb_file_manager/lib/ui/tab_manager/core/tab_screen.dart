@@ -384,6 +384,10 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                       if (activeTab != null) {
                         debugPrint(
                             'TabScreen: Active tab found: ${activeTab.id}, path: ${activeTab.path}');
+                        debugPrint(
+                            'TabScreen: Navigation history: ${activeTab.navigationHistory}');
+                        debugPrint(
+                            'TabScreen: Navigation history length: ${activeTab.navigationHistory.length}');
 
                         // Check if the active tab can navigate back
                         if (activeTab.navigationHistory.length > 1) {
@@ -612,6 +616,18 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
     }
     // Giao diện cho mobile luôn sử dụng kiểu Chrome, ngay cả khi không có tab
     else {
+      // On mobile, ensure we always have a home tab for navigation history
+      if (state.tabs.isEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            context.read<TabManagerBloc>().add(AddTab(
+              path: '#home',
+              name: 'Home',
+              switchToTab: true,
+            ));
+          }
+        });
+      }
       return MobileTabView(
         onAddNewTab: _handleAddNewTab,
       );

@@ -293,10 +293,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         LayoutBuilder(
           builder: (context, constraints) {
             int crossAxis = 2;
+            double aspectRatio = 1.2;
+            
             if (constraints.maxWidth > 1200) {
               crossAxis = 4;
+              aspectRatio = 1.2;
             } else if (constraints.maxWidth > 900) {
               crossAxis = 3;
+              aspectRatio = 1.2;
+            } else if (constraints.maxWidth > 600) {
+              crossAxis = 2;
+              aspectRatio = 1.1;
+            } else {
+              // Mobile screens - need more vertical space
+              crossAxis = 2;
+              aspectRatio = 0.95;
             }
 
             return GridView(
@@ -306,7 +317,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 crossAxisCount: crossAxis,
                 crossAxisSpacing: 20,
                 mainAxisSpacing: 20,
-                childAspectRatio: 1.2,
+                childAspectRatio: aspectRatio,
               ),
               children: [
                 _buildActionCard(
@@ -365,59 +376,79 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     List<Color> gradientColors,
     VoidCallback onTap,
   ) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Adjust padding and spacing for smaller screens
+        final isMobile = constraints.maxWidth < 200;
+        final cardPadding = isMobile ? 12.0 : 20.0;
+        final iconPadding = isMobile ? 10.0 : 12.0;
+        final iconSize = isMobile ? 20.0 : 24.0;
+        final spacing = isMobile ? 8.0 : 12.0;
+        
+        return Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            onTap: onTap,
             borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: gradientColors,
+            child: Container(
+              padding: EdgeInsets.all(cardPadding),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(iconPadding),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: gradientColors,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      icon,
+                      size: iconSize,
+                      color: Colors.white,
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  icon,
-                  size: 24,
-                  color: Colors.white,
-                ),
+                  SizedBox(height: spacing),
+                  Flexible(
+                    child: Text(
+                      title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: isMobile ? 13 : null,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Flexible(
+                    child: Text(
+                      description,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        fontSize: isMobile ? 11 : null,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                description,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -550,11 +581,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _openImageGallery() {
-    // Open Gallery Hub as a new tab instead of a separate screen
-    context.read<TabManagerBloc>().add(AddTab(
-          path: '#gallery',
-          name: 'Gallery Hub',
-        ));
+    // Navigate to Gallery Hub within the current tab to maintain navigation history
+    final tabManager = context.read<TabManagerBloc>();
+    final activeTab = tabManager.state.activeTab;
+    if (activeTab != null) {
+      TabNavigator.updateTabPath(context, activeTab.id, '#gallery');
+      tabManager.add(UpdateTabName(activeTab.id, 'Gallery Hub'));
+    } else {
+      // Fallback: create new tab if no active tab exists
+      tabManager.add(AddTab(
+        path: '#gallery',
+        name: 'Gallery Hub',
+      ));
+    }
   }
 
   void _openVideoGallery() {
@@ -653,25 +692,53 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return lastPart.isEmpty ? context.tr.rootFolder : lastPart;
   }
 
-  void _navigateToPath(String path) {
+  void _navigateToPath(String path) async {
     final tabBloc = context.read<TabManagerBloc>();
-    tabBloc.add(UpdateTabPath(widget.tabId, path));
+    final activeTab = tabBloc.state.activeTab;
+    
+    // If path is empty and we're on mobile, get the first storage location
+    String targetPath = path;
+    String tabName = path.isEmpty ? 'Browse' : path.split('/').last;
+    
+    if (path.isEmpty && (Platform.isAndroid || Platform.isIOS)) {
+      try {
+        final storageLocations = await getAllStorageLocations();
+        if (storageLocations.isNotEmpty) {
+          targetPath = storageLocations.first.path;
+          tabName = _getStorageDisplayName(targetPath);
+        }
+      } catch (e) {
+        debugPrint('Error getting storage locations: $e');
+        // Fallback to empty path (will show drives on Windows)
+      }
+    }
+    
+    if (!mounted) return;
+    
+    if (activeTab != null) {
+      // Update existing tab path
+      TabNavigator.updateTabPath(context, activeTab.id, targetPath);
+      tabBloc.add(UpdateTabName(activeTab.id, tabName));
+    } else {
+      // Create new tab if no active tab exists
+      tabBloc.add(AddTab(
+        path: targetPath,
+        name: tabName,
+        switchToTab: true,
+      ));
+    }
   }
 
   void _openTagsTab() {
     final tabBloc = context.read<TabManagerBloc>();
-
-    // Check if a tags tab already exists
-    final existingTab = tabBloc.state.tabs.firstWhere(
-      (tab) => tab.path == '#tags',
-      orElse: () => TabData(id: '', name: '', path: ''),
-    );
-
-    if (existingTab.id.isNotEmpty) {
-      // If tab exists, switch to it
-      tabBloc.add(SwitchToTab(existingTab.id));
+    final activeTab = tabBloc.state.activeTab;
+    
+    if (activeTab != null) {
+      // Navigate within the current tab to maintain navigation history
+      TabNavigator.updateTabPath(context, activeTab.id, '#tags');
+      tabBloc.add(UpdateTabName(activeTab.id, 'Tags'));
     } else {
-      // Otherwise, create a new tab
+      // Fallback: create new tab if no active tab exists
       tabBloc.add(
         AddTab(
           path: '#tags',

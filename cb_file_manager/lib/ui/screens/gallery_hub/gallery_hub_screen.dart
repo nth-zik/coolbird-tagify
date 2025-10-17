@@ -32,6 +32,8 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
   late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+  late AppLocalizations _localizations;
+  late BuildContext _context;
 
   @override
   void initState() {
@@ -70,14 +72,14 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
   Future<void> _loadImageCount() async {
     try {
       final count = await _countAllImages();
-      if (mounted) {
+      if (this.mounted) {
         setState(() {
           _totalImages = count;
           _isLoading = false;
         });
       }
     } catch (e) {
-      if (mounted) {
+      if (this.mounted) {
         setState(() {
           _isLoading = false;
         });
@@ -88,14 +90,14 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
   Future<void> _loadFeaturedAlbums() async {
     try {
       final albums = await FeaturedAlbumsService.instance.getFeaturedAlbums();
-      if (mounted) {
+      if (this.mounted) {
         setState(() {
           _featuredAlbums = albums;
           _loadingFeaturedAlbums = false;
         });
       }
     } catch (e) {
-      if (mounted) {
+      if (this.mounted) {
         setState(() {
           _loadingFeaturedAlbums = false;
         });
@@ -135,8 +137,10 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
 
   @override
   Widget build(BuildContext context) {
+    _context = context; // Initialize context field
     final theme = Theme.of(context);
     final localizations = AppLocalizations.of(context)!;
+    _localizations = localizations; // Initialize localizations field
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
@@ -264,7 +268,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Gallery Hub',
+                      _localizations.galleryHub,
                       style: theme.textTheme.headlineMedium?.copyWith(
                         fontWeight: FontWeight.w800,
                         color: cs.onPrimaryContainer,
@@ -273,7 +277,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Manage your photos and albums',
+                      _localizations.managePhotosAndAlbums,
                       style: theme.textTheme.bodyLarge?.copyWith(
                         color: cs.onPrimaryContainer.withValues(alpha: 0.7),
                         fontWeight: FontWeight.w500,
@@ -305,7 +309,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                         ),
                       ),
                       Text(
-                        'Images',
+                        _localizations.images,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: cs.onSurface.withValues(alpha: 0.7),
                           fontWeight: FontWeight.w500,
@@ -344,7 +348,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
             ),
             const SizedBox(width: 16),
             Text(
-              'Gallery Actions',
+              localizations.galleryActions,
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.3,
@@ -361,7 +365,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                 ),
               ),
               child: Text(
-                'Quick Access',
+                localizations.quickAccess,
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: theme.colorScheme.primary,
                   fontWeight: FontWeight.w600,
@@ -374,10 +378,21 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
         LayoutBuilder(
           builder: (context, constraints) {
             int crossAxis = 2;
+            double aspectRatio = 1.2;
+            
             if (constraints.maxWidth > 1200) {
               crossAxis = 4;
+              aspectRatio = 1.2;
             } else if (constraints.maxWidth > 900) {
               crossAxis = 3;
+              aspectRatio = 1.2;
+            } else if (constraints.maxWidth > 600) {
+              crossAxis = 2;
+              aspectRatio = 1.1;
+            } else {
+              // Mobile screens - need more vertical space
+              crossAxis = 2;
+              aspectRatio = 0.95;
             }
 
             return GridView(
@@ -387,15 +402,15 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                 crossAxisCount: crossAxis,
                 crossAxisSpacing: 20,
                 mainAxisSpacing: 20,
-                childAspectRatio: 1.2,
+                childAspectRatio: aspectRatio,
               ),
               children: [
                 _buildActionCard(
                   theme,
                   PlatformPaths.getAllImagesDisplayName(),
                   PlatformPaths.isDesktop
-                      ? 'Browse all your pictures'
-                      : 'Browse all your photos',
+                      ? _localizations.browseAllYourPictures
+                      : _localizations.browseAllYourPhotos,
                   remix.Remix.image_line,
                   [Colors.indigo, Colors.indigo.shade300],
                   () => _navigateToAllImages(),
@@ -403,7 +418,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                 _buildActionCard(
                   theme,
                   'Albums',
-                  'Organize in albums',
+                  _localizations.organizeInAlbums,
                   remix.Remix.album_line,
                   [Colors.purple, Colors.purple.shade300],
                   () => _navigateToAlbums(),
@@ -412,8 +427,8 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                   theme,
                   PlatformPaths.getCameraDisplayName(),
                   PlatformPaths.isDesktop
-                      ? 'Pictures folder'
-                      : 'Photos from camera',
+                      ? _localizations.picturesFolder
+                      : _localizations.photosFromCamera,
                   remix.Remix.camera_line,
                   [Colors.green, Colors.green.shade300],
                   () => _navigateToCamera(),
@@ -422,8 +437,8 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                   theme,
                   PlatformPaths.getDownloadsDisplayName(),
                   PlatformPaths.isDesktop
-                      ? 'Downloaded files'
-                      : 'Downloaded images',
+                      ? _localizations.downloadedFiles
+                      : _localizations.downloadedImages,
                   remix.Remix.download_line,
                   [Colors.orange, Colors.orange.shade300],
                   () => _navigateToDownloads(),
@@ -444,69 +459,89 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
     List<Color> gradientColors,
     VoidCallback onTap,
   ) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Adjust padding and spacing for smaller screens
+        final isMobile = constraints.maxWidth < 200;
+        final cardPadding = isMobile ? 12.0 : 20.0;
+        final iconPadding = isMobile ? 10.0 : 12.0;
+        final iconSize = isMobile ? 20.0 : 24.0;
+        final spacing = isMobile ? 8.0 : 12.0;
+        
+        return Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            onTap: onTap,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: theme.colorScheme.outline.withValues(alpha: 0.1),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: theme.colorScheme.shadow.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: gradientColors,
+            child: Container(
+              padding: EdgeInsets.all(cardPadding),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: theme.colorScheme.outline.withValues(alpha: 0.1),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.colorScheme.shadow.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  icon,
-                  size: 24,
-                  color: Colors.white,
-                ),
+                ],
               ),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(iconPadding),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: gradientColors,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      icon,
+                      size: iconSize,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: spacing),
+                  Flexible(
+                    child: Text(
+                      title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: isMobile ? 13 : null,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Flexible(
+                    child: Text(
+                      description,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        fontSize: isMobile ? 11 : null,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
-              Text(
-                description,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -533,7 +568,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
             ),
             const SizedBox(width: 16),
             Text(
-              'Featured Albums',
+              _localizations.featuredAlbums,
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.3,
@@ -550,7 +585,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                 ),
               ),
               child: Text(
-                'Personalized',
+                _localizations.personalized,
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: theme.colorScheme.secondary,
                   fontWeight: FontWeight.w600,
@@ -561,7 +596,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
             IconButton(
               icon: const Icon(Icons.settings),
               onPressed: () => _openFeaturedAlbumsSettings(),
-              tooltip: 'Configure Featured Albums',
+              tooltip: _localizations.configureFeaturedAlbums,
             ),
           ],
         ),
@@ -587,14 +622,14 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'No Featured Albums',
+                  _localizations.noFeaturedAlbums,
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Create some albums to see them featured here',
+                  _localizations.createSomeAlbumsToSeeThemFeaturedHere,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
@@ -700,7 +735,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                           children: [
                             Icon(remix.Remix.star_line, size: 16),
                             const SizedBox(width: 8),
-                            const Text('Remove from Featured'),
+                            Text(_localizations.removeFromFeatured),
                           ],
                         ),
                       ),
@@ -773,7 +808,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
               ),
               const SizedBox(width: 12),
               Text(
-                'Gallery Statistics',
+                _localizations.galleryStatistics,
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
@@ -791,7 +826,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                 Expanded(
                   child: _buildStatItem(
                     theme,
-                    'Total Images',
+                    _localizations.totalImages,
                     '$_totalImages',
                     remix.Remix.image_line,
                     Colors.blue,
@@ -801,7 +836,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                 Expanded(
                   child: _buildStatItem(
                     theme,
-                    'Albums',
+                    _localizations.albums,
                     '0', // TODO: Get actual album count
                     remix.Remix.album_line,
                     Colors.purple,
@@ -838,11 +873,14 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                 size: 20,
               ),
               const SizedBox(width: 8),
-              Text(
-                label,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                  fontWeight: FontWeight.w500,
+              Flexible(
+                child: Text(
+                  label,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -871,42 +909,42 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
       children: [
         _buildCompactActionCard(
           theme,
-          'All Images',
+          _localizations.allImages,
           remix.Remix.image_line,
           Colors.indigo,
           () => _navigateToAllImages(),
         ),
         _buildCompactActionCard(
           theme,
-          'Albums',
+          _localizations.albums,
           remix.Remix.album_line,
           Colors.purple,
           () => _navigateToAlbums(),
         ),
         _buildCompactActionCard(
           theme,
-          'Camera',
+          _localizations.camera,
           remix.Remix.camera_line,
           Colors.green,
           () => _navigateToCamera(),
         ),
         _buildCompactActionCard(
           theme,
-          'Downloads',
+          _localizations.downloads,
           remix.Remix.download_line,
           Colors.orange,
           () => _navigateToDownloads(),
         ),
         _buildCompactActionCard(
           theme,
-          'Recent',
+          _localizations.recent,
           remix.Remix.time_line,
           Colors.red,
           () => _navigateToRecent(),
         ),
         _buildCompactActionCard(
           theme,
-          'Folders',
+          _localizations.folders,
           remix.Remix.folder_image_line,
           Colors.blue,
           () => _navigateToFolders(),
@@ -973,8 +1011,8 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
     // Navigate to a general image gallery showing all images using tab system
     final path = await PlatformPaths.getAllImagesPath();
     final displayName = PlatformPaths.getAllImagesDisplayName();
-    if (!mounted) return;
-    final tabBloc = BlocProvider.of<TabManagerBloc>(context);
+    if (!this.mounted) return;
+    final tabBloc = BlocProvider.of<TabManagerBloc>(_context);
     tabBloc.add(AddTab(
       path: path,
       name: displayName,
@@ -984,10 +1022,10 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
 
   void _navigateToAlbums() {
     // Navigate within current tab to Albums (#albums)
-    final tabBloc = BlocProvider.of<TabManagerBloc>(context);
+    final tabBloc = BlocProvider.of<TabManagerBloc>(_context);
     final activeTab = tabBloc.state.activeTab;
     if (activeTab != null) {
-      TabNavigator.updateTabPath(context, activeTab.id, '#albums');
+      TabNavigator.updateTabPath(_context, activeTab.id, '#albums');
       tabBloc.add(UpdateTabName(activeTab.id, 'Albums'));
     } else {
       // Fallback: if no active tab exists, create one
@@ -1003,8 +1041,8 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
     // Navigate to camera photos using tab system
     final path = await PlatformPaths.getCameraPath();
     final displayName = PlatformPaths.getCameraDisplayName();
-    if (!mounted) return;
-    final tabBloc = BlocProvider.of<TabManagerBloc>(context);
+    if (!this.mounted) return;
+    final tabBloc = BlocProvider.of<TabManagerBloc>(_context);
     tabBloc.add(AddTab(
       path: path,
       name: displayName,
@@ -1016,8 +1054,8 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
     // Navigate to downloads using tab system
     final path = await PlatformPaths.getDownloadsPath();
     final displayName = PlatformPaths.getDownloadsDisplayName();
-    if (!mounted) return;
-    final tabBloc = BlocProvider.of<TabManagerBloc>(context);
+    if (!this.mounted) return;
+    final tabBloc = BlocProvider.of<TabManagerBloc>(_context);
     tabBloc.add(AddTab(
       path: path,
       name: displayName,
@@ -1027,23 +1065,23 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
 
   void _navigateToRecent() {
     // TODO: Implement recent images logic
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(_context).showSnackBar(
       const SnackBar(content: Text('Recent images feature coming soon!')),
     );
   }
 
   void _navigateToFolders() {
     // Navigate back to file manager with image filter
-    Navigator.pop(context);
+    Navigator.pop(_context);
   }
 
   void _navigateToAlbum(Album album) {
     // Navigate to album detail within the same tab using system path router
-    final tabBloc = BlocProvider.of<TabManagerBloc>(context);
+    final tabBloc = BlocProvider.of<TabManagerBloc>(_context);
     final activeTab = tabBloc.state.activeTab;
     final path = '#album/${album.id}';
     if (activeTab != null) {
-      TabNavigator.updateTabPath(context, activeTab.id, path);
+      TabNavigator.updateTabPath(_context, activeTab.id, path);
       tabBloc.add(UpdateTabName(activeTab.id, album.name));
     } else {
       // Fallback: no active tab, open as new tab
@@ -1058,10 +1096,10 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
   void _removeFromFeatured(Album album) async {
     final success =
         await FeaturedAlbumsService.instance.removeFromFeatured(album.id);
-    if (success && mounted) {
+    if (success && this.mounted) {
       // Reload featured albums
       _loadFeaturedAlbums();
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(_context).showSnackBar(
         SnackBar(
           content: Text('${album.name} removed from featured albums'),
           action: SnackBarAction(
@@ -1078,7 +1116,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
 
   void _openFeaturedAlbumsSettings() async {
     await Navigator.push(
-      context,
+      _context,
       MaterialPageRoute(
         builder: (context) => const FeaturedAlbumsSettingsScreen(),
       ),

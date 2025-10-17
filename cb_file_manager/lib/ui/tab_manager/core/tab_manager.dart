@@ -186,11 +186,18 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
 
     final tabs = state.tabs.map((tab) {
       if (tab.id == event.tabId) {
+        debugPrint('BLOC_DEBUG: Before updatePath - history: ${tab.navigationHistory}');
+        debugPrint('BLOC_DEBUG: Before updatePath - current path: ${tab.path}');
+        
         // First add the new path to the navigation history of the existing tab
         tab.updatePath(event.newPath);
+        
+        debugPrint('BLOC_DEBUG: After updatePath - history: ${tab.navigationHistory}');
 
         // Then create a new tab instance with the updated path
-        return tab.copyWith(path: event.newPath);
+        final updatedTab = tab.copyWith(path: event.newPath);
+        debugPrint('BLOC_DEBUG: After copyWith - new tab history: ${updatedTab.navigationHistory}');
+        return updatedTab;
       }
       return tab;
     }).toList();
@@ -309,16 +316,19 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
         'TabManager: Navigation history after: ${tabs[tabIndex].navigationHistory}');
 
     if (previousPath != null) {
-      // Update the tab with the new path
+      // Update the tab with the new path (history already updated by navigateBack)
       tabs[tabIndex] = tabs[tabIndex].copyWith(path: previousPath);
 
-      // Update state using add() instead of emit()
-      add(UpdateTabPath(tabId, previousPath));
+      // Emit the new state directly (don't use UpdateTabPath as it would modify history again)
+      emit(state.copyWith(tabs: tabs));
+      
+      debugPrint('TabManager: Successfully navigated back to: $previousPath');
 
       // Return the path we navigated to
       return previousPath;
     }
 
+    debugPrint('TabManager: Cannot navigate back - previousPath is null');
     return null;
   }
 
@@ -334,11 +344,11 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
     // Navigate forward for this specific tab
     final nextPath = tabs[tabIndex].navigateForward();
     if (nextPath != null) {
-      // Update the tab with the new path
+      // Update the tab with the new path (history already updated by navigateForward)
       tabs[tabIndex] = tabs[tabIndex].copyWith(path: nextPath);
 
-      // Update state using add() instead of emit()
-      add(UpdateTabPath(tabId, nextPath));
+      // Emit the new state directly (don't use UpdateTabPath as it would modify history again)
+      emit(state.copyWith(tabs: tabs));
 
       // Return the path we navigated to
       return nextPath;
@@ -389,8 +399,7 @@ class TabNavigator {
     // Only update if the path has actually changed
     if (currentTab.path != path) {
       tabBloc.add(UpdateTabPath(tabId, path));
-      // Add path to tab history as well
-      tabBloc.add(AddToTabHistory(tabId, path));
+      // Note: updatePath() in TabData already handles navigation history
     }
   }
 

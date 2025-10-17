@@ -33,6 +33,22 @@ abstract class AppLocalizations {
   String get refresh;
   String get parentFolder;
 
+  // Video Hub
+  String get videoHub;
+  String get manageYourVideos;
+  String get videos;
+  String get videoActions;
+  String get allVideos;
+  String get browseAllYourVideos;
+  String get videosFolder;
+  String get openFileManager;
+  String get videoStatistics;
+  String get totalVideos;
+
+  String get internalStorage;
+  String get storagePrefix;
+  String get rootFolder;
+
   // File types
   String get image;
   String get video;
@@ -142,6 +158,34 @@ abstract class AppLocalizations {
   // Gallery
   String get imageGallery;
   String get videoGallery;
+
+  // Gallery Hub
+  String get galleryHub;
+  String get managePhotosAndAlbums;
+  String get images;
+  String get galleryActions;
+  String get quickAccess;
+  String get browseAllYourPictures;
+  String get browseAllYourPhotos;
+  String get organizeInAlbums;
+  String get picturesFolder;
+  String get photosFromCamera;
+  String get downloadedFiles;
+  String get downloadedImages;
+  String get featuredAlbums;
+  String get personalized;
+  String get configureFeaturedAlbums;
+  String get noFeaturedAlbums;
+  String get createSomeAlbumsToSeeThemFeaturedHere;
+  String get removeFromFeatured;
+  String get galleryStatistics;
+  String get totalImages;
+  String get albums;
+  String get allImages;
+  String get camera;
+  String get downloads;
+  String get recent;
+  String get folders;
 
   // Storage locations
   String get local;
@@ -462,7 +506,4 @@ abstract class AppLocalizations {
   String get browseTab;
   String get documentsTab;
   String get homeTab;
-  String get internalStorage;
-  String get storagePrefix;
-  String get rootFolder;
 }

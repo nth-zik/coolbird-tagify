@@ -1070,4 +1070,114 @@ class EnglishLocalizations implements AppLocalizations {
 
   @override
   String get rootFolder => 'Root';
+
+  // Video Hub
+  @override
+  String get videoHub => 'Video Hub';
+
+  @override
+  String get manageYourVideos => 'Manage your videos';
+
+  @override
+  String get videos => 'Videos';
+
+  @override
+  String get videoActions => 'Video Actions';
+
+  @override
+  String get allVideos => 'All Videos';
+
+  @override
+  String get browseAllYourVideos => 'Browse all your videos';
+
+  @override
+  String get videosFolder => 'Videos folder';
+
+  @override
+  String get openFileManager => 'Open file manager';
+
+  @override
+  String get videoStatistics => 'Video Statistics';
+
+  @override
+  String get totalVideos => 'Total Videos';
+
+  // Gallery Hub
+  @override
+  String get galleryHub => 'Gallery Hub';
+
+  @override
+  String get managePhotosAndAlbums => 'Manage your photos and albums';
+
+  @override
+  String get images => 'Images';
+
+  @override
+  String get galleryActions => 'Gallery Actions';
+
+  @override
+  String get quickAccess => 'Quick Access';
+
+  @override
+  String get browseAllYourPictures => 'Browse all your pictures';
+
+  @override
+  String get browseAllYourPhotos => 'Browse all your photos';
+
+  @override
+  String get organizeInAlbums => 'Organize in albums';
+
+  @override
+  String get picturesFolder => 'Pictures folder';
+
+  @override
+  String get photosFromCamera => 'Photos from camera';
+
+  @override
+  String get downloadedFiles => 'Downloaded files';
+
+  @override
+  String get downloadedImages => 'Downloaded images';
+
+  @override
+  String get featuredAlbums => 'Featured Albums';
+
+  @override
+  String get personalized => 'Personalized';
+
+  @override
+  String get configureFeaturedAlbums => 'Configure Featured Albums';
+
+  @override
+  String get noFeaturedAlbums => 'No Featured Albums';
+
+  @override
+  String get createSomeAlbumsToSeeThemFeaturedHere => 'Create some albums to see them featured here';
+
+  @override
+  String get removeFromFeatured => 'Remove from Featured';
+
+  @override
+  String get galleryStatistics => 'Gallery Statistics';
+
+  @override
+  String get totalImages => 'Total Images';
+
+  @override
+  String get albums => 'Albums';
+
+  @override
+  String get allImages => 'All Images';
+
+  @override
+  String get camera => 'Camera';
+
+  @override
+  String get downloads => 'Downloads';
+
+  @override
+  String get recent => 'Recent';
+
+  @override
+  String get folders => 'Folders';
 }

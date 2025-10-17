@@ -6,6 +6,7 @@ import 'package:remixicon/remixicon.dart' as remix;
 import '../core/tab_manager.dart';
 import '../core/tab_data.dart';
 import '../../screens/settings/settings_screen.dart';
+import '../../screens/home/home_screen.dart';
 import '../core/tabbed_folder_list_screen.dart';
 import '../../screens/network_browsing/network_connection_screen.dart';
 import '../../screens/network_browsing/network_browser_screen.dart';
@@ -14,6 +15,7 @@ import '../../../bloc/network_browsing/network_browsing_bloc.dart';
 import '../../utils/route.dart';
 import 'package:cb_file_manager/ui/state/video_ui_state.dart';
 import '../shared/screen_menu_registry.dart';
+import '../../screens/system_screen_router.dart'; // Import SystemScreenRouter for system paths
 
 /// Giao diện kiểu Chrome cho thiết bị di động, hiển thị thanh địa chỉ ở trên
 /// và một nút hiển thị số lượng tab bên cạnh
@@ -135,12 +137,6 @@ class MobileTabView extends StatelessWidget {
 
           // Nút số lượng tab
           _buildTabCountButton(context, tState, textColor),
-
-          // Nút menu tùy chọn
-          IconButton(
-            icon: Icon(remix.Remix.more_2_line, color: textColor),
-            onPressed: () => _showMobileTabOptions(context),
-          ),
         ],
       ),
     );
@@ -196,14 +192,6 @@ class MobileTabView extends StatelessWidget {
 
           // Nút số lượng tab và menu tab - đã chuyển sang bên phải thanh địa chỉ
           _buildTabCountButton(context, state, textColor),
-
-          // Nút menu tùy chọn
-          IconButton(
-            icon: Icon(remix.Remix.more_2_line, color: textColor),
-            onPressed: () {
-              _showMobileTabOptions(context);
-            },
-          ),
         ],
       ),
     );
@@ -739,32 +727,11 @@ class MobileTabView extends StatelessWidget {
   }
 
   Widget _buildEmptyTabsView(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            remix.Remix.file_3_line,
-            size: 64,
-            color: Colors.grey,
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'No tabs open',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Open a new tab to get started',
-            style: TextStyle(color: Colors.grey),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            icon: const Icon(remix.Remix.add_line),
-            label: const Text('New Tab'),
-            onPressed: onAddNewTab,
-          ),
-        ],
+    // Use HomeScreen like desktop when no tabs are open
+    // Wrap in ClipRect to prevent overflow issues on mobile
+    return ClipRect(
+      child: HomeScreen(
+        tabId: 'home', // Use a special ID for home screen
       ),
     );
   }
@@ -773,25 +740,28 @@ class MobileTabView extends StatelessWidget {
     final activeTab = state.activeTab;
     if (activeTab == null) return Container();
 
-    if (activeTab.path == '#network') {
-      // Path for displaying connection manager
-      return BlocProvider<NetworkBrowsingBloc>.value(
-        key: ValueKey('${activeTab.id}_network_connection_screen'),
-        value: context.read<NetworkBrowsingBloc>(),
-        child: const NetworkConnectionScreen(),
-      );
-    } else if (activeTab.path == '#smb') {
-      // Path for the dedicated SMB Browser Screen (discovery and connection management)
-      return BlocProvider<NetworkBrowsingBloc>.value(
-        key: ValueKey('${activeTab.id}_smb_browser_screen'),
-        value: context.read<
-            NetworkBrowsingBloc>(), // Use the shared BLoC from TabMainScreen
-        child: SMBBrowserScreen(
-          tabId: activeTab.id,
-          // SMBBrowserScreen uses SystemScreen which handles its own AppBar
-        ),
-      );
-    } else if (activeTab.path.startsWith('#network/')) {
+    // Check if this is a system path (starting with #)
+    if (activeTab.path.startsWith('#')) {
+      // Handle network-specific paths
+      if (activeTab.path == '#network') {
+        // Path for displaying connection manager
+        return BlocProvider<NetworkBrowsingBloc>.value(
+          key: ValueKey('${activeTab.id}_network_connection_screen'),
+          value: context.read<NetworkBrowsingBloc>(),
+          child: const NetworkConnectionScreen(),
+        );
+      } else if (activeTab.path == '#smb') {
+        // Path for the dedicated SMB Browser Screen (discovery and connection management)
+        return BlocProvider<NetworkBrowsingBloc>.value(
+          key: ValueKey('${activeTab.id}_smb_browser_screen'),
+          value: context.read<
+              NetworkBrowsingBloc>(), // Use the shared BLoC from TabMainScreen
+          child: SMBBrowserScreen(
+            tabId: activeTab.id,
+            // SMBBrowserScreen uses SystemScreen which handles its own AppBar
+          ),
+        );
+      } else if (activeTab.path.startsWith('#network/')) {
       // Path for browsing a specific network location (e.g., #network/service_id/actual_path)
       // This will be used by NetworkBrowserScreen for SMB, FTP, WebDAV browsing after connection.
       if (activeTab.path.length <= '#network/'.length ||
@@ -804,16 +774,40 @@ class MobileTabView extends StatelessWidget {
         );
       }
 
-      return BlocProvider<NetworkBrowsingBloc>.value(
-        key: ValueKey(
-            '${activeTab.id}_network_browser_screen_${activeTab.path}'),
-        value: context.read<NetworkBrowsingBloc>(),
-        child: NetworkBrowserScreen(
-          path: activeTab.path,
-          tabId: activeTab.id,
-          showAppBar: false,
-        ),
-      );
+        return BlocProvider<NetworkBrowsingBloc>.value(
+          key: ValueKey(
+              '${activeTab.id}_network_browser_screen_${activeTab.path}'),
+          value: context.read<NetworkBrowsingBloc>(),
+          child: NetworkBrowserScreen(
+            path: activeTab.path,
+            tabId: activeTab.id,
+            showAppBar: false,
+          ),
+        );
+      } else {
+        // Other system paths (#home, #gallery, #video, #tags, etc.)
+        // Use SystemScreenRouter to route to the appropriate screen
+        final systemScreen = SystemScreenRouter.routeSystemPath(
+          context,
+          activeTab.path,
+          activeTab.id,
+        );
+        
+        if (systemScreen != null) {
+          return Container(
+            key: ValueKey('${activeTab.id}_system_screen_${activeTab.path}'),
+            child: systemScreen,
+          );
+        }
+        
+        // Fallback to empty container if system path is not recognized
+        return Container(
+          key: ValueKey('${activeTab.id}_unknown_system_path_${activeTab.path}'),
+          child: Center(
+            child: Text('Unknown system path: ${activeTab.path}'),
+          ),
+        );
+      }
     } else {
       // Local file system path
       return Container(

@@ -1,12 +1,12 @@
 import 'dart:io';
 
+import 'package:flutter/material.dart';
+import 'package:flutter/animation.dart';
+import 'package:remixicon/remixicon.dart' as remix;
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/helpers/platform_paths.dart';
-import 'package:cb_file_manager/ui/screens/media_gallery/video_gallery_screen.dart';
-import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
 
 class VideoHubScreen extends StatefulWidget {
   const VideoHubScreen({Key? key}) : super(key: key);
@@ -24,6 +24,8 @@ class _VideoHubScreenState extends State<VideoHubScreen>
   late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+  late BuildContext _context;
+  late AppLocalizations _localizations;
 
   @override
   void initState() {
@@ -53,13 +55,13 @@ class _VideoHubScreenState extends State<VideoHubScreen>
   Future<void> _loadVideoCount() async {
     try {
       final count = await _countAllVideos();
-      if (!mounted) return;
+      if (this.mounted) return;
       setState(() {
         _totalVideos = count;
         _isLoading = false;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (this.mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -110,9 +112,12 @@ class _VideoHubScreenState extends State<VideoHubScreen>
 
   @override
   Widget build(BuildContext context) {
+    _context = context; // Initialize context field
     final theme = Theme.of(context);
     final size = MediaQuery.of(context).size;
     final cs = theme.colorScheme;
+    final localizations = AppLocalizations.of(context)!;
+    _localizations = localizations; // Initialize localizations field
 
     return Scaffold(
       body: Container(
@@ -225,7 +230,7 @@ class _VideoHubScreenState extends State<VideoHubScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Video Hub',
+                  _localizations.videoHub,
                   style: theme.textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                     color: cs.onPrimaryContainer,
@@ -234,7 +239,7 @@ class _VideoHubScreenState extends State<VideoHubScreen>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Manage your videos',
+                  _localizations.manageYourVideos,
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: cs.onPrimaryContainer.withValues(alpha: 0.7),
                     fontWeight: FontWeight.w500,
@@ -261,7 +266,7 @@ class _VideoHubScreenState extends State<VideoHubScreen>
                     ),
                   ),
                   Text(
-                    'Videos',
+                    _localizations.videos,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: cs.onSurface.withValues(alpha: 0.7),
                       fontWeight: FontWeight.w500,
@@ -298,7 +303,7 @@ class _VideoHubScreenState extends State<VideoHubScreen>
             ),
             const SizedBox(width: 16),
             Text(
-              'Video Actions',
+              _localizations.videoActions,
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.3,
@@ -315,7 +320,7 @@ class _VideoHubScreenState extends State<VideoHubScreen>
                 ),
               ),
               child: Text(
-                'Quick Access',
+                _localizations.quickAccess,
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: theme.colorScheme.primary,
                   fontWeight: FontWeight.w600,
@@ -328,10 +333,21 @@ class _VideoHubScreenState extends State<VideoHubScreen>
         LayoutBuilder(
           builder: (context, constraints) {
             int crossAxis = 2;
+            double aspectRatio = 1.2;
+            
             if (constraints.maxWidth > 1200) {
               crossAxis = 4;
+              aspectRatio = 1.2;
             } else if (constraints.maxWidth > 900) {
               crossAxis = 3;
+              aspectRatio = 1.2;
+            } else if (constraints.maxWidth > 600) {
+              crossAxis = 2;
+              aspectRatio = 1.1;
+            } else {
+              // Mobile screens - need more vertical space
+              crossAxis = 2;
+              aspectRatio = 0.95;
             }
 
             return GridView(
@@ -341,13 +357,13 @@ class _VideoHubScreenState extends State<VideoHubScreen>
                 crossAxisCount: crossAxis,
                 crossAxisSpacing: 20,
                 mainAxisSpacing: 20,
-                childAspectRatio: 1.2,
+                childAspectRatio: aspectRatio,
               ),
               children: [
                 _buildActionCard(
                   theme,
-                  'All Videos',
-                  'Browse all your videos',
+                  _localizations.allVideos,
+                  _localizations.browseAllYourVideos,
                   remix.Remix.video_line,
                   [Colors.orange, Colors.orange.shade300],
                   _navigateToAllVideos,
@@ -356,7 +372,7 @@ class _VideoHubScreenState extends State<VideoHubScreen>
                   theme,
                   PlatformPaths.isDesktop ? 'Movies' : 'Camera',
                   PlatformPaths.isDesktop
-                      ? 'Videos folder'
+                      ? _localizations.videosFolder
                       : 'Videos from camera',
                   remix.Remix.camera_line,
                   [Colors.green, Colors.green.shade300],
@@ -374,8 +390,8 @@ class _VideoHubScreenState extends State<VideoHubScreen>
                 ),
                 _buildActionCard(
                   theme,
-                  'Folders',
-                  'Open file manager',
+                  _localizations.folders,
+                  _localizations.openFileManager,
                   remix.Remix.folder_3_line,
                   [Colors.blue, Colors.blue.shade300],
                   _navigateToFolders,
@@ -396,69 +412,89 @@ class _VideoHubScreenState extends State<VideoHubScreen>
     List<Color> gradientColors,
     VoidCallback onTap,
   ) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Adjust padding and spacing for smaller screens
+        final isMobile = constraints.maxWidth < 200;
+        final cardPadding = isMobile ? 12.0 : 20.0;
+        final iconPadding = isMobile ? 10.0 : 12.0;
+        final iconSize = isMobile ? 20.0 : 24.0;
+        final spacing = isMobile ? 8.0 : 12.0;
+        
+        return Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            onTap: onTap,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: theme.colorScheme.outline.withValues(alpha: 0.1),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: theme.colorScheme.shadow.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: gradientColors,
+            child: Container(
+              padding: EdgeInsets.all(cardPadding),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: theme.colorScheme.outline.withValues(alpha: 0.1),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.colorScheme.shadow.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  icon,
-                  size: 24,
-                  color: Colors.white,
-                ),
+                ],
               ),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(iconPadding),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: gradientColors,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      icon,
+                      size: iconSize,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: spacing),
+                  Flexible(
+                    child: Text(
+                      title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: isMobile ? 13 : null,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Flexible(
+                    child: Text(
+                      description,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        fontSize: isMobile ? 11 : null,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
-              Text(
-                description,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -491,7 +527,7 @@ class _VideoHubScreenState extends State<VideoHubScreen>
               ),
               const SizedBox(width: 12),
               Text(
-                'Video Statistics',
+                _localizations.videoStatistics,
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
@@ -507,7 +543,7 @@ class _VideoHubScreenState extends State<VideoHubScreen>
                 Expanded(
                   child: _buildStatItem(
                     theme,
-                    'Total Videos',
+                    _localizations.totalVideos,
                     '$_totalVideos',
                     remix.Remix.video_line,
                     Colors.orange,
@@ -564,25 +600,25 @@ class _VideoHubScreenState extends State<VideoHubScreen>
 
   void _navigateToAllVideos() {
     // Update current tab to the Video Gallery route
-    final tabBloc = BlocProvider.of<TabManagerBloc>(context);
+    final tabBloc = BlocProvider.of<TabManagerBloc>(_context);
     final activeTab = tabBloc.state.activeTab;
     if (activeTab != null) {
-      TabNavigator.updateTabPath(context, activeTab.id, '#gallery:videos');
+      TabNavigator.updateTabPath(_context, activeTab.id, '#gallery:videos');
       tabBloc.add(UpdateTabName(
         activeTab.id,
-        AppLocalizations.of(context)?.videoGalleryTab ?? 'Video Gallery',
+        AppLocalizations.of(_context)?.videoGalleryTab ?? 'Video Gallery',
       ));
     }
   }
 
   Future<void> _navigateToCameraVideos() async {
     final cameraPath = await PlatformPaths.getCameraPath();
-    if (!mounted) return;
-    final tabBloc = BlocProvider.of<TabManagerBloc>(context);
+    if (!this.mounted) return;
+    final tabBloc = BlocProvider.of<TabManagerBloc>(_context);
     final activeTab = tabBloc.state.activeTab;
     if (activeTab != null) {
       final route = '#gallery:videos?path=${Uri.encodeComponent(cameraPath)}&recursive=false';
-      TabNavigator.updateTabPath(context, activeTab.id, route);
+      TabNavigator.updateTabPath(_context, activeTab.id, route);
       tabBloc.add(UpdateTabName(
         activeTab.id,
         PlatformPaths.getCameraDisplayName(),
@@ -592,12 +628,12 @@ class _VideoHubScreenState extends State<VideoHubScreen>
 
   Future<void> _navigateToDownloadsVideos() async {
     final downloadsPath = await PlatformPaths.getDownloadsPath();
-    if (!mounted) return;
-    final tabBloc = BlocProvider.of<TabManagerBloc>(context);
+    if (!this.mounted) return;
+    final tabBloc = BlocProvider.of<TabManagerBloc>(_context);
     final activeTab = tabBloc.state.activeTab;
     if (activeTab != null) {
       final route = '#gallery:videos?path=${Uri.encodeComponent(downloadsPath)}&recursive=false';
-      TabNavigator.updateTabPath(context, activeTab.id, route);
+      TabNavigator.updateTabPath(_context, activeTab.id, route);
       tabBloc.add(UpdateTabName(
         activeTab.id,
         PlatformPaths.getDownloadsDisplayName(),
@@ -606,11 +642,11 @@ class _VideoHubScreenState extends State<VideoHubScreen>
   }
 
   void _navigateToFolders() {
-    final tabBloc = BlocProvider.of<TabManagerBloc>(context);
+    final tabBloc = BlocProvider.of<TabManagerBloc>(_context);
     final activeTab = tabBloc.state.activeTab;
     if (activeTab != null) {
       // Navigate to root/browse within the same tab
-      TabNavigator.updateTabPath(context, activeTab.id, '');
+      TabNavigator.updateTabPath(_context, activeTab.id, '');
     }
   }
 }

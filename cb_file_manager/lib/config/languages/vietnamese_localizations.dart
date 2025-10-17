@@ -1072,4 +1072,114 @@ class VietnameseLocalizations implements AppLocalizations {
 
   @override
   String get rootFolder => 'Thư mục gốc';
+
+  // Video Hub
+  @override
+  String get videoHub => 'Thư viện video';
+
+  @override
+  String get manageYourVideos => 'Quản lý video của bạn';
+
+  @override
+  String get videos => 'Video';
+
+  @override
+  String get videoActions => 'Thao tác video';
+
+  @override
+  String get allVideos => 'Tất cả video';
+
+  @override
+  String get browseAllYourVideos => 'Duyệt tất cả video của bạn';
+
+  @override
+  String get videosFolder => 'Thư mục video';
+
+  @override
+  String get openFileManager => 'Mở trình quản lý tệp';
+
+  @override
+  String get videoStatistics => 'Thống kê video';
+
+  @override
+  String get totalVideos => 'Tổng số video';
+
+  // Gallery Hub
+  @override
+  String get galleryHub => 'Thư viện ảnh';
+
+  @override
+  String get managePhotosAndAlbums => 'Quản lý ảnh và album của bạn';
+
+  @override
+  String get images => 'Hình ảnh';
+
+  @override
+  String get galleryActions => 'Thao tác thư viện';
+
+  @override
+  String get quickAccess => 'Truy cập nhanh';
+
+  @override
+  String get browseAllYourPictures => 'Duyệt tất cả hình ảnh của bạn';
+
+  @override
+  String get browseAllYourPhotos => 'Duyệt tất cả ảnh của bạn';
+
+  @override
+  String get organizeInAlbums => 'Tổ chức trong album';
+
+  @override
+  String get picturesFolder => 'Thư mục ảnh';
+
+  @override
+  String get photosFromCamera => 'Ảnh từ máy ảnh';
+
+  @override
+  String get downloadedFiles => 'Tệp đã tải xuống';
+
+  @override
+  String get downloadedImages => 'Hình ảnh đã tải xuống';
+
+  @override
+  String get featuredAlbums => 'Album nổi bật';
+
+  @override
+  String get personalized => 'Cá nhân hóa';
+
+  @override
+  String get configureFeaturedAlbums => 'Cấu hình Album nổi bật';
+
+  @override
+  String get noFeaturedAlbums => 'Không có Album nổi bật';
+
+  @override
+  String get createSomeAlbumsToSeeThemFeaturedHere => 'Tạo một số album để xem chúng xuất hiện ở đây';
+
+  @override
+  String get removeFromFeatured => 'Xóa khỏi nổi bật';
+
+  @override
+  String get galleryStatistics => 'Thống kê thư viện';
+
+  @override
+  String get totalImages => 'Tổng số hình ảnh';
+
+  @override
+  String get albums => 'Album';
+
+  @override
+  String get allImages => 'Tất cả hình ảnh';
+
+  @override
+  String get camera => 'Máy ảnh';
+
+  @override
+  String get downloads => 'Tải xuống';
+
+  @override
+  String get recent => 'Gần đây';
+
+  @override
+  String get folders => 'Thư mục';
 }
