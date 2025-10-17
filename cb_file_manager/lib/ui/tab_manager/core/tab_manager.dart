@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:math';
 import 'tab_data.dart';
@@ -75,6 +76,14 @@ class AddToTabHistory extends TabEvent {
 /// Event to close all tabs
 class CloseAllTabs extends TabEvent {}
 
+/// Event to update tab thumbnail
+class UpdateTabThumbnail extends TabEvent {
+  final String tabId;
+  final Uint8List thumbnail;
+
+  UpdateTabThumbnail(this.tabId, this.thumbnail);
+}
+
 /// State for the TabManager
 class TabManagerState {
   final List<TabData> tabs;
@@ -114,6 +123,7 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
     on<ToggleTabPin>(_onToggleTabPin);
     on<UpdateTabLoading>(_onUpdateTabLoading);
     on<AddToTabHistory>(_onAddToTabHistory);
+    on<UpdateTabThumbnail>(_onUpdateTabThumbnail);
   }
 
   void _onAddTab(AddTab event, Emitter<TabManagerState> emit) {
@@ -392,6 +402,21 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
       orElse: () => TabData(id: '', name: '', path: ''),
     );
     return tab.forwardHistory.isNotEmpty ? tab.forwardHistory.last : null;
+  }
+
+  void _onUpdateTabThumbnail(
+      UpdateTabThumbnail event, Emitter<TabManagerState> emit) {
+    final tabs = state.tabs.map((tab) {
+      if (tab.id == event.tabId) {
+        return tab.copyWith(
+          thumbnail: event.thumbnail,
+          thumbnailCapturedAt: DateTime.now(),
+        );
+      }
+      return tab;
+    }).toList();
+
+    emit(state.copyWith(tabs: tabs));
   }
 }
 

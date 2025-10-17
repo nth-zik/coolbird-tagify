@@ -5,6 +5,7 @@ import 'dart:io'; // Thêm import cho Platform
 import 'package:remixicon/remixicon.dart' as remix; 
 import '../core/tab_manager.dart';
 import '../core/tab_data.dart';
+import '../core/tab_thumbnail_service.dart';
 import '../../screens/settings/settings_screen.dart';
 import '../../screens/home/home_screen.dart';
 import '../core/tabbed_folder_list_screen.dart';
@@ -489,9 +490,26 @@ class MobileTabView extends StatelessWidget {
   }
 
   /// Hiển thị danh sách tab trong full screen mode
-  void _showTabsBottomSheet(BuildContext context, TabManagerState state) {
+  void _showTabsBottomSheet(BuildContext context, TabManagerState state) async {
     final tabManagerBloc = BlocProvider.of<TabManagerBloc>(context);
     final localizations = AppLocalizations.of(context)!;
+
+    // Capture thumbnail of active tab before showing tab manager
+    final activeTab = state.activeTab;
+    if (activeTab != null) {
+      // Small delay to ensure content is fully rendered
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      final thumbnail = await TabThumbnailService.captureTabThumbnail(
+        activeTab.repaintBoundaryKey,
+      );
+      if (thumbnail != null && context.mounted) {
+        tabManagerBloc.add(UpdateTabThumbnail(activeTab.id, thumbnail));
+        debugPrint('Captured thumbnail for active tab: ${activeTab.name} (${thumbnail.length} bytes)');
+      }
+    }
+
+    if (!context.mounted) return;
 
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -759,7 +777,7 @@ class MobileTabView extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              // Preview area
+              // Preview area with thumbnail or icon
               Expanded(
                 child: Container(
                   width: double.infinity,
@@ -767,13 +785,28 @@ class MobileTabView extends StatelessWidget {
                     color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Center(
-                    child: Icon(
-                      _getPreviewIcon(tab.path),
-                      size: 48,
-                      color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
-                    ),
-                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: tab.thumbnail != null
+                      ? Image.memory(
+                          tab.thumbnail!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Center(
+                              child: Icon(
+                                _getPreviewIcon(tab.path),
+                                size: 48,
+                                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                              ),
+                            );
+                          },
+                        )
+                      : Center(
+                          child: Icon(
+                            _getPreviewIcon(tab.path),
+                            size: 48,
+                            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -848,6 +881,14 @@ class MobileTabView extends StatelessWidget {
     final activeTab = state.activeTab;
     if (activeTab == null) return Container();
 
+    // Wrap with RepaintBoundary for screenshot capability
+    return RepaintBoundary(
+      key: activeTab.repaintBoundaryKey,
+      child: _buildTabContentInner(context, activeTab),
+    );
+  }
+
+  Widget _buildTabContentInner(BuildContext context, TabData activeTab) {
     // Check if this is a system path (starting with #)
     if (activeTab.path.startsWith('#')) {
       // Handle network-specific paths

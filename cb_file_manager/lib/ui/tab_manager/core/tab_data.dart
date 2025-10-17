@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 /// A class that represents tab data in the file manager
@@ -29,6 +30,15 @@ class TabData {
   /// Navigator key for this tab to maintain separate navigation state
   final GlobalKey<NavigatorState> navigatorKey;
 
+  /// RepaintBoundary key for capturing screenshots
+  final GlobalKey repaintBoundaryKey;
+
+  /// Thumbnail screenshot of the tab content
+  final Uint8List? thumbnail;
+
+  /// Timestamp when thumbnail was captured
+  final DateTime? thumbnailCapturedAt;
+
   TabData({
     required this.id,
     required this.name,
@@ -39,9 +49,13 @@ class TabData {
     List<String>? navigationHistory,
     List<String>? forwardHistory,
     GlobalKey<NavigatorState>? navigatorKey,
+    GlobalKey? repaintBoundaryKey,
+    this.thumbnail,
+    this.thumbnailCapturedAt,
   })  : navigationHistory = navigationHistory ?? [path],
         forwardHistory = forwardHistory ?? <String>[],
-        navigatorKey = navigatorKey ?? GlobalKey<NavigatorState>();
+        navigatorKey = navigatorKey ?? GlobalKey<NavigatorState>(),
+        repaintBoundaryKey = repaintBoundaryKey ?? GlobalKey();
 
   /// Create a copy of this tab with some properties changed
   TabData copyWith({
@@ -53,6 +67,10 @@ class TabData {
     List<String>? navigationHistory,
     List<String>? forwardHistory,
     GlobalKey<NavigatorState>? navigatorKey,
+    GlobalKey? repaintBoundaryKey,
+    Uint8List? thumbnail,
+    DateTime? thumbnailCapturedAt,
+    bool clearThumbnail = false,
   }) {
     return TabData(
       id: id,
@@ -64,6 +82,9 @@ class TabData {
       navigationHistory: navigationHistory ?? this.navigationHistory,
       forwardHistory: forwardHistory ?? this.forwardHistory,
       navigatorKey: navigatorKey ?? this.navigatorKey,
+      repaintBoundaryKey: repaintBoundaryKey ?? this.repaintBoundaryKey,
+      thumbnail: clearThumbnail ? null : (thumbnail ?? this.thumbnail),
+      thumbnailCapturedAt: clearThumbnail ? null : (thumbnailCapturedAt ?? this.thumbnailCapturedAt),
     );
   }
 
