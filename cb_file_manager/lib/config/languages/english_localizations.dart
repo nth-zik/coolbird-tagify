@@ -22,6 +22,9 @@ class EnglishLocalizations implements AppLocalizations {
   @override
   String get settings => 'Settings';
 
+  @override
+  String get moreOptions => 'More options';
+
   // File operations
   @override
   String get copy => 'Copy';
@@ -1014,6 +1017,27 @@ class EnglishLocalizations implements AppLocalizations {
 
   @override
   String get openNewTabToStart => 'Open a new tab to get started';
+
+  @override
+  String get tabManager => 'Tab Manager';
+
+  @override
+  String get openTabs => 'Open Tabs';
+
+  @override
+  String get noTabsOpen => 'No tabs open';
+
+  @override
+  String get closeAllTabs => 'Close All Tabs';
+
+  @override
+  String get activeTab => 'Active';
+
+  @override
+  String get closeTab => 'Close tab';
+
+  @override
+  String get addNewTab => 'Add new tab';
 
   // Home screen
   @override

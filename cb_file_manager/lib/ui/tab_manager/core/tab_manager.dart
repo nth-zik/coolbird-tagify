@@ -72,6 +72,9 @@ class AddToTabHistory extends TabEvent {
   AddToTabHistory(this.tabId, this.path);
 }
 
+/// Event to close all tabs
+class CloseAllTabs extends TabEvent {}
+
 /// State for the TabManager
 class TabManagerState {
   final List<TabData> tabs;
@@ -105,6 +108,7 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
     on<AddTab>(_onAddTab);
     on<SwitchToTab>(_onSwitchToTab);
     on<CloseTab>(_onCloseTab);
+    on<CloseAllTabs>(_onCloseAllTabs);
     on<UpdateTabPath>(_onUpdateTabPath);
     on<UpdateTabName>(_onUpdateTabName);
     on<ToggleTabPin>(_onToggleTabPin);
@@ -163,6 +167,14 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
       tabs: tabs,
       activeTabId: newActiveTabId,
       clearActiveTabId: newActiveTabId == null,
+    ));
+  }
+
+  void _onCloseAllTabs(CloseAllTabs event, Emitter<TabManagerState> emit) {
+    emit(state.copyWith(
+      tabs: [],
+      activeTabId: null,
+      clearActiveTabId: true,
     ));
   }
 

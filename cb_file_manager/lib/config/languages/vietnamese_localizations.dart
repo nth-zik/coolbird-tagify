@@ -22,6 +22,9 @@ class VietnameseLocalizations implements AppLocalizations {
   @override
   String get settings => 'Cài đặt';
 
+  @override
+  String get moreOptions => 'Tùy chọn khác';
+
   // File operations
   @override
   String get copy => 'Sao chép';
@@ -1016,6 +1019,27 @@ class VietnameseLocalizations implements AppLocalizations {
 
   @override
   String get openNewTabToStart => 'Mở tab mới để bắt đầu';
+
+  @override
+  String get tabManager => 'Quản lý Tab';
+
+  @override
+  String get openTabs => 'Tab đang mở';
+
+  @override
+  String get noTabsOpen => 'Không có tab nào';
+
+  @override
+  String get closeAllTabs => 'Đóng tất cả Tab';
+
+  @override
+  String get activeTab => 'Đang mở';
+
+  @override
+  String get closeTab => 'Đóng tab';
+
+  @override
+  String get addNewTab => 'Thêm tab mới';
 
   // Home screen
   @override

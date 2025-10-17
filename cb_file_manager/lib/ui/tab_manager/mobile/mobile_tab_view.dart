@@ -16,6 +16,7 @@ import '../../utils/route.dart';
 import 'package:cb_file_manager/ui/state/video_ui_state.dart';
 import '../shared/screen_menu_registry.dart';
 import '../../screens/system_screen_router.dart'; // Import SystemScreenRouter for system paths
+import 'package:cb_file_manager/config/languages/app_localizations.dart';
 
 /// Giao diện kiểu Chrome cho thiết bị di động, hiển thị thanh địa chỉ ở trên
 /// và một nút hiển thị số lượng tab bên cạnh
@@ -94,8 +95,8 @@ class MobileTabView extends StatelessWidget {
   Widget _buildEmptyChromeStyleAddressBar(BuildContext context) {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
-    final textColor = isDarkMode ? Colors.white : Colors.black;
-    final backgroundColor = Theme.of(context).scaffoldBackgroundColor;
+    final textColor = theme.colorScheme.onSurface;
+    final backgroundColor = theme.scaffoldBackgroundColor;
 
     // Lấy state hiện tại để hiển thị nút đếm tab (0)
     final tState = context.read<TabManagerBloc>().state;
@@ -154,8 +155,8 @@ class MobileTabView extends StatelessWidget {
     final isDarkMode = theme.brightness == Brightness.dark;
 
     // Màu nền rõ ràng để dễ nhìn toàn thanh
-    final backgroundColor = Theme.of(context).scaffoldBackgroundColor;
-    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final backgroundColor = theme.scaffoldBackgroundColor;
+    final textColor = theme.colorScheme.onSurface;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 8.0),
@@ -203,6 +204,7 @@ class MobileTabView extends StatelessWidget {
     final activeTab = state.activeTab;
     // Lấy TabManagerBloc reference trước khi tạo BottomSheet
     final tabManagerBloc = context.read<TabManagerBloc>();
+    final theme = Theme.of(context);
 
     showModalBottomSheet(
       context: context,
@@ -227,7 +229,7 @@ class MobileTabView extends StatelessWidget {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.3),
+                  color: theme.dividerColor.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -332,6 +334,7 @@ class MobileTabView extends StatelessWidget {
   void _showCloseAllTabsConfirmation(BuildContext context) {
     // Lấy TabManagerBloc reference trước khi tạo dialog
     final tabBloc = context.read<TabManagerBloc>();
+    final theme = Theme.of(context);
 
     showDialog(
       context: context,
@@ -353,7 +356,7 @@ class MobileTabView extends StatelessWidget {
               }
             },
             style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
+              foregroundColor: theme.colorScheme.error,
             ),
             child: const Text('Đóng tất cả'),
           ),
@@ -460,7 +463,7 @@ class MobileTabView extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
         margin: const EdgeInsets.only(left: 8.0),
         decoration: BoxDecoration(
-          color: isDarkMode ? const Color(0xFF0F2C4C) : Colors.grey[200],
+          color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
@@ -485,113 +488,114 @@ class MobileTabView extends StatelessWidget {
     );
   }
 
-  /// Hiển thị danh sách tab trong bottom sheet
+  /// Hiển thị danh sách tab trong full screen mode
   void _showTabsBottomSheet(BuildContext context, TabManagerState state) {
-    // Lấy instance của TabManagerBloc từ context hiện tại
     final tabManagerBloc = BlocProvider.of<TabManagerBloc>(context);
+    final localizations = AppLocalizations.of(context)!;
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (bottomSheetContext) =>
-          // Sử dụng BlocProvider.value để truyền instance của TabManagerBloc vào widget tree mới
-          BlocProvider.value(
-        value: tabManagerBloc,
-        child: Builder(
-          builder: (newContext) => BlocBuilder<TabManagerBloc, TabManagerState>(
-            builder: (context, updatedState) => Container(
-              decoration: BoxDecoration(
-                color: Theme.of(newContext).scaffoldBackgroundColor,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(16)),
-              ),
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(newContext).size.height * 0.7,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Thanh tiêu đề
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      children: [
-                        Text(
-                          'Tabs (${updatedState.tabs.length})',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(newContext).colorScheme.onSurface,
-                          ),
-                        ),
-                        const Spacer(),
-                        // Nút thêm tab mới
-                        IconButton(
-                          icon: const Icon(remix.Remix.add_line),
-                          tooltip: 'Add new tab',
-                          onPressed: () {
-                            Navigator.pop(newContext); // Đóng bottom sheet
-                            onAddNewTab();
-                          },
-                        ),
-                      ],
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (routeContext) => BlocProvider.value(
+          value: tabManagerBloc,
+          child: Builder(
+            builder: (newContext) => BlocBuilder<TabManagerBloc, TabManagerState>(
+              builder: (context, updatedState) {
+                final theme = Theme.of(context);
+                
+                return Scaffold(
+                  backgroundColor: theme.scaffoldBackgroundColor,
+                  appBar: AppBar(
+                    elevation: 0,
+                    backgroundColor: theme.scaffoldBackgroundColor,
+                    leading: IconButton(
+                      icon: Icon(
+                        remix.Remix.close_line,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                      tooltip: localizations.close,
+                      onPressed: () => Navigator.pop(context),
                     ),
-                  ),
-
-                  const Divider(height: 1),
-
-                  // Danh sách tab (Grid dạng Chrome)
-                  Flexible(
-                    child: updatedState.tabs.isEmpty
-                        ? Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Text(
-                                'Không có tab nào',
-                                style: TextStyle(
-                                  color: Theme.of(newContext)
-                                      .colorScheme
-                                      .onSurfaceVariant,
+                    title: Text(
+                      localizations.tabManager,
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    actions: [
+                      PopupMenuButton<String>(
+                        icon: Icon(
+                          remix.Remix.more_2_line,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                        tooltip: localizations.moreOptions,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        offset: const Offset(0, 48),
+                        itemBuilder: (context) => [
+                          PopupMenuItem<String>(
+                            value: 'add_tab',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  remix.Remix.add_line,
+                                  size: 20,
+                                  color: theme.colorScheme.primary,
                                 ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  localizations.addNewTab,
+                                  style: TextStyle(
+                                    color: theme.colorScheme.onSurface,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (updatedState.tabs.isNotEmpty)
+                            PopupMenuItem<String>(
+                              value: 'close_all',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    remix.Remix.close_circle_line,
+                                    size: 20,
+                                    color: theme.colorScheme.error,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    localizations.closeAllTabs,
+                                    style: TextStyle(
+                                      color: theme.colorScheme.error,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          )
-                        : LayoutBuilder(
-                            builder: (context, constraints) {
-                              // Xác định số cột theo chiều rộng
-                              final width = constraints.maxWidth;
-                              int crossAxisCount = 2;
-                              if (width >= 480) crossAxisCount = 3;
-                              if (width >= 720) crossAxisCount = 4;
-
-                              return GridView.builder(
-                                padding: const EdgeInsets.all(12.0),
-                                gridDelegate:
-                                    SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: crossAxisCount,
-                                  crossAxisSpacing: 12,
-                                  mainAxisSpacing: 12,
-                                  childAspectRatio: 1.2,
-                                ),
-                                itemCount: updatedState.tabs.length,
-                                itemBuilder: (context, index) {
-                                  final tab = updatedState.tabs[index];
-                                  final isActive =
-                                      tab.id == updatedState.activeTabId;
-
-                                  return _buildTabGridTile(
-                                    context: newContext,
-                                    tab: tab,
-                                    isActive: isActive,
-                                  );
-                                },
-                              );
-                            },
-                          ),
+                        ],
+                        onSelected: (value) {
+                          if (value == 'add_tab') {
+                            Navigator.pop(context);
+                            onAddNewTab();
+                          } else if (value == 'close_all') {
+                            BlocProvider.of<TabManagerBloc>(context)
+                                .add(CloseAllTabs());
+                            Navigator.pop(context);
+                          }
+                        },
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                  body: updatedState.tabs.isEmpty
+                      ? _buildEmptyTabsState(context, localizations)
+                      : _buildTabsGrid(context, updatedState, localizations),
+                );
+              },
             ),
           ),
         ),
@@ -599,120 +603,192 @@ class MobileTabView extends StatelessWidget {
     );
   }
 
-  // Thay thế class riêng bằng builder private để tránh class lồng nhau
+  Widget _buildEmptyTabsState(BuildContext context, AppLocalizations localizations) {
+    final theme = Theme.of(context);
+    
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(32.0),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                remix.Remix.file_list_3_line,
+                size: 64,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 32),
+            Text(
+              localizations.noTabsOpen,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurface,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              localizations.openNewTabToStart,
+              style: TextStyle(
+                fontSize: 16,
+                color: theme.colorScheme.onSurfaceVariant,
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabsGrid(BuildContext context, TabManagerState state, AppLocalizations localizations) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        int crossAxisCount = 2;
+        if (width >= 600) crossAxisCount = 3;
+        if (width >= 900) crossAxisCount = 4;
+
+        return GridView.builder(
+          padding: const EdgeInsets.all(20.0),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: 20,
+            mainAxisSpacing: 20,
+            childAspectRatio: 0.75,
+          ),
+          itemCount: state.tabs.length,
+          itemBuilder: (context, index) {
+            final tab = state.tabs[index];
+            final isActive = tab.id == state.activeTabId;
+
+            return _buildTabGridTile(
+              context: context,
+              tab: tab,
+              isActive: isActive,
+              localizations: localizations,
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildTabGridTile({
     required BuildContext context,
     required TabData tab,
     required bool isActive,
+    required AppLocalizations localizations,
   }) {
     final theme = Theme.of(context);
-    final borderColor = isActive
-        ? theme.colorScheme.primary.withOpacity(0.5)
-        : theme.dividerColor.withOpacity(0.3);
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: () {
-        if (!isActive) {
-          BlocProvider.of<TabManagerBloc>(context).add(SwitchToTab(tab.id));
-        }
-        Navigator.pop(context);
-      },
-      child: Ink(
-        decoration: BoxDecoration(
-          color: theme.cardColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: borderColor),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            Positioned(
-              top: 4,
-              right: 4,
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () {
-                    BlocProvider.of<TabManagerBloc>(context)
-                        .add(CloseTab(tab.id));
-                  },
-                  child: const Padding(
-                    padding: EdgeInsets.all(6.0),
-                    child: Icon(Icons.close, size: 16),
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () {
+          if (!isActive) {
+            BlocProvider.of<TabManagerBloc>(context).add(SwitchToTab(tab.id));
+          }
+          Navigator.pop(context);
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: isActive 
+                ? theme.colorScheme.primaryContainer.withOpacity(0.3)
+                : theme.cardColor,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header: Icon + Name + Close button
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      Icon(
-                        tab.isPinned ? remix.Remix.pushpin_fill : remix.Remix.folder_3_line,
-                        size: 18,
+                  Icon(
+                    tab.isPinned 
+                        ? remix.Remix.pushpin_fill 
+                        : remix.Remix.folder_3_line,
+                    size: 20,
+                    color: isActive
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      tab.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
                         color: isActive
                             ? theme.colorScheme.primary
-                            : theme.iconTheme.color,
+                            : theme.colorScheme.onSurface,
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          tab.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontWeight:
-                                isActive ? FontWeight.w600 : FontWeight.w500,
-                            color: isActive
-                                ? theme.colorScheme.primary
-                                : theme.colorScheme.onSurface,
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color:
-                            theme.colorScheme.surfaceVariant.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      alignment: Alignment.center,
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: () {
+                      BlocProvider.of<TabManagerBloc>(context)
+                          .add(CloseTab(tab.id));
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4.0),
                       child: Icon(
-                        remix.Remix.file_text_line,
-                        size: 28,
+                        remix.Remix.close_line,
+                        size: 18,
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    tab.path.isEmpty ? 'Drives' : _shortenPath(tab.path),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              // Preview area
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      _getPreviewIcon(tab.path),
+                      size: 48,
+                      color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Path
+              Text(
+                tab.path.isEmpty ? localizations.drives : _shortenPath(tab.path),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -724,6 +800,38 @@ class MobileTabView extends StatelessWidget {
     if (parts.isEmpty) return p;
     if (parts.length == 1) return parts.first;
     return '${parts[parts.length - 2]}/${parts.last}';
+  }
+
+  IconData _getPreviewIcon(String path) {
+    // System paths
+    if (path.startsWith('#')) {
+      if (path == '#home') return remix.Remix.home_4_line;
+      if (path == '#gallery' || path.startsWith('#album')) return remix.Remix.image_2_line;
+      if (path == '#video') return remix.Remix.video_line;
+      if (path == '#tags') return remix.Remix.price_tag_3_line;
+      if (path == '#network' || path.startsWith('#network/')) return remix.Remix.server_line;
+      if (path == '#smb') return remix.Remix.folder_shared_line;
+      return remix.Remix.apps_line;
+    }
+    
+    // Regular folder paths
+    if (path.isEmpty) return remix.Remix.hard_drive_2_line;
+    
+    // Check for common folders
+    final lowerPath = path.toLowerCase();
+    if (lowerPath.contains('download')) return remix.Remix.download_2_line;
+    if (lowerPath.contains('picture') || lowerPath.contains('photo') || lowerPath.contains('dcim')) {
+      return remix.Remix.image_2_line;
+    }
+    if (lowerPath.contains('video') || lowerPath.contains('movie')) {
+      return remix.Remix.video_line;
+    }
+    if (lowerPath.contains('music') || lowerPath.contains('audio')) {
+      return remix.Remix.music_2_line;
+    }
+    if (lowerPath.contains('document')) return remix.Remix.file_text_line;
+    
+    return remix.Remix.folder_3_line;
   }
 
   Widget _buildEmptyTabsView(BuildContext context) {
@@ -834,7 +942,7 @@ class MobileTabView extends StatelessWidget {
   void _showPathNavigationDialog(BuildContext context, TabData tab) {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
-    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final textColor = theme.colorScheme.onSurface;
 
     // Get the TabManagerBloc instance from the current context
     final tabManagerBloc = BlocProvider.of<TabManagerBloc>(context);
@@ -877,7 +985,7 @@ class MobileTabView extends StatelessWidget {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.3),
+                    color: theme.dividerColor.withOpacity(0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -914,13 +1022,13 @@ class MobileTabView extends StatelessWidget {
                     width: double.infinity,
                     padding: const EdgeInsets.all(8.0),
                     decoration: BoxDecoration(
-                      color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                      color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
                       borderRadius: BorderRadius.circular(8.0),
                     ),
                     child: Text(
                       tab.path.isEmpty ? 'Drives' : tab.path,
                       style: TextStyle(
-                        color: isDarkMode ? Colors.white : Colors.black87,
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ),
@@ -1041,9 +1149,7 @@ class MobileTabView extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: isCurrentPath
                                     ? theme.colorScheme.primary.withOpacity(0.2)
-                                    : isDarkMode
-                                        ? Colors.grey[800]
-                                        : Colors.grey[200],
+                                    : theme.colorScheme.surfaceVariant.withOpacity(0.5),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Center(
@@ -1061,9 +1167,7 @@ class MobileTabView extends StatelessWidget {
                                   style: TextStyle(
                                     color: isCurrentPath
                                         ? theme.colorScheme.primary
-                                        : isDarkMode
-                                            ? Colors.white
-                                            : Colors.black87,
+                                        : theme.colorScheme.onSurface,
                                     fontWeight:
                                         isCurrentPath ? FontWeight.bold : null,
                                   ),
@@ -1163,7 +1267,7 @@ class AddressBarWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Using Colors directly below
+    final theme = Theme.of(context);
 
     return InkWell(
       onTap: onTap,
@@ -1173,7 +1277,7 @@ class AddressBarWidget extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12.0),
         decoration: BoxDecoration(
           // Nền rõ ràng cho thanh địa chỉ (đồng nhất dark)
-          color: isDarkMode ? const Color(0xFF0F2C4C) : Colors.grey[200],
+          color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
           borderRadius: BorderRadius.circular(12.0),
         ),
         child: Row(
@@ -1181,14 +1285,14 @@ class AddressBarWidget extends StatelessWidget {
             Icon(
               remix.Remix.search_line,
               size: 18,
-              color: isDarkMode ? Colors.white70 : Colors.black87,
+              color: theme.colorScheme.onSurfaceVariant,
             ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 name,
                 style: TextStyle(
-                  color: isDarkMode ? Colors.white : Colors.black87,
+                  color: theme.colorScheme.onSurface,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -1196,7 +1300,7 @@ class AddressBarWidget extends StatelessWidget {
             Icon(
               remix.Remix.arrow_down_s_line,
               size: 20,
-              color: isDarkMode ? Colors.white54 : Colors.black54,
+              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
             ),
           ],
         ),

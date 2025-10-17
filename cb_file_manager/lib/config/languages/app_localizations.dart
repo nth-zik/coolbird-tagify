@@ -17,6 +17,7 @@ abstract class AppLocalizations {
   String get close;
   String get search;
   String get settings;
+  String get moreOptions;
 
   // File operations
   String get copy;
@@ -489,6 +490,13 @@ abstract class AppLocalizations {
   // Tab manager
   String get newTabButton;
   String get openNewTabToStart;
+  String get tabManager;
+  String get openTabs;
+  String get noTabsOpen;
+  String get closeAllTabs;
+  String get activeTab;
+  String get closeTab;
+  String get addNewTab;
 
   // Home screen
   String get welcomeTitle;
