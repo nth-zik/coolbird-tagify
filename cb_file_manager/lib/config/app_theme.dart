@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'theme_factory.dart';
 
 /// Lớp cấu hình Theme toàn cục cho ứng dụng
 class AppTheme {
@@ -37,96 +38,8 @@ class AppTheme {
   static final MaterialColor primarySwatch = createMaterialColor(primaryBlue);
 
   // Theme sáng cho ứng dụng - mềm mại hơn, đơn giản hơn, ít border
-  static ThemeData lightTheme = ThemeData(
-    primarySwatch: primarySwatch,
-    primaryColor: primaryBlue,
-    scaffoldBackgroundColor: lightBackground,
-    appBarTheme: const AppBarTheme(
-      backgroundColor: surfaceLight,
-      foregroundColor: primaryBlue,
-      elevation: 0, // Không shadow
-      systemOverlayStyle: SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent, // Transparent status bar
-        statusBarIconBrightness:
-            Brightness.dark, // Dark icons for light background
-        statusBarBrightness: Brightness.light, // iOS: dark text
-      ),
-      iconTheme: IconThemeData(color: primaryBlue),
-      titleTextStyle: TextStyle(
-          color: primaryBlue, fontSize: 18, fontWeight: FontWeight.w500),
-    ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: primaryBlue,
-        foregroundColor: Colors.white,
-        elevation: 0, // No shadow
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      ),
-    ),
-    outlinedButtonTheme: OutlinedButtonThemeData(
-      style: OutlinedButton.styleFrom(
-        foregroundColor: primaryBlue,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        side: BorderSide(color: primaryBlue.withOpacity(0.3), width: 1),
-      ),
-    ),
-    textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(
-        foregroundColor: primaryBlue,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      ),
-    ),
-    floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: primaryBlue,
-      foregroundColor: Colors.white,
-      elevation: 2, // Minimal shadow
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-    ),
-    cardTheme: CardThemeData(
-      elevation: 0, // No shadow
-      color: surfaceLight,
-      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.withOpacity(0.1), width: 1),
-      ),
-    ),
-    popupMenuTheme: PopupMenuThemeData(
-      color: surfaceLight,
-      elevation: 2, // Minimal shadow
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-    ),
-    dividerTheme: const DividerThemeData(
-      thickness: 0.5,
-      color: Color(0xFFEEEEEE),
-    ),
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: surfaceLight,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: Colors.grey.withOpacity(0.2), width: 1),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: Colors.grey.withOpacity(0.2), width: 1),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: primaryBlue.withOpacity(0.5), width: 1),
-      ),
-    ),
-    colorScheme: ColorScheme.light(
+  static ThemeData get lightTheme {
+    final colorScheme = ColorScheme.light(
       primary: primaryBlue,
       secondary: lightBlue,
       onPrimary: Colors.white,
@@ -134,129 +47,24 @@ class AppTheme {
       surface: surfaceLight,
       onSurface: darkBlue,
       background: lightBackground,
-    ),
-    dialogTheme: DialogThemeData(
-      backgroundColor: surfaceLight,
-      elevation: 0, // No shadow
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+    );
+
+    return ThemeFactory.createTheme(
+      colorScheme: colorScheme,
+      brightness: Brightness.light,
+      options: const ThemeOptions(
+        borderRadius: 8.0,
+        elevation: 0.0,
+        useMaterial3: true,
+        cardElevation: 0.0,
+        buttonElevation: 0.0,
       ),
-    ),
-    bottomSheetTheme: BottomSheetThemeData(
-      backgroundColor: surfaceLight,
-      modalBackgroundColor: surfaceLight,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      elevation: 0, // No shadow
-    ),
-    tabBarTheme: TabBarThemeData(
-      labelColor: primaryBlue,
-      unselectedLabelColor: Colors.grey,
-      indicator: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: primaryBlue,
-            width: 2,
-          ),
-        ),
-      ),
-    ),
-  );
+    );
+  }
 
   // Theme tối cho ứng dụng - mềm mại hơn, đơn giản hơn, ít border
-  static ThemeData darkTheme = ThemeData(
-    brightness: Brightness.dark,
-    primarySwatch: primarySwatch,
-    primaryColor: primaryBlue,
-    scaffoldBackgroundColor: darkBackground,
-    appBarTheme: const AppBarTheme(
-      backgroundColor: surfaceDark,
-      foregroundColor: Colors.white,
-      elevation: 0, // No shadow
-      systemOverlayStyle: SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent, // Transparent status bar
-        statusBarIconBrightness:
-            Brightness.light, // Light icons for dark background
-        statusBarBrightness: Brightness.dark, // iOS: light text
-      ),
-      titleTextStyle: TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.w500,
-      ),
-    ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: primaryBlue,
-        foregroundColor: Colors.white,
-        elevation: 0, // No shadow
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      ),
-    ),
-    outlinedButtonTheme: OutlinedButtonThemeData(
-      style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        side: BorderSide(color: Colors.white.withOpacity(0.3), width: 1),
-      ),
-    ),
-    textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      ),
-    ),
-    floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: primaryBlue,
-      foregroundColor: Colors.white,
-      elevation: 2, // Minimal shadow
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-    ),
-    cardTheme: CardThemeData(
-      elevation: 0, // No shadow
-      color: surfaceDark,
-      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.withOpacity(0.1), width: 1),
-      ),
-    ),
-    popupMenuTheme: PopupMenuThemeData(
-      color: surfaceDark,
-      elevation: 2, // Minimal shadow
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-    ),
-    dividerTheme: DividerThemeData(
-      thickness: 0.5,
-      color: Colors.grey.withOpacity(0.2),
-    ),
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: surfaceDark,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: Colors.grey.withOpacity(0.2), width: 1),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: Colors.grey.withOpacity(0.2), width: 1),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: lightBlue.withOpacity(0.5), width: 1),
-      ),
-    ),
-    colorScheme: ColorScheme.dark(
+  static ThemeData get darkTheme {
+    final colorScheme = ColorScheme.dark(
       primary: primaryBlue,
       secondary: lightBlue,
       onPrimary: Colors.white,
@@ -264,33 +72,18 @@ class AppTheme {
       surface: surfaceDark,
       onSurface: Colors.white,
       background: darkBackground,
-    ),
-    dialogTheme: DialogThemeData(
-      backgroundColor: surfaceDark,
-      elevation: 0, // No shadow
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+    );
+
+    return ThemeFactory.createTheme(
+      colorScheme: colorScheme,
+      brightness: Brightness.dark,
+      options: const ThemeOptions(
+        borderRadius: 8.0,
+        elevation: 0.0,
+        useMaterial3: true,
+        cardElevation: 0.0,
+        buttonElevation: 0.0,
       ),
-    ),
-    bottomSheetTheme: BottomSheetThemeData(
-      backgroundColor: surfaceDark,
-      modalBackgroundColor: surfaceDark,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      elevation: 0, // No shadow
-    ),
-    tabBarTheme: TabBarThemeData(
-      labelColor: Colors.white,
-      unselectedLabelColor: Colors.grey[400],
-      indicator: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.white,
-            width: 2,
-          ),
-        ),
-      ),
-    ),
-  );
+    );
+  }
 }

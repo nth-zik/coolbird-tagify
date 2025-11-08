@@ -63,6 +63,10 @@ dependencies:
   file_picker: ^10.1.2
   win32: ^5.0.9
   crypto: ^3.0.6
+  # Dependency injection
+  get_it: ^7.6.0
+  # Functional programming (Either type)
+  dartz: ^0.10.1
   share_plus: ^11.0.0
   flutter_colorpicker: ^1.1.0
   # File caching
