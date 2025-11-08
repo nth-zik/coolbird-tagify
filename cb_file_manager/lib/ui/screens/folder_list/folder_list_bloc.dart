@@ -5,6 +5,7 @@ import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
 import 'package:cb_file_manager/helpers/files/trash_manager.dart'; // Add import for TrashManager
 import 'package:cb_file_manager/helpers/core/filesystem_utils.dart'; // Import for FileOperations
 import 'package:path/path.dart' as pathlib;
+import 'package:cb_file_manager/helpers/core/text_utils.dart';
 import 'package:cb_file_manager/helpers/media/video_thumbnail_helper.dart';
 import 'dart:async'; // Thêm import cho StreamSubscription
 import 'package:cb_file_manager/helpers/files/folder_sort_manager.dart';
@@ -1340,14 +1341,56 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
       final String query = event.query.toLowerCase();
       final List<FileSystemEntity> searchResults = [];
 
-      // Get all files in the current directory
-      final List<FileSystemEntity> allFiles = state.files;
+      if (event.recursive) {
+        // Recursive search in current directory and subdirectories
+        final currentDir = Directory(state.currentPath.path);
+        
+        debugPrint('🔍 Starting recursive search in: ${currentDir.path}');
+        debugPrint('🔍 Query: "$query"');
+        
+        int scannedCount = 0;
+        int matchedCount = 0;
+        int errorCount = 0;
+        
+        // Use manual recursive search to handle permission errors gracefully
+        await _recursiveSearch(
+          currentDir,
+          query,
+          searchResults,
+          (scanned, matched, errors) {
+            scannedCount = scanned;
+            matchedCount = matched;
+            errorCount = errors;
+            
+            // Log progress every 100 items
+            if (scannedCount % 100 == 0) {
+              debugPrint('🔍 Scanned: $scannedCount, Matched: $matchedCount, Errors: $errorCount');
+            }
+          },
+        );
+        
+        debugPrint('🔍 Search complete! Scanned: $scannedCount, Matched: $matchedCount, Errors: $errorCount');
+      } else {
+        // Search in current directory only (both files and folders)
+        final allFiles = state.files;
+        final allFolders = state.folders;
 
-      // Filter files by name match
-      for (var file in allFiles) {
-        final fileName = pathlib.basename(file.path).toLowerCase();
-        if (fileName.contains(query)) {
-          searchResults.add(file);
+        // Search in files
+        for (var file in allFiles) {
+          final fileName = pathlib.basename(file.path);
+          // Use Vietnamese normalization for matching
+          if (TextUtils.matchesVietnamese(fileName, query)) {
+            searchResults.add(file);
+          }
+        }
+
+        // Search in folders
+        for (var folder in allFolders) {
+          final folderName = pathlib.basename(folder.path);
+          // Use Vietnamese normalization for matching
+          if (TextUtils.matchesVietnamese(folderName, query)) {
+            searchResults.add(folder);
+          }
         }
       }
 
@@ -1357,15 +1400,72 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
         searchResults: searchResults,
         currentSearchQuery: event.query,
         currentSearchTag: null, // Clear any previous tag search
+        searchRecursive: event.recursive,
         error: searchResults.isEmpty
-            ? 'No files found matching "${event.query}"'
+            ? 'No files or folders found matching "${event.query}"'
             : null,
       ));
     } catch (e) {
       emit(state.copyWith(
         isLoading: false,
-        error: 'Error searching files: ${e.toString()}',
+        error: 'Error searching: ${e.toString()}',
       ));
+    }
+  }
+
+  // Helper method for recursive search that handles permission errors gracefully
+  Future<void> _recursiveSearch(
+    Directory dir,
+    String query,
+    List<FileSystemEntity> results,
+    Function(int scanned, int matched, int errors) onProgress,
+  ) async {
+    int scannedCount = 0;
+    int matchedCount = 0;
+    int errorCount = 0;
+    
+    try {
+      // List current directory (non-recursive)
+      await for (var entity in dir.list(recursive: false, followLinks: false)) {
+        try {
+          scannedCount++;
+          
+          final entityName = pathlib.basename(entity.path);
+          
+          // Check if entity matches query
+          if (TextUtils.matchesVietnamese(entityName, query)) {
+            results.add(entity);
+            matchedCount++;
+            debugPrint('✅ Match found: ${entity.path}');
+          }
+          
+          // If it's a directory, recursively search it
+          if (entity is Directory) {
+            try {
+              await _recursiveSearch(entity, query, results, (s, m, e) {
+                scannedCount += s;
+                matchedCount += m;
+                errorCount += e;
+                onProgress(scannedCount, matchedCount, errorCount);
+              });
+            } catch (e) {
+              // Skip directories that cause errors
+              errorCount++;
+              debugPrint('⚠️ Skipping directory: ${entity.path} - $e');
+            }
+          }
+          
+          onProgress(scannedCount, matchedCount, errorCount);
+        } catch (e) {
+          // Skip individual entities that cause errors
+          errorCount++;
+          debugPrint('⚠️ Skipping entity: ${entity.path} - $e');
+        }
+      }
+    } catch (e) {
+      // Directory listing failed (permission denied, etc.)
+      errorCount++;
+      debugPrint('⚠️ Cannot access directory: ${dir.path} - $e');
     }
   }
 

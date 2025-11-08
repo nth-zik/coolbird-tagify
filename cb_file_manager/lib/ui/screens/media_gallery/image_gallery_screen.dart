@@ -1,11 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'dart:ui' as ui;
 import 'package:cb_file_manager/helpers/core/filesystem_utils.dart';
 import 'package:cb_file_manager/helpers/core/user_preferences.dart';
 import 'package:cb_file_manager/ui/utils/base_screen.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import '../../components/common/shared_action_bar.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/image_viewer_screen.dart';
+import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart';
 import 'package:path/path.dart' as pathlib;
 import 'dart:math';
 import 'package:share_plus/share_plus.dart'; // Add import for Share Plus
@@ -17,6 +19,8 @@ import 'package:cb_file_manager/ui/widgets/tag_chip.dart';
 import 'package:cb_file_manager/services/album_service.dart';
 import 'package:cb_file_manager/models/objectbox/album.dart';
 import '../../utils/route.dart';
+import '../../tab_manager/mobile/mobile_file_actions_controller.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 class ImageGalleryScreen extends StatefulWidget {
   final String path;
@@ -41,7 +45,7 @@ class ImageGalleryScreen extends StatefulWidget {
 class ImageGalleryScreenState extends State<ImageGalleryScreen> {
   late Future<List<File>> _imageFilesFuture;
   late UserPreferences _preferences;
-  late double _thumbnailSize = 150.0; // Default size
+  double _thumbnailSize = 3.0; // Default grid size (3 columns)
   final AlbumService _albumService = AlbumService.instance;
 
   List<File> _imageFiles = [];
@@ -50,20 +54,128 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
   final Set<String> _selectedFilePaths = {};
   SortOption _currentSortOption = SortOption.nameAsc;
   ViewMode _viewMode = ViewMode.grid;
+  bool _isMasonry = false; // Pinterest-like layout toggle
+  final Map<String, double> _imageAspectRatioCache = {}; // Cache width/height ratios
   String? _searchQuery;
+  bool _isLoadingImages = true; // Track initial loading state
 
   // Album view mode
   bool _isAlbumView = false;
   List<Album> _albums = [];
   Album? _selectedAlbum;
 
+  // Mobile actions controller
+  MobileFileActionsController? _mobileController;
+  static int _controllerIdCounter = 0;
+
   @override
   void initState() {
     super.initState();
     _preferences = UserPreferences.instance;
-    _loadPreferences();
+    
+    // Initialize mobile controller first
+    final controllerId = 'image_gallery_${_controllerIdCounter++}';
+    _mobileController = MobileFileActionsController.forTab(controllerId);
+    
+    // Register callbacks immediately (before preferences load)
+    _registerMobileControllerCallbacks();
+    
+    // Load preferences and update controller state after
+    _loadPreferences().then((_) {
+      if (mounted) {
+        _updateMobileControllerState();
+      }
+    });
+    
     _loadImages();
     _loadAlbums();
+  }
+  
+  // Register callbacks (can be called before preferences load)
+  void _registerMobileControllerCallbacks() {
+    if (_mobileController == null) return;
+    
+    // Register callbacks
+    _mobileController!.onSearchSubmitted = (query) {
+      setState(() {
+        _searchQuery = query;
+        // Just update UI, filtering happens in getter
+      });
+    };
+    
+    _mobileController!.onSortOptionSelected = (option) {
+      _setSortOption(option);
+    };
+    
+    _mobileController!.onViewModeToggled = (ViewMode mode) {
+      setState(() {
+        _viewMode = mode;
+        _mobileController!.currentViewMode = mode;
+      });
+      _saveViewModeSetting(_viewMode);
+    };
+    
+    _mobileController!.onRefresh = () {
+      setState(() {
+        _loadImages();
+        _loadAlbums();
+      });
+    };
+    
+    _mobileController!.onGridSizePressed = () {
+      SharedActionBar.showGridSizeDialog(
+        context,
+        currentGridSize: _thumbnailSize.round(),
+        onApply: (size) async {
+          setState(() {
+            _thumbnailSize = size.toDouble();
+          });
+          // Update controller state
+          _mobileController!.currentGridSize = size;
+          try {
+            await _preferences.setImageGalleryThumbnailSize(size.toDouble());
+          } catch (e) {
+            debugPrint('Error saving thumbnail size: $e');
+          }
+        },
+      );
+    };
+    
+    _mobileController!.onSelectionModeToggled = () {
+      setState(() {
+        _isSelectionMode = !_isSelectionMode;
+        if (!_isSelectionMode) {
+          _selectedFilePaths.clear();
+        }
+      });
+    };
+
+    // Masonry toggle
+    _mobileController!.onMasonryToggled = () {
+      setState(() {
+        _isMasonry = !_isMasonry;
+        _mobileController!.isMasonryLayout = _isMasonry;
+      });
+    };
+  }
+  
+  // Update controller state (called after preferences load)
+  void _updateMobileControllerState() {
+    if (_mobileController == null) return;
+    
+    _mobileController!.currentSortOption = _currentSortOption;
+    _mobileController!.currentViewMode = _viewMode;
+    _mobileController!.currentGridSize = _thumbnailSize.round();
+    _mobileController!.isMasonryLayout = _isMasonry;
+  }
+  
+  @override
+  void dispose() {
+    // Cleanup controller
+    if (_mobileController != null) {
+      MobileFileActionsController.removeTab(_mobileController!.tabId);
+    }
+    super.dispose();
   }
 
   Future<void> _loadPreferences() async {
@@ -103,6 +215,10 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
   }
 
   Future<void> _loadImages() async {
+    setState(() {
+      _isLoadingImages = true;
+    });
+
     if (_isAlbumView && _selectedAlbum != null) {
       // Load images from selected album
       try {
@@ -127,11 +243,17 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
           setState(() {
             _imageFiles = images;
             _fileTagsMap = tagsMap;
+            _isLoadingImages = false;
             _sortImageFiles();
           });
         }
       } catch (e) {
         debugPrint('Error loading album images: $e');
+        if (mounted) {
+          setState(() {
+            _isLoadingImages = false;
+          });
+        }
       }
     } else {
       // Load images from folder
@@ -159,9 +281,17 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
           setState(() {
             _imageFiles = images;
             _fileTagsMap = tagsMap;
+            _isLoadingImages = false;
             _sortImageFiles();
           });
         }
+      }).catchError((error) {
+        if (mounted) {
+          setState(() {
+            _isLoadingImages = false;
+          });
+        }
+        debugPrint('Error loading images: $error');
       });
     }
   }
@@ -607,10 +737,21 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
       title = 'Image Gallery: ${pathlib.basename(targetPath)}';
     }
 
+    // On mobile, use custom action bar instead of AppBar
+    final isMobile = Platform.isAndroid || Platform.isIOS;
+    
     return BaseScreen(
       title: title,
       actions: actions,
-      body: _buildImageContent(),
+      showAppBar: !isMobile, // Hide AppBar on mobile
+      body: isMobile 
+        ? Column(
+            children: [
+              _buildMobileActionBar(context),
+              Expanded(child: _buildImageContent()),
+            ],
+          )
+        : _buildImageContent(),
       floatingActionButton: _isAlbumView && _albums.isEmpty
           ? FloatingActionButton.extended(
               onPressed: _showCreateAlbumDialog,
@@ -628,7 +769,19 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
     );
   }
 
+  // Build mobile action bar using shared controller method
+  Widget _buildMobileActionBar(BuildContext context) {
+    if (_mobileController == null) return const SizedBox.shrink();
+    return _mobileController!.buildMobileActionBar(context, viewMode: _viewMode);
+  }
+
   Widget _buildImageContent() {
+    // Show skeleton loading while data is being fetched
+    if (_isLoadingImages) {
+      return _buildSkeletonLoading();
+    }
+
+    // Only show empty message after loading is complete
     if (_imageFiles.isEmpty) {
       return Center(
         child: Text(
@@ -668,8 +821,42 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
                   ),
                 ],
               ),
+          ),
+        ),
+        // Masonry toggle (Pinterest-like)
+        Positioned(
+          top: 8,
+          right: 8,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => setState(() => _isMasonry = !_isMasonry),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.35),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _isMasonry ? Icons.view_quilt_rounded : Icons.grid_view,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _isMasonry ? 'Masonry' : 'Grid',
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
+        ),
         Padding(
           padding: EdgeInsets.only(top: _searchQuery != null ? 50.0 : 0.0),
           child:
@@ -680,100 +867,231 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
   }
 
   Widget _buildGridView() {
+    final theme = Theme.of(context);
+    final gridCols = _thumbnailSize.round();
+
+    if (_isMasonry) {
+      return MasonryGridView.count(
+        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+        crossAxisCount: gridCols,
+        crossAxisSpacing: 6,
+        mainAxisSpacing: 6,
+        itemCount: _imageFiles.length,
+        itemBuilder: (context, index) {
+          final file = _imageFiles[index];
+          final isSelected = _selectedFilePaths.contains(file.path);
+          final tags = _fileTagsMap[file.path] ?? [];
+          return _buildMasonryTile(theme, file, isSelected, tags, gridCols, index);
+        },
+      );
+    }
+
+    final childAspect = gridCols >= 4 ? 1.0 : 0.9; // More square on denser grids
     return GridView.builder(
-      padding: const EdgeInsets.all(8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: _thumbnailSize.round(),
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
+        crossAxisCount: gridCols,
+        crossAxisSpacing: 6,
+        mainAxisSpacing: 6,
+        childAspectRatio: childAspect,
       ),
       itemCount: _imageFiles.length,
       itemBuilder: (context, index) {
         final file = _imageFiles[index];
         final isSelected = _selectedFilePaths.contains(file.path);
         final tags = _fileTagsMap[file.path] ?? []; // Get tags for the file
+        return _buildGridTile(theme, file, isSelected, tags, index);
+      },
+    );
+  }
 
-        return GestureDetector(
-          onTap: () {
-            if (_isSelectionMode) {
-              setState(() {
-                if (isSelected) {
-                  _selectedFilePaths.remove(file.path);
-                } else {
-                  _selectedFilePaths.add(file.path);
-                }
-              });
+  Widget _buildGridTile(ThemeData theme, File file, bool isSelected, List<String> tags, int index) {
+    return GestureDetector(
+      onTap: () {
+        if (_isSelectionMode) {
+          setState(() {
+            if (isSelected) {
+              _selectedFilePaths.remove(file.path);
             } else {
-              // Use our enhanced ImageViewerScreen with all files
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ImageViewerScreen(
-                    file: file,
-                    imageFiles: _imageFiles,
-                    initialIndex: index,
-                  ),
-                ),
-              );
+              _selectedFilePaths.add(file.path);
             }
-          },
-          onLongPress: () {
-            if (!_isSelectionMode) {
-              setState(() {
-                _isSelectionMode = true;
-                _selectedFilePaths.add(file.path);
-              });
-            }
-          },
-          child: Stack(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  color: Colors.grey[200],
-                  child: Hero(
-                    tag: file.path,
-                    child: Image.file(
-                      file,
-                      fit: BoxFit.cover,
-                      filterQuality: FilterQuality.high,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Center(
-                          child: Icon(
-                            Icons.broken_image,
-                            size: 40,
-                            color: Colors.grey,
-                          ),
-                        );
-                      },
+          });
+        } else {
+          // Use our enhanced ImageViewerScreen with all files
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ImageViewerScreen(
+                file: file,
+                imageFiles: _imageFiles,
+                initialIndex: index,
+              ),
+            ),
+          );
+        }
+      },
+      onLongPress: () {
+        if (!_isSelectionMode) {
+          setState(() {
+            _isSelectionMode = true;
+            _selectedFilePaths.add(file.path);
+          });
+        }
+      },
+      child: Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+              child: Hero(
+                tag: file.path,
+                child: ThumbnailLoader(
+                  filePath: file.path,
+                  isVideo: false,
+                  isImage: true,
+                  fit: BoxFit.cover,
+                  borderRadius: BorderRadius.circular(10),
+                  fallbackBuilder: () => Center(
+                    child: Icon(
+                      Icons.broken_image,
+                      size: 32,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ),
               ),
-              // Add the tags overlay here
-              if (tags.isNotEmpty)
-                _buildTagsOverlay(tags, _thumbnailSize.round()),
+            ),
+          ),
+          // Add the tags overlay here
+          if (tags.isNotEmpty) _buildTagsOverlay(tags, _thumbnailSize.round()),
+          if (_isSelectionMode)
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface.withOpacity(0.7),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isSelected ? Icons.check_circle : Icons.circle_outlined,
+                  color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+                  size: 24,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMasonryTile(ThemeData theme, File file, bool isSelected, List<String> tags, int gridCols, int index) {
+    return GestureDetector(
+      onTap: () {
+        if (_isSelectionMode) {
+          setState(() {
+            if (isSelected) {
+              _selectedFilePaths.remove(file.path);
+            } else {
+              _selectedFilePaths.add(file.path);
+            }
+          });
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ImageViewerScreen(
+                file: file,
+                imageFiles: _imageFiles,
+                initialIndex: index,
+              ),
+            ),
+          );
+        }
+      },
+      onLongPress: () {
+        if (!_isSelectionMode) {
+          setState(() {
+            _isSelectionMode = true;
+            _selectedFilePaths.add(file.path);
+          });
+        }
+      },
+      child: FutureBuilder<double>(
+        future: _getImageAspectRatio(file),
+        builder: (context, snapshot) {
+          final ratio = snapshot.data ?? 1.0;
+          return Stack(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                  child: AspectRatio(
+                    aspectRatio: ratio,
+                    child: Hero(
+                      tag: file.path,
+                      child: ThumbnailLoader(
+                        filePath: file.path,
+                        isVideo: false,
+                        isImage: true,
+                        fit: BoxFit.cover,
+                        borderRadius: BorderRadius.circular(10),
+                        fallbackBuilder: () => Center(
+                          child: Icon(
+                            Icons.broken_image,
+                            size: 32,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              if (tags.isNotEmpty) _buildTagsOverlay(tags, gridCols),
               if (_isSelectionMode)
                 Positioned(
                   top: 8,
                   right: 8,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.5),
+                      color: theme.colorScheme.surface.withOpacity(0.7),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       isSelected ? Icons.check_circle : Icons.circle_outlined,
-                      color: isSelected ? Colors.blue : Colors.white,
+                      color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
                       size: 24,
                     ),
                   ),
                 ),
             ],
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
+  }
+
+  Future<double> _getImageAspectRatio(File file) async {
+    final path = file.path;
+    final cached = _imageAspectRatioCache[path];
+    if (cached != null) return cached;
+    try {
+      final bytes = await file.readAsBytes();
+      final codec = await ui.instantiateImageCodec(bytes, targetWidth: 64);
+      final frame = await codec.getNextFrame();
+      final w = frame.image.width.toDouble();
+      final h = frame.image.height.toDouble();
+      frame.image.dispose();
+      codec.dispose();
+      final ratio = (w > 0 && h > 0) ? w / h : 1.0;
+      _imageAspectRatioCache[path] = ratio;
+      return ratio;
+    } catch (_) {
+      return 1.0;
+    }
   }
 
   Widget _buildTagsOverlay(List<String> tags, int gridSize) {
@@ -865,6 +1183,9 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
   }
 
   Widget _buildListView() {
+    final isMobile = Platform.isAndroid || Platform.isIOS;
+    final theme = Theme.of(context);
+    
     return ListView.builder(
       padding: const EdgeInsets.all(8.0),
       itemCount: _imageFiles.length,
@@ -873,9 +1194,7 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
         final isSelected = _selectedFilePaths.contains(file.path);
         final fileExtension = pathlib.extension(file.path).toLowerCase();
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
+        final listTile = ListTile(
             leading: SizedBox(
               width: 60,
               height: 60,
@@ -954,10 +1273,7 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
                       });
                     },
                   )
-                : IconButton(
-                    icon: const Icon(Icons.more_vert),
-                    onPressed: () => _showImageOptions(context, file),
-                  ),
+                : null,
             onTap: _isSelectionMode
                 ? () {
                     setState(() {
@@ -988,8 +1304,27 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
                 });
               }
             },
-          ),
-        );
+          );
+        
+        // Platform-specific wrapper
+        if (isMobile) {
+          // Mobile: flat design, no Card
+          return Container(
+            margin: EdgeInsets.zero,
+            decoration: BoxDecoration(
+              color: isSelected 
+                  ? theme.colorScheme.primary.withOpacity(0.1)
+                  : Colors.transparent,
+            ),
+            child: listTile,
+          );
+        } else {
+          // Desktop: Card with shadow
+          return Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: listTile,
+          );
+        }
       },
     );
   }
@@ -1353,6 +1688,86 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
     const suffixes = ["B", "KB", "MB", "GB", "TB"];
     var i = (log(bytes) / log(1024)).floor();
     return '${(bytes / pow(1024, i)).toStringAsFixed(1)} ${suffixes[i]}';
+  }
+
+  // Build skeleton loading widget
+  Widget _buildSkeletonLoading() {
+    final theme = Theme.of(context);
+    final isMobile = Platform.isAndroid || Platform.isIOS;
+
+    if (_viewMode == ViewMode.grid) {
+      // Grid skeleton - single item
+      final columns = _thumbnailSize.round();
+      final screenWidth = MediaQuery.of(context).size.width;
+      final itemWidth = (screenWidth - 16 - ((columns - 1) * 8)) / columns;
+      final itemHeight = itemWidth * 0.75; // Portrait aspect ratio
+
+      return Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Align(
+          alignment: Alignment.topLeft,
+          child: Container(
+            width: itemWidth,
+            height: itemHeight,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Center(
+              child: Icon(
+                Icons.image,
+                size: 48,
+                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.3),
+              ),
+            ),
+          ),
+        ),
+      );
+    } else {
+      // List skeleton - single item
+      final listTile = ListTile(
+        leading: Container(
+          width: 60,
+          height: 60,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Icon(
+            Icons.image,
+            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.3),
+          ),
+        ),
+        title: Container(
+          height: 14,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: Container(
+            height: 12,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        ),
+      );
+
+      return Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: isMobile
+            ? listTile
+            : Card(
+                margin: EdgeInsets.zero,
+                child: listTile,
+              ),
+      );
+    }
   }
 
   void _showCreateAlbumDialog() {

@@ -12,11 +12,13 @@ class AddTab extends TabEvent {
   final String path;
   final String? name;
   final bool switchToTab;
+  final String? highlightedFileName; // File to highlight/focus after opening tab
 
   AddTab({
     required this.path,
     this.name,
     this.switchToTab = true,
+    this.highlightedFileName,
   });
 }
 
@@ -136,6 +138,7 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
       name: event.name ?? _extractNameFromPath(event.path),
       path: event.path,
       isLoading: false,
+      highlightedFileName: event.highlightedFileName,
     );
 
     final tabs = List<TabData>.from(state.tabs)..add(newTab);
@@ -441,12 +444,13 @@ class TabNavigator {
   }
 
   /// Opens a new tab with the specified path
-  static void openTab(BuildContext context, String path, {String? title}) {
+  static void openTab(BuildContext context, String path, {String? title, String? highlightedFileName}) {
     final tabBloc = BlocProvider.of<TabManagerBloc>(context);
     tabBloc.add(AddTab(
       path: path,
       name: title ?? _extractNameFromPath(path),
       switchToTab: true,
+      highlightedFileName: highlightedFileName,
     ));
   }
 

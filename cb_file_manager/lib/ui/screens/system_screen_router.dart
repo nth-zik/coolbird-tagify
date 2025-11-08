@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:remixicon/remixicon.dart' as remix;
 import 'package:cb_file_manager/ui/screens/tag_management/tag_management_tab.dart';
@@ -9,6 +10,7 @@ import 'package:cb_file_manager/ui/screens/network_browsing/ftp_browser_screen.d
 import 'package:cb_file_manager/ui/screens/network_browsing/webdav_browser_screen.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/image_gallery_screen.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/video_gallery_screen.dart';
+import 'package:cb_file_manager/ui/screens/media_gallery/image_viewer_screen.dart';
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
@@ -28,6 +30,7 @@ import 'package:cb_file_manager/ui/screens/video_hub/video_hub_screen.dart';
 import 'package:cb_file_manager/config/translation_helper.dart';
 import '../utils/route.dart';
 import 'trash_bin/trash_bin_screen.dart';
+import 'package:path/path.dart' as pathlib;
 
 /// A router that handles system screens and special paths
 class SystemScreenRouter {
@@ -126,10 +129,11 @@ class SystemScreenRouter {
       // Route to the WebDAV browser screen
       return WebDAVBrowserScreen(tabId: tabId);
     } else if (path == '#gallery:images') {
-      // Route to the image gallery screen
+      // Route to the image gallery screen - show all images from entire device
       return const ImageGalleryScreen(
         path: '',
         recursive: true,
+        showAllImages: true,
       );
     } else if (path.startsWith('#gallery:videos')) {
       // Route to the video gallery screen, support optional query params
@@ -161,6 +165,28 @@ class SystemScreenRouter {
         path: galleryPath,
         recursive: recursive,
       );
+    } else if (path.startsWith('#image?')) {
+      // Open single image viewer in a new tab: #image?path=<encodedPath>
+      String filePath = '';
+      final int qIndexImage = path.indexOf('?');
+      if (qIndexImage != -1 && qIndexImage < path.length - 1) {
+        final String query = path.substring(qIndexImage + 1);
+        try {
+          final params = Uri.splitQueryString(query);
+          if (params.containsKey('path')) {
+            filePath = UriUtils.safeDecodeComponent(params['path'] ?? '');
+          }
+        } catch (_) {
+          // Ignore parsing errors; will show error widget below
+        }
+      }
+      if (filePath.isEmpty) {
+        return _buildErrorWidget(context, 'Invalid image path', cacheKey: cacheKey);
+      }
+      // Update tab name to image file name
+      final tabBloc = BlocProvider.of<TabManagerBloc>(context);
+      tabBloc.add(UpdateTabName(tabId, pathlib.basename(filePath)));
+      return ImageViewerScreen(file: File(filePath));
     } else if (path.startsWith('#tag:')) {
       // Check if we already have a cached widget for this tab+path
       if (_cachedWidgets.containsKey(cacheKey)) {

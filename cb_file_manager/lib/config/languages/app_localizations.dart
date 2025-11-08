@@ -285,10 +285,33 @@ abstract class AppLocalizations {
   String get fileLocation;
   String get fileCreated;
   String get fileModified;
+  String get fileName;
+  String get filePath;
+  String get fileType;
+  String get fileLastModified;
   String get loadingVideo;
   String get errorLoadingImage;
   String get createCopy;
   String get deleteFile;
+  
+  // Video actions
+  String get share;
+  String get playVideo;
+  String get videoInfo;
+  String get deleteVideo;
+  String get loadingThumbnails;
+  String get deleteVideosConfirm; // "Xóa {count} video?"
+  String get deleteConfirmationMessage; // "Bạn có chắc chắn..."
+  String videosSelected(int count); // "{count} video đã chọn"
+  String videosDeleted(int count); // "Đã xóa {count} video"
+  String searchingFor(String query); // "Tìm kiếm: {query}"
+  String get errorDisplayingVideoInfo;
+  String get searchVideos; // "Tìm kiếm video"
+  String get enterVideoName; // "Nhập tên video..."
+  
+  // Selection and grid
+  String? get selectMultiple; // "Chọn nhiều file"
+  String? get gridSize; // "Kích thước lưới"
 
   // File picker dialogs
   String get chooseBackupLocation;
@@ -337,6 +360,10 @@ abstract class AppLocalizations {
   String get searchByTags;
   String get searchMultipleTags;
   String get globalSearch;
+  String get searchByNameOrTag;
+  String get searchInSubfolders;
+  String get searchInAllFolders;
+  String get searchInCurrentFolder;
   String get searchShortcuts;
   String get searchHintText;
   String get searchHintTextTags;
@@ -514,4 +541,19 @@ abstract class AppLocalizations {
   String get browseTab;
   String get documentsTab;
   String get homeTab;
+
+  // Video player screenshot
+  String get takeScreenshot;
+  String get screenshotSaved;
+  String get screenshotSavedAt;
+  String get screenshotFailed;
+  String get screenshotSavedToFolder;
+  String get openScreenshotFolder;
+  String get viewScreenshot;
+  String get screenshotNotAvailableVlc;
+  String get screenshotNotAvailableVlcMessage;
+  String get screenshotFileNotFound;
+  String get screenshotCannotOpenTab;
+  String get screenshotErrorOpeningFolder;
+  String get closeAction;
 }

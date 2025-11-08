@@ -41,6 +41,7 @@ dependencies:
   window_manager: ^0.4.3 # Added for desktop window management
   remixicon: ^1.4.1 # Remix Icons package
   visibility_detector: ^0.4.0+2 # Added for detecting visible thumbnails
+  diacritic: ^0.1.6 # Vietnamese text normalization
   # FTP connection - using custom implementation
 
   # ObjectBox database dependencies
@@ -67,10 +68,13 @@ dependencies:
   # File caching
   flutter_cache_manager: ^3.3.1
   uuid: ^4.0.0
+  flutter_staggered_grid_view: ^0.7.0
 
   ffi: any
   network_info_plus: ^6.1.4
   url_launcher: ^6.3.1
+  open_filex: ^4.3.4
+  gal: ^2.3.0
   # Removed smb_connect - using mobile_smb_native instead
   mobile_smb_native:
     path: ../mobile_smb_native # Local path to mobile SMB plugin

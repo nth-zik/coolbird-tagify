@@ -1,0 +1,417 @@
+import 'package:flutter/material.dart';
+import 'package:cb_file_manager/config/languages/app_localizations.dart';
+import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
+
+/// Mobile search dialog with same functionality as desktop search
+/// Supports:
+/// - Search by filename
+/// - Search by tag (#tagname)
+/// - Global search toggle
+/// - Tag autocomplete
+class MobileSearchDialog extends StatefulWidget {
+  final String currentPath;
+  final String? initialQuery;
+  final Function(String query, bool isGlobalSearch) onSearch;
+  final VoidCallback? onClear;
+
+  const MobileSearchDialog({
+    Key? key,
+    required this.currentPath,
+    this.initialQuery,
+    required this.onSearch,
+    this.onClear,
+  }) : super(key: key);
+
+  @override
+  State<MobileSearchDialog> createState() => _MobileSearchDialogState();
+}
+
+class _MobileSearchDialogState extends State<MobileSearchDialog> {
+  late TextEditingController _searchController;
+  final FocusNode _searchFocusNode = FocusNode();
+  bool _isGlobalSearch = false;
+  bool _isSearchingTags = false;
+  List<String> _suggestedTags = [];
+  List<String> _currentTags = [];
+  int _selectedTagIndex = -1;
+  
+  // Cache popular tags to avoid loading every time
+  static List<String>? _cachedPopularTags;
+  static DateTime? _cacheTime;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController(text: widget.initialQuery ?? '');
+    _searchController.addListener(_onSearchChanged);
+    
+    // Load popular tags asynchronously (don't block UI)
+    Future.microtask(() => _loadPopularTags());
+    
+    // Delay auto focus to avoid lag (keyboard animation is expensive)
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        _searchFocusNode.requestFocus();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadPopularTags() async {
+    try {
+      // Use cache if available and fresh (< 5 minutes old)
+      if (_cachedPopularTags != null && 
+          _cacheTime != null && 
+          DateTime.now().difference(_cacheTime!) < const Duration(minutes: 5)) {
+        if (mounted) {
+          setState(() {
+            _suggestedTags = _cachedPopularTags!;
+          });
+        }
+        return;
+      }
+      
+      // Load from database
+      final popularTags = await TagManager.instance.getPopularTags(limit: 10);
+      final tagList = popularTags.keys.toList();
+      
+      // Update cache
+      _cachedPopularTags = tagList;
+      _cacheTime = DateTime.now();
+      
+      if (mounted) {
+        setState(() {
+          _suggestedTags = tagList;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading popular tags: $e');
+    }
+  }
+
+  void _onSearchChanged() {
+    final query = _searchController.text.toLowerCase();
+    
+    // Check if searching by tag
+    if (query.contains('#')) {
+      final int hashPosition = query.lastIndexOf('#');
+      final String tagQuery = query.substring(hashPosition + 1).trim();
+      
+      setState(() {
+        _isSearchingTags = true;
+      });
+      
+      _updateTagSuggestions(tagQuery);
+    } else {
+      setState(() {
+        _isSearchingTags = false;
+        _currentTags = [];
+      });
+    }
+  }
+
+  Future<void> _updateTagSuggestions(String tagQuery) async {
+    List<String> tags = [];
+    
+    if (tagQuery.isEmpty) {
+      tags = _suggestedTags;
+    } else {
+      tags = await TagManager.instance.searchTags(tagQuery);
+    }
+    
+    if (mounted) {
+      setState(() {
+        _currentTags = List.from(tags);
+        _selectedTagIndex = tags.isNotEmpty ? 0 : -1;
+      });
+    }
+  }
+
+  void _selectTag(String tag) {
+    final text = _searchController.text;
+    final hashPosition = text.lastIndexOf('#');
+    
+    if (hashPosition != -1) {
+      final newText = text.substring(0, hashPosition + 1) + tag;
+      _searchController.text = newText;
+      _searchController.selection = TextSelection.fromPosition(
+        TextPosition(offset: newText.length),
+      );
+    }
+    
+    setState(() {
+      _currentTags = [];
+      _isSearchingTags = false;
+    });
+  }
+
+  void _performSearch() {
+    final query = _searchController.text.trim();
+    if (query.isNotEmpty) {
+      Navigator.pop(context);
+      widget.onSearch(query, _isGlobalSearch);
+    }
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    widget.onClear?.call();
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final localizations = AppLocalizations.of(context)!;
+    
+    // Use AlertDialog for smooth performance
+    return AlertDialog(
+          backgroundColor: theme.scaffoldBackgroundColor,
+          contentPadding: const EdgeInsets.all(20),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+            
+            // Title
+            Text(
+              localizations.search,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Search field
+            TextField(
+              controller: _searchController,
+              focusNode: _searchFocusNode,
+              autofocus: false, // Don't auto focus to avoid keyboard lag
+              style: TextStyle(fontSize: 16, color: theme.colorScheme.onSurface),
+              decoration: InputDecoration(
+                hintText: localizations.searchByNameOrTag,
+                hintStyle: TextStyle(
+                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                ),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: theme.colorScheme.primary,
+                  size: 24,
+                ),
+                suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, size: 20),
+                      onPressed: () {
+                        _searchController.clear();
+                      },
+                    )
+                  : null,
+                filled: true,
+                fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: theme.colorScheme.primary,
+                    width: 1.5,
+                  ),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+              ),
+              onSubmitted: (_) => _performSearch(),
+            ),
+            
+            const SizedBox(height: 12),
+            
+            // Global search toggle
+            InkWell(
+              onTap: () {
+                setState(() {
+                  _isGlobalSearch = !_isGlobalSearch;
+                });
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: _isGlobalSearch,
+                      onChanged: (value) {
+                        setState(() {
+                          _isGlobalSearch = value ?? false;
+                        });
+                      },
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            localizations.globalSearch,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                          Text(
+                            _isGlobalSearch 
+                              ? localizations.searchInAllFolders
+                              : localizations.searchInCurrentFolder,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            // Tag suggestions (hidden to improve performance)
+            // Tag autocomplete disabled for now
+            // if (_isSearchingTags && _currentTags.isNotEmpty) ...[
+            //   ...
+            // ],
+            
+            // Search tips (hidden to improve performance)
+            // if (!_isSearchingTags && _searchController.text.isEmpty) ...[
+            //   const SizedBox(height: 12),
+            //   Container(...),
+            // ],
+            
+            const SizedBox(height: 16),
+            
+            // Action buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                // Clear button (if has query)
+                if (_searchController.text.isNotEmpty)
+                  TextButton(
+                    onPressed: _clearSearch,
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      backgroundColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      localizations.clearSearch.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                
+                if (_searchController.text.isNotEmpty)
+                  const SizedBox(width: 12),
+                
+                // Cancel button
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    backgroundColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    localizations.cancel.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(width: 12),
+                
+                // Search button
+                FilledButton(
+                  onPressed: _performSearch,
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    localizations.search.toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 8),
+          ],
+        ),
+    );
+  }
+  
+  Widget _buildTip(BuildContext context, String label, String example) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Text(
+            '• ',
+            style: TextStyle(
+              fontSize: 12,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          Text(
+            '$label: ',
+            style: TextStyle(
+              fontSize: 12,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          Text(
+            example,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.primary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -129,11 +129,14 @@ class _FolderItemState extends State<FolderItem> {
             onExit: (_) => _isHovering.value = false,
             cursor: SystemMouseCursors.click,
             child: Container(
-              margin:
-                  const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+              margin: EdgeInsets.symmetric(
+                  horizontal: widget.isDesktopMode ? 8.0 : 0,
+                  vertical: widget.isDesktopMode ? 4.0 : 0),
               decoration: BoxDecoration(
                 color: backgroundColor,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: widget.isDesktopMode
+                    ? BorderRadius.circular(12)
+                    : BorderRadius.zero,
               ),
               child: Stack(
                 children: [
@@ -280,9 +283,11 @@ class _FolderItemState extends State<FolderItem> {
                       child: Container(
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.primary,
-                          borderRadius: const BorderRadius.horizontal(
-                            left: Radius.circular(12),
-                          ),
+                          borderRadius: widget.isDesktopMode
+                              ? const BorderRadius.horizontal(
+                                  left: Radius.circular(12),
+                                )
+                              : BorderRadius.zero,
                         ),
                       ),
                     ),

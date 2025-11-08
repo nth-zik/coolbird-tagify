@@ -1,30 +1,9 @@
 # Troubleshooting
 
-## Build Issues
-
-- Run `flutter clean && flutter pub get`
-- Ensure correct platform SDK versions
-
-## Android
-
-- Check `local.properties` sdk.dir
-- Run Gradle sync in Android Studio
-
-## iOS
-
-- Run `pod install` in `ios/`
-- Open `.xcworkspace`
-
-## Desktop
-
-- Ensure platform requirements (CMake, toolchains)
-
-## Common Runtime Problems
-
-- Permissions: verify Android/iOS entitlements
-- Network: check SMB/streaming configs
-
-## Logging
-
-- Use `flutter run -v` for verbose logs
-- Add temporary logs in services/blocs when isolating issues
+- **Build reset** `flutter clean && flutter pub get`, verify SDK/toolchains per platform.
+- **Android** Confirm `local.properties` `sdk.dir`, sync Gradle.
+- **iOS** Run `pod install` under `ios/`, open `.xcworkspace`.
+- **Desktop** Install required toolchains (CMake, platform SDKs).
+- **Permissions** Recheck Android storage/all-files + iOS local network entitlements.
+- **Networking** Validate SMB/WebDAV credentials and streaming config files.
+- **Logging** Use `flutter run -v`, sprinkle temporary logs in services/blocs while debugging.

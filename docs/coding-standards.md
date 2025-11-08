@@ -1,54 +1,11 @@
 # Coding Standards
 
-## Purpose
-
-Define consistent coding conventions for Flutter/Dart to improve readability, maintainability, and velocity.
-
-## Language & Style
-
-- Dart stable, follow Effective Dart
-- Prefer null-safety, avoid `dynamic` unless unavoidable
-- Use meaningful names; avoid abbreviations
-- Small, single-responsibility functions
-
-## Project Conventions
-
-- State management: follow existing BLoC patterns in `lib/bloc/`
-- Config lives in `lib/config/`
-- Helpers/utilities in `lib/helpers/` with clear separation
-- UI widgets in `lib/ui/` grouped by feature/screen
-
-## Widgets & UI
-
-- Keep widgets pure; lift state to BLoC where appropriate
-- Extract reusable widgets into `ui/components`
-- Maintain consistent spacing, typography, and theming
-
-## Error Handling
-
-- Use explicit error types; avoid swallowing exceptions
-- Wrap external calls and surface user-friendly messages
-
-## Async & Streams
-
-- Prefer `await`/`async` over chained futures
-- Close streams and controllers; avoid leaks
-
-## Testing
-
-- Unit tests for helpers, services, blocs
-- Golden tests for critical UI where feasible
-
-## Linting
-
-- Enforce `analysis_options.yaml`
-- Fix warnings before commit
-
-## Commit Messages
-
-- Conventional Commits (feat, fix, docs, refactor, test, chore)
-
-## Documentation
-
-- Document public APIs (///)
-- Keep `docs/` updated alongside changes
+- **Language & Style** Follow Effective Dart; embrace null safety; keep functions focused; name things clearly.
+- **Structure** Mirror existing layouts: BLoCs in `lib/bloc/`, config in `lib/config/`, helpers in `lib/helpers/`, UI by feature under `lib/ui/`.
+- **Widgets** Keep widgets side-effect free, lift logic to blocs, extract reusable pieces into `ui/components/`, obey theme + spacing tokens.
+- **Errors** Throw specific exceptions, surface friendly messages, never swallow failures silently.
+- **Async** Prefer `async`/`await`, close streams/controllers, guard isolates.
+- **Testing** Add unit/widget coverage for touched code paths; create goldens only for critical visuals.
+- **Linting** Fix all `analysis_options.yaml` warnings before merging.
+- **Commits** Use Conventional Commit prefixes.
+- **Docs** Update public `///` docs and relevant files in `docs/` as features evolve.

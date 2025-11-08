@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'dart:async';
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as pathlib;
@@ -11,17 +13,21 @@ import 'package:share_plus/share_plus.dart'; // Add import for Share Plus
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 // Add import for XFile
 import '../../utils/route.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:cb_file_manager/helpers/files/external_app_helper.dart';
 
 class ImageViewerScreen extends StatefulWidget {
   final File file;
   final List<File>? imageFiles; // Optional list of all images in the folder
   final int initialIndex; // When provided with imageFiles, start at this index
+  final Uint8List? imageBytes; // Optional preloaded bytes for immediate display
 
   const ImageViewerScreen({
     Key? key,
     required this.file,
     this.imageFiles,
     this.initialIndex = 0,
+    this.imageBytes,
   }) : super(key: key);
 
   @override
@@ -44,6 +50,9 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
   double _brightness = 0.0;
   double _contrast = 0.0;
   bool _isEditMode = false;
+  bool _slideshowPlaying = false;
+  Duration _slideshowInterval = const Duration(seconds: 3);
+  Timer? _slideshowTimer;
 
   // Thêm map để cache dữ liệu ảnh đã tải
   final Map<String, Uint8List> _imageCache = {};
@@ -54,10 +63,17 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
 
   final double _minScale = 0.5;
   final double _maxScale = 5.0;
+  
+  // Check if platform is mobile
+  bool _isMobile() {
+    return Platform.isAndroid || Platform.isIOS;
+  }
 
   @override
   void initState() {
     super.initState();
+    
+    // Image is precached before navigation, no need to evict
     _initImageList();
     _transformationController = TransformationController();
     _animationController = AnimationController(
@@ -73,13 +89,27 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _prefetchNeighboringImages();
     });
+    // Force a repaint shortly after first frame to avoid initial black overlay on some Android devices
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future.delayed(const Duration(milliseconds: 100));
+      if (mounted) {
+        setState(() {});
+      }
+    });
 
     // Apply frame timing optimization for better performance
     FrameTimingOptimizer().optimizeImageRendering();
 
-    // Ensure status bar is hidden in fullscreen mode
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
-        overlays: [SystemUiOverlay.bottom]);
+    // Configure system UI
+    if (_isMobile()) {
+      // On mobile, show full UI (both status bar and nav bar)
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
+          overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom]);
+    } else {
+      // On desktop, keep bottom nav visible
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
+          overlays: [SystemUiOverlay.bottom]);
+    }
   }
 
   void _initImageList() {
@@ -125,29 +155,36 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
           setState(() {
             // Only update the list if we found images
             if (images.isNotEmpty) {
-              _allImages = images;
-
               // Make sure the current image is in the list and index is valid
               if (index >= 0) {
-                _currentIndex = index;
-                // Dispose old controller before creating new one
-                _pageController.dispose();
-                _pageController = PageController(initialPage: _currentIndex);
+                // If we have imageBytes (screenshot case), reorder list to put screenshot first
+                // This keeps PageController at page 0 showing the correct image
+                if (widget.imageBytes != null && index != 0) {
+                  debugPrint('🔄 Reordering list - moving screenshot from index $index to 0');
+                  final screenshot = images[index];
+                  images.removeAt(index);
+                  images.insert(0, screenshot);
+                  debugPrint('   ✅ Screenshot now at index 0');
+                }
+                
+                _allImages = images;
+                // Keep _currentIndex = 0 to match PageController
+                debugPrint('📋 Updated image list: ${images.length} images');
+                debugPrint('   Current page: $_currentIndex');
 
-                // Clear cache to avoid any mismatch
-                _imageCache.clear();
-
-                // Pre-load current image
+                // Pre-load neighboring images
                 _loadAndCacheImage(images[_currentIndex]);
+                if (_currentIndex > 0) {
+                  _loadAndCacheImage(images[_currentIndex - 1]);
+                }
+                if (_currentIndex < images.length - 1) {
+                  _loadAndCacheImage(images[_currentIndex + 1]);
+                }
               } else {
                 // If we somehow can't find the image in the directory
-                // Just use the original file passed in constructor
                 debugPrint(
                     'Warning: Could not find current image in directory. Path: $currentPath');
                 _allImages = [widget.file];
-                _currentIndex = 0;
-                _pageController.dispose();
-                _pageController = PageController(initialPage: 0);
               }
             }
           });
@@ -160,6 +197,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
 
   @override
   void dispose() {
+    _slideshowTimer?.cancel();
     _pageController.dispose();
     _transformationController.dispose();
     _animationController.dispose();
@@ -221,6 +259,15 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
     setState(() {
       _controlsVisible = !_controlsVisible;
     });
+
+    if (_isMobile()) {
+      if (_controlsVisible) {
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
+            overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom]);
+      } else {
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      }
+    }
   }
 
   void _toggleFullscreen() {
@@ -239,6 +286,16 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
     setState(() {
       _rotation += 90.0;
       if (_rotation >= 360.0) {
+        _rotation = 0.0;
+      }
+    });
+    _resetTransformation();
+  }
+
+  void _rotateImageLeft() {
+    setState(() {
+      _rotation -= 90.0;
+      if (_rotation <= -360.0) {
         _rotation = 0.0;
       }
     });
@@ -368,6 +425,107 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
     }
   }
 
+  void _copyPathToClipboard() async {
+    final file = _allImages[_currentIndex];
+    await Clipboard.setData(ClipboardData(text: file.path));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Copied path to clipboard')),
+      );
+    }
+  }
+
+  Future<void> _openWithExternalApp() async {
+    final file = _allImages[_currentIndex];
+    bool opened = false;
+
+    try {
+      if (Platform.isAndroid) {
+        opened = await ExternalAppHelper.openWithSystemChooser(file.path);
+      } else {
+        final result = await OpenFilex.open(file.path);
+        opened = result.type == ResultType.done;
+      }
+    } catch (e) {
+      opened = false;
+    }
+
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to open with external app')),
+      );
+    }
+  }
+
+  void _toggleSlideshow() {
+    if (_slideshowPlaying) {
+      _slideshowTimer?.cancel();
+      setState(() {
+        _slideshowPlaying = false;
+      });
+      return;
+    }
+
+    _slideshowTimer?.cancel();
+    _slideshowTimer = Timer.periodic(_slideshowInterval, (_) {
+      if (!mounted) return;
+      if (_allImages.length <= 1) return;
+      if (_currentIndex < _allImages.length - 1) {
+        _pageController.nextPage(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      } else {
+        _pageController.animateToPage(0,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut);
+      }
+    });
+
+    setState(() {
+      _slideshowPlaying = true;
+    });
+  }
+
+  void _zoomReset() {
+    _resetTransformation();
+  }
+
+  void _zoomIn() {
+    _applyZoomRelative(1.25);
+  }
+
+  void _zoomOut() {
+    _applyZoomRelative(0.8);
+  }
+
+  void _applyZoomRelative(double factor) {
+    if (_animationController.isAnimating) return;
+    final size = MediaQuery.of(context).size;
+    final focal = Offset(size.width / 2, size.height / 2);
+
+    final current = _transformationController.value;
+    final currentScale = current.getMaxScaleOnAxis();
+    double newScale = (currentScale * factor).clamp(_minScale, _maxScale);
+    final double relative = (newScale / (currentScale == 0 ? 1 : currentScale));
+
+    final Matrix4 zoomAroundCenter = Matrix4.identity()
+      ..translate(focal.dx, focal.dy)
+      ..scale(relative)
+      ..translate(-focal.dx, -focal.dy);
+
+    final Matrix4 target = zoomAroundCenter.multiplied(current);
+
+    _animation = Matrix4Tween(
+      begin: current,
+      end: target,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOut,
+    ));
+    _animationController.forward(from: 0);
+  }
+
   void _shareImage() {
     final file = _allImages[_currentIndex];
     final XFile xFile = XFile(file.path);
@@ -437,6 +595,82 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
     }
   }
 
+  // Build image widget - use Image.memory for preloaded bytes, Image.file otherwise
+  Widget _buildImageWidget(File file, int index) {
+    // Use preloaded bytes if this file matches the widget.file path
+    final useBytes = file.path == widget.file.path && widget.imageBytes != null;
+    
+    if (useBytes) {
+      debugPrint('📸 Using Image.memory for screenshot: ${file.path}');
+      debugPrint('   Bytes length: ${widget.imageBytes!.length}');
+      return Image.memory(
+        widget.imageBytes!,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.high,
+        gaplessPlayback: true,
+        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          if (wasSynchronouslyLoaded) {
+            debugPrint('   ✅ Image loaded synchronously');
+            return child;
+          }
+          if (frame != null) {
+            debugPrint('   ✅ Frame available: $frame');
+            return child;
+          }
+          debugPrint('   ⏳ Waiting for frame...');
+          return Center(
+            child: CircularProgressIndicator(
+              color: Colors.white.withAlpha(179),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          debugPrint('   ❌ Image.memory error: $error');
+          debugPrint('   Stack: $stackTrace');
+          return _buildErrorWidget(error);
+        },
+      );
+    }
+    
+    return Image.file(
+      file,
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.high,
+      gaplessPlayback: true,
+      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+        if (wasSynchronouslyLoaded || frame != null) {
+          return child;
+        }
+        return Center(
+          child: CircularProgressIndicator(
+            color: Colors.white.withAlpha(179),
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) {
+        return _buildErrorWidget(error);
+      },
+    );
+  }
+
+  Widget _buildErrorWidget(Object error) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.broken_image, size: 80, color: Colors.white.withAlpha(179)),
+        const SizedBox(height: 16),
+        Text('Failed to display image',
+            style: TextStyle(color: Colors.white.withAlpha(179))),
+        const SizedBox(height: 8),
+        Text(
+          error.toString(),
+          style: TextStyle(color: Colors.white.withAlpha(128), fontSize: 12),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_allImages.isEmpty) {
@@ -479,36 +713,167 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
         },
         child: Scaffold(
           backgroundColor: Colors.black,
-          appBar: _controlsVisible
-              ? AppBar(
-                  backgroundColor: Colors.black.withAlpha(179),
-                  title: Text(pathlib.basename(_allImages[_currentIndex].path)),
-                  elevation: 0,
-                  actions: [
-                    // Nút để bật/tắt thanh thumbnail
-                    IconButton(
-                      icon: Icon(
-                        _showThumbnailStrip
-                            ? remix.Remix.grid_line
-                            : remix.Remix.grid_line,
-                        size: 22,
-                      ),
-                      tooltip: _showThumbnailStrip
-                          ? 'Hide thumbnails'
-                          : 'Show thumbnails',
-                      onPressed: _toggleThumbnailStrip,
+          appBar: null,
+          extendBody: false,
+          extendBodyBehindAppBar: false,
+          resizeToAvoidBottomInset: false,
+          body: Column(
+            children: [
+              // Custom top bar
+              if (_controlsVisible)
+                Container(
+                  height: 64,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withOpacity(0.85),
+                        Colors.black.withOpacity(0.55),
+                        Colors.transparent,
+                      ],
                     ),
-                    // Nút chỉnh sửa ảnh
-                    IconButton(
-                      icon: const Icon(remix.Remix.edit_line, size: 22),
-                      tooltip: 'Edit image',
-                      onPressed: _toggleEditMode,
+                  ),
+                  child: SafeArea(
+                    bottom: false,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          icon: const Icon(remix.Remix.arrow_left_line),
+                          color: Colors.white,
+                          tooltip: 'Back',
+                          onPressed: () => RouteUtils.safePopDialog(context),
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              return ClipRect(child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        pathlib.basename(_allImages[_currentIndex].path),
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                        softWrap: false,
+                                      ),
+                                      if (_allImages.length > 1)
+                                        Text(
+                                          '${_currentIndex + 1} / ${_allImages.length}',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.white70,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
+                                          softWrap: false,
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ));
+                            },
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(remix.Remix.share_line, size: 20),
+                          tooltip: 'Share',
+                          color: Colors.white,
+                          onPressed: _shareImage,
+                        ),
+                        IconButton(
+                          icon: const Icon(remix.Remix.information_line, size: 20),
+                          tooltip: 'Info',
+                          color: Colors.white,
+                          onPressed: () => _showImageInfo(context, _allImages[_currentIndex]),
+                        ),
+                        PopupMenuButton<String>(
+                          color: Colors.grey[900],
+                          iconColor: Colors.white,
+                          onSelected: (value) {
+                            switch (value) {
+                              case 'rotate_right':
+                                _rotateImage();
+                                break;
+                              case 'rotate_left':
+                                _rotateImageLeft();
+                                break;
+                              case 'toggle_thumbs':
+                                _toggleThumbnailStrip();
+                                break;
+                              case 'edit':
+                                _toggleEditMode();
+                                break;
+                              case 'open_with':
+                                _openWithExternalApp();
+                                break;
+                              case 'copy_path':
+                                _copyPathToClipboard();
+                                break;
+                              case 'fullscreen':
+                                _toggleFullscreen();
+                                break;
+                              case 'delete':
+                                _deleteImage(context);
+                                break;
+                            }
+                          },
+                          itemBuilder: (context) => const [
+                            PopupMenuItem(
+                              value: 'rotate_right',
+                              child: Text('Rotate right 90°', style: TextStyle(color: Colors.white)),
+                            ),
+                            PopupMenuItem(
+                              value: 'rotate_left',
+                              child: Text('Rotate left 90°', style: TextStyle(color: Colors.white)),
+                            ),
+                            PopupMenuItem(
+                              value: 'toggle_thumbs',
+                              child: Text('Toggle thumbnails', style: TextStyle(color: Colors.white)),
+                            ),
+                            PopupMenuItem(
+                              value: 'edit',
+                              child: Text('Edit (brightness/contrast)', style: TextStyle(color: Colors.white)),
+                            ),
+                            PopupMenuItem(
+                              value: 'open_with',
+                              child: Text('Open with...', style: TextStyle(color: Colors.white)),
+                            ),
+                            PopupMenuItem(
+                              value: 'copy_path',
+                              child: Text('Copy file path', style: TextStyle(color: Colors.white)),
+                            ),
+                            PopupMenuItem(
+                              value: 'fullscreen',
+                              child: Text('Toggle fullscreen', style: TextStyle(color: Colors.white)),
+                            ),
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Text('Move to trash', style: TextStyle(color: Colors.white)),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  ],
-                )
-              : null,
-          extendBodyBehindAppBar: true,
-          body: Listener(
+                  ),
+                ),
+              // Main image viewer area
+              Expanded(
+                child: Listener(
             onPointerDown: (PointerDownEvent event) {
               // Mouse button 4 is usually the back button (button value is 8)
               if (event.buttons == 8 && _currentIndex > 0) {
@@ -526,13 +891,16 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                 );
               }
             },
-            child: Column(
-              children: [
-                // Main image viewer
-                Expanded(
-                  child: GestureDetector(
-                    onTap: _toggleControls,
-                    child: PageView.builder(
+            child: SafeArea(
+              top: false,
+              bottom: false,
+              child: Column(
+                children: [
+                  // Main image viewer
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: _toggleControls,
+                      child: PageView.builder(
                       controller: _pageController,
                       itemCount: _allImages.length,
                       onPageChanged: (index) {
@@ -551,120 +919,15 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                           child: GestureDetector(
                             onDoubleTapDown: _handleDoubleTap,
                             child: InteractiveViewer(
-                              transformationController:
-                                  _transformationController,
+                              transformationController: _transformationController,
                               minScale: _minScale,
                               maxScale: _maxScale,
-                              clipBehavior: Clip
-                                  .none, // Allow content to overflow its bounds when zoomed
-                              constrained:
-                                  false, // Allow content to be larger than the viewport
-                              child: Container(
-                                width: MediaQuery.of(context).size.width,
-                                height: MediaQuery.of(context).size.height,
-                                alignment: Alignment.center,
-                                child: Hero(
-                                  tag: file.path,
-                                  child: Transform.rotate(
-                                    angle: _rotation * pi / 180,
-                                    child: RepaintBoundary(
-                                      child: FutureBuilder<Uint8List?>(
-                                        future: _loadAndCacheImage(file),
-                                        builder: (context, snapshot) {
-                                          if (snapshot.connectionState ==
-                                              ConnectionState.waiting) {
-                                            // Show loading indicator while image is being loaded
-                                            return const Center(
-                                              child: Column(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  CircularProgressIndicator(
-                                                    color: Colors.white70,
-                                                  ),
-                                                  SizedBox(height: 16),
-                                                  Text(
-                                                    'Loading image...',
-                                                    style: TextStyle(
-                                                        color: Colors.white70),
-                                                  ),
-                                                ],
-                                              ),
-                                            );
-                                          } else if (snapshot.hasError) {
-                                            // Show error if image loading failed
-                                            return Column(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Icon(
-                                                  Icons.broken_image,
-                                                  size: 80,
-                                                  color: Colors.white
-                                                      .withAlpha(179),
-                                                ),
-                                                const SizedBox(height: 16),
-                                                Text(
-                                                  'Failed to load image',
-                                                  style: TextStyle(
-                                                      color: Colors.white
-                                                          .withAlpha(179)),
-                                                ),
-                                                const SizedBox(height: 8),
-                                                Text(
-                                                  snapshot.error.toString(),
-                                                  style: TextStyle(
-                                                    color: Colors.white
-                                                        .withAlpha(128),
-                                                    fontSize: 12,
-                                                  ),
-                                                  textAlign: TextAlign.center,
-                                                ),
-                                              ],
-                                            );
-                                          } else if (snapshot.hasData) {
-                                            // Image loaded successfully, display it
-                                            return Image.memory(
-                                              snapshot.data!,
-                                              fit: BoxFit.contain,
-                                              filterQuality: FilterQuality.high,
-                                              errorBuilder:
-                                                  (context, error, stackTrace) {
-                                                return Column(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.center,
-                                                  children: [
-                                                    Icon(
-                                                      Icons.broken_image,
-                                                      size: 80,
-                                                      color: Colors.white
-                                                          .withAlpha(179),
-                                                    ),
-                                                    const SizedBox(height: 16),
-                                                    Text(
-                                                      'Failed to decode image',
-                                                      style: TextStyle(
-                                                          color: Colors.white
-                                                              .withAlpha(179)),
-                                                    ),
-                                                  ],
-                                                );
-                                              },
-                                            );
-                                          } else {
-                                            // No data and no error
-                                            return const Center(
-                                              child: Text(
-                                                'No image data',
-                                                style: TextStyle(
-                                                    color: Colors.white70),
-                                              ),
-                                            );
-                                          }
-                                        },
-                                      ),
-                                    ),
-                                  ),
+                              // Use default constrained: true to honor viewport constraints
+                              child: Center(
+                                key: ValueKey(file.path),
+                                child: Transform.rotate(
+                                  angle: _rotation * pi / 180,
+                                  child: _buildImageWidget(file, index),
                                 ),
                               ),
                             ),
@@ -674,7 +937,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                     ),
                   ),
                 ),
-
+                
                 // Thumbnail strip at the bottom
                 if (_controlsVisible &&
                     _showThumbnailStrip &&
@@ -683,7 +946,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                     height: 70,
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: Colors.black.withAlpha(179),
+                      color: Colors.black.withValues(alpha: 0.8),
                       border: const Border(
                         top: BorderSide(
                           color: Colors.white24,
@@ -703,122 +966,154 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                       },
                     ),
                   ),
+                // Bottom toolbar (don't show if thumbnail strip is visible)
+                if (_controlsVisible && !_showThumbnailStrip)
+                  Container(
+                    height: _isMobile() ? 72 : 56,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [
+                          Colors.black.withOpacity(0.85),
+                          Colors.black.withOpacity(0.55),
+                          Colors.transparent,
+                        ],
+                      ),
+                      border: const Border(
+                        top: BorderSide(
+                          color: Colors.white24,
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    child: SafeArea(
+                      top: false,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                          if (_allImages.length > 1)
+                            IconButton(
+                              icon: const Icon(remix.Remix.arrow_left_line, size: 22),
+                              tooltip: 'Previous',
+                              color: Colors.white,
+                              padding: const EdgeInsets.all(8),
+                              constraints: const BoxConstraints(),
+                              onPressed: _currentIndex > 0
+                                  ? () {
+                                      _pageController.previousPage(
+                                        duration: const Duration(milliseconds: 300),
+                                        curve: Curves.easeInOut,
+                                      );
+                                    }
+                                  : null,
+                            ),
+                          IconButton(
+                            icon: const Icon(remix.Remix.subtract_line, size: 22),
+                            tooltip: 'Zoom out',
+                            color: Colors.white,
+                            padding: const EdgeInsets.all(8),
+                            constraints: const BoxConstraints(),
+                            onPressed: _zoomOut,
+                          ),
+                          IconButton(
+                            icon: const Icon(remix.Remix.refresh_line, size: 22),
+                            tooltip: 'Reset view',
+                            color: Colors.white,
+                            padding: const EdgeInsets.all(8),
+                            constraints: const BoxConstraints(),
+                            onPressed: _zoomReset,
+                          ),
+                          IconButton(
+                            icon: const Icon(remix.Remix.add_line, size: 22),
+                            tooltip: 'Zoom in',
+                            color: Colors.white,
+                            padding: const EdgeInsets.all(8),
+                            constraints: const BoxConstraints(),
+                            onPressed: _zoomIn,
+                          ),
+                          IconButton(
+                            icon: const Icon(remix.Remix.information_line, size: 22),
+                            tooltip: 'Info',
+                            color: Colors.white,
+                            padding: const EdgeInsets.all(8),
+                            constraints: const BoxConstraints(),
+                            onPressed: () => _showImageInfo(context, _allImages[_currentIndex]),
+                          ),
+                          IconButton(
+                            icon: const Icon(remix.Remix.share_line, size: 22),
+                            tooltip: 'Share',
+                            color: Colors.white,
+                            padding: const EdgeInsets.all(8),
+                            constraints: const BoxConstraints(),
+                            onPressed: _shareImage,
+                          ),
+                          IconButton(
+                            icon: const Icon(remix.Remix.delete_bin_line, size: 22),
+                            tooltip: 'Delete',
+                            color: Colors.white,
+                            padding: const EdgeInsets.all(8),
+                            constraints: const BoxConstraints(),
+                            onPressed: () => _deleteImage(context),
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              _isFullscreen
+                                  ? remix.Remix.fullscreen_exit_line
+                                  : remix.Remix.fullscreen_line,
+                              size: 22,
+                            ),
+                            tooltip: _isFullscreen ? 'Exit fullscreen' : 'Fullscreen',
+                            color: Colors.white,
+                            padding: const EdgeInsets.all(8),
+                            constraints: const BoxConstraints(),
+                            onPressed: _toggleFullscreen,
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              _slideshowPlaying
+                                  ? remix.Remix.pause_line
+                                  : remix.Remix.play_line,
+                              size: 22,
+                            ),
+                            tooltip: _slideshowPlaying ? 'Pause slideshow' : 'Play slideshow',
+                            color: Colors.white,
+                            padding: const EdgeInsets.all(8),
+                            constraints: const BoxConstraints(),
+                            onPressed: _toggleSlideshow,
+                          ),
+                          if (_allImages.length > 1)
+                            IconButton(
+                              icon: const Icon(remix.Remix.arrow_right_line, size: 22),
+                              tooltip: 'Next',
+                              color: Colors.white,
+                              padding: const EdgeInsets.all(8),
+                              constraints: const BoxConstraints(),
+                              onPressed: _currentIndex < _allImages.length - 1
+                                  ? () {
+                                      _pageController.nextPage(
+                                        duration: const Duration(milliseconds: 300),
+                                        curve: Curves.easeInOut,
+                                      );
+                                    }
+                                  : null,
+                            ),
+                        ],
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
-          ),
-          bottomNavigationBar: _controlsVisible
-              ? BottomAppBar(
-                  color: Colors.black.withAlpha(179),
-                  height: 48, // Giảm chiều cao để gọn hơn
-                  padding: EdgeInsets.zero, // Loại bỏ padding mặc định
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      IconButton(
-                        icon: const Icon(remix.Remix.refresh_line, size: 22),
-                        tooltip: 'Rotate',
-                        color: Colors.white,
-                        padding: const EdgeInsets.all(8),
-                        constraints:
-                            const BoxConstraints(), // Loại bỏ kích thước tối thiểu
-                        onPressed: _rotateImage,
-                      ),
-                      IconButton(
-                        icon: const Icon(remix.Remix.share_line, size: 22),
-                        tooltip: 'Share',
-                        color: Colors.white,
-                        padding: const EdgeInsets.all(8),
-                        constraints: const BoxConstraints(),
-                        onPressed: _shareImage,
-                      ),
-                      IconButton(
-                        icon: const Icon(remix.Remix.delete_bin_line, size: 22),
-                        tooltip: 'Delete',
-                        color: Colors.white,
-                        padding: const EdgeInsets.all(8),
-                        constraints: const BoxConstraints(),
-                        onPressed: () => _deleteImage(context),
-                      ),
-                      IconButton(
-                        icon: const Icon(remix.Remix.information_line, size: 22),
-                        tooltip: 'Info',
-                        color: Colors.white,
-                        padding: const EdgeInsets.all(8),
-                        constraints: const BoxConstraints(),
-                        onPressed: () =>
-                            _showImageInfo(context, _allImages[_currentIndex]),
-                      ),
-                      // Thêm nút chuyển chế độ toàn màn hình
-                      IconButton(
-                        icon: Icon(
-                          _isFullscreen ? remix.Remix.fullscreen_exit_line : remix.Remix.fullscreen_line,
-                          size: 22,
-                        ),
-                        tooltip:
-                            _isFullscreen ? 'Exit fullscreen' : 'Fullscreen',
-                        color: Colors.white,
-                        padding: const EdgeInsets.all(8),
-                        constraints: const BoxConstraints(),
-                        onPressed: _toggleFullscreen,
-                      ),
-                    ],
-                  ),
-                )
-              : null,
-          floatingActionButtonLocation:
-              FloatingActionButtonLocation.centerFloat,
-          floatingActionButton: _controlsVisible && _allImages.length > 1
-              ? Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 24.0),
-                      child: FloatingActionButton(
-                        heroTag: "prevBtn",
-                        backgroundColor: Colors.black.withAlpha(179),
-                        mini: true,
-                        onPressed: _currentIndex > 0
-                            ? () {
-                                _pageController.previousPage(
-                                  duration: const Duration(milliseconds: 300),
-                                  curve: Curves.easeInOut,
-                                );
-                              }
-                            : null,
-                        child: Icon(
-                          remix.Remix.arrow_left_s_line,
-                          color: _currentIndex > 0 ? Colors.white : Colors.grey,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(right: 24.0),
-                      child: FloatingActionButton(
-                        heroTag: "nextBtn",
-                        backgroundColor: Colors.black.withAlpha(179),
-                        mini: true,
-                        onPressed: _currentIndex < _allImages.length - 1
-                            ? () {
-                                _pageController.nextPage(
-                                  duration: const Duration(milliseconds: 300),
-                                  curve: Curves.easeInOut,
-                                );
-                              }
-                            : null,
-                        child: Icon(
-                          remix.Remix.arrow_right_s_line,
-                          color: _currentIndex < _allImages.length - 1
-                              ? Colors.white
-                              : Colors.grey,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ],
-                )
-              : null,
+            ),
+            ),
+            ),
+          ],
         ),
+      ),
       );
     } else {
       // Edit mode UI with sliders for adjustments

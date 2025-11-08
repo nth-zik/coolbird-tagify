@@ -81,6 +81,9 @@ class FileView extends StatelessWidget {
     final bool isMobile = Platform.isAndroid || Platform.isIOS;
     final bool isDesktop =
         Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+    
+    // Use actual platform detection instead of parameter
+    final bool actualIsDesktop = isDesktop;
 
     return ListView.builder(
       // Optimized physics for desktop smooth scrolling
@@ -117,7 +120,7 @@ class FileView extends StatelessWidget {
                     onTap: onFolderTap,
                     isSelected: selectedFiles.contains(folders[index].path),
                     toggleFolderSelection: toggleFileSelection,
-                    isDesktopMode: isDesktopMode,
+                    isDesktopMode: actualIsDesktop,
                     lastSelectedPath: lastSelectedPath,
                     clearSelectionMode: clearSelectionMode,
                   )
@@ -133,7 +136,7 @@ class FileView extends StatelessWidget {
                     showDeleteTagDialog: showDeleteTagDialog,
                     showAddTagToFileDialog: showAddTagToFileDialog,
                     onFileTap: onFileTap,
-                    isDesktopMode: isDesktopMode,
+                    isDesktopMode: actualIsDesktop,
                     lastSelectedPath: lastSelectedPath,
                     showFileTags: showFileTags,
                   ),

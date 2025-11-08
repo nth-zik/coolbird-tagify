@@ -1,48 +1,11 @@
 # Testing Strategy
 
-## Goals
-
-- Fast feedback, reliable coverage, and protection against regressions.
-
-## Test Pyramid
-
-- Unit: majority focus (helpers, services, blocs)
-- Widget: key components and flows
-- Integration: service boundaries (e.g., storage, network)
-- E2E (optional): smoke paths on target platforms
-
-## What to Test
-
-- Business logic in `lib/services/` and `lib/bloc/`
-- Parsing/formatting helpers in `lib/helpers/`
-- Critical UI states and navigation flows in `lib/ui/`
-
-## Tooling
-
-- `flutter test`
-- Mocking with `mocktail` (or preferred lib)
-- Golden tests using `flutter_test` + `golden_toolkit` (optional)
-
-## Data & Fixtures
-
-- Use lightweight fixtures; keep deterministic
-- Avoid network; use fakes/mocks
-
-## CI Recommendations
-
-- Run unit+widget tests on PR
-- Optional nightly integration/E2E
-
-## Coverage Targets
-
-- Baseline 70%+, raise over time
-
-## Test Organization
-
-- Mirror `lib/` structure under `test/`
-- Name tests `<file>_test.dart`
-
-## Non-Functional
-
-- Performance checks for heavy lists/streams
-- Reliability: retry/backoff logic
+- **Goal** Fast feedback with enough coverage to block regressions.
+- **Pyramid** Unit > widget > integration; run E2E only for smoke checks.
+- **Focus Areas** Services/blocs, helper parsing, navigation + gallery/file flows.
+- **Tooling** `flutter test`, `mocktail` (mocks), goldens only for critical visuals.
+- **Fixtures** Keep deterministic; prefer fakes over live network/storage.
+- **CI** Run unit + widget tests on every PR; schedule heavier suites nightly.
+- **Coverage** Minimum 70%, improve as modules stabilize.
+- **Structure** Mirror `lib/` under `test/`, name files `<target>_test.dart`.
+- **Non-Functional** Track performance on heavy lists/streams and verify retry/backoff logic.

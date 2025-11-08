@@ -74,8 +74,9 @@ void main() async {
       SystemChannels.skia.invokeMethod<void>(
           'Skia.setResourceCacheMaxBytes', 512 * 1024 * 1024);
     } else if (Platform.isAndroid || Platform.isIOS) {
-      // For mobile platforms, optimize system UI mode
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      // For mobile platforms, show full system UI by default
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
+          overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom]);
       // Apply specific settings for better rendering on mobile
       SystemChrome.setSystemUIChangeCallback((systemOverlaysAreVisible) async {
         return;

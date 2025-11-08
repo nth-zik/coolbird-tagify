@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  gal
   media_kit_libs_windows_video
   media_kit_video
   mobile_smb_native

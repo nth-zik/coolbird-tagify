@@ -39,6 +39,9 @@ class TabData {
   /// Timestamp when thumbnail was captured
   final DateTime? thumbnailCapturedAt;
 
+  /// File name to highlight/scroll to when tab opens
+  final String? highlightedFileName;
+
   TabData({
     required this.id,
     required this.name,
@@ -52,6 +55,7 @@ class TabData {
     GlobalKey? repaintBoundaryKey,
     this.thumbnail,
     this.thumbnailCapturedAt,
+    this.highlightedFileName,
   })  : navigationHistory = navigationHistory ?? [path],
         forwardHistory = forwardHistory ?? <String>[],
         navigatorKey = navigatorKey ?? GlobalKey<NavigatorState>(),
@@ -71,6 +75,8 @@ class TabData {
     Uint8List? thumbnail,
     DateTime? thumbnailCapturedAt,
     bool clearThumbnail = false,
+    String? highlightedFileName,
+    bool clearHighlightedFile = false,
   }) {
     return TabData(
       id: id,
@@ -85,6 +91,7 @@ class TabData {
       repaintBoundaryKey: repaintBoundaryKey ?? this.repaintBoundaryKey,
       thumbnail: clearThumbnail ? null : (thumbnail ?? this.thumbnail),
       thumbnailCapturedAt: clearThumbnail ? null : (thumbnailCapturedAt ?? this.thumbnailCapturedAt),
+      highlightedFileName: clearHighlightedFile ? null : (highlightedFileName ?? this.highlightedFileName),
     );
   }
 

@@ -164,9 +164,9 @@ class SharedFileContextMenu extends StatelessWidget {
             ),
             onTap: () {
               Navigator.pop(context);
-              Navigator.push(
-                context,
+              Navigator.of(context, rootNavigator: true).push(
                 MaterialPageRoute(
+                  fullscreenDialog: true,
                   builder: (context) => VideoPlayerFullScreen(file: file),
                 ),
               );

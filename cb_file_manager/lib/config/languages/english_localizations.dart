@@ -439,13 +439,55 @@ class EnglishLocalizations implements AppLocalizations {
   @override
   String get fileModified => 'Modified';
   @override
+  String get fileName => 'File name';
+  @override
+  String get filePath => 'File path';
+  @override
+  String get fileType => 'File type';
+  @override
+  String get fileLastModified => 'Last modified';
+  @override
   String get loadingVideo => 'Loading video...';
   @override
   String get errorLoadingImage => 'Error loading image';
   @override
   String get createCopy => 'Create copy';
   @override
-  String get deleteFile => 'Delete File';
+  String get deleteFile => 'Delete file';
+
+  // Video actions
+  @override
+  String get share => 'Share';
+  @override
+  String get playVideo => 'Play video';
+  @override
+  String get videoInfo => 'Video info';
+  @override
+  String get deleteVideo => 'Delete video';
+  @override
+  String get loadingThumbnails => 'Loading thumbnails';
+  @override
+  String get deleteVideosConfirm => 'Delete videos?';
+  @override
+  String get deleteConfirmationMessage => 'Are you sure you want to delete the selected videos? This action cannot be undone.';
+  @override
+  String videosSelected(int count) => '$count video${count == 1 ? '' : 's'} selected';
+  @override
+  String videosDeleted(int count) => 'Deleted $count video${count == 1 ? '' : 's'}';
+  @override
+  String searchingFor(String query) => 'Searching for: "$query"';
+  @override
+  String get errorDisplayingVideoInfo => 'Cannot display video information';
+  @override
+  String get searchVideos => 'Search videos';
+  @override
+  String get enterVideoName => 'Enter video name...';
+  
+  // Selection and grid
+  @override
+  String? get selectMultiple => 'Select multiple files';
+  @override
+  String? get gridSize => 'Grid size';
 
   // Sorting
   @override
@@ -544,6 +586,18 @@ class EnglishLocalizations implements AppLocalizations {
 
   @override
   String get globalSearch => 'Global search';
+
+  @override
+  String get searchByNameOrTag => 'Search by name or #tag';
+  
+  @override
+  String get searchInSubfolders => 'Search in subfolders';
+
+  @override
+  String get searchInAllFolders => 'Search in all folders';
+
+  @override
+  String get searchInCurrentFolder => 'Search in current folder only';
 
   @override
   String get searchShortcuts => 'Shortcuts';
@@ -1204,4 +1258,45 @@ class EnglishLocalizations implements AppLocalizations {
 
   @override
   String get folders => 'Folders';
+
+  // Video player screenshot
+  @override
+  String get takeScreenshot => 'Take Screenshot';
+
+  @override
+  String get screenshotSaved => 'Screenshot saved';
+
+  @override
+  String get screenshotSavedAt => 'Screenshot saved at';
+
+  @override
+  String get screenshotFailed => 'Failed to save screenshot';
+
+  @override
+  String get screenshotSavedToFolder => 'Screenshot saved to Screenshots folder';
+
+  @override
+  String get openScreenshotFolder => 'Open folder';
+
+  @override
+  String get viewScreenshot => 'View';
+
+  @override
+  String get screenshotNotAvailableVlc => 'Screenshot not available';
+
+  @override
+  String get screenshotNotAvailableVlcMessage =>
+      'Screenshot is not available with VLC player.\nPlease switch to Media Kit player in settings.';
+
+  @override
+  String get screenshotFileNotFound => 'Image file not found';
+
+  @override
+  String get screenshotCannotOpenTab => 'Cannot open folder tab in this context';
+
+  @override
+  String get screenshotErrorOpeningFolder => 'Error opening folder';
+
+  @override
+  String get closeAction => 'Close';
 }

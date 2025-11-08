@@ -3,15 +3,24 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:video_player/video_player.dart' as exo;
 import 'package:flutter_vlc_player/flutter_vlc_player.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:path/path.dart' as pathlib;
+import 'package:image/image.dart' as img;
+import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:gal/gal.dart';
+import 'package:cb_file_manager/ui/screens/media_gallery/image_viewer_screen.dart';
 // Windows PiP uses a separate OS window (external process).
 
 import '../../../../services/pip_window_service.dart';
@@ -25,6 +34,8 @@ import '../../../../helpers/network/win32_smb_helper.dart';
 import '../../streaming/stream_speed_indicator.dart';
 import '../../streaming/buffer_info_widget.dart';
 import '../../../utils/route.dart';
+import '../../../../config/languages/app_localizations.dart';
+import '../../../tab_manager/core/tab_manager.dart';
 
 // Enums for new features
 enum LoopMode { none, single, all }
@@ -91,6 +102,7 @@ class VideoPlayer extends StatefulWidget {
   final VoidCallback? onControlVisibilityChanged;
   final VoidCallback? onFullScreenChanged;
   final VoidCallback? onInitialized;
+  final Function(String folderPath, String highlightedFileName)? onOpenFolder;
 
   // Navigation state
   final bool hasNextVideo;
@@ -122,6 +134,7 @@ class VideoPlayer extends StatefulWidget {
     this.onControlVisibilityChanged,
     this.onFullScreenChanged,
     this.onInitialized,
+    this.onOpenFolder,
     this.hasNextVideo = false,
     this.hasPreviousVideo = false,
     this.showStreamingSpeed = false,
@@ -152,6 +165,7 @@ class VideoPlayer extends StatefulWidget {
     VoidCallback? onControlVisibilityChanged,
     VoidCallback? onFullScreenChanged,
     VoidCallback? onInitialized,
+    Function(String folderPath, String highlightedFileName)? onOpenFolder,
     bool hasNextVideo = false,
     bool hasPreviousVideo = false,
     bool showStreamingSpeed = false,
@@ -174,6 +188,7 @@ class VideoPlayer extends StatefulWidget {
           onControlVisibilityChanged: onControlVisibilityChanged,
           onFullScreenChanged: onFullScreenChanged,
           onInitialized: onInitialized,
+          onOpenFolder: onOpenFolder,
           hasNextVideo: hasNextVideo,
           hasPreviousVideo: hasPreviousVideo,
           showStreamingSpeed: showStreamingSpeed,
@@ -320,6 +335,9 @@ class _VideoPlayerState extends State<VideoPlayer> {
   // Fallback timer if VLC fails to start on Android
   Timer? _vlcStartupFallback;
 
+  // RepaintBoundary key for screenshot capture
+  final GlobalKey _screenshotKey = GlobalKey();
+
   // State variables
   bool _isLoading = true;
   bool _hasError = false;
@@ -345,6 +363,8 @@ class _VideoPlayerState extends State<VideoPlayer> {
   double _playbackSpeed = 1.0;
   bool _isPictureInPicture = false;
   bool _isAndroidPip = false;
+  // When true, do not render the video surface to avoid texture overlay over new routes (Android)
+  bool _suspendVideoSurface = false;
 
   // PiP IPC (desktop): server to receive state back from PiP window
   ServerSocket? _pipServer;
@@ -444,6 +464,24 @@ class _VideoPlayerState extends State<VideoPlayer> {
   @override
   void initState() {
     super.initState();
+
+    // Ensure system UI is visible when video player starts (not fullscreen)
+    if (Platform.isAndroid || Platform.isIOS) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
+          overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom]);
+      // Explicitly set light status bar icons to ensure visibility on dark backgrounds
+      SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
+      // Guard against plugins or platform views hiding system UI unexpectedly
+      SystemChrome.setSystemUIChangeCallback((visible) async {
+        if (!mounted) return;
+        if (!_isFullScreen && visible == false) {
+          await SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
+              overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom]);
+          SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
+        }
+      });
+    }
+
     // Load settings first, then initialize the player so configuration is applied
     _loadSettings().whenComplete(_initializePlayer);
     _setupAndroidPipChannelListener();
@@ -808,17 +846,15 @@ class _VideoPlayerState extends State<VideoPlayer> {
       debugPrint(
           'Loaded volume preferences - volume: ${_savedVolume.toStringAsFixed(1)}, muted: $_isMuted');
 
-      // On Android, prefer flutter_vlc_player for wider device compatibility
-      // (workaround for driver/decoder issues observed with some codecs/GPU combos).
+      // On Android, use Media Kit player by default for better screenshot support
+      // VLC player cannot capture screenshots via RepaintBoundary
       if (!kIsWeb && Platform.isAndroid) {
-        _useFlutterVlc = true;
-        setState(() {
-          _isLoading = false;
-        });
-        return;
+        _useFlutterVlc =
+            false; // Changed from true to false for screenshot support
+        // Don't return - continue to initialize Media Kit player below
       }
 
-      // Initialize media_kit player for desktop or general use
+      // Initialize media_kit player for desktop or general use (and now Android too)
       if (_player == null) {
         _player = Player(
           configuration: PlayerConfiguration(
@@ -1497,8 +1533,15 @@ class _VideoPlayerState extends State<VideoPlayer> {
         Platform.isWindows || Platform.isLinux || Platform.isMacOS;
     final boxFit = _getBoxFitFromString(_videoScaleMode);
 
-    if (isDesktop && _videoController != null) {
+    // If suspended (e.g., navigating to image viewer on Android), hide the texture surface
+    if (_suspendVideoSurface) {
+      return const ColoredBox(color: Colors.black);
+    }
+
+    // Check for Media Kit player first (works on all platforms)
+    if (_videoController != null) {
       return RepaintBoundary(
+        key: _screenshotKey,
         child: Video(
           controller: _videoController!,
           controls: NoVideoControls,
@@ -1508,6 +1551,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
       );
     } else if (_vlcController != null) {
       return RepaintBoundary(
+        key: _screenshotKey,
         child: LayoutBuilder(
           builder: (context, constraints) {
             // Ensure we have valid constraints
@@ -1546,6 +1590,10 @@ class _VideoPlayerState extends State<VideoPlayer> {
   }
 
   Widget _buildVlcPlayer() {
+    // If suspended (e.g., navigating to image viewer on Android), hide the texture surface
+    if (_suspendVideoSurface) {
+      return const ColoredBox(color: Colors.black);
+    }
     // Initialize VLC controller lazily for the active Android source type
     if (_vlcController == null) {
       // Initialize VLC controller based on source type
@@ -1710,43 +1758,46 @@ class _VideoPlayerState extends State<VideoPlayer> {
     return Stack(
       children: [
         Positioned.fill(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () {
-              if (_isFullScreen) _showControlsWithTimer();
-            },
-            onDoubleTap: _toggleFullScreen,
-            child: Container(
-              color: Colors.black,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  // Ensure we have valid constraints
-                  if (constraints.maxWidth.isInfinite ||
-                      constraints.maxHeight.isInfinite) {
-                    return SizedBox(
-                      width: 400,
-                      height: 225,
-                      child: VlcPlayer(
-                        controller: _vlcController!,
-                        aspectRatio: 16 / 9,
-                        placeholder: _buildVlcPlaceholder(),
+          child: RepaintBoundary(
+            key: _screenshotKey,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                if (_isFullScreen) _showControlsWithTimer();
+              },
+              onDoubleTap: _toggleFullScreen,
+              child: Container(
+                color: Colors.black,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Ensure we have valid constraints
+                    if (constraints.maxWidth.isInfinite ||
+                        constraints.maxHeight.isInfinite) {
+                      return SizedBox(
+                        width: 400,
+                        height: 225,
+                        child: VlcPlayer(
+                          controller: _vlcController!,
+                          aspectRatio: 16 / 9,
+                          placeholder: _buildVlcPlaceholder(),
+                        ),
+                      );
+                    }
+
+                    return FittedBox(
+                      fit: _getBoxFitFromString(_videoScaleMode),
+                      child: SizedBox(
+                        width: constraints.maxWidth,
+                        height: constraints.maxHeight,
+                        child: VlcPlayer(
+                          controller: _vlcController!,
+                          aspectRatio: 16 / 9,
+                          placeholder: _buildVlcPlaceholder(),
+                        ),
                       ),
                     );
-                  }
-
-                  return FittedBox(
-                    fit: _getBoxFitFromString(_videoScaleMode),
-                    child: SizedBox(
-                      width: constraints.maxWidth,
-                      height: constraints.maxHeight,
-                      child: VlcPlayer(
-                        controller: _vlcController!,
-                        aspectRatio: 16 / 9,
-                        placeholder: _buildVlcPlaceholder(),
-                      ),
-                    ),
-                  );
-                },
+                  },
+                ),
               ),
             ),
           ),
@@ -2339,10 +2390,15 @@ class _VideoPlayerState extends State<VideoPlayer> {
           DeviceOrientation.landscapeLeft,
           DeviceOrientation.landscapeRight,
         ]);
+        // Hide all system UI in fullscreen (immersive experience)
         SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       } else {
         SystemChrome.setPreferredOrientations(DeviceOrientation.values);
-        SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+        // Restore both status bar and nav bar
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
+            overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom]);
+        // Restore light status bar icons after exiting fullscreen
+        SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
       }
       widget.onFullScreenChanged?.call();
     }
@@ -3012,7 +3068,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
           );
         },
       );
-    } else {
+    } else if (_vlcController != null) {
       return ValueListenableBuilder<VlcPlayerValue>(
         valueListenable: _vlcController!,
         builder: (context, v, _) {
@@ -3024,6 +3080,15 @@ class _VideoPlayerState extends State<VideoPlayer> {
             enabled: true,
           );
         },
+      );
+    } else {
+      // Fallback: No player initialized yet, show loading state
+      return _buildControlButton(
+        icon: Icons.play_arrow,
+        onPressed: null, // Disabled
+        size: 40,
+        padding: 10,
+        enabled: false,
       );
     }
   }
@@ -3335,15 +3400,750 @@ class _VideoPlayerState extends State<VideoPlayer> {
   }
 
   Future<void> _takeScreenshot() async {
+    final localizations = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    
+    // Track if video was playing before we pause it for screenshot
+    final wasPlaying = _player?.state.playing ?? _vlcController?.value.isPlaying ?? false;
+
     try {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Screenshot saved')),
-      );
+      Uint8List? screenshotBytes;
+      String? screenshotPath;
+
+      debugPrint('========== SCREENSHOT CAPTURE DEBUG ==========');
+      debugPrint('_useFlutterVlc: $_useFlutterVlc');
+      debugPrint('_vlcController: ${_vlcController != null}');
+      debugPrint('_player: ${_player != null}');
+      debugPrint('_videoController: ${_videoController != null}');
+
+      // Pause video momentarily to stabilize frame and ensure proper rendering
+      if (wasPlaying) {
+        debugPrint('Pausing video to stabilize frame for screenshot...');
+        if (_player != null) {
+          await _player!.pause();
+        } else if (_vlcController != null) {
+          await _vlcController!.pause();
+        }
+        // Wait for pause to take effect and frame to render
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+
+      // Try to capture screenshot based on active player
+      // On mobile, prefer RepaintBoundary first to avoid platform texture issues
+      if ((Platform.isAndroid || Platform.isIOS) && screenshotBytes == null) {
+        debugPrint('Mobile: attempting RepaintBoundary screenshot first...');
+        try {
+          final boundary = _screenshotKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
+          debugPrint('Mobile RepaintBoundary found: ${boundary != null}');
+          if (boundary != null) {
+            // Ensure a fresh frame has been painted
+            await Future.delayed(const Duration(milliseconds: 32));
+            final pixelRatio = MediaQuery.of(context).devicePixelRatio;
+            final image = await boundary.toImage(
+              pixelRatio: pixelRatio.clamp(1.0, 3.0),
+            );
+            final byteData =
+                await image.toByteData(format: ui.ImageByteFormat.png);
+            if (byteData != null) {
+              screenshotBytes = byteData.buffer.asUint8List();
+              debugPrint(
+                  'Mobile RepaintBoundary screenshot successful: ${screenshotBytes.length} bytes');
+            }
+          }
+        } catch (e) {
+          debugPrint('Mobile RepaintBoundary screenshot failed: $e');
+        }
+      }
+
+      // VLC surface capture via RepaintBoundary (if still not captured)
+      if (screenshotBytes == null && _useFlutterVlc && _vlcController != null) {
+        debugPrint('Attempting VLC screenshot via RepaintBoundary...');
+        try {
+          final boundary = _screenshotKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
+          debugPrint('RepaintBoundary found: ${boundary != null}');
+          if (boundary != null) {
+            // Ensure the latest frame is painted before capturing
+            await Future.delayed(const Duration(milliseconds: 16));
+            final pixelRatio = MediaQuery.of(context).devicePixelRatio;
+            final image = await boundary.toImage(
+              pixelRatio: pixelRatio.clamp(1.0, 3.0),
+            );
+            debugPrint('Image captured: ${image.width}x${image.height}');
+            final byteData =
+                await image.toByteData(format: ui.ImageByteFormat.png);
+            if (byteData != null) {
+              screenshotBytes = byteData.buffer.asUint8List();
+              debugPrint(
+                  'VLC screenshot successful: ${screenshotBytes.length} bytes');
+            }
+          }
+        } catch (e) {
+          debugPrint('VLC screenshot failed: $e');
+        }
+      }
+
+      // If still null, try media_kit API screenshot
+      if (screenshotBytes == null &&
+          _player != null &&
+          _videoController != null) {
+        debugPrint('Attempting media_kit screenshot...');
+        try {
+          screenshotBytes = await _player!.screenshot();
+          if (screenshotBytes != null) {
+            debugPrint(
+                'Media kit screenshot successful: ${screenshotBytes.length} bytes');
+          } else {
+            debugPrint('Media kit screenshot returned null');
+          }
+        } catch (e) {
+          debugPrint('Media kit screenshot failed: $e');
+        }
+      }
+
+      // Final fallback: RepaintBoundary (any platform)
+      if (screenshotBytes == null) {
+        try {
+          final boundary = _screenshotKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
+          debugPrint(
+              'RepaintBoundary fallback available: ${boundary != null}');
+          if (boundary != null) {
+            // Ensure the latest frame is painted before capturing
+            await Future.delayed(const Duration(milliseconds: 16));
+            final pixelRatio = MediaQuery.of(context).devicePixelRatio;
+            final image = await boundary.toImage(
+              pixelRatio: pixelRatio.clamp(1.0, 3.0),
+            );
+            final byteData =
+                await image.toByteData(format: ui.ImageByteFormat.png);
+            if (byteData != null) {
+              screenshotBytes = byteData.buffer.asUint8List();
+              debugPrint(
+                  'RepaintBoundary screenshot successful: ${screenshotBytes.length} bytes');
+            }
+          }
+        } catch (e) {
+          debugPrint('RepaintBoundary screenshot fallback failed: $e');
+        }
+      }
+
+      // Validate screenshot can be decoded; if not, try re-encoding to PNG
+      if (screenshotBytes != null) {
+        bool canDecode = true;
+        try {
+          // Validate by attempting to instantiate an image codec
+          await ui.instantiateImageCodec(screenshotBytes);
+        } catch (_) {
+          canDecode = false;
+        }
+        if (!canDecode) {
+          debugPrint(
+              'Captured bytes not directly decodable; attempting PNG re-encode...');
+          try {
+            final decoded = img.decodeImage(screenshotBytes);
+            if (decoded != null) {
+              screenshotBytes = Uint8List.fromList(img.encodePng(decoded));
+              // Test again
+              try {
+                await ui.instantiateImageCodec(screenshotBytes);
+                canDecode = true;
+                debugPrint('PNG re-encode successful.');
+              } catch (e) {
+                debugPrint('PNG re-encode still not decodable: $e');
+              }
+            } else {
+              debugPrint('image.decodeImage returned null; cannot re-encode.');
+            }
+          } catch (e) {
+            debugPrint('Error during PNG re-encode: $e');
+          }
+        }
+      }
+
+      debugPrint(
+          'Final screenshotBytes: ${screenshotBytes != null ? "${screenshotBytes.length} bytes" : "null"}');
+      debugPrint('========== END SCREENSHOT CAPTURE DEBUG ==========');
+
+      // If we got screenshot bytes, save them
+      if (screenshotBytes != null && screenshotBytes.isNotEmpty) {
+        debugPrint(
+            'Screenshot captured, size: ${screenshotBytes.length} bytes');
+
+        // Validate screenshot is not completely black/empty by checking file size
+        // Completely black images are usually very small (~< 500 bytes)
+        if (screenshotBytes.length < 500) {
+          debugPrint('Screenshot rejected: File too small (${screenshotBytes.length} bytes - likely black/empty image)');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Capture failed: Image appears to be empty. Try again.'),
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+          return;
+        }
+
+        if (Platform.isAndroid || Platform.isIOS) {
+          // Save to user's Pictures folder on mobile devices
+          try {
+            final timestamp = DateTime.now()
+                .toIso8601String()
+                .replaceAll(':', '-')
+                .replaceAll('.', '-');
+            final fileName = 'screenshot_$timestamp.png';
+
+            // Save to user's Pictures directory (visible in file manager)
+            Directory screenshotsDir;
+            
+            if (Platform.isAndroid) {
+              // On Android, get actual Pictures directory using path_provider
+              // This gives us the standard Pictures folder that's accessible
+              final directory = await getExternalStorageDirectory();
+              if (directory == null) {
+                throw Exception('Cannot access external storage');
+              }
+              // Navigate up from /Android/data/app-id to /sdcard
+              final parts = directory.path.split('/');
+              final sdcard = parts.take(parts.length - 3).join('/');
+              screenshotsDir = Directory('$sdcard/Pictures/VideoScreenshots');
+            } else {
+              // iOS: Use Documents directory
+              screenshotsDir = Directory(pathlib.join(
+                (await getApplicationDocumentsDirectory()).path,
+                'Screenshots',
+              ));
+            }
+
+            if (!await screenshotsDir.exists()) {
+              await screenshotsDir.create(recursive: true);
+            }
+
+            final screenshotFile = File(pathlib.join(screenshotsDir.path, fileName));
+            debugPrint('💾 Saving screenshot bytes: ${screenshotBytes.length} bytes to ${screenshotFile.path}');
+            await screenshotFile.writeAsBytes(screenshotBytes, flush: true);
+            
+            // Ensure file is fully written to disk
+            await Future.delayed(const Duration(milliseconds: 200));
+            
+            // Verify file is readable
+            final fileSize = await screenshotFile.length();
+            debugPrint('✅ Screenshot file verified: $fileSize bytes on disk');
+            screenshotPath = screenshotFile.path;
+            debugPrint('📁 Screenshot path: $screenshotPath');
+
+            // Also save to gallery with Gal package for easy access
+            try {
+              await Gal.putImage(screenshotFile.path, album: 'VideoScreenshots');
+              debugPrint('Screenshot also saved to gallery album');
+            } catch (e) {
+              debugPrint('Warning: Could not add to gallery: $e');
+              // Continue anyway - file is already saved
+            }
+          } catch (e) {
+            debugPrint('Failed to save screenshot: $e');
+            throw Exception('Không thể lưu ảnh: $e');
+          }
+        } else {
+          // Desktop: Save to downloads directory
+          try {
+            final screenshotDir = await getDownloadsDirectory() ??
+                await getApplicationDocumentsDirectory();
+            final timestamp = DateTime.now()
+                .toIso8601String()
+                .replaceAll(':', '-')
+                .replaceAll('.', '-');
+            final fileName = 'screenshot_$timestamp.png';
+            final file = File(pathlib.join(screenshotDir.path, fileName));
+
+            await file.writeAsBytes(screenshotBytes);
+            screenshotPath = file.path;
+            debugPrint('Screenshot saved to: $screenshotPath');
+          } catch (e) {
+            debugPrint('Failed to write screenshot file: $e');
+            throw Exception('Không thể lưu file ảnh: $e');
+          }
+        }
+
+        // Show success message with path
+        if (mounted && screenshotPath != null) {
+          final filePath = screenshotPath; // Non-null local variable
+          
+          // Cleanup: Delete old black/small screenshot files that are < 1KB
+          _cleanupOldBlackScreenshots();
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        color: theme.colorScheme.primary,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        localizations.screenshotSaved,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    filePath,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: theme.colorScheme.onSurface.withOpacity(0.8),
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+              duration: const Duration(seconds: 5),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: theme.colorScheme.surfaceContainerHighest,
+              action: SnackBarAction(
+                label: 'Xem ảnh',
+                textColor: theme.colorScheme.primary,
+                onPressed: () => _openScreenshotImage(filePath),
+              ),
+            ),
+          );
+        }
+      } else {
+        // Screenshot failed - show helpful message
+        debugPrint('Screenshot capture failed - no bytes captured');
+        if (mounted) {
+          if (_useFlutterVlc) {
+            // VLC player doesn't support screenshot on Android
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text(
+                  'Chụp ảnh màn hình không khả dụng với VLC player.\nVui lòng chuyển sang Media Kit player trong cài đặt.',
+                ),
+                duration: const Duration(seconds: 5),
+                action: SnackBarAction(
+                  label: 'Đóng',
+                  onPressed: () {},
+                ),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(localizations.screenshotFailed)),
+            );
+          }
+        }
+      }
     } catch (e) {
       debugPrint('Error taking screenshot: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to save screenshot')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(localizations.screenshotFailed)),
+        );
+      }
+    } finally {
+      // Resume video if it was playing before screenshot
+      if (wasPlaying) {
+        try {
+          debugPrint('Resuming video playback after screenshot...');
+          if (_player != null) {
+            await _player!.play();
+          } else if (_vlcController != null) {
+            await _vlcController!.play();
+          }
+          debugPrint('✅ Video resumed');
+        } catch (e) {
+          debugPrint('Failed to resume video: $e');
+        }
+      }
+    }
+  }
+
+  /// Cleanup old black or empty screenshot files (< 1KB) from VideoScreenshots folder
+  Future<void> _cleanupOldBlackScreenshots() async {
+    try {
+      Directory screenshotsDir;
+      
+      if (Platform.isAndroid) {
+        final directory = await getExternalStorageDirectory();
+        if (directory == null) {
+          debugPrint('Cannot access external storage for cleanup');
+          return;
+        }
+        // Navigate to actual Pictures folder
+        final parts = directory.path.split('/');
+        final sdcard = parts.take(parts.length - 3).join('/');
+        screenshotsDir = Directory('$sdcard/Pictures/VideoScreenshots');
+      } else {
+        // iOS
+        screenshotsDir = Directory(pathlib.join(
+          (await getApplicationDocumentsDirectory()).path,
+          'Screenshots',
+        ));
+      }
+      
+      if (!await screenshotsDir.exists()) return;
+      
+      final files = screenshotsDir.listSync();
+      int deletedCount = 0;
+      
+      for (final file in files) {
+        if (file is File && file.path.endsWith('.png')) {
+          try {
+            final fileSize = await file.length();
+            // Delete files < 1KB (likely black/empty captures)
+            if (fileSize < 1024) {
+              await file.delete();
+              deletedCount++;
+              debugPrint('🗑️ Deleted black screenshot: ${file.path} (${fileSize} bytes)');
+            }
+          } catch (e) {
+            debugPrint('Could not delete old screenshot: $e');
+          }
+        }
+      }
+      
+      if (deletedCount > 0) {
+        debugPrint('Cleaned up $deletedCount old black screenshot(s)');
+      }
+    } catch (e) {
+      debugPrint('Error during screenshot cleanup: $e');
+    }
+  }
+
+  Future<void> _openScreenshotFile(String filePath) async {
+    final localizations = AppLocalizations.of(context)!;
+    try {
+      debugPrint('========== SCREENSHOT OPEN FOLDER DEBUG ==========');
+      debugPrint('Attempting to open folder containing: $filePath');
+
+      // Check if file exists
+      final file = File(filePath);
+      final exists = await file.exists();
+      debugPrint('File exists: $exists');
+
+      if (!exists) {
+        debugPrint('File does not exist at path: $filePath');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(localizations.screenshotFileNotFound),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Determine folder path and highlighted file
+      final folderPath = pathlib.dirname(filePath);
+      final highlightedFileName = pathlib.basename(filePath);
+      debugPrint(
+          'Opening folder tab: $folderPath (highlight: $highlightedFileName)');
+
+      // Try opening via TabManager (new tab)
+      bool openedViaTab = false;
+      try {
+        TabNavigator.openTab(
+          context,
+          folderPath,
+          title: 'Screenshots',
+          highlightedFileName: highlightedFileName,
+        );
+        openedViaTab = true;
+        debugPrint('SUCCESS: Opened folder tab via TabManager for $folderPath');
+      } catch (e) {
+        debugPrint(
+            'TabManager.openTab error ($e), trying widget.onOpenFolder if provided.');
+      }
+
+      // Fallback: use provided callback if available
+      if (!openedViaTab) {
+        if (widget.onOpenFolder != null) {
+          try {
+            widget.onOpenFolder!(folderPath, highlightedFileName);
+            debugPrint(
+                'SUCCESS: Delegated to onOpenFolder callback for $folderPath');
+            return;
+          } catch (e) {
+            debugPrint('onOpenFolder callback error: $e');
+          }
+        }
+
+        // Last resort: open system file explorer at the folder path
+        try {
+          final uri = Uri.file(folderPath);
+          final can = await canLaunchUrl(uri);
+          if (can) {
+            await launchUrl(uri);
+            debugPrint('Opened system file explorer at $folderPath');
+          } else {
+            throw 'Cannot launch URI for folder';
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(localizations.screenshotCannotOpenTab),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        }
+      }
+
+      debugPrint('========== END SCREENSHOT OPEN FOLDER DEBUG ==========');
+    } catch (e, stackTrace) {
+      debugPrint('========== SCREENSHOT OPEN FOLDER ERROR ==========');
+      debugPrint('ERROR Type: ${e.runtimeType}');
+      debugPrint('ERROR Message: $e');
+      debugPrint('Stack trace:');
+      debugPrint(stackTrace.toString());
+      debugPrint('========== END ERROR ==========');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${localizations.screenshotErrorOpeningFolder}: ${e.toString()}'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _openScreenshotImage(String filePath) async {
+    final localizations = AppLocalizations.of(context)!;
+    try {
+      debugPrint('========== SCREENSHOT OPEN IMAGE DEBUG ==========');
+      debugPrint('Attempting to open image in new tab: $filePath');
+
+      // Validate existence
+      final file = File(filePath);
+      final exists = await file.exists();
+      debugPrint('File exists: $exists');
+
+      if (!exists) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(localizations.screenshotFileNotFound),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
+
+      bool opened = false;
+
+      // Mobile: open directly via Navigator and temporarily hide the video surface to avoid texture overlay
+      if (Platform.isAndroid) {
+        final wasPlaying = _player?.state.playing == true ||
+            (_vlcController?.value.isPlaying == true);
+        try {
+          await _suspendVideoForRoutePush();
+          try {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          } catch (_) {}
+          
+          // Load image bytes before opening viewer
+          debugPrint('📂 Loading screenshot from: $filePath');
+          final imageFile = File(filePath);
+          final exists = await imageFile.exists();
+          debugPrint('   File exists: $exists');
+          final imageBytes = await imageFile.readAsBytes();
+          debugPrint('   ✅ Loaded ${imageBytes.length} bytes');
+          // Verify bytes are valid image data (PNG signature: 89 50 4E 47)
+          if (imageBytes.length > 4) {
+            final isPng = imageBytes[0] == 0x89 && 
+                         imageBytes[1] == 0x50 && 
+                         imageBytes[2] == 0x4E && 
+                         imageBytes[3] == 0x47;
+            debugPrint('   Is valid PNG: $isPng');
+          }
+          
+          await Navigator.of(context, rootNavigator: true).push(
+            MaterialPageRoute(
+              builder: (_) => ImageViewerScreen(
+                file: imageFile,
+                imageBytes: imageBytes,
+              ),
+            ),
+          );
+          return;
+        } catch (e, stack) {
+          debugPrint('Navigator push ImageViewerScreen failed (Android): $e');
+          debugPrint('Stack trace: $stack');
+        } finally {
+          // Restore video after returning from ImageViewerScreen
+          await _resumeVideoAfterRoutePop(resumePlaying: wasPlaying);
+        }
+      }
+
+      if (Platform.isIOS) {
+        final wasPlaying = _player?.state.playing == true ||
+            (_vlcController?.value.isPlaying == true);
+        try {
+          // Pause playback and hide video surface (prevents texture overlay above pushed route)
+          await _pauseVideo();
+          if (mounted) {
+            setState(() {
+              _suspendVideoSurface = true;
+            });
+          }
+          
+          // Load image bytes before opening viewer
+          debugPrint('📂 Loading screenshot (iOS) from: $filePath');
+          final imageFile = File(filePath);
+          final exists = await imageFile.exists();
+          debugPrint('   File exists: $exists');
+          final imageBytes = await imageFile.readAsBytes();
+          debugPrint('   ✅ Loaded ${imageBytes.length} bytes');
+          // Verify bytes are valid image data
+          if (imageBytes.length > 4) {
+            final isPng = imageBytes[0] == 0x89 && 
+                         imageBytes[1] == 0x50 && 
+                         imageBytes[2] == 0x4E && 
+                         imageBytes[3] == 0x47;
+            debugPrint('   Is valid PNG: $isPng');
+          }
+          
+          // Ensure one frame renders without the video texture before pushing new route
+          await Future.delayed(const Duration(milliseconds: 50));
+          await Navigator.of(context, rootNavigator: true).push(
+            MaterialPageRoute(
+              builder: (_) => ImageViewerScreen(
+                file: imageFile,
+                imageBytes: imageBytes,
+              ),
+            ),
+          );
+        } catch (e, stackTrace) {
+          debugPrint('Navigator push ImageViewerScreen failed (mobile): $e');
+          debugPrint('Stack trace: $stackTrace');
+        } finally {
+          if (mounted) {
+            setState(() {
+              _suspendVideoSurface = false;
+            });
+          }
+          // Optionally resume playback
+          try {
+            if (wasPlaying) {
+              if (_player != null) {
+                await _player!.play();
+              } else if (_vlcController != null) {
+                await _vlcController!.play();
+              }
+            }
+          } catch (_) {}
+        }
+        return;
+      }
+
+      // Try to find TabManagerBloc in the widget tree
+      try {
+        // Check if TabManagerBloc is available in the context
+        BlocProvider.of<TabManagerBloc>(context, listen: false);
+        // If we got here, TabManagerBloc is available
+        final encoded = Uri.encodeComponent(filePath);
+        final routePath = '#image?path=$encoded';
+        
+        TabNavigator.openTab(
+          context,
+          routePath,
+          // Let SystemScreenRouter update tab title to the image file name
+        );
+        opened = true;
+        debugPrint('SUCCESS: Opened image tab via TabManager: $routePath');
+      } catch (e, stackTrace) {
+        debugPrint('TabManager.openTab failed (TabManagerBloc not in context): $e');
+        debugPrint('Stack trace: $stackTrace');
+        // Continue to fallback methods
+      }
+
+      debugPrint('After TabManager attempt, opened: $opened');
+
+      if (!opened) {
+        // Fallback: push in-app image viewer route
+        debugPrint('Attempting fallback: Navigator push ImageViewerScreen');
+        try {
+          await Navigator.of(context, rootNavigator: true).push(
+            MaterialPageRoute(
+              builder: (_) => ImageViewerScreen(file: File(filePath)),
+            ),
+          );
+          opened = true;
+          debugPrint('SUCCESS: Opened image via Navigator push');
+        } catch (e, stackTrace) {
+          debugPrint('Navigator push ImageViewerScreen failed: $e');
+          debugPrint('Stack trace: $stackTrace');
+        }
+      }
+
+      if (!opened) {
+        // Last resort: open with system handler
+        try {
+          final result = await OpenFilex.open(filePath);
+          debugPrint('OpenFilex result: ${result.type} - ${result.message}');
+          // Check if the result indicates success
+          opened = result.type.toString().contains('done');
+        } catch (e) {
+          debugPrint('OpenFilex failed: $e');
+        }
+      }
+
+      if (!opened) {
+        // Final fallback: try to launch file URI
+        try {
+          final uri = Uri.file(filePath);
+          final can = await canLaunchUrl(uri);
+          if (can) {
+            await launchUrl(uri);
+            opened = true;
+          } else {
+            throw 'Cannot launch file URI';
+          }
+        } catch (e) {
+          debugPrint('Launch file URI failed: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(localizations.screenshotCannotOpenTab),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        }
+      }
+
+      debugPrint('========== END SCREENSHOT OPEN IMAGE DEBUG ==========');
+    } catch (e, st) {
+      debugPrint('========== SCREENSHOT OPEN IMAGE ERROR ==========');
+      debugPrint('ERROR: $e');
+      debugPrint(st.toString());
+      debugPrint('========== END ERROR ==========');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${localizations.screenshotErrorOpeningFolder}: ${e.toString()}'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 
@@ -3403,8 +4203,10 @@ class _VideoPlayerState extends State<VideoPlayer> {
           value: 'screenshot',
           child: ListTile(
             leading: Icon(Icons.photo_camera, color: Colors.white, size: 20),
-            title:
-                Text('Take Screenshot', style: TextStyle(color: Colors.white)),
+            title: Text(
+              AppLocalizations.of(context)!.takeScreenshot,
+              style: TextStyle(color: Colors.white),
+            ),
             dense: true,
             contentPadding: EdgeInsets.zero,
           ),
@@ -4232,8 +5034,8 @@ class _VideoPlayerState extends State<VideoPlayer> {
       // Prefer overlay per user setting
       _showWindowsOverlayPip(
         context,
-        sourceType: sourceType!,
-        source: source!,
+        sourceType: sourceType,
+        source: source,
         fileName: widget.fileName,
         positionMs: positionMs,
         volume: volume,
@@ -4474,7 +5276,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
     _saveSettings();
   }
 
-  void _pauseVideo() async {
+  Future<void> _pauseVideo() async {
     if (_player != null) {
       await _player!.pause();
       setState(() {
@@ -4504,6 +5306,179 @@ class _VideoPlayerState extends State<VideoPlayer> {
         });
       }
     });
+  }
+
+  // Temporarily tear down platform video views to avoid overlay issues on Android when pushing routes.
+  Future<void> _suspendVideoForRoutePush() async {
+    try {
+      await _pauseVideo();
+    } catch (_) {}
+    if (mounted) {
+      setState(() {
+        _suspendVideoSurface = true;
+      });
+    }
+    if (Platform.isAndroid) {
+      try {
+        await _exoController?.pause();
+      } catch (_) {}
+      try {
+        await _vlcController?.pause();
+      } catch (_) {}
+      try {
+        await _vlcController?.dispose();
+      } catch (_) {}
+      _vlcController = null;
+      try {
+        await _exoController?.dispose();
+      } catch (_) {}
+      _exoController = null;
+      try {
+        // no dispose needed for VideoController
+      } catch (_) {}
+      _videoController = null;
+    }
+    // Ensure one frame is rendered without any platform views
+    await Future.delayed(const Duration(milliseconds: 16));
+  }
+
+  // Restore video output after returning from pushed routes.
+  Future<void> _resumeVideoAfterRoutePop({bool resumePlaying = false}) async {
+    if (mounted) {
+      setState(() {
+        _suspendVideoSurface = false;
+      });
+    }
+    
+    // On Android, we need to rebuild controllers after they were disposed during suspend
+    if (Platform.isAndroid) {
+      // Check if we were using VLC before suspension
+      final needsVlcRestore = _useFlutterVlc && _vlcController == null;
+      // Check if we were using Media Kit before suspension  
+      final needsMediaKitRestore = !_useFlutterVlc && _videoController == null && _player != null;
+      
+      if (needsVlcRestore) {
+        try {
+          // Re-initialize VLC controller based on source type
+          if (widget.smbMrl != null) {
+            // SMB MRL with credentials support
+            final original = widget.smbMrl!;
+            final uri = Uri.parse(original);
+            final creds = uri.userInfo.isNotEmpty
+                ? uri.userInfo.split(':')
+                : const <String>[];
+            final user = creds.isNotEmpty ? Uri.decodeComponent(creds[0]) : null;
+            final pwd = creds.length > 1 ? Uri.decodeComponent(creds[1]) : null;
+            final cleanUrl = uri.replace(userInfo: '').toString();
+
+            _vlcController = VlcPlayerController.network(
+              cleanUrl,
+              hwAcc: HwAcc.full,
+              autoPlay: resumePlaying,
+              options: VlcPlayerOptions(
+                advanced: VlcAdvancedOptions([
+                  '--network-caching=2000',
+                ]),
+                video: VlcVideoOptions([
+                  '--android-display-chroma=RV32',
+                ]),
+                extras: [
+                  if (user != null) '--smb-user=$user',
+                  if (pwd != null) '--smb-pwd=$pwd',
+                ],
+              ),
+            );
+          } else if (widget.streamingUrl != null) {
+            // HTTP/HTTPS or other stream URL
+            _vlcController = VlcPlayerController.network(
+              widget.streamingUrl!,
+              hwAcc: HwAcc.full,
+              autoPlay: resumePlaying,
+              options: VlcPlayerOptions(
+                advanced: VlcAdvancedOptions([
+                  '--network-caching=1000',
+                ]),
+                video: VlcVideoOptions([
+                  '--android-display-chroma=RV32',
+                ]),
+              ),
+            );
+          } else if (widget.file != null) {
+            // Local file
+            _vlcController = VlcPlayerController.file(
+              widget.file!,
+              hwAcc: HwAcc.full,
+              autoPlay: resumePlaying,
+              options: VlcPlayerOptions(
+                video: VlcVideoOptions([
+                  '--android-display-chroma=RV32',
+                ]),
+              ),
+            );
+          }
+          
+          debugPrint('VLC controller restored after route pop');
+          _vlcListenerAttached = false; // Reset listener flag
+          if (mounted) {
+            setState(() {}); // Trigger rebuild to render new VLC controller
+          }
+        } catch (e) {
+          debugPrint('Error restoring VLC controller: $e');
+        }
+        return;
+      } else if (needsMediaKitRestore) {
+        // Re-create media_kit video controller
+        try {
+          _videoController = VideoController(
+            _player!,
+            configuration: VideoControllerConfiguration(
+              enableHardwareAcceleration: _hardwareAcceleration,
+            ),
+          );
+          debugPrint('Media Kit VideoController restored after route pop');
+          if (mounted) {
+            setState(() {}); // Trigger rebuild
+          }
+        } catch (e) {
+          debugPrint('Error restoring Media Kit VideoController: $e');
+        }
+      }
+      
+      // Resume playback if needed
+      if (resumePlaying) {
+        try {
+          if (_player != null) {
+            await _player!.play();
+          } else if (_vlcController != null) {
+            await _vlcController!.play();
+          }
+        } catch (e) {
+          debugPrint('Error resuming playback: $e');
+        }
+      }
+      return;
+    }
+    
+    // Desktop: Re-create media_kit video controller if needed
+    if (_player != null && _videoController == null) {
+      try {
+        _videoController = VideoController(
+          _player!,
+          configuration: VideoControllerConfiguration(
+            enableHardwareAcceleration: _hardwareAcceleration,
+          ),
+        );
+      } catch (_) {}
+    }
+    if (resumePlaying) {
+      try {
+        if (_player != null) {
+          await _player!.play();
+        } else if (_vlcController != null) {
+          await _vlcController!.play();
+        }
+      } catch (_) {}
+    }
   }
 }
 

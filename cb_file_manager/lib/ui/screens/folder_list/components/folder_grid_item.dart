@@ -83,21 +83,92 @@ class _FolderGridItemState extends State<FolderGridItem> {
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
+    // Flat on mobile (no elevation/border). Keep card/elevation on desktop only.
+    if (!widget.isDesktopMode) {
+      return GestureDetector(
+        onSecondaryTap: () => _showFolderContextMenu(context),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8.0),
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  // Thumbnail/Icon section
+                  Expanded(
+                    flex: 3,
+                    child: FolderThumbnail(folder: widget.folder),
+                  ),
+                  // Text section
+                  Container(
+                    height: 40,
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(4),
+                    color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                    alignment: Alignment.center,
+                    child: Text(
+                      widget.folder.basename(),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDarkMode ? Colors.white : Colors.black87,
+                        fontWeight:
+                            _visuallySelected ? FontWeight.bold : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              // Interaction overlay
+              Positioned.fill(
+                child: OptimizedInteractionLayer(
+                  onTap: () {
+                    // Navigate to folder on mobile
+                    widget.onNavigate(widget.folder.path);
+                  },
+                  onDoubleTap: () {
+                    if (widget.clearSelectionMode != null) {
+                      widget.clearSelectionMode!();
+                    }
+                    widget.onNavigate(widget.folder.path);
+                  },
+                  onLongPress: () => _showFolderContextMenu(context),
+                ),
+              ),
+
+              // Selected overlay tint (flat)
+              if (_visuallySelected)
+                Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context)
+                        .primaryColor
+                        .withValues(alpha: 0.12),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Desktop: keep subtle elevation/hover behavior
     final Color backgroundColor = _visuallySelected
         ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.7)
-        : _isHovering && widget.isDesktopMode
+        : _isHovering
             ? Theme.of(context).hoverColor
             : Theme.of(context).cardColor;
 
     final Color borderColor = _visuallySelected
         ? Theme.of(context).primaryColor
-        : _isHovering && widget.isDesktopMode
+        : _isHovering
             ? Theme.of(context).primaryColor.withOpacity(0.5)
             : Colors.transparent;
 
     final double elevation = _visuallySelected
         ? 3
-        : _isHovering && widget.isDesktopMode
+        : _isHovering
             ? 2
             : 1;
 
@@ -155,15 +226,12 @@ class _FolderGridItemState extends State<FolderGridItem> {
                   onTap: () {
                     if (widget.isDesktopMode &&
                         widget.toggleFolderSelection != null) {
-                      // On desktop, use keyboard modifiers for selection
                       _handleFolderSelection();
                     } else {
-                      // Navigate to folder
                       widget.onNavigate(widget.folder.path);
                     }
                   },
                   onDoubleTap: () {
-                    // Clear selection mode when navigating via double click
                     if (widget.clearSelectionMode != null) {
                       widget.clearSelectionMode!();
                     }

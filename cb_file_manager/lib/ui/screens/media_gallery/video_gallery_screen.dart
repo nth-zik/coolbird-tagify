@@ -17,6 +17,9 @@ import 'dart:async';
 import 'dart:math';
 import 'package:cb_file_manager/helpers/files/folder_sort_manager.dart';
 import '../../utils/route.dart';
+import 'package:cb_file_manager/config/languages/app_localizations.dart';
+import '../../tab_manager/mobile/mobile_file_actions_controller.dart';
+import '../../tab_manager/core/tab_manager.dart';
 
 class VideoGalleryScreen extends StatefulWidget {
   final String path;
@@ -36,7 +39,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
     with AutomaticKeepAliveClientMixin {
   late Future<List<File>> _videoFilesFuture;
   late UserPreferences _preferences;
-  late double _thumbnailSize;
+  double _thumbnailSize = 3.0; // Default grid size (3 columns)
 
   // Cải thiện ScrollController với cơ chế throttle & smooth
   final ScrollController _scrollController = ScrollController();
@@ -45,6 +48,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
 
   bool _isLoadingThumbnails = false;
   bool _isMounted = false;
+  bool _isLoadingVideos = true; // Track initial loading state
 
   // Sorting variables
   SortOption _currentSortOption = SortOption.nameAsc;
@@ -55,6 +59,10 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
   bool _isSelectionMode = false;
   final Set<String> _selectedFilePaths = {};
   String? _searchQuery;
+  
+  // Mobile actions controller
+  MobileFileActionsController? _mobileController;
+  static int _controllerIdCounter = 0;
 
   @override
   bool get wantKeepAlive => true;
@@ -63,9 +71,23 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
   void initState() {
     super.initState();
     _preferences = UserPreferences.instance;
-    _loadPreferences();
-    _loadVideos();
     _isMounted = true;
+    
+    // Initialize mobile controller first
+    final controllerId = 'video_gallery_${_controllerIdCounter++}';
+    _mobileController = MobileFileActionsController.forTab(controllerId);
+    
+    // Register callbacks immediately (before preferences load)
+    _registerMobileControllerCallbacks();
+    
+    // Load preferences and update controller state after
+    _loadPreferences().then((_) {
+      if (mounted) {
+        _updateMobileControllerState();
+      }
+    });
+    
+    _loadVideos();
 
     // Lắng nghe sự kiện scroll để tối ưu hóa việc tải hình ảnh
     _scrollController.addListener(() {
@@ -95,7 +117,83 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
     _scrollController.dispose();
     _scrollEndTimer?.cancel();
     _isMounted = false;
+    // Cleanup controller
+    if (_mobileController != null) {
+      MobileFileActionsController.removeTab(_mobileController!.tabId);
+    }
     super.dispose();
+  }
+  
+  // Register callbacks (can be called before preferences load)
+  void _registerMobileControllerCallbacks() {
+    if (_mobileController == null) return;
+    
+    debugPrint('🎬 VideoGallery: Registering mobile controller callbacks');
+    
+    // Register callbacks
+    _mobileController!.onSearchSubmitted = (query) {
+      debugPrint('🎬 VideoGallery: Search callback received - query: "$query"');
+      setState(() {
+        _searchQuery = query;
+        // Just update UI, filtering happens in _filteredVideos getter
+      });
+    };
+    
+    _mobileController!.onSortOptionSelected = (option) {
+      _setSortOption(option);
+    };
+    
+    _mobileController!.onViewModeToggled = (ViewMode mode) {
+      setState(() {
+        _viewMode = mode;
+        _mobileController!.currentViewMode = mode;
+      });
+      _saveViewModeSetting(_viewMode);
+    };
+    
+    _mobileController!.onRefresh = () {
+      setState(() {
+        _loadVideos();
+      });
+    };
+    
+    _mobileController!.onGridSizePressed = () {
+      SharedActionBar.showGridSizeDialog(
+        context,
+        currentGridSize: _thumbnailSize.round(),
+        onApply: (size) async {
+          setState(() {
+            _thumbnailSize = size.toDouble();
+          });
+          // Update controller state
+          _mobileController!.currentGridSize = size;
+          try {
+            await _preferences.setVideoGalleryThumbnailSize(size.toDouble());
+          } catch (e) {
+            debugPrint('Error saving thumbnail size: $e');
+          }
+        },
+      );
+    };
+    
+    _mobileController!.onSelectionModeToggled = () {
+      setState(() {
+        _isSelectionMode = !_isSelectionMode;
+        if (!_isSelectionMode) {
+          _selectedFilePaths.clear();
+        }
+      });
+    };
+  }
+  
+  // Update controller state (called after preferences load)
+  void _updateMobileControllerState() {
+    if (_mobileController == null) return;
+    
+    debugPrint('🎬 VideoGallery: Updating mobile controller state');
+    _mobileController!.currentSortOption = _currentSortOption;
+    _mobileController!.currentViewMode = _viewMode;
+    _mobileController!.currentGridSize = _thumbnailSize.round();
   }
 
   Future<void> _loadPreferences() async {
@@ -114,12 +212,17 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
   }
 
   void _loadVideos() {
+    setState(() {
+      _isLoadingVideos = true;
+    });
+
     _videoFilesFuture = getAllVideos(widget.path, recursive: widget.recursive);
 
     _videoFilesFuture.then((videos) {
       if (_isMounted) {
         setState(() {
           _videoFiles = videos;
+          _isLoadingVideos = false; // Mark loading as complete
           _sortVideoFiles();
 
           if (videos.isNotEmpty) {
@@ -140,6 +243,13 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
             }
           });
         }
+      }
+    }).catchError((error) {
+      if (_isMounted) {
+        setState(() {
+          _isLoadingVideos = false; // Mark loading as complete even on error
+        });
+        debugPrint('Error loading videos: $error');
       }
     });
   }
@@ -302,6 +412,11 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
         _currentSortOption = option;
         _sortVideoFiles();
       });
+      
+      // Update controller state
+      if (_mobileController != null) {
+        _mobileController!.currentSortOption = option;
+      }
 
       // Save sort preference (global and folder-specific)
       try {
@@ -332,51 +447,10 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
   Widget build(BuildContext context) {
     super.build(context);
 
-    // Nếu đang ở chế độ chọn nhiều mục, hiển thị AppBar khác
-    if (_isSelectionMode) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text('${_selectedFilePaths.length} video đã chọn'),
-          leading: IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () {
-              setState(() {
-                _isSelectionMode = false;
-                _selectedFilePaths.clear();
-              });
-            },
-          ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.delete),
-              tooltip: 'Xóa video đã chọn',
-              onPressed: _selectedFilePaths.isEmpty
-                  ? null
-                  : () => _showDeleteConfirmationDialog(context),
-            ),
-            IconButton(
-              icon: const Icon(Icons.select_all),
-              tooltip: 'Chọn tất cả',
-              onPressed: () {
-                setState(() {
-                  if (_selectedFilePaths.length == _videoFiles.length) {
-                    _selectedFilePaths.clear();
-                  } else {
-                    _selectedFilePaths.addAll(_videoFiles.map((f) => f.path));
-                  }
-                });
-              },
-            ),
-          ],
-        ),
-        body: _buildVideoContent(),
-      );
-    }
-
     // Sử dụng SharedActionBar để xây dựng danh sách actions
     List<Widget> actions = SharedActionBar.buildCommonActions(
       context: context,
-      onSearchPressed: () => _showSearchDialog(context),
+      onSearchPressed: () => _mobileController?.showInlineSearch(context),
       onSortOptionSelected: _setSortOption,
       currentSortOption: _currentSortOption,
       viewMode: _viewMode,
@@ -415,10 +489,21 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
       },
     );
 
+    // On mobile, use custom action bar instead of AppBar
+    final isMobile = Platform.isAndroid || Platform.isIOS;
+    
     return BaseScreen(
       title: 'Video Gallery: ${pathlib.basename(widget.path)}',
       actions: actions,
-      body: _buildVideoContent(),
+      showAppBar: !isMobile, // Hide AppBar on mobile
+      body: isMobile 
+        ? Column(
+            children: [
+              _buildMobileActionBar(context),
+              Expanded(child: _buildVideoContent()),
+            ],
+          )
+        : _buildVideoContent(),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           setState(() {
@@ -430,13 +515,38 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
     );
   }
 
+  // Build mobile action bar using shared controller method
+  Widget _buildMobileActionBar(BuildContext context) {
+    if (_mobileController == null) return const SizedBox.shrink();
+    return _mobileController!.buildMobileActionBar(context, viewMode: _viewMode);
+  }
+
+  // Get filtered videos based on search query
+  List<File> get _filteredVideos {
+    if (_searchQuery == null || _searchQuery!.isEmpty) {
+      return _videoFiles;
+    }
+    final searchLower = _searchQuery!.toLowerCase();
+    return _videoFiles.where((file) {
+      return pathlib.basename(file.path).toLowerCase().contains(searchLower);
+    }).toList();
+  }
+
   // Xây dựng nội dung video tùy theo chế độ xem
   Widget _buildVideoContent() {
+    final localizations = AppLocalizations.of(context)!;
+
+    // Show skeleton loading while data is being fetched
+    if (_isLoadingVideos) {
+      return _buildSkeletonLoading();
+    }
+
+    // Only show empty message after loading is complete
     if (_videoFiles.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
-          'Không tìm thấy video trong thư mục này',
-          style: TextStyle(fontSize: 16),
+          localizations.noVideosFound,
+          style: const TextStyle(fontSize: 16),
         ),
       );
     }
@@ -457,7 +567,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
                 children: [
                   const Icon(Icons.search, size: 20),
                   const SizedBox(width: 8),
-                  Text('Tìm kiếm: "$_searchQuery"'),
+                  Text(localizations.searchingFor(_searchQuery!)),
                   const Spacer(),
                   IconButton(
                     icon: const Icon(Icons.clear, size: 20),
@@ -492,10 +602,10 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
                 color: Colors.black.withAlpha(153),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SizedBox(
+                  const SizedBox(
                     width: 16,
                     height: 16,
                     child: CircularProgressIndicator(
@@ -503,10 +613,10 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
                       valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
                   ),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Text(
-                    'Đang tải thumbnail',
-                    style: TextStyle(color: Colors.white, fontSize: 12),
+                    localizations.loadingThumbnails,
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
                   ),
                 ],
               ),
@@ -523,7 +633,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
 
     return GridView.builder(
       controller: _scrollController,
-      padding: const EdgeInsets.all(8.0),
+      padding: const EdgeInsets.all(2.0),
       // Tối ưu scroll physics để cuộn mượt hơn
       physics: const BouncingScrollPhysics(
         parent: AlwaysScrollableScrollPhysics(),
@@ -532,13 +642,13 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
       cacheExtent: 500, // Cache nhiều hơn để giảm loading khi cuộn nhanh
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: columns,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
+        crossAxisSpacing: 2,
+        mainAxisSpacing: 2,
         childAspectRatio: 16 / 12,
       ),
-      itemCount: _videoFiles.length,
+      itemCount: _filteredVideos.length,
       itemBuilder: (context, index) {
-        final file = _videoFiles[index];
+        final file = _filteredVideos[index];
         final isSelected = _selectedFilePaths.contains(file.path);
         // Dùng placeholderOnly khi đang cuộn để giảm tải cho main thread
         final bool usePlaceholder = _isScrolling;
@@ -561,8 +671,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
                       });
                     }
                   : () {
-                      Navigator.push(
-                        context,
+                      Navigator.of(context, rootNavigator: true).push(
                         MaterialPageRoute(
                           builder: (context) =>
                               VideoPlayerFullScreen(file: file),
@@ -596,18 +705,20 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
 
   // Hiển thị video dạng danh sách
   Widget _buildListView() {
+    final localizations = AppLocalizations.of(context)!;
+    final isMobile = Platform.isAndroid || Platform.isIOS;
+    final theme = Theme.of(context);
+    
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.all(8.0),
-      itemCount: _videoFiles.length,
+      itemCount: _filteredVideos.length,
       itemBuilder: (context, index) {
-        final file = _videoFiles[index];
+        final file = _filteredVideos[index];
         final isSelected = _selectedFilePaths.contains(file.path);
         final fileExtension = pathlib.extension(file.path).toLowerCase();
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
+        final listTile = ListTile(
             leading: SizedBox(
               width: 60,
               height: 60,
@@ -654,7 +765,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
               future: file.stat(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
-                  return const Text('Đang tải thông tin...');
+                  return Text(localizations.loading);
                 }
 
                 final fileStat = snapshot.data!;
@@ -677,10 +788,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
                       });
                     },
                   )
-                : IconButton(
-                    icon: const Icon(Icons.more_vert),
-                    onPressed: () => _showVideoOptions(context, file),
-                  ),
+                : null,
             onTap: _isSelectionMode
                 ? () {
                     setState(() {
@@ -692,8 +800,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
                     });
                   }
                 : () {
-                    Navigator.push(
-                      context,
+                    Navigator.of(context, rootNavigator: true).push(
                       MaterialPageRoute(
                         builder: (context) => VideoPlayerFullScreen(file: file),
                       ),
@@ -707,8 +814,27 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
                 });
               }
             },
-          ),
-        );
+          );
+        
+        // Platform-specific wrapper
+        if (isMobile) {
+          // Mobile: flat design, no Card
+          return Container(
+            margin: EdgeInsets.zero,
+            decoration: BoxDecoration(
+              color: isSelected 
+                  ? theme.colorScheme.primary.withOpacity(0.1)
+                  : Colors.transparent,
+            ),
+            child: listTile,
+          );
+        } else {
+          // Desktop: Card with shadow
+          return Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: listTile,
+          );
+        }
       },
     );
   }
@@ -737,6 +863,8 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
 
   // Hiển thị menu tùy chọn cho video
   void _showVideoOptions(BuildContext context, File file) {
+    final localizations = AppLocalizations.of(context)!;
+    
     showModalBottomSheet(
       context: context,
       builder: (context) => Column(
@@ -744,7 +872,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
         children: [
           ListTile(
             leading: const Icon(Icons.play_arrow),
-            title: const Text('Phát video'),
+            title: Text(localizations.playVideo),
             onTap: () {
               RouteUtils.safePopDialog(context);
               Navigator.push(
@@ -757,7 +885,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
           ),
           ListTile(
             leading: const Icon(Icons.info_outline),
-            title: const Text('Thông tin video'),
+            title: Text(localizations.videoInfo),
             onTap: () {
               RouteUtils.safePopDialog(context);
               _showVideoInfoDialog(context, file);
@@ -765,7 +893,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
           ),
           ListTile(
             leading: const Icon(Icons.share),
-            title: const Text('Chia sẻ'),
+            title: Text(localizations.share),
             onTap: () {
               RouteUtils.safePopDialog(context);
               // Implement share functionality
@@ -778,7 +906,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
           ),
           ListTile(
             leading: const Icon(Icons.delete, color: Colors.red),
-            title: const Text('Xóa video', style: TextStyle(color: Colors.red)),
+            title: Text(localizations.deleteVideo, style: const TextStyle(color: Colors.red)),
             onTap: () {
               RouteUtils.safePopDialog(context);
               _showDeleteConfirmationDialog(context, [file.path]);
@@ -789,34 +917,37 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
     );
   }
 
-  // Hiển thị dialog thông tin video
+  // Hiển thị thông tin video
   void _showVideoInfoDialog(BuildContext context, File file) async {
+    final localizations = AppLocalizations.of(context)!;
+    
     try {
       final fileStat = await file.stat();
       final fileSize = _formatFileSize(fileStat.size);
-      final modified = fileStat.modified;
+      final fileDate = _formatDate(fileStat.modified);
 
       showDialog(
         context: context,
         builder: (context) {
           return AlertDialog(
-            title: const Text('Thông tin video'),
+            title: Text(localizations.videoInfo),
             content: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _infoRow('Tên tập tin', pathlib.basename(file.path)),
+                  _infoRow(AppLocalizations.of(context)!.fileName, pathlib.basename(file.path)),
                   const Divider(),
-                  _infoRow('Đường dẫn', file.path),
+                  _infoRow(AppLocalizations.of(context)!.filePath, file.path),
                   const Divider(),
-                  _infoRow('Kích thước', fileSize),
+                  _infoRow(AppLocalizations.of(context)!.fileSize, fileSize),
                   const Divider(),
                   _infoRow(
-                      'Loại tệp', pathlib.extension(file.path).toUpperCase()),
+                      AppLocalizations.of(context)!.fileType, pathlib.extension(file.path).toUpperCase()),
                   const Divider(),
-                  _infoRow('Cập nhật lần cuối',
-                      '${modified.day}/${modified.month}/${modified.year} ${modified.hour}:${modified.minute}'),
+                  _infoRow(
+                      AppLocalizations.of(context)!.fileLastModified,
+                      '${fileStat.modified.day}/${fileStat.modified.month}/${fileStat.modified.year} ${fileStat.modified.hour}:${fileStat.modified.minute}'),
                 ],
               ),
             ),
@@ -825,7 +956,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
                 onPressed: () {
                   RouteUtils.safePopDialog(context);
                 },
-                child: const Text('Đóng'),
+                child: Text(localizations.close),
               ),
             ],
           );
@@ -833,9 +964,11 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
       );
     } catch (e) {
       debugPrint('Error showing video info: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không thể hiển thị thông tin video: $e')),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${localizations.errorDisplayingVideoInfo}: $e')),
+        );
+      }
     }
   }
 
@@ -862,22 +995,23 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
 
   // Dialog xác nhận xóa video
   void _showDeleteConfirmationDialog(BuildContext context,
-      [List<String>? specificPaths]) {
-    final paths = specificPaths ?? _selectedFilePaths.toList();
-    final count = paths.length;
+      [List<String>? filePaths]) {
+    final localizations = AppLocalizations.of(context)!;
+    final paths = filePaths ?? _selectedFilePaths.toList();
+    if (paths.isEmpty) return;
 
+    final count = paths.length;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Xóa $count video?'),
-        content: const Text(
-            'Bạn có chắc chắn muốn xóa các video đã chọn? Hành động này không thể hoàn tác.'),
+        title: Text(localizations.deleteVideosConfirm),
+        content: Text(localizations.deleteConfirmationMessage),
         actions: [
           TextButton(
             onPressed: () {
               RouteUtils.safePopDialog(context);
             },
-            child: const Text('HỦY'),
+            child: Text(localizations.cancel.toUpperCase()),
           ),
           TextButton(
             onPressed: () async {
@@ -908,19 +1042,19 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
               // Hiển thị thông báo kết quả
               if (failedPaths.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Đã xóa $successCount video')),
+                  SnackBar(content: Text(localizations.videosDeleted(successCount))),
                 );
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                       content: Text(
-                          'Đã xóa $successCount video, ${failedPaths.length} lỗi')),
+                          '${localizations.videosDeleted(successCount)}, ${failedPaths.length} lỗi')),
                 );
               }
             },
-            child: const Text(
-              'XÓA',
-              style: TextStyle(color: Colors.red),
+            child: Text(
+              localizations.delete.toUpperCase(),
+              style: const TextStyle(color: Colors.red),
             ),
           ),
         ],
@@ -928,73 +1062,115 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
     );
   }
 
-  // Dialog tìm kiếm video
-  void _showSearchDialog(BuildContext context) {
-    String searchQuery = _searchQuery ?? '';
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Tìm kiếm video'),
-        content: TextField(
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Nhập tên video...',
-            prefixIcon: Icon(Icons.search),
-          ),
-          controller: TextEditingController(text: searchQuery),
-          onChanged: (value) {
-            searchQuery = value;
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              RouteUtils.safePopDialog(context);
-            },
-            child: const Text('HỦY'),
-          ),
-          TextButton(
-            onPressed: () {
-              RouteUtils.safePopDialog(context);
-
-              if (searchQuery.trim().isEmpty) {
-                setState(() {
-                  _searchQuery = null;
-                });
-                return;
-              }
-
-              setState(() {
-                _searchQuery = searchQuery.trim();
-
-                // Lọc video theo tên
-                final searchLower = _searchQuery!.toLowerCase();
-                _videoFiles = _videoFiles
-                    .where((file) => pathlib
-                        .basename(file.path)
-                        .toLowerCase()
-                        .contains(searchLower))
-                    .toList();
-
-                _sortVideoFiles();
-              });
-            },
-            child: const Text('TÌM KIẾM'),
-          ),
-        ],
-      ),
-    );
-  }
-
   // Lưu cài đặt chế độ xem
-  Future<void> _saveViewModeSetting(ViewMode mode) async {
+  Future<void> _saveViewModeSetting(ViewMode mode) async{
     try {
       final UserPreferences prefs = UserPreferences.instance;
       await prefs.init();
       await prefs.setViewMode(mode);
     } catch (e) {
       debugPrint('Error saving view mode: $e');
+    }
+  }
+
+  // Build skeleton loading widget
+  Widget _buildSkeletonLoading() {
+    final theme = Theme.of(context);
+    final isMobile = Platform.isAndroid || Platform.isIOS;
+
+    if (_viewMode == ViewMode.grid) {
+      // Grid skeleton - single item
+      final columns = _thumbnailSize.round();
+      final screenWidth = MediaQuery.of(context).size.width;
+      final itemWidth = (screenWidth - 16 - ((columns - 1) * 8)) / columns;
+      final itemHeight = itemWidth * 12 / 16;
+
+      return Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Align(
+          alignment: Alignment.topLeft,
+          child: Container(
+            width: itemWidth,
+            height: itemHeight + 32, // Extra space for text area
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: Container(
+                    color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                    child: Center(
+                      child: Icon(
+                        Icons.movie,
+                        size: 48,
+                        color: theme.colorScheme.onSurfaceVariant.withOpacity(0.3),
+                      ),
+                    ),
+                  ),
+                ),
+                Container(
+                  color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                  padding: const EdgeInsets.all(8),
+                  child: Container(
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.onSurfaceVariant.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } else {
+      // List skeleton - single item
+      final listTile = ListTile(
+        leading: Container(
+          width: 60,
+          height: 60,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Icon(
+            Icons.movie,
+            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.3),
+          ),
+        ),
+        title: Container(
+          height: 14,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: Container(
+            height: 12,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        ),
+      );
+
+      return Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: isMobile
+            ? listTile
+            : Card(
+                margin: EdgeInsets.zero,
+                child: listTile,
+              ),
+      );
     }
   }
 
@@ -1032,6 +1208,7 @@ class OptimizedVideoThumbnailItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final String ext = pathlib.extension(file.path).toLowerCase();
 
     // Optimize frame timing before rendering thumbnails
@@ -1039,9 +1216,12 @@ class OptimizedVideoThumbnailItem extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
-      child: Card(
+      child: Container(
         clipBehavior: Clip.antiAlias,
-        elevation: 2,
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(4),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1079,13 +1259,14 @@ class OptimizedVideoThumbnailItem extends StatelessWidget {
 
             // Filename overlay ở dưới
             Container(
-              color: Colors.grey[100],
+              color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
               padding: EdgeInsets.all(width > 100 ? 8 : 4),
               child: Text(
                 pathlib.basename(file.path),
                 style: TextStyle(
-                  color: Colors.black87,
+                  color: theme.colorScheme.onSurface,
                   fontSize: width > 100 ? 12 : 10,
+                  fontWeight: FontWeight.w500,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -1168,10 +1349,37 @@ class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
   bool _isFullScreen = false;
   bool _showAppBar = true; // Control app bar visibility
   bool _inAndroidPip = false;
+  Timer? _uiEnforceTimer;
 
   @override
   void initState() {
     super.initState();
+    // On mobile, show full UI (both status bar and nav bar)
+    if (Platform.isAndroid || Platform.isIOS) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
+          overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom]);
+      // Also force style after first frame to avoid being overridden
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
+            overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom]);
+        SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
+      });
+      // Ensure Flutter re-applies overlays automatically while this route is on top
+      WidgetsBinding.instance.renderView.automaticSystemUiAdjustment = true;
+      // Re-assert overlays for a short period in case platform view toggles them off
+      int attempts = 0;
+      _uiEnforceTimer?.cancel();
+      _uiEnforceTimer = Timer.periodic(const Duration(milliseconds: 400), (t) async {
+        attempts++;
+        if (!mounted || _isFullScreen || attempts > 10) {
+          t.cancel();
+          return;
+        }
+        await SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
+            overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom]);
+        SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
+      });
+    }
     // Hide app bar while in Android PiP so PiP captures only the video
     final channel = MethodChannel('cb_file_manager/pip');
     channel.setMethodCallHandler((call) async {
@@ -1189,9 +1397,20 @@ class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
   }
 
   @override
+  void dispose() {
+    // Restore system UI when leaving video player
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
+        overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom]);
+    // Keep automatic adjustment enabled for underlying screens
+    WidgetsBinding.instance.renderView.automaticSystemUiAdjustment = true;
+    _uiEnforceTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final bool isMobile = Platform.isAndroid || Platform.isIOS;
-    return Scaffold(
+    final scaffold = Scaffold(
       // On mobile, avoid extra app bar since parent already has one
       appBar: isMobile
           ? null
@@ -1213,9 +1432,11 @@ class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
               blurAmount: 12.0,
               opacity: 0.6,
             )),
+      extendBody: true,
+      extendBodyBehindAppBar: true,
+      resizeToAvoidBottomInset: false,
       backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Center(
+      body: Center(
           child: VideoPlayer.file(
             file: widget.file,
             autoPlay: true,
@@ -1225,6 +1446,12 @@ class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
               setState(() {
                 _videoMetadata = metadata;
               });
+              // Ensure status bar is visible after player initializes (some plugins toggle UI)
+              if (Platform.isAndroid || Platform.isIOS) {
+                SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
+                    overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom]);
+                SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
+              }
             },
             onError: (errorMessage) {
               // Optional: Show a snackbar or other notification
@@ -1266,10 +1493,30 @@ class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
                 });
               }
             },
+            onOpenFolder: (folderPath, highlightedFileName) {
+              debugPrint('========== VIDEO_GALLERY onOpenFolder CALLBACK ==========');
+              debugPrint('Folder path: $folderPath');
+              debugPrint('Highlighted file: $highlightedFileName');
+
+              // Pop back to parent screen with result containing folder info
+              // The parent (tabbed_folder_list_screen) will handle opening the tab
+              Navigator.of(context).pop({
+                'action': 'openFolder',
+                'folderPath': folderPath,
+                'highlightedFileName': highlightedFileName,
+              });
+
+              debugPrint('Popped with folder open request');
+              debugPrint('========== END VIDEO_GALLERY onOpenFolder ==========');
+            },
           ),
         ),
-      ),
     );
+    return isMobile
+        ? AnnotatedRegion<SystemUiOverlayStyle>(
+            value: SystemUiOverlayStyle.light,
+            child: scaffold)
+        : scaffold;
   }
 
   void _showVideoInfo(BuildContext context) {

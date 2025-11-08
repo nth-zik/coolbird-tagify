@@ -827,6 +827,25 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
     });
   }
 
+  // Handle result from gallery screens (Video/Image Gallery)
+  void _handleGalleryResult(dynamic result) {
+    if (result != null && result is Map<String, dynamic>) {
+      if (result['action'] == 'openFolder') {
+        final folderPath = result['folderPath'] as String;
+        final highlightedFileName = result['highlightedFileName'] as String?;
+        debugPrint('Gallery returned openFolder request: $folderPath');
+
+        // Open new tab with the folder
+        TabNavigator.openTab(
+          context,
+          folderPath,
+          title: 'Screenshots',
+          highlightedFileName: highlightedFileName,
+        );
+      }
+    }
+  }
+
   // Handle back button press for Android
   Future<bool> _handleBackButton() async {
     try {
@@ -1234,7 +1253,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
                               recursive: false,
                             ),
                           ),
-                        );
+                        ).then(_handleGalleryResult);
                       }
                     },
               currentPath: _currentPath,
@@ -2183,10 +2202,10 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen> {
 
     // Open file based on file type
     if (isVideo) {
-      // Open video in video player
-      Navigator.push(
-        context,
+      // Open video in video player (fullscreen route on root navigator)
+      Navigator.of(context, rootNavigator: true).push(
         MaterialPageRoute(
+          fullscreenDialog: true,
           builder: (context) => VideoPlayerFullScreen(file: file),
         ),
       );

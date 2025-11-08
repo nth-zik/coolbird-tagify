@@ -486,7 +486,34 @@ Future<List<Directory>> getAllStorageLocations() async {
 }
 
 /// Recursively get all videos in a directory and its subdirectories
+/// If path is empty, scans common video directories (DCIM, Movies, Downloads)
 Future<List<File>> getAllVideos(String path, {bool recursive = true}) async {
+  // If path is empty, scan all common video directories
+  if (path.isEmpty) {
+    List<File> allVideos = [];
+    final commonPaths = <String>[
+      '/storage/emulated/0/DCIM',
+      '/storage/emulated/0/Movies',
+      '/storage/emulated/0/Download',
+      '/storage/emulated/0/Pictures', // Some videos might be here
+    ];
+
+    for (final dirPath in commonPaths) {
+      try {
+        final dir = Directory(dirPath);
+        if (await dir.exists()) {
+          final files = await getAllVideos(dirPath, recursive: true);
+          allVideos.addAll(files);
+        }
+      } catch (e) {
+        // Ignore errors for individual directories
+        debugPrint('Error scanning $dirPath: $e');
+      }
+    }
+    return allVideos;
+  }
+
+  // Normal path - scan the specified directory
   List<FileSystemEntity> allFiles =
       await getFoldersAndFiles(path, recursive: recursive);
 
@@ -498,7 +525,34 @@ Future<List<File>> getAllVideos(String path, {bool recursive = true}) async {
 }
 
 /// Recursively get all images in a directory and its subdirectories
+/// If path is empty, scans common image directories (DCIM, Pictures, Downloads)
 Future<List<File>> getAllImages(String path, {bool recursive = true}) async {
+  // If path is empty, scan all common image directories
+  if (path.isEmpty) {
+    List<File> allImages = [];
+    final commonPaths = <String>[
+      '/storage/emulated/0/DCIM',
+      '/storage/emulated/0/Pictures',
+      '/storage/emulated/0/Download',
+      '/storage/emulated/0/Screenshots', // Screenshots folder
+    ];
+
+    for (final dirPath in commonPaths) {
+      try {
+        final dir = Directory(dirPath);
+        if (await dir.exists()) {
+          final files = await getAllImages(dirPath, recursive: true);
+          allImages.addAll(files);
+        }
+      } catch (e) {
+        // Ignore errors for individual directories
+        debugPrint('Error scanning $dirPath: $e');
+      }
+    }
+    return allImages;
+  }
+
+  // Normal path - scan the specified directory
   List<FileSystemEntity> allFiles =
       await getFoldersAndFiles(path, recursive: recursive);
 

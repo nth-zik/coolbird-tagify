@@ -1008,16 +1008,20 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
   }
 
   void _navigateToAllImages() async {
-    // Navigate to a general image gallery showing all images using tab system
-    final path = await PlatformPaths.getAllImagesPath();
-    final displayName = PlatformPaths.getAllImagesDisplayName();
-    if (!this.mounted) return;
+    // Navigate to special route that shows all images from entire device
     final tabBloc = BlocProvider.of<TabManagerBloc>(_context);
-    tabBloc.add(AddTab(
-      path: path,
-      name: displayName,
-      switchToTab: true,
-    ));
+    final activeTab = tabBloc.state.activeTab;
+    if (activeTab != null) {
+      TabNavigator.updateTabPath(_context, activeTab.id, '#gallery:images');
+      tabBloc.add(UpdateTabName(activeTab.id, 'All Images'));
+    } else {
+      // Fallback: if no active tab exists, create one
+      tabBloc.add(AddTab(
+        path: '#gallery:images',
+        name: 'All Images',
+        switchToTab: true,
+      ));
+    }
   }
 
   void _navigateToAlbums() {
@@ -1038,29 +1042,43 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
   }
 
   void _navigateToCamera() async {
-    // Navigate to camera photos using tab system
+    // Navigate within current tab to maintain navigation history
     final path = await PlatformPaths.getCameraPath();
     final displayName = PlatformPaths.getCameraDisplayName();
     if (!this.mounted) return;
     final tabBloc = BlocProvider.of<TabManagerBloc>(_context);
-    tabBloc.add(AddTab(
-      path: path,
-      name: displayName,
-      switchToTab: true,
-    ));
+    final activeTab = tabBloc.state.activeTab;
+    if (activeTab != null) {
+      TabNavigator.updateTabPath(_context, activeTab.id, path);
+      tabBloc.add(UpdateTabName(activeTab.id, displayName));
+    } else {
+      // Fallback: if no active tab exists, create one
+      tabBloc.add(AddTab(
+        path: path,
+        name: displayName,
+        switchToTab: true,
+      ));
+    }
   }
 
   void _navigateToDownloads() async {
-    // Navigate to downloads using tab system
+    // Navigate within current tab to maintain navigation history
     final path = await PlatformPaths.getDownloadsPath();
     final displayName = PlatformPaths.getDownloadsDisplayName();
     if (!this.mounted) return;
     final tabBloc = BlocProvider.of<TabManagerBloc>(_context);
-    tabBloc.add(AddTab(
-      path: path,
-      name: displayName,
-      switchToTab: true,
-    ));
+    final activeTab = tabBloc.state.activeTab;
+    if (activeTab != null) {
+      TabNavigator.updateTabPath(_context, activeTab.id, path);
+      tabBloc.add(UpdateTabName(activeTab.id, displayName));
+    } else {
+      // Fallback: if no active tab exists, create one
+      tabBloc.add(AddTab(
+        path: path,
+        name: displayName,
+        switchToTab: true,
+      ));
+    }
   }
 
   void _navigateToRecent() {

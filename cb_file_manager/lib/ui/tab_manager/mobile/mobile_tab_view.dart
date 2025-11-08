@@ -18,6 +18,7 @@ import 'package:cb_file_manager/ui/state/video_ui_state.dart';
 import '../shared/screen_menu_registry.dart';
 import '../../screens/system_screen_router.dart'; // Import SystemScreenRouter for system paths
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
+import 'mobile_file_actions_controller.dart';
 
 /// Giao diện kiểu Chrome cho thiết bị di động, hiển thị thanh địa chỉ ở trên
 /// và một nút hiển thị số lượng tab bên cạnh
@@ -62,7 +63,17 @@ class MobileTabView extends StatelessWidget {
                   valueListenable: VideoUiState.isFullscreen,
                   builder: (context, isFs, _) {
                     if (isFs) return const SizedBox.shrink();
-                    return _buildEmptyOrNormalChromeBar(context, state);
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildEmptyOrNormalChromeBar(context, state),
+                        // Add action buttons row for file management (only for local file browsing)
+                        if (state.tabs.isNotEmpty && 
+                            state.activeTab != null && 
+                            !state.activeTab!.path.startsWith('#'))
+                          _buildMobileActionButtons(context, state.activeTab!.id),
+                      ],
+                    );
                   },
                 ),
 
@@ -1261,6 +1272,13 @@ extension MobileTabViewDynamicMenu on MobileTabView {
       );
     }).toList();
   }
+
+  /// Build mobile action buttons row for file management tools
+  /// Now uses shared buildMobileActionBar from controller for consistency
+  Widget _buildMobileActionButtons(BuildContext context, String tabId) {
+    final controller = MobileFileActionsController.forTab(tabId);
+    return controller.buildMobileActionBar(context);
+  }
 }
 
 /// Widget để hiển thị nội dung tab, tái sử dụng TabbedFolderListScreen
@@ -1285,7 +1303,7 @@ class TabContentScreen extends StatelessWidget {
       child: TabbedFolderListScreen(
         path: path,
         tabId: tabId,
-        showAppBar: false, // Thêm tham số này vào TabbedFolderListScreen
+        showAppBar: false, // Keep app bar hidden, tools will be in Chrome bar
       ),
     );
   }

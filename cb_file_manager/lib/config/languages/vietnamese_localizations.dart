@@ -451,6 +451,14 @@ class VietnameseLocalizations implements AppLocalizations {
   @override
   String get fileModified => 'Sửa lúc';
   @override
+  String get fileName => 'Tên tệp';
+  @override
+  String get filePath => 'Đường dẫn';
+  @override
+  String get fileType => 'Loại tệp';
+  @override
+  String get fileLastModified => 'Lần cuối sửa';
+  @override
   String get loadingVideo => 'Đang tải video...';
   @override
   String get errorLoadingImage => 'Lỗi khi tải hình ảnh';
@@ -458,6 +466,40 @@ class VietnameseLocalizations implements AppLocalizations {
   String get createCopy => 'Tạo bản sao';
   @override
   String get deleteFile => 'Xóa tệp';
+  
+  // Video actions
+  @override
+  String get share => 'Chia sẻ';
+  @override
+  String get playVideo => 'Phát video';
+  @override
+  String get videoInfo => 'Thông tin video';
+  @override
+  String get deleteVideo => 'Xóa video';
+  @override
+  String get loadingThumbnails => 'Đang tải thumbnail';
+  @override
+  String get deleteVideosConfirm => 'Xóa video?';
+  @override
+  String get deleteConfirmationMessage => 'Bạn có chắc chắn muốn xóa các video đã chọn? Hành động này không thể hoàn tác.';
+  @override
+  String videosSelected(int count) => '$count video đã chọn';
+  @override
+  String videosDeleted(int count) => 'Đã xóa $count video';
+  @override
+  String searchingFor(String query) => 'Tìm kiếm: "$query"';
+  @override
+  String get errorDisplayingVideoInfo => 'Không thể hiển thị thông tin video';
+  @override
+  String get searchVideos => 'Tìm kiếm video';
+  @override
+  String get enterVideoName => 'Nhập tên video...';
+  
+  // Selection and grid
+  @override
+  String? get selectMultiple => 'Chọn nhiều file';
+  @override
+  String? get gridSize => 'Kích thước lưới';
 
   // File picker dialogs
   @override
@@ -570,6 +612,18 @@ class VietnameseLocalizations implements AppLocalizations {
 
   @override
   String get globalSearch => 'Tìm kiếm toàn cục';
+
+  @override
+  String get searchByNameOrTag => 'Tìm theo tên hoặc #tag';
+  
+  @override
+  String get searchInSubfolders => 'Tìm trong thư mục con';
+
+  @override
+  String get searchInAllFolders => 'Tìm trong tất cả thư mục';
+
+  @override
+  String get searchInCurrentFolder => 'Chỉ tìm trong thư mục hiện tại';
 
   @override
   String get searchShortcuts => 'Phím tắt';
@@ -1206,4 +1260,45 @@ class VietnameseLocalizations implements AppLocalizations {
 
   @override
   String get folders => 'Thư mục';
+
+  // Video player screenshot
+  @override
+  String get takeScreenshot => 'Chụp màn hình';
+
+  @override
+  String get screenshotSaved => 'Đã lưu ảnh chụp màn hình';
+
+  @override
+  String get screenshotSavedAt => 'Ảnh chụp màn hình đã lưu tại';
+
+  @override
+  String get screenshotFailed => 'Không thể lưu ảnh chụp màn hình';
+
+  @override
+  String get screenshotSavedToFolder => 'Đã lưu ảnh chụp màn hình vào thư mục Screenshots';
+
+  @override
+  String get openScreenshotFolder => 'Mở thư mục';
+
+  @override
+  String get viewScreenshot => 'Xem';
+
+  @override
+  String get screenshotNotAvailableVlc => 'Chụp màn hình không khả dụng';
+
+  @override
+  String get screenshotNotAvailableVlcMessage =>
+      'Chụp ảnh màn hình không khả dụng với VLC player.\nVui lòng chuyển sang Media Kit player trong cài đặt.';
+
+  @override
+  String get screenshotFileNotFound => 'Không tìm thấy file ảnh';
+
+  @override
+  String get screenshotCannotOpenTab => 'Không thể mở tab thư mục trong ngữ cảnh này';
+
+  @override
+  String get screenshotErrorOpeningFolder => 'Lỗi mở thư mục';
+
+  @override
+  String get closeAction => 'Đóng';
 }

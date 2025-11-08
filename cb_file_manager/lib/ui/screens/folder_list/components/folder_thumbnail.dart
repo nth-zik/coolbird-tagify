@@ -169,12 +169,15 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
           return _buildFolderIcon();
         }
 
+        final bool isMobile = Platform.isAndroid || Platform.isIOS;
+        
         return Container(
           width: double.infinity,
           height: double.infinity,
           margin: const EdgeInsets.all(1),
           decoration: BoxDecoration(
-            border: Border.all(
+            // Only show border on desktop
+            border: isMobile ? null : Border.all(
               color: Colors.amber[600]!,
               width: 1.5,
             ),
@@ -233,12 +236,15 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
           return _buildFolderIcon();
         }
 
+        final bool isMobile = Platform.isAndroid || Platform.isIOS;
+        
         return Container(
           width: double.infinity,
           height: double.infinity,
           margin: const EdgeInsets.all(1),
           decoration: BoxDecoration(
-            border: Border.all(
+            // Only show border on desktop
+            border: isMobile ? null : Border.all(
               color: Colors.amber[600]!,
               width: 1.5,
             ),

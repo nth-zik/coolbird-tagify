@@ -248,16 +248,16 @@ class _FileItemState extends State<FileItem> {
       // Open directly using default apps
       if (isVideo) {
         if (!context.mounted) return;
-        Navigator.push(
-            context,
+        Navigator.of(context, rootNavigator: true).push(
             MaterialPageRoute(
+                fullscreenDialog: true,
                 builder: (context) =>
                     VideoPlayerFullScreen(file: widget.file)));
       } else if (isImage) {
         if (!context.mounted) return;
-        Navigator.push(
-            context,
+        Navigator.of(context, rootNavigator: true).push(
             MaterialPageRoute(
+                fullscreenDialog: true,
                 builder: (context) => ImageViewerScreen(file: widget.file)));
       } else {
         ExternalAppHelper.openFileWithApp(widget.file.path, 'shell_open')
@@ -325,11 +325,14 @@ class _FileItemState extends State<FileItem> {
                 onExit: (_) => _isHoveringNotifier.value = false,
                 cursor: SystemMouseCursors.click,
                 child: Container(
-                  margin: const EdgeInsets.symmetric(
-                      horizontal: 8.0, vertical: 4.0),
+                  margin: EdgeInsets.symmetric(
+                      horizontal: widget.isDesktopMode ? 8.0 : 0,
+                      vertical: widget.isDesktopMode ? 4.0 : 0),
                   decoration: BoxDecoration(
                     color: backgroundColor,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: widget.isDesktopMode 
+                        ? BorderRadius.circular(12)
+                        : BorderRadius.zero,
                   ),
                   child: Stack(
                     children: [
@@ -392,9 +395,11 @@ class _FileItemState extends State<FileItem> {
                           child: Container(
                             decoration: BoxDecoration(
                               color: Theme.of(context).colorScheme.primary,
-                              borderRadius: const BorderRadius.horizontal(
-                                left: Radius.circular(12),
-                              ),
+                              borderRadius: widget.isDesktopMode
+                                  ? const BorderRadius.horizontal(
+                                      left: Radius.circular(12),
+                                    )
+                                  : BorderRadius.zero,
                             ),
                           ),
                         ),
@@ -546,17 +551,20 @@ class _FileItemContentState extends State<_FileItemContent> {
                   width: 48,
                   height: 48,
                   borderRadius: BorderRadius.circular(8),
-                  fallbackBuilder: () => Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.grey.shade100,
-                    ),
-                    child: Icon(
-                      isVideo ? remix.Remix.video_line : remix.Remix.image_line,
-                      size: 36,
-                      color: isVideo ? Colors.red : Colors.blue,
-                    ),
-                  ),
+                  fallbackBuilder: () {
+                    final theme = Theme.of(context);
+                    return Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                      ),
+                      child: Icon(
+                        isVideo ? remix.Remix.video_line : remix.Remix.image_line,
+                        size: 36,
+                        color: theme.colorScheme.primary,
+                      ),
+                    );
+                  },
                 ),
               )
             : FutureBuilder<Widget>(
@@ -565,17 +573,18 @@ class _FileItemContentState extends State<_FileItemContent> {
                   if (snapshot.hasData) {
                     return snapshot.data!;
                   }
+                  final theme = Theme.of(context);
                   return Container(
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8),
-                      color: Colors.grey.shade200,
+                      color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       remix.Remix.file_3_line,
                       size: 36,
-                      color: Colors.grey,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   );
                 },

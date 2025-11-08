@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import '../services/optimized_album_service.dart';
 import '../services/album_file_scanner.dart';
+import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart';
 
 class LazyAlbumGrid extends StatefulWidget {
   final int albumId;
@@ -64,6 +65,13 @@ class _LazyAlbumGridState extends State<LazyAlbumGrid> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    // Target ~120 logical px tile width on mobile, clamp crossAxisCount 2..6
+    final targetTileWidth = 120.0;
+    final crossAxisCount = size.width > 0
+        ? (size.width / targetTileWidth).floor().clamp(2, 6)
+        : 3;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.albumName),
@@ -149,12 +157,12 @@ class _LazyAlbumGridState extends State<LazyAlbumGrid> {
                     ),
                   )
                 : GridView.builder(
-                    padding: const EdgeInsets.all(8.0),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      crossAxisSpacing: 4,
-                      mainAxisSpacing: 4,
-                      childAspectRatio: 1,
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      crossAxisSpacing: 6,
+                      mainAxisSpacing: 6,
+                      childAspectRatio: 1.0,
                     ),
                     itemCount: _files.length,
                     itemBuilder: (context, index) {
@@ -169,79 +177,69 @@ class _LazyAlbumGridState extends State<LazyAlbumGrid> {
   }
 
   Widget _buildFileItem(FileInfo file, int index) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // File thumbnail/icon
-          if (file.isImage)
-            Image.network(
-              'file://${file.path}',
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  color: Colors.grey[200],
-                  child: const Icon(Icons.broken_image, color: Colors.grey),
-                );
-              },
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return Container(
-                  color: Colors.grey[200],
-                  child: const Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                );
-              },
-            )
-          else if (file.isVideo)
-            Container(
-              color: Colors.black87,
-              child: const Icon(Icons.play_circle_outline, color: Colors.white, size: 32),
-            )
-          else
-            Container(
+          // Unified thumbnail loader for images/videos
+          ThumbnailLoader(
+            filePath: file.path,
+            isVideo: file.isVideo,
+            isImage: file.isImage,
+            fit: BoxFit.cover,
+            showLoadingIndicator: true,
+            borderRadius: BorderRadius.circular(10),
+            fallbackBuilder: () => Container(
               color: Colors.grey[200],
-              child: const Icon(Icons.insert_drive_file, color: Colors.grey),
+              child: Icon(
+                file.isVideo
+                    ? Icons.play_circle_outline
+                    : (file.isImage
+                        ? Icons.broken_image
+                        : Icons.insert_drive_file),
+                color: Colors.grey[600],
+                size: 28,
+              ),
             ),
+          ),
 
-          // File info overlay
+          // Subtle gradient only on hover/press would be ideal; keep minimal always-on footer for readability
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
             child: Container(
-              padding: const EdgeInsets.all(4),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
+                  colors: [Colors.transparent, Colors.black.withOpacity(0.45)],
                 ),
               ),
               child: Text(
                 file.name,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: FontWeight.w500,
                 ),
-                maxLines: 2,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
           ),
 
-          // Loading indicator for new items
+          // Badge indicating new items while scanning
           if (index >= _files.length - 20 && _isScanning)
             Positioned(
-              top: 4,
-              right: 4,
+              top: 6,
+              right: 6,
               child: Container(
-                padding: const EdgeInsets.all(2),
+                padding: const EdgeInsets.all(3),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.8),
+                  color: Colors.green.withOpacity(0.85),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.fiber_new, color: Colors.white, size: 12),

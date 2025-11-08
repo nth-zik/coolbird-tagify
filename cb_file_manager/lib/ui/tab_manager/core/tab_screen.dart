@@ -350,82 +350,47 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
             actions: actions,
             child: FocusScope(
               autofocus: true,
-              child: PopScope(
-                canPop: false,
-                onPopInvokedWithResult: (didPop, result) async {
-                  debugPrint(
-                      'TabScreen PopScope onPopInvokedWithResult: didPop=$didPop, result=$result');
-                  if (!didPop) {
-                    try {
-                      // First, check if there are any screens pushed on the active tab's navigator
-                      // (like video player, image viewer, etc.)
-                      final activeTab = state.activeTab;
-                      if (activeTab != null) {
-                        final tabNavigatorState =
-                            activeTab.navigatorKey.currentState;
-                        if (tabNavigatorState != null &&
-                            tabNavigatorState.canPop()) {
-                          debugPrint(
-                              'TabScreen: Popping tab navigator (video player, etc.)');
-                          tabNavigatorState.pop();
-                          return;
-                        }
-                      }
+              child: Builder(
+                builder: (popContext) {
+                  return PopScope(
+                    canPop: false,  // Always intercept back button
+                    onPopInvokedWithResult: (didPop, result) async {
+                      if (!didPop) {
+                        try {
+                          // First, check if there are any screens pushed on the active tab's navigator
+                          // (like video player, image viewer, etc.)
+                          final activeTab = state.activeTab;
+                          
+                          if (activeTab != null) {
+                            final tabNavigatorState =
+                                activeTab.navigatorKey.currentState;
+                            if (tabNavigatorState != null &&
+                                tabNavigatorState.canPop()) {
+                              tabNavigatorState.pop();
+                              return;
+                            }
+                          }
 
-                      // Then check main navigator
-                      final mainNavigator = Navigator.of(context);
-                      if (mainNavigator.canPop()) {
-                        debugPrint('TabScreen: Popping main navigator');
-                        mainNavigator.pop();
-                        return;
-                      }
+                          // Then check main navigator
+                          final mainNavigator = Navigator.of(popContext);
+                          if (mainNavigator.canPop()) {
+                            mainNavigator.pop();
+                            return;
+                          }
 
                       // Handle tab navigation history
                       if (activeTab != null) {
-                        debugPrint(
-                            'TabScreen: Active tab found: ${activeTab.id}, path: ${activeTab.path}');
-                        debugPrint(
-                            'TabScreen: Navigation history: ${activeTab.navigationHistory}');
-                        debugPrint(
-                            'TabScreen: Navigation history length: ${activeTab.navigationHistory.length}');
-
                         // Check if the active tab can navigate back
                         if (activeTab.navigationHistory.length > 1) {
-                          debugPrint(
-                              'TabScreen: Tab can navigate back, handling back navigation');
-                          debugPrint(
-                              'TabScreen: Current navigation history: ${activeTab.navigationHistory}');
-                          debugPrint(
-                              'TabScreen: Current path: ${activeTab.path}');
-
-                          // Get the previous path from navigation history
-                          final previousPath = activeTab.navigationHistory[
-                              activeTab.navigationHistory.length - 2];
-                          debugPrint(
-                              'TabScreen: Previous path from history: $previousPath');
-
                           // Use the proper backNavigationToPath method
                           final tabManagerBloc = context.read<TabManagerBloc>();
-                          final newPath =
-                              tabManagerBloc.backNavigationToPath(activeTab.id);
-                          debugPrint(
-                              'TabScreen: Back navigation result: $newPath');
-
-                          if (newPath != null) {
-                            debugPrint(
-                                'TabScreen: Successfully navigated back to: $newPath');
-                          } else {
-                            debugPrint(
-                                'TabScreen: Back navigation failed - newPath is null');
-                          }
-
+                          tabManagerBloc.backNavigationToPath(activeTab.id);
                           return;
                         }
                       }
 
-                      // If we're at the root and can't navigate back, don't allow back
-                      debugPrint(
-                          'TabScreen: At root, preventing back navigation');
+                      // If we're at the root (no history), exit app
+                      SystemNavigator.pop();
                     } catch (e) {
                       debugPrint('Error in TabScreen PopScope: $e');
                     }
@@ -593,14 +558,16 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                           ),
                         )
                       : null,
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
+                ),  // Scaffold
+              );  // PopScope
+            },  // builder function
+          ),  // Builder
+        ),  // FocusScope
+      ),  // Actions
+    );  // Shortcuts
+  },  // BlocBuilder builder function
+);  // BlocBuilder
+}
 
   // Phương thức mới để xây dựng nội dung dựa trên loại thiết bị
   Widget _buildContent(

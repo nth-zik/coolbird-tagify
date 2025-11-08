@@ -17,8 +17,8 @@ Prefer Remix Icons with `_line` suffix for consistency.
 ### 4. Follow Material Design 3
 Leverage Material 3 color system and components.
 
-### 5. Flat Design - No Borders, No Shadows
-**Use flat design.** Avoid borders and shadows. Use backgrounds, gradients, and spacing for visual separation. Keep the design clean and minimal.
+### 5. Flat Design — No Shadows, No Borders (Default)
+Prefer flat design. Avoid drop shadows and borders by default. Use spacing, backgrounds, and subtle gradients for separation. Only add borders for explicit exceptions (inputs/focus/dividers).
 
 ## Color System
 
@@ -163,8 +163,8 @@ BorderRadius.circular(20)
 
 ## Flat Design Philosophy
 
-### No Borders, No Shadows
-**Philosophy:** Use flat design with backgrounds, gradients, and spacing for visual separation. Avoid borders and shadows as they add visual noise and make the UI feel cluttered.
+### No Drop Shadows
+Avoid shadows across the app to keep the UI clean. Depth should come from color, spacing, and hierarchy — not elevation.
 
 ### ❌ WRONG - Excessive Borders
 ```dart
@@ -221,11 +221,35 @@ Use these instead of borders and shadows:
 4. **Opacity**: Subtle background opacity differences
 5. **Color contrast**: Use theme colors effectively
 
-### Exceptions (Use Sparingly)
-Only use borders/shadows when absolutely necessary:
-1. **Input fields** - To clearly indicate editable areas
-2. **Focus states** - To show keyboard focus
-3. **Dividers** - Use `Divider` widget for separation
+### Borders (Explicit Exceptions Only)
+Borders can be used sparingly and only for:
+1. **Input fields** — to indicate editable areas
+2. **Focus states** — to show keyboard focus
+3. **Dividers** — use `Divider` widget
+
+Avoid borders on tiles/cards; use spacing, background tones, and radius.
+
+## Component Rules
+
+### File Grid (Folder/File list in grid mode)
+- No shadows/elevation on tiles
+- No borders — flat look by default
+- Border radius: 8; clip thumbnail to radius
+- Separation via grid spacing and subtle background tones when needed
+- Selected state: background tint (primary 0.2 alpha) and check icon; no border
+```dart
+// Flat tile (no border/shadow)
+ClipRRect(
+  borderRadius: BorderRadius.circular(8),
+  child: Stack(
+    fit: StackFit.expand,
+    children: [
+      // thumbnail
+      // selection overlay with tint
+    ],
+  ),
+)
+```
 
 ## Icon System
 

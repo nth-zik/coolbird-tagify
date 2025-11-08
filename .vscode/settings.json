@@ -42,5 +42,9 @@
     "xlocnum": "cpp",
     "xloctime": "cpp"
   },
-  "cmake.ignoreCMakeListsMissing": true
+  "cmake.ignoreCMakeListsMissing": true,
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.suggest.enabled": true,
+  "terminal.integrated.shellIntegration.enabled": true,
+  "terminal.integrated.gpuAcceleration": "off"
 }

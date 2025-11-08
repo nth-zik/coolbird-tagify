@@ -69,25 +69,27 @@ class FileGridItem extends StatelessWidget {
     return RepaintBoundary(
       child: Column(
         children: [
-          // Thumbnail section
+          // Thumbnail section (flat: no border, just radius + spacing)
           Expanded(
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // Use ThumbnailOnly to prevent rebuilds when selection changes
-                ThumbnailOnly(
-                  key: ValueKey('thumb-only-${file.path}'),
-                  file: file,
-                  iconSize: 48.0,
-                ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8.0),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Use ThumbnailOnly to prevent rebuilds when selection changes
+                  ThumbnailOnly(
+                    key: ValueKey('thumb-only-${file.path}'),
+                    file: file,
+                    iconSize: 48.0,
+                  ),
 
-                // Selection overlay with tap handling
-                Positioned.fill(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(8.0),
-                      onTap: () {
+                  // Selection overlay with tap handling
+                  Positioned.fill(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8.0),
+                        onTap: () {
                         final isShiftPressed = HardwareKeyboard
                                 .instance.logicalKeysPressed
                                 .contains(
@@ -128,36 +130,34 @@ class FileGridItem extends StatelessWidget {
                           toggleSelectionMode();
                         }
                       },
-                      onSecondaryTap: () => _showContextMenu(context),
+                        onSecondaryTap: () => _showContextMenu(context),
+                      ),
                     ),
                   ),
-                ),
 
-                // Selection indicator overlay - only show when selected
-                if (isSelected)
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8.0),
-                      border: Border.all(
-                        color: Theme.of(context).primaryColor,
-                        width: 2,
+                  // Selection indicator overlay - only show when selected
+                  if (isSelected)
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8.0),
+                        color: Theme.of(context)
+                            .primaryColor
+                            .withValues(alpha: 0.2),
                       ),
-                      color:
-                          Theme.of(context).primaryColor.withValues(alpha: 0.2),
-                    ),
-                    child: Align(
-                      alignment: Alignment.topRight,
-                      child: Padding(
-                        padding: const EdgeInsets.all(4.0),
-                        child: Icon(
-                          remix.Remix.checkbox_circle_line,
-                          color: Theme.of(context).primaryColor,
-                          size: 24,
+                      child: Align(
+                        alignment: Alignment.topRight,
+                        child: Padding(
+                          padding: const EdgeInsets.all(4.0),
+                          child: Icon(
+                            remix.Remix.checkbox_circle_line,
+                            color: Theme.of(context).primaryColor,
+                            size: 24,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
 
@@ -206,12 +206,8 @@ class FileGridItem extends StatelessWidget {
         ...tagsToShow.map((tag) => Container(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.1),
+                color: Theme.of(context).primaryColor.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: Theme.of(context).primaryColor.withOpacity(0.3),
-                  width: 0.5,
-                ),
               ),
               child: Text(
                 tag,
@@ -228,12 +224,8 @@ class FileGridItem extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
             decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor.withOpacity(0.1),
+              color: Theme.of(context).primaryColor.withOpacity(0.15),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: Theme.of(context).primaryColor.withOpacity(0.3),
-                width: 0.5,
-              ),
             ),
             child: Text(
               '+${fileTags.length - 2}',

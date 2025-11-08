@@ -1,41 +1,8 @@
 # Contribution Guide
 
-## Prerequisites
-
-- Flutter SDK installed
-- Platform toolchains as needed (Android Studio/Xcode)
-
-## Setup
-
-```bash
-flutter pub get
-flutter run
-```
-
-## Branching
-
-- `main` protected; use feature branches: `feat/<topic>`
-
-## Pull Requests
-
-- Link issue/feature
-- Include screenshots for UI changes
-- Ensure tests pass and lints are clean
-
-## Coding Standards
-
-- See `docs/coding-standards.md`
-
-## Testing
-
-- Add/Update tests relevant to your changes
-- Run `flutter test` locally
-
-## Commit Messages
-
-- Use Conventional Commits
-
-## Code Review
-
-- Keep PRs small and focused
-- Respond to feedback promptly
+- **Setup** `flutter pub get` then `flutter run`. Install Android/iOS toolchains when targeting those builds.
+- **Branches** Work off feature branches (`feat/<topic>`). Never push directly to `main`.
+- **Before PR** Run `flutter test`, fix lints, attach screenshots for UI changes.
+- **Standards** Follow `docs/coding-standards.md` and theme/i18n rules in `docs/coding-rules/`.
+- **Commits** Use Conventional Commit prefixes.
+- **Reviews** Keep pull requests focused and reply quickly to comments.
