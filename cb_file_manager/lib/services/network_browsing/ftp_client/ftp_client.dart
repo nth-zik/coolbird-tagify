@@ -1,10 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
-import 'package:path/path.dart' as path;
 
 import 'ftp_response.dart';
 import 'ftp_file_info.dart';
@@ -169,7 +167,7 @@ class FtpClient {
     await _setupDataConnection();
 
     // Send LIST command with options for detailed listing
-    debugPrint("FTP: Sending LIST command for directory: ${_currentDirectory}");
+    debugPrint("FTP: Sending LIST command for directory: $_currentDirectory");
     await _sendCommand(FtpCommands.list());
     final listResponse = await _waitForResponse();
 
@@ -280,7 +278,7 @@ class FtpClient {
           if (name == '.' || name == '..') continue;
 
           final fullPath = path?.endsWith('/') ?? false
-              ? '${path}$name'
+              ? '$path$name'
               : '${path ?? _currentDirectory}/$name';
 
           // Guess if it's a directory (no extension) or a file
@@ -716,7 +714,7 @@ class FtpClient {
     final ipParts = localIp.split('.');
     final p1 = port ~/ 256;
     final p2 = port % 256;
-    final portCmd = '${ipParts.join(',')},${p1},${p2}';
+    final portCmd = '${ipParts.join(',')},$p1,$p2';
 
     // Send PORT command
     await _sendCommand(FtpCommands.port(portCmd));

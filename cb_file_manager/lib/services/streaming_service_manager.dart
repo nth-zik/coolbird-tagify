@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:cb_file_manager/services/streaming/streaming_helper_base.dart';
 // import 'package:cb_file_manager/services/streaming/native_smb_streaming_helper.dart';
-import 'package:cb_file_manager/services/network_browsing/network_service_base.dart';
 import 'package:cb_file_manager/services/network_browsing/i_smb_service.dart';
+import '../utils/app_logger.dart';
 
 /// Manager for streaming services and helpers
 class StreamingServiceManager {
@@ -18,13 +18,13 @@ class StreamingServiceManager {
       // _helpers.add(NativeSmbStreamingHelper()); // Removed - using flutter_vlc_player
 
       // Sort helpers by priority (highest first)
-      _helpers.sort((a, b) => (b as StreamingHelperBase)
+      _helpers.sort((a, b) => (b)
           .priority
-          .compareTo((a as StreamingHelperBase).priority));
+          .compareTo((a).priority));
 
       _initialized = true;
     } catch (e) {
-      print('Error initializing StreamingServiceManager: $e');
+      AppLogger.error('Error initializing StreamingServiceManager', error: e);
       _initialized = true; // Mark as initialized even if there are errors
     }
   }
@@ -77,13 +77,13 @@ class StreamingServiceManager {
 
       // Check if we have any native streaming helpers
       return _helpers.any((helper) =>
-          (helper as StreamingHelperBase)
+          (helper)
               .name
               .toLowerCase()
               .contains('native') &&
-          (helper as StreamingHelperBase).priority >= 1000);
+          (helper).priority >= 1000);
     } catch (e) {
-      print('Error checking native streaming availability: $e');
+      AppLogger.error('Error checking native streaming availability', error: e);
       return false;
     }
   }

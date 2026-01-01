@@ -12,7 +12,8 @@ import 'package:mobile_smb_native/mobile_smb_native.dart';
 /// Designed specifically to feed ExoPlayer during Android PiP mode.
 class SmbHttpProxyServer {
   static SmbHttpProxyServer? _instance;
-  static SmbHttpProxyServer get instance => _instance ??= SmbHttpProxyServer._();
+  static SmbHttpProxyServer get instance =>
+      _instance ??= SmbHttpProxyServer._();
 
   SmbHttpProxyServer._();
 
@@ -24,9 +25,8 @@ class SmbHttpProxyServer {
 
   Future<void> _ensureStarted() async {
     if (_server != null) return;
-    final handler = const Pipeline()
-        .addMiddleware(logRequests())
-        .addHandler(_handle);
+    final handler =
+        const Pipeline().addMiddleware(logRequests()).addHandler(_handle);
     _server = await shelf_io.serve(handler, InternetAddress.loopbackIPv4, 0);
     _server!.autoCompress = false;
     _port = _server!.port;
@@ -36,7 +36,7 @@ class SmbHttpProxyServer {
   Future<Uri> urlFor(String smbUrl) async {
     await _ensureStarted();
     final encoded = base64Url.encode(utf8.encode(smbUrl));
-    return Uri.parse('http://127.0.0.1:${_port}/stream?u=$encoded');
+    return Uri.parse('http://127.0.0.1:$_port/stream?u=$encoded');
   }
 
   Future<Response> _handle(Request req) async {
@@ -44,7 +44,8 @@ class SmbHttpProxyServer {
       if (req.url.path != 'stream') {
         return Response.notFound('Not Found');
       }
-      final u = req.requestedUri.queryParameters['u'] ?? req.url.queryParameters['u'];
+      final u =
+          req.requestedUri.queryParameters['u'] ?? req.url.queryParameters['u'];
       if (u == null || u.isEmpty) {
         return Response(400, body: 'Missing parameter u');
       }
@@ -54,7 +55,8 @@ class SmbHttpProxyServer {
       final rangeHeader = req.headers['range'] ?? req.headers['Range'];
       int start = 0;
       int? end;
-      if (rangeHeader != null && rangeHeader.toLowerCase().startsWith('bytes=')) {
+      if (rangeHeader != null &&
+          rangeHeader.toLowerCase().startsWith('bytes=')) {
         final spec = rangeHeader.substring(6);
         final parts = spec.split('-');
         if (parts.isNotEmpty && parts[0].isNotEmpty) {
@@ -102,14 +104,17 @@ class SmbHttpProxyServer {
       };
 
       int statusCode = 200;
-      int? contentLength;
       if (fileSize != null) {
-        final effectiveEnd = end == null ? (fileSize - 1) : end.clamp(0, fileSize - 1);
+        final effectiveEnd =
+            end == null ? (fileSize - 1) : end.clamp(0, fileSize - 1);
         final length = (effectiveEnd - clampedStart + 1).clamp(0, fileSize);
-        contentLength = length;
         headers['Content-Length'] = '$length';
-        headers['Content-Range'] = 'bytes $clampedStart-$effectiveEnd/$fileSize';
-        statusCode = (clampedStart == 0 && (end == null || effectiveEnd == fileSize - 1)) ? 200 : 206;
+        headers['Content-Range'] =
+            'bytes $clampedStart-$effectiveEnd/$fileSize';
+        statusCode =
+            (clampedStart == 0 && (end == null || effectiveEnd == fileSize - 1))
+                ? 200
+                : 206;
       }
 
       // Start pushing data
@@ -131,7 +136,9 @@ class SmbHttpProxyServer {
         } catch (_) {
           // client cancelled or read error
         } finally {
-          try { await reader.dispose(); } catch (_) {}
+          try {
+            await reader.dispose();
+          } catch (_) {}
           await controller.close();
         }
       }());
@@ -158,8 +165,13 @@ class SmbHttpProxyServer {
       final segs = uri.pathSegments.where((s) => s.isNotEmpty).toList();
       if (segs.isEmpty) return null;
       final share = Uri.decodeComponent(segs.first);
-      final path = '/' + segs.skip(1).map(Uri.decodeComponent).join('/');
-      return _SmbUrlInfo(host: host, share: share, path: path, username: username, password: password);
+      final path = '/${segs.skip(1).map(Uri.decodeComponent).join('/')}';
+      return _SmbUrlInfo(
+          host: host,
+          share: share,
+          path: path,
+          username: username,
+          password: password);
     } catch (_) {
       return null;
     }
@@ -182,5 +194,10 @@ class _SmbUrlInfo {
   final String path;
   final String? username;
   final String? password;
-  _SmbUrlInfo({required this.host, required this.share, required this.path, this.username, this.password});
+  _SmbUrlInfo(
+      {required this.host,
+      required this.share,
+      required this.path,
+      this.username,
+      this.password});
 }

@@ -4,7 +4,6 @@ import 'dart:typed_data';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:remixicon/remixicon.dart' as remix;
-import 'package:path/path.dart' as path;
 
 import 'network_service_base.dart';
 
@@ -26,7 +25,6 @@ class WebDAVService implements NetworkServiceBase {
   bool _useSSL = false;
   String _username = '';
   String _password = '';
-  String _currentPath = '/';
   bool _connected = false;
   String? _connectionError;
   HttpClient? _httpClient;
@@ -81,7 +79,7 @@ class WebDAVService implements NetworkServiceBase {
 
   @override
   String get basePath =>
-      '${_webdavPrefix}${_username.isNotEmpty ? "$_username@" : ""}$_host:$_port';
+      '$_webdavPrefix${_username.isNotEmpty ? "$_username@" : ""}$_host:$_port';
 
   @override
   Future<ConnectionResult> connect({
@@ -137,7 +135,6 @@ class WebDAVService implements NetworkServiceBase {
       }
 
       // Set connected status
-      _currentPath = '/';
       _connected = true;
       debugPrint('WebDAVService: Connection successful!');
 

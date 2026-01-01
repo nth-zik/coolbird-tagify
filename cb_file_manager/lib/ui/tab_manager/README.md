@@ -11,7 +11,12 @@ tab_manager/
 │   ├── tab_data.dart        # Data models for tabs
 │   ├── tab_screen.dart      # Base tab screen widget
 │   ├── tab_main_screen.dart # Main screen with tab interface
-│   ├── tabbed_folder_list_screen.dart # Folder list with tabs
+│   ├── tabbed_folder/        # Tabbed folder (grouped)
+│   │   ├── tabbed_folder_list_screen.dart # Folder list with tabs
+│   │   ├── tabbed_folder_list_screen.mobile_actions.dart # Part: mobile actions wiring/search
+│   │   ├── tabbed_folder_list_screen.refresh.dart # Part: refresh + lazy-load drives
+│   │   ├── tabbed_folder_drag_selection_controller.dart # Drag-selection logic
+│   │   └── tabbed_folder_keyboard_controller.dart # Keyboard navigation logic
 │   └── index.dart          # Core exports
 ├── mobile/                  # Mobile-specific components
 │   ├── mobile_tab_view.dart # Chrome-style mobile tab view
@@ -31,11 +36,13 @@ tab_manager/
 │   ├── navigation_bar.dart
 │   ├── path_navigation_bar.dart
 │   ├── search_bar.dart
+│   ├── search_tips_dialog.dart
 │   ├── search_results.dart
 │   ├── selection_app_bar.dart
 │   ├── tag_dialogs.dart
 │   ├── tag_search_dialog.dart
 │   └── index.dart
+├── tabbed_folder_list_screen.dart # Legacy re-export (use core/ instead)
 └── index.dart              # Main exports
 ```
 
@@ -49,7 +56,10 @@ Chứa các thành phần cốt lõi của hệ thống tab:
 - **tab_data.dart**: Data models cho TabData
 - **tab_screen.dart**: Widget cơ sở cho tab screen
 - **tab_main_screen.dart**: Màn hình chính với giao diện tab
+- **core/tabbed_folder/**: Nhóm các file `tabbed_folder_*` để tránh phình thư mục `core/`
 - **tabbed_folder_list_screen.dart**: Màn hình danh sách thư mục với tabs
+- **tabbed_folder_list_screen.mobile_actions.dart**: Part file cho logic MobileFileActionsController + mobile search
+- **tabbed_folder_list_screen.refresh.dart**: Part file cho refresh và lazy-loading drives
 
 ### `mobile/`
 
@@ -117,6 +127,10 @@ Tất cả các import cũ đã được cập nhật để sử dụng cấu tr
 - `mobile_tab_view.dart` → `mobile/mobile_tab_view.dart`
 - `screen_menu_registry.dart` → `shared/screen_menu_registry.dart`
 
+### Legacy shim
+
+Nếu code cũ vẫn import `ui/tab_manager/tabbed_folder_list_screen.dart`, file này hiện chỉ `export` lại `core/tabbed_folder/tabbed_folder_list_screen.dart`.
+
 ## 🚀 Lợi ích
 
 1. **Tổ chức rõ ràng**: Mỗi thư mục có mục đích cụ thể
@@ -124,3 +138,4 @@ Tất cả các import cũ đã được cập nhật để sử dụng cấu tr
 3. **Tái sử dụng**: Components được tách riêng
 4. **Mở rộng**: Dễ dàng thêm tính năng mới
 5. **Import rõ ràng**: Biết ngay component thuộc loại nào
+6. **Nhất quán UI**: Kết quả tìm kiếm hiển thị thư mục trước, tệp sau

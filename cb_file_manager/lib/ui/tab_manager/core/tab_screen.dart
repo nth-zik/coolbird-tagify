@@ -9,7 +9,7 @@ import 'package:cb_file_manager/helpers/ui/frame_timing_optimizer.dart';
 import 'tab_manager.dart';
 import '../../drawer.dart';
 import 'package:cb_file_manager/helpers/core/user_preferences.dart';
-import 'tabbed_folder_list_screen.dart';
+import 'tabbed_folder/tabbed_folder_list_screen.dart';
 import '../../screens/settings/settings_screen.dart';
 import 'package:flutter/gestures.dart'; // Import for mouse scrolling
 import '../desktop/scrollable_tab_bar.dart'; // Import our custom ScrollableTabBar
@@ -444,7 +444,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               if (tab.isLoading) ...[
-                                                SizedBox(
+                                                const SizedBox(
                                                   width: 14,
                                                   height: 14,
                                                   child:
@@ -581,7 +581,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
     // Giao diện cho tablet sử dụng UI hiện tại
     if (isTablet) {
       if (state.tabs.isEmpty) {
-        return HomeScreen(
+        return const HomeScreen(
           tabId: 'home', // Use a special ID for home screen
         );
       }

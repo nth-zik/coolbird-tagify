@@ -346,9 +346,9 @@ class _AlbumManagementScreenState extends State<AlbumManagementScreen> {
                       builder: (context, constraints) {
                         final width = constraints.maxWidth;
                         int crossAxisCount = 2;
-                        if (width > 1200)
+                        if (width > 1200) {
                           crossAxisCount = 5;
-                        else if (width > 900)
+                        } else if (width > 900)
                           crossAxisCount = 4;
                         else if (width > 600) crossAxisCount = 3;
 

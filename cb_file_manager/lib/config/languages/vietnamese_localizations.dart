@@ -18,6 +18,8 @@ class VietnameseLocalizations implements AppLocalizations {
   @override
   String get close => 'Đóng';
   @override
+  String get exit => 'Thoát';
+  @override
   String get search => 'Tìm kiếm';
   @override
   String get settings => 'Cài đặt';
@@ -341,18 +343,18 @@ class VietnameseLocalizations implements AppLocalizations {
   @override
   String get tagManagement => 'Quản lý thẻ đánh dấu';
   @override
-  String deleteTagConfirmation(String tag) => 'Xóa thẻ "${tag}"?';
+  String deleteTagConfirmation(String tag) => 'Xóa thẻ "$tag"?';
   @override
   String get tagDeleteConfirmationText =>
       'Thao tác này sẽ xóa thẻ khỏi tất cả các tệp. Hành động này không thể hoàn tác.';
   @override
-  String tagDeleted(String tag) => 'Thẻ "${tag}" đã được xóa thành công';
+  String tagDeleted(String tag) => 'Thẻ "$tag" đã được xóa thành công';
   @override
-  String errorDeletingTag(String error) => 'Lỗi khi xóa thẻ: ${error}';
+  String errorDeletingTag(String error) => 'Lỗi khi xóa thẻ: $error';
   @override
-  String chooseTagColor(String tag) => 'Chọn màu cho thẻ "${tag}"';
+  String chooseTagColor(String tag) => 'Chọn màu cho thẻ "$tag"';
   @override
-  String tagColorUpdated(String tag) => 'Màu cho thẻ "${tag}" đã được cập nhật';
+  String tagColorUpdated(String tag) => 'Màu cho thẻ "$tag" đã được cập nhật';
   @override
   String get allTags => 'Tất cả thẻ';
   @override
@@ -400,7 +402,7 @@ class VietnameseLocalizations implements AppLocalizations {
   String get createNewTagButton => 'Tạo thẻ mới';
   @override
   String noMatchingTagsMessage(String searchTags) =>
-      'Không có thẻ nào phù hợp với "${searchTags}"';
+      'Không có thẻ nào phù hợp với "$searchTags"';
   @override
   String get clearSearch => 'Xóa tìm kiếm';
   @override
@@ -443,7 +445,7 @@ class VietnameseLocalizations implements AppLocalizations {
   @override
   String get noFilesWithTag => 'Không tìm thấy tệp nào có thẻ này';
   @override
-  String debugInfo(String tag) => 'Thông tin gỡ lỗi: đang tìm thẻ "${tag}"';
+  String debugInfo(String tag) => 'Thông tin gỡ lỗi: đang tìm thẻ "$tag"';
   @override
   String get backToAllTags => 'Quay về tất cả thẻ';
   @override
@@ -461,10 +463,10 @@ class VietnameseLocalizations implements AppLocalizations {
   @override
   String get enterTagName => 'Nhập tên thẻ...';
   @override
-  String tagAlreadyExists(String tagName) => 'Thẻ "${tagName}" đã tồn tại';
+  String tagAlreadyExists(String tagName) => 'Thẻ "$tagName" đã tồn tại';
   @override
   String tagCreatedSuccessfully(String tagName) =>
-      'Đã tạo thẻ "${tagName}" thành công';
+      'Đã tạo thẻ "$tagName" thành công';
   @override
   String get errorCreatingTag => 'Lỗi khi tạo thẻ: ';
   @override
@@ -778,6 +780,10 @@ class VietnameseLocalizations implements AppLocalizations {
       'Không tìm thấy tệp nào có các tag ${args['tags']} trên toàn hệ thống';
 
   @override
+  String noFilesFoundQuery(Map<String, String> args) =>
+      'Không tìm thấy kết quả cho "${args['query']}"';
+
+  @override
   String errorSearchTag(Map<String, String> args) =>
       'Lỗi khi tìm kiếm theo tag: ${args['error']}';
 
@@ -878,6 +884,29 @@ class VietnameseLocalizations implements AppLocalizations {
 
   @override
   String get results => 'kết quả';
+
+  @override
+  String searchResultsTitle(String countText) => 'Kết quả tìm kiếm$countText';
+
+  @override
+  String searchResultsTitleForQuery(String query, String countText) =>
+      'Kết quả tìm kiếm cho "$query"$countText';
+
+  @override
+  String searchResultsTitleForTag(String tag, String countText) =>
+      'Kết quả tìm kiếm cho tag "$tag"$countText';
+
+  @override
+  String searchResultsTitleForTagGlobal(String tag, String countText) =>
+      'Kết quả tìm kiếm toàn cục cho tag "$tag"$countText';
+
+  @override
+  String searchResultsTitleForFilter(String filter, String countText) =>
+      'Kết quả lọc cho "$filter"$countText';
+
+  @override
+  String searchResultsTitleForMedia(String mediaType, String countText) =>
+      'Kết quả tìm kiếm cho $mediaType$countText';
 
   @override
   String get searchByFilenameDesc => 'Nhập tên tệp để tìm kiếm.';
@@ -1149,10 +1178,19 @@ class VietnameseLocalizations implements AppLocalizations {
 
   // Folder / Trash
   @override
+  String get items => 'mục';
+
+  @override
+  String get files => 'tệp';
+
+  @override
   String movedToTrash(String name) => '$name đã được chuyển vào thùng rác';
   @override
   String moveItemsToTrashConfirmation(int count, String itemType) =>
       'Chuyển $count $itemType vào thùng rác?';
+  @override
+  String get moveItemsToTrashDescription =>
+      'Các mục này sẽ được chuyển vào thùng rác. Bạn có thể khôi phục chúng sau nếu cần.';
   @override
   String get clearFilter => 'Xóa bộ lọc';
   @override
@@ -1175,6 +1213,8 @@ class VietnameseLocalizations implements AppLocalizations {
   String errorSavingTags(String error) => 'Lỗi khi lưu thẻ: $error';
   @override
   String errorCreatingFolder(String error) => 'Lỗi khi tạo thư mục: $error';
+  @override
+  String get pathNotAccessible => 'Đường dẫn không tồn tại hoặc không thể truy cập';
 
   // UI labels
   @override

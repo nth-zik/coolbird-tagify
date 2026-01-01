@@ -94,7 +94,7 @@ Future<int> _calculateTimestampFromPercentageIsolate(
       ((adjustedPercentage / 100.0) * estimatedDuration).round();
 
   // Ensure timestamp is within safe bounds (avoid first/last 5 seconds)
-  final minTimestamp = 5;
+  const minTimestamp = 5;
   final maxTimestamp =
       estimatedDuration > 10 ? estimatedDuration - 5 : estimatedDuration ~/ 2;
   timestampSeconds = timestampSeconds.clamp(minTimestamp, maxTimestamp);
@@ -694,14 +694,6 @@ class VideoThumbnailHelper {
     } finally {
       _isProcessingQueue = false;
     }
-  }
-
-  /// Generate cache filename for video path
-  static String _generateCacheFilename(String videoPath) {
-    final fileName = path.basename(videoPath);
-    final nameWithoutExt = path.basenameWithoutExtension(fileName);
-    final hash = videoPath.hashCode.abs();
-    return '${nameWithoutExt}_${hash}.jpg';
   }
 
   static Future<String?> _requestThumbnail(String videoPath,
@@ -1686,25 +1678,6 @@ class VideoThumbnailHelper {
     } catch (e) {
       debugPrint('VideoThumbnail: Error getting cache directory path: $e');
       return null;
-    }
-  }
-
-  /// Safe method to initialize BackgroundIsolateBinaryMessenger without crashing
-  static void _safeInitializeBackgroundIsolate(RootIsolateToken? token) {
-    if (token == null) {
-      debugPrint(
-          'VideoThumbnail: RootIsolateToken is null, skipping BackgroundIsolateBinaryMessenger initialization');
-      return;
-    }
-
-    try {
-      BackgroundIsolateBinaryMessenger.ensureInitialized(token);
-      debugPrint(
-          'VideoThumbnail: BackgroundIsolateBinaryMessenger initialized successfully');
-    } catch (e) {
-      debugPrint(
-          'VideoThumbnail: Failed to initialize BackgroundIsolateBinaryMessenger: $e');
-      // Continue without platform channels - this is not critical for thumbnail generation
     }
   }
 }

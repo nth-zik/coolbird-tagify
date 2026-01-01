@@ -15,6 +15,7 @@ abstract class AppLocalizations {
   String get delete;
   String get edit;
   String get close;
+  String get exit;
   String get search;
   String get settings;
   String get moreOptions;
@@ -439,9 +440,12 @@ abstract class AppLocalizations {
   String downloadFailed(String error);
 
   // Folder / Trash
+  String get items;
+  String get files;
   String movedToTrash(String name);
   String moveItemsToTrashConfirmation(int count, String itemType);
   String moveToTrashConfirmMessage(String name);
+  String get moveItemsToTrashDescription;
   String get clearFilter;
   String filteredBy(String filter);
   String noFilesMatchFilter(String filter);
@@ -454,6 +458,7 @@ abstract class AppLocalizations {
   String errorGettingFolderProperties(String error);
   String errorSavingTags(String error);
   String errorCreatingFolder(String error);
+  String get pathNotAccessible;
 
   // UI labels
   String get noStorageLocationsFound;
@@ -490,6 +495,7 @@ abstract class AppLocalizations {
   String noFilesFoundTagGlobal(Map<String, String> args);
   String noFilesFoundTags(Map<String, String> args);
   String noFilesFoundTagsGlobal(Map<String, String> args);
+  String noFilesFoundQuery(Map<String, String> args);
   String errorSearchTag(Map<String, String> args);
   String errorSearchTagGlobal(Map<String, String> args);
   String errorSearchTags(Map<String, String> args);
@@ -527,6 +533,12 @@ abstract class AppLocalizations {
   String get suggestedTags;
   String get noMatchingTags;
   String get results;
+  String searchResultsTitle(String countText);
+  String searchResultsTitleForQuery(String query, String countText);
+  String searchResultsTitleForTag(String tag, String countText);
+  String searchResultsTitleForTagGlobal(String tag, String countText);
+  String searchResultsTitleForFilter(String filter, String countText);
+  String searchResultsTitleForMedia(String mediaType, String countText);
   String get searchByFilenameDesc;
   String get searchByTagsDesc;
   String get searchMultipleTagsDesc;

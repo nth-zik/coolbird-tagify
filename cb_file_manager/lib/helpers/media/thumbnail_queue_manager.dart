@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:collection';
-import 'package:flutter/foundation.dart';
 
 /// Advanced queue manager for thumbnail generation
 /// Prevents UI blocking by carefully controlling when thumbnails are generated
@@ -39,7 +37,7 @@ class ThumbnailQueueManager {
     int priority = 0,
     bool isVisible = false,
   }) async {
-    final requestId = '${videoPath}:${outputPath}';
+    final requestId = '$videoPath:$outputPath';
 
     // Check if already processing this request
     if (_activeRequests.containsKey(requestId)) {

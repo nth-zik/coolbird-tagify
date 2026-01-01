@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:remixicon/remixicon.dart' as remix;
 import 'tag_dialogs.dart';
+import 'package:cb_file_manager/config/languages/app_localizations.dart';
 
 /// AppBar component displayed when in selection mode
 class SelectionAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -34,6 +35,7 @@ class SelectionAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     // Calculate the actual count from the lists or use provided counts
     final int fileCount = selectedFileCount;
     final int folderCount = selectedFolderCount;
@@ -46,12 +48,11 @@ class SelectionAppBar extends StatelessWidget implements PreferredSizeWidget {
     }
 
     return AppBar(
-      title: Text(
-          '$selectedCount ${selectedCount == 1 ? 'item' : 'items'} selected'),
+      title: Text(l10n.itemsSelected(selectedCount)),
       leading: IconButton(
         icon: const Icon(remix.Remix.close_line),
         onPressed: onClearSelection,
-        tooltip: 'Cancel Selection',
+        tooltip: l10n.cancel,
       ),
       actions: [
         // Show tag management options if we have files selected
@@ -68,37 +69,37 @@ class SelectionAppBar extends StatelessWidget implements PreferredSizeWidget {
               }
             },
             itemBuilder: (BuildContext context) => [
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'add_tags',
                 child: ListTile(
-                  leading: Icon(remix.Remix.add_circle_line),
-                  title: Text('Add Tags'),
+                  leading: const Icon(remix.Remix.add_circle_line),
+                  title: Text(l10n.addTag),
                 ),
               ),
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'remove_tags',
                 child: ListTile(
-                  leading: Icon(remix.Remix.close_circle_line),
-                  title: Text('Remove Tags'),
+                  leading: const Icon(remix.Remix.close_circle_line),
+                  title: Text(l10n.removeTag),
                 ),
               ),
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'manage_all_tags',
                 child: ListTile(
-                  leading: Icon(remix.Remix.settings_2_line),
-                  title: Text('Manage Tags'),
+                  leading: const Icon(remix.Remix.settings_2_line),
+                  title: Text(l10n.manageTags),
                 ),
               ),
             ],
             icon: const Icon(remix.Remix.shopping_bag_3_line),
-            tooltip: 'Tag Actions',
+            tooltip: l10n.manageTags,
           ),
 
         // Delete button always shown
         IconButton(
           icon: const Icon(remix.Remix.delete_bin_2_line),
           onPressed: () => showDeleteConfirmationDialog(context),
-          tooltip: 'Delete Selected Items',
+          tooltip: l10n.moveToTrash,
         ),
       ],
     );

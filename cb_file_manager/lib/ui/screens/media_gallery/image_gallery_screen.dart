@@ -9,9 +9,6 @@ import '../../components/common/shared_action_bar.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/image_viewer_screen.dart';
 
 import 'package:path/path.dart' as pathlib;
-import 'dart:math';
-import 'package:share_plus/share_plus.dart'; // Add import for Share Plus
-// Add import for XFile
 import 'package:cb_file_manager/helpers/files/folder_sort_manager.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
@@ -60,7 +57,8 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
   SortOption _currentSortOption = SortOption.nameAsc;
   ViewMode _viewMode = ViewMode.grid;
   bool _isMasonry = false; // Pinterest-like layout toggle
-  final Map<String, double> _imageAspectRatioCache = {}; // Cache width/height ratios
+  final Map<String, double> _imageAspectRatioCache =
+      {}; // Cache width/height ratios
   String? _searchQuery;
   bool _isLoadingImages = true; // Track initial loading state
 
@@ -77,29 +75,29 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
   void initState() {
     super.initState();
     _preferences = UserPreferences.instance;
-    
+
     // Initialize mobile controller first
     final controllerId = 'image_gallery_${_controllerIdCounter++}';
     _mobileController = MobileFileActionsController.forTab(controllerId);
-    
+
     // Register callbacks immediately (before preferences load)
     _registerMobileControllerCallbacks();
-    
+
     // Load preferences and update controller state after
     _loadPreferences().then((_) {
       if (mounted) {
         _updateMobileControllerState();
       }
     });
-    
+
     _loadImages();
     _loadAlbums();
   }
-  
+
   // Register callbacks (can be called before preferences load)
   void _registerMobileControllerCallbacks() {
     if (_mobileController == null) return;
-    
+
     // Register callbacks
     _mobileController!.onSearchSubmitted = (query) {
       setState(() {
@@ -107,11 +105,11 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
         // Just update UI, filtering happens in getter
       });
     };
-    
+
     _mobileController!.onSortOptionSelected = (option) {
       _setSortOption(option);
     };
-    
+
     _mobileController!.onViewModeToggled = (ViewMode mode) {
       setState(() {
         _viewMode = mode;
@@ -119,14 +117,14 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
       });
       _saveViewModeSetting(_viewMode);
     };
-    
+
     _mobileController!.onRefresh = () {
       setState(() {
         _loadImages();
         _loadAlbums();
       });
     };
-    
+
     _mobileController!.onGridSizePressed = () {
       SharedActionBar.showGridSizeDialog(
         context,
@@ -145,7 +143,7 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
         },
       );
     };
-    
+
     _mobileController!.onSelectionModeToggled = () {
       setState(() {
         _isSelectionMode = !_isSelectionMode;
@@ -163,17 +161,17 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
       });
     };
   }
-  
+
   // Update controller state (called after preferences load)
   void _updateMobileControllerState() {
     if (_mobileController == null) return;
-    
+
     _mobileController!.currentSortOption = _currentSortOption;
     _mobileController!.currentViewMode = _viewMode;
     _mobileController!.currentGridSize = _thumbnailSize.round();
     _mobileController!.isMasonryLayout = _isMasonry;
   }
-  
+
   @override
   void dispose() {
     // Cleanup controller
@@ -604,19 +602,19 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
 
     // On mobile, use custom action bar instead of AppBar
     final isMobile = Platform.isAndroid || Platform.isIOS;
-    
+
     return BaseScreen(
       title: title,
       actions: actions,
       showAppBar: !isMobile, // Hide AppBar on mobile
-      body: isMobile 
-        ? Column(
-            children: [
-              _buildMobileActionBar(context),
-              Expanded(child: _buildImageContent()),
-            ],
-          )
-        : _buildImageContent(),
+      body: isMobile
+          ? Column(
+              children: [
+                _buildMobileActionBar(context),
+                Expanded(child: _buildImageContent()),
+              ],
+            )
+          : _buildImageContent(),
       floatingActionButton: _isAlbumView && _albums.isEmpty
           ? FloatingActionButton.extended(
               onPressed: _showCreateAlbumDialog,
@@ -637,7 +635,8 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
   // Build mobile action bar using shared controller method
   Widget _buildMobileActionBar(BuildContext context) {
     if (_mobileController == null) return const SizedBox.shrink();
-    return _mobileController!.buildMobileActionBar(context, viewMode: _viewMode);
+    return _mobileController!
+        .buildMobileActionBar(context, viewMode: _viewMode);
   }
 
   Widget _buildImageContent() {
@@ -739,140 +738,6 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
     }
   }
 
-  void _showImageOptions(BuildContext context, File file) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.image),
-            title: const Text('Xem hình ảnh'),
-            onTap: () {
-              Navigator.pop(context);
-              // Find the index of the file in the image list for gallery navigation
-              final index = _imageFiles.indexWhere((f) => f.path == file.path);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ImageViewerScreen(
-                    file: file,
-                    imageFiles: _imageFiles,
-                    initialIndex: index >= 0 ? index : 0,
-                  ),
-                ),
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: const Text('Thông tin hình ảnh'),
-            onTap: () {
-              Navigator.pop(context);
-              _showImageInfoDialog(context, file);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.album),
-            title: const Text('Add to Album'),
-            onTap: () {
-              Navigator.pop(context);
-              _showAddToAlbumDialog(context, [file.path]);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.share),
-            title: const Text('Chia sẻ'),
-            onTap: () {
-              Navigator.pop(context);
-              final XFile xFile = XFile(file.path);
-              Share.shareXFiles([xFile], text: 'Chia sẻ hình ảnh');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.delete, color: Colors.red),
-            title:
-                const Text('Xóa hình ảnh', style: TextStyle(color: Colors.red)),
-            onTap: () {
-              Navigator.pop(context);
-              _showDeleteConfirmationDialog(context, [file.path]);
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showImageInfoDialog(BuildContext context, File file) async {
-    try {
-      final fileStat = await file.stat();
-      final fileSize = _formatFileSize(fileStat.size);
-      final modified = fileStat.modified;
-
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('Thông tin hình ảnh'),
-            content: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _infoRow('Tên tập tin', pathlib.basename(file.path)),
-                  const Divider(),
-                  _infoRow('Đường dẫn', file.path),
-                  const Divider(),
-                  _infoRow('Kích thước', fileSize),
-                  const Divider(),
-                  _infoRow(
-                      'Loại tệp', pathlib.extension(file.path).toUpperCase()),
-                  const Divider(),
-                  _infoRow('Cập nhật lần cuối',
-                      '${modified.day}/${modified.month}/${modified.year} ${modified.hour}:${modified.minute}'),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  RouteUtils.safePopDialog(context);
-                },
-                child: const Text('Đóng'),
-              ),
-            ],
-          );
-        },
-      );
-    } catch (e) {
-      debugPrint('Error showing image info: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không thể hiển thị thông tin hình ảnh: $e')),
-      );
-    }
-  }
-
-  Widget _infoRow(String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '$title: ',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontSize: 14),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showDeleteConfirmationDialog(BuildContext context,
       [List<String>? specificPaths]) {
     final paths = specificPaths ?? _selectedFilePaths.toList();
@@ -935,21 +800,6 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
         ],
       ),
     );
-  }
-
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inDays == 0) {
-      return 'Hôm nay ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
-    } else if (difference.inDays == 1) {
-      return 'Hôm qua ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} ngày trước';
-    } else {
-      return '${date.day}/${date.month}/${date.year}';
-    }
   }
 
   Future<void> _showAddToAlbumDialog(BuildContext context,
@@ -1093,13 +943,6 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
     }
   }
 
-  String _formatFileSize(int bytes) {
-    if (bytes <= 0) return "0 B";
-    const suffixes = ["B", "KB", "MB", "GB", "TB"];
-    var i = (log(bytes) / log(1024)).floor();
-    return '${(bytes / pow(1024, i)).toStringAsFixed(1)} ${suffixes[i]}';
-  }
-
   Future<double> _getImageAspectRatio(File file) async {
     final path = file.path;
     final cached = _imageAspectRatioCache[path];
@@ -1121,7 +964,6 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
   }
 
   // Build skeleton loading widget
-
 
   void _showCreateAlbumDialog() {
     String albumName = '';

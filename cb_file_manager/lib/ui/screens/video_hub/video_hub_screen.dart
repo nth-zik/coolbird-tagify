@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/animation.dart';
 import 'package:remixicon/remixicon.dart' as remix;
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/helpers/platform_paths.dart';
@@ -55,13 +54,13 @@ class _VideoHubScreenState extends State<VideoHubScreen>
   Future<void> _loadVideoCount() async {
     try {
       final count = await _countAllVideos();
-      if (this.mounted) return;
+      if (mounted) return;
       setState(() {
         _totalVideos = count;
         _isLoading = false;
       });
     } catch (_) {
-      if (this.mounted) return;
+      if (mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -613,7 +612,7 @@ class _VideoHubScreenState extends State<VideoHubScreen>
 
   Future<void> _navigateToCameraVideos() async {
     final cameraPath = await PlatformPaths.getCameraPath();
-    if (!this.mounted) return;
+    if (!mounted) return;
     final tabBloc = BlocProvider.of<TabManagerBloc>(_context);
     final activeTab = tabBloc.state.activeTab;
     if (activeTab != null) {
@@ -628,7 +627,7 @@ class _VideoHubScreenState extends State<VideoHubScreen>
 
   Future<void> _navigateToDownloadsVideos() async {
     final downloadsPath = await PlatformPaths.getDownloadsPath();
-    if (!this.mounted) return;
+    if (!mounted) return;
     final tabBloc = BlocProvider.of<TabManagerBloc>(_context);
     final activeTab = tabBloc.state.activeTab;
     if (activeTab != null) {

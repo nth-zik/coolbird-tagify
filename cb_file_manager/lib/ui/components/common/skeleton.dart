@@ -66,9 +66,9 @@ class _SkeletonState extends State<Skeleton>
 
   Widget _buildSingleSkeleton(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final baseColor = cs.surfaceVariant.withOpacity(
+    final baseColor = cs.surfaceContainerHighest.withOpacity(
         Theme.of(context).brightness == Brightness.dark ? 0.45 : 0.6);
-    final midColor = cs.surfaceVariant.withOpacity(
+    final midColor = cs.surfaceContainerHighest.withOpacity(
         Theme.of(context).brightness == Brightness.dark ? 0.35 : 0.45);
     final highlightColor = cs.surface.withOpacity(
         Theme.of(context).brightness == Brightness.dark ? 0.20 : 0.28);
@@ -394,6 +394,6 @@ class _ShimmerBoxState extends State<ShimmerBox>
 
 Color _skeletonColor(BuildContext context) {
   final theme = Theme.of(context);
-  return theme.colorScheme.surfaceVariant
+  return theme.colorScheme.surfaceContainerHighest
       .withOpacity(theme.brightness == Brightness.dark ? 0.35 : 0.6);
 }

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 /// Service để theo dõi tốc độ stream file SMB
@@ -117,7 +116,7 @@ class StreamingSpeedMonitor {
   /// Format bytes thành string dễ đọc
   String _formatBytes(int bytes) {
     if (bytes < 1024) {
-      return '${bytes} B';
+      return '$bytes B';
     } else if (bytes < 1024 * 1024) {
       return '${(bytes / 1024).toStringAsFixed(1)} KB';
     } else if (bytes < 1024 * 1024 * 1024) {

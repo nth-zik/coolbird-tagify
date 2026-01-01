@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'dart:typed_data';
 
 /// Modern real-time stream speed indicator with beautiful UI
 class StreamSpeedIndicator extends StatefulWidget {
@@ -27,7 +26,7 @@ class _StreamSpeedIndicatorState extends State<StreamSpeedIndicator>
   bool _isActive = false;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
-  List<double> _speedHistory = [];
+  final List<double> _speedHistory = [];
   static const int _maxHistoryLength = 10;
 
   @override
@@ -319,7 +318,7 @@ class SpeedGraphPainter extends CustomPainter {
     final fillPath = Path();
 
     final maxSpeed = speedHistory.reduce((a, b) => a > b ? a : b);
-    final minSpeed = 0.0;
+    const minSpeed = 0.0;
     final range = maxSpeed - minSpeed;
 
     fillPath.moveTo(0, size.height);

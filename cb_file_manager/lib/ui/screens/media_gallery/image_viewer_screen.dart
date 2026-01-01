@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:async';
 import 'dart:math';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as pathlib;
@@ -51,7 +50,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
   double _contrast = 0.0;
   bool _isEditMode = false;
   bool _slideshowPlaying = false;
-  Duration _slideshowInterval = const Duration(seconds: 3);
+  final Duration _slideshowInterval = const Duration(seconds: 3);
   Timer? _slideshowTimer;
 
   // Thêm map để cache dữ liệu ảnh đã tải

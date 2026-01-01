@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:collection';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'smb_chunk_reader.dart';
 
@@ -119,7 +118,6 @@ class PrefetchController {
   int _totalPrefetched = 0;
   int _cacheHits = 0;
   int _cacheMisses = 0;
-  DateTime? _lastStatsReset;
 
   PrefetchController({
     required SmbChunkReader reader,
@@ -135,7 +133,6 @@ class PrefetchController {
       return false;
     }
 
-    _lastStatsReset = DateTime.now();
     debugPrint(
         'PrefetchController: Initialized with ${_config.bufferSize} bytes buffer');
     return true;
@@ -275,7 +272,7 @@ class PrefetchController {
       while (currentOffset < prefetchEnd &&
           chunksRequested < _config.maxPrefetchChunks &&
           currentOffset < (_reader.fileSize ?? 0)) {
-        final chunkSize = 256 * 1024; // 256KB default chunk size
+        const chunkSize = 256 * 1024; // 256KB default chunk size
         final remainingSize = prefetchEnd - currentOffset;
         final actualChunkSize =
             remainingSize < chunkSize ? remainingSize : chunkSize;
@@ -299,7 +296,7 @@ class PrefetchController {
       }
 
       debugPrint(
-          'PrefetchController: Prefetched ${chunks.length} chunks (${_totalPrefetched} bytes total)');
+          'PrefetchController: Prefetched ${chunks.length} chunks ($_totalPrefetched bytes total)');
     } catch (e) {
       debugPrint('PrefetchController: Prefetch error: $e');
     } finally {
@@ -341,7 +338,7 @@ class PrefetchController {
 
     // Cancel pending prefetch tasks
     while (_prefetchTasks.isNotEmpty) {
-      final task = _prefetchTasks.removeFirst();
+      _prefetchTasks.removeFirst();
       // Note: We can't actually cancel the task, but we can stop waiting for it
     }
   }
@@ -373,7 +370,6 @@ class PrefetchController {
     _totalPrefetched = 0;
     _cacheHits = 0;
     _cacheMisses = 0;
-    _lastStatsReset = DateTime.now();
   }
 
   /// Clear buffer

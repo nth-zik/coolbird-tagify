@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'dart:typed_data';
 import '../../../services/network_browsing/optimized_smb_service.dart';
 
 /// Widget to display streaming performance metrics

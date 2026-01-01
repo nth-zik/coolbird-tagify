@@ -44,6 +44,8 @@ lib/
 │   ├── database/               # Database models
 │   └── objectbox/              # ObjectBox entities
 ├── helpers/                    # Utility functions
+├── utils/                      # Core utilities
+│   └── app_logger.dart         # Centralized logging framework
 ├── ui/                         # User interface
 │   ├── screens/                # Application screens
 │   ├── components/             # Reusable UI components
@@ -96,6 +98,7 @@ Services implement `NetworkServiceBase` and register with `NetworkServiceRegistr
 - `flutter_bloc` - State management
 - `path_provider` - File system paths
 - `permission_handler` - System permissions
+- `logger` - Structured logging framework
 
 ### Media & Video
 - `media_kit` - Cross-platform media playback
@@ -114,10 +117,39 @@ Services implement `NetworkServiceBase` and register with `NetworkServiceRegistr
 
 ## Development Patterns
 
+### Logging Framework
+The application uses a centralized logging framework (`utils/app_logger.dart`) based on the `logger` package.
+
+**Never use `print()` statements in production code.** Always use the logging framework:
+
+```dart
+import 'package:cb_file_manager/utils/app_logger.dart';
+
+// Different log levels
+AppLogger.debug('Detailed debug information');
+AppLogger.info('General informational messages');
+AppLogger.warning('Warning messages');
+AppLogger.error('Error occurred', error: exception, stackTrace: stackTrace);
+AppLogger.fatal('Fatal errors');
+```
+
+**Benefits:**
+- Structured logging with timestamps and colors
+- Log levels for filtering (debug, info, warning, error, fatal)
+- Automatic method call traces for debugging
+- Stack traces for errors
+- Production-ready with proper error context
+
+**Configuration:**
+- Log level can be adjusted via `AppLogger.setLevel(Level.info)`
+- Pretty printing with emojis and colors enabled by default
+- Logs include file name, line number, and method context
+
 ### Error Handling
 - Use `try-catch` blocks for async operations
 - Return `ConnectionResult` objects for network operations
 - Emit error states in BLoC for UI feedback
+- Always log errors using `AppLogger.error()` with error object and stack trace
 
 ### Performance Optimization
 - `FrameTimingOptimizer` for rendering performance

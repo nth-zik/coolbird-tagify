@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:remixicon/remixicon.dart' as remix;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
-import 'package:cb_file_manager/ui/tab_manager/core/tab_data.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:cb_file_manager/helpers/core/filesystem_utils.dart';

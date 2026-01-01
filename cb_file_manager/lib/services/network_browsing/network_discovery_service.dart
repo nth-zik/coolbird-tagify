@@ -142,10 +142,7 @@ class NetworkDiscoveryService {
 
   /// Optimized host scanning with better concurrency management
   Future<void> _scanHostsOptimized(List<String> hosts) async {
-    final semaphore = Completer<void>();
     int activeScans = 0;
-    int completedScans = 0;
-    final totalHosts = hosts.length;
 
     // Process hosts in batches for better performance
     for (int i = 0; i < hosts.length; i += _batchSize) {
@@ -169,7 +166,6 @@ class NetworkDiscoveryService {
         activeScans++;
         _scanHostFast(host).then((_) {
           activeScans--;
-          completedScans++;
         });
       }
 
@@ -235,7 +231,7 @@ class NetworkDiscoveryService {
           displayName = deviceName;
         } else {
           // Use a more descriptive name than just 'Unknown'
-          displayName = 'SMB Server (${host})';
+          displayName = 'SMB Server ($host)';
         }
 
         final device = NetworkDevice(

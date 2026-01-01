@@ -19,7 +19,7 @@ class DrawerHeaderWidget extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 48, 16, 16),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -28,7 +28,7 @@ class DrawerHeaderWidget extends StatelessWidget {
             AppTheme.darkBlue,
           ],
         ),
-        borderRadius: const BorderRadius.only(
+        borderRadius: BorderRadius.only(
           bottomRight: Radius.circular(24),
         ),
       ),

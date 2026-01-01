@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:ffi';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'smb_native_ffi.dart';
 import 'smb_file.dart';

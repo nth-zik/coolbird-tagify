@@ -1,12 +1,11 @@
 import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:path/path.dart' as path;
-import 'package:flutter/foundation.dart';
 
 import '../../services/network_browsing/network_service_base.dart';
 import '../../services/network_browsing/network_service_registry.dart';
 import '../../helpers/network/network_thumbnail_helper.dart';
 import '../../ui/widgets/thumbnail_loader.dart';
+import '../../utils/app_logger.dart';
 import 'network_browsing_event.dart';
 import 'network_browsing_state.dart';
 
@@ -24,7 +23,7 @@ class NetworkBrowsingBloc
 
   void _log(String message) {
     if (_enableBlocVerboseLogs) {
-      debugPrint(message);
+      AppLogger.debug(message);
     }
   }
 
@@ -196,13 +195,9 @@ class NetworkBrowsingBloc
           _log("  - ${item.runtimeType}: ${item.path}");
         }
 
-        // Filter out empty or null entries that might be causing issues
-        final validContents = contents
-            .where(
-              (item) =>
-                  item != null && item.path != null && item.path.isNotEmpty,
-            )
-            .toList();
+        // Filter out empty entries that might be causing issues
+        final validContents =
+            contents.where((item) => item.path.isNotEmpty).toList();
 
         _log(
           "NetworkBrowsingBloc: Valid contents after filtering: ${validContents.length} items",
@@ -311,14 +306,14 @@ class NetworkBrowsingBloc
     NetworkDisconnectRequested event,
     Emitter<NetworkBrowsingState> emit,
   ) async {
-    final servicePath = event.path;
+    final String servicePath = event.path;
 
     _log("NetworkBrowsingBloc: Disconnecting from path: $servicePath");
     _log(
       "NetworkBrowsingBloc: Current connections: ${state.connections.keys.join(', ')}",
     );
 
-    if (servicePath == null || !servicePath.startsWith('#network/')) {
+    if (!servicePath.startsWith('#network/')) {
       emit(state.copyWith(errorMessage: 'Invalid network path'));
       return;
     }

@@ -7,9 +7,7 @@ import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
 import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart'; // Add TabManager import
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
-import 'dart:io';
-import 'package:path/path.dart' as pathlib;
-import '../../utils/route.dart';
+import 'search_tips_dialog.dart';
 
 /// Thanh tìm kiếm nằm trực tiếp trên thanh công cụ
 class SearchBar extends StatefulWidget {
@@ -34,8 +32,6 @@ class _SearchBarState extends State<SearchBar> {
   bool _isSearchingTags = false;
   List<String> _suggestedTags = [];
   bool _isGlobalSearch = false;
-  bool _quickAction = false; // Add missing property
-  bool _showSearchTips = false; // Flag to control search tips display
 
   // Biến để lưu trữ overlay entry
   OverlayEntry? _overlayEntry;
@@ -333,9 +329,7 @@ class _SearchBarState extends State<SearchBar> {
     // Cập nhật text input với tag đã chọn
     final text = _searchController.text;
     final hashIndex = text.lastIndexOf('#');
-    final newText = text.substring(0, hashIndex + 1) +
-        tag +
-        ' '; // Thêm khoảng trắng để chuẩn bị nhập tag tiếp theo
+    final newText = '${text.substring(0, hashIndex + 1)}$tag '; // Thêm khoảng trắng để chuẩn bị nhập tag tiếp theo
 
     // Cập nhật văn bản và vị trí con trỏ
     setState(() {
@@ -464,155 +458,13 @@ class _SearchBarState extends State<SearchBar> {
 
   // Hiển thị tooltip các tip tìm kiếm
   void _showSearchTipsDialog(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final localizations = AppLocalizations.of(context)!;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(remix.Remix.information_line, color: theme.colorScheme.primary),
-            const SizedBox(width: 8),
-            Text(localizations.searchTipsTitle),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildTipItem(
-                icon: remix.Remix.text,
-                title: localizations.searchByFilename,
-                description: localizations.searchByFilenameDesc,
-              ),
-              const Divider(),
-              _buildTipItem(
-                icon: remix.Remix.shopping_bag_3_line,
-                title: localizations.searchByTags,
-                description: localizations.searchByTagsDesc,
-              ),
-              const Divider(),
-              _buildTipItem(
-                icon: remix.Remix.hashtag,
-                title: localizations.searchMultipleTags,
-                description: localizations.searchMultipleTagsDesc,
-              ),
-              const Divider(),
-              _buildTipItem(
-                icon: remix.Remix.global_line,
-                title: localizations.globalSearch,
-                description: localizations.globalSearchDesc,
-              ),
-              const Divider(),
-              _buildTipItem(
-                icon: remix.Remix.menu_line,
-                title: localizations.searchShortcuts,
-                description: localizations.searchShortcutsDesc,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => RouteUtils.safePopDialog(context),
-            child: Text(localizations.close),
-          ),
-        ],
-        backgroundColor: isDark ? Colors.grey[850] : theme.colorScheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-      ),
-    );
-  }
-
-  // Helper để xây dựng mục tip
-  Widget _buildTipItem({
-    required IconData icon,
-    required String title,
-    required String description,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+    showSearchTipsDialog(context);
   }
 
   // Cập nhật overlay khi thay đổi lựa chọn
   void _updateOverlay() {
     if (_overlayEntry != null) {
       _overlayEntry!.markNeedsBuild();
-    }
-  }
-
-  /// Helper method to scan a specific folder for files with a given tag
-  /// This helps with lazy loading of tag search results in deeper directories
-  Future<void> _scanFolderForTaggedFiles(String folderPath, String tag) async {
-    try {
-      // Check if folder exists
-      final folder = Directory(folderPath);
-      if (!await folder.exists()) {
-        return;
-      }
-
-      // Inform user we're scanning
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                'Đang quét thư mục ${pathlib.basename(folderPath)} cho tag "$tag"...'),
-            duration: const Duration(milliseconds: 800),
-          ),
-        );
-      }
-
-      // Use TagManager to find files with tag in this specific folder
-      final results = await TagManager.findFilesByTag(folderPath, tag);
-
-      if (results.isNotEmpty && mounted) {
-        // Add these results to the main search
-        final folderListBloc = BlocProvider.of<FolderListBloc>(context);
-        folderListBloc.add(AddTagSearchResults(results));
-
-        // Notify user of results
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                'Tìm thấy thêm ${results.length} kết quả trong ${pathlib.basename(folderPath)}'),
-            duration: const Duration(seconds: 1),
-          ),
-        );
-      }
-    } catch (e) {
-      debugPrint('Error scanning folder $folderPath: $e');
     }
   }
 

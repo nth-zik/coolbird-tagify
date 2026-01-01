@@ -143,7 +143,7 @@ void showAddTagToFileDialog(BuildContext context, String filePath) {
                       SnackBar(
                         content: Text(AppLocalizations.of(context)!
                             .tagsSavedSuccessfully),
-                        duration: Duration(seconds: 2),
+                        duration: const Duration(seconds: 2),
                       ),
                     );
 

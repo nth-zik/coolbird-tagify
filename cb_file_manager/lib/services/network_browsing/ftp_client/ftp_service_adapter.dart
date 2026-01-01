@@ -1,10 +1,8 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as pathlib;
 
 import 'ftp_client.dart';
-import 'ftp_file_info.dart';
 
 /// Adapter to integrate the custom FTP client with the network_browsing_service
 class FtpServiceAdapter {

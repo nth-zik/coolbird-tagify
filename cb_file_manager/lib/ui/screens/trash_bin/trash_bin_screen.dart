@@ -2,7 +2,6 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:remixicon/remixicon.dart' as remix;
-import 'package:path/path.dart' as pathlib;
 import 'package:cb_file_manager/helpers/files/trash_manager.dart';
 import 'package:intl/intl.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';

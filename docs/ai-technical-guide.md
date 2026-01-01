@@ -15,6 +15,7 @@ lib/
 ├── bloc/                     # flutter_bloc state machines (network browsing, selection)
 ├── config/                   # Theme + localization controllers and resources
 ├── helpers/                  # Cross-cutting utilities (filesystem, media, tags, caching)
+├── utils/                    # Core utilities (logging framework)
 ├── models/                   # ObjectBox entities and domain models
 ├── services/                 # Business logic (albums, streaming, networking, background workers)
 ├── ui/                       # Screens, components, and tab manager shell
@@ -40,6 +41,7 @@ lib/
 | Layer | Representative Paths | Highlights |
 | --- | --- | --- |
 | Configuration | `config/theme_config.dart`, `config/app_theme.dart`, `config/languages/` | Minimal theme tokens, color scheme, localization delegates, runtime language switching. |
+| Utils | `utils/app_logger.dart` | Centralized logging framework (NEVER use `print()` in production). |
 | Helpers | `helpers/core/filesystem_utils.dart`, `helpers/media/`, `helpers/tags/` | Filesystem traversal, media caches, tag batch operations, platform-specific utilities. |
 | Services | `services/album_*`, `services/network_browsing/`, `services/streaming/` | Long-running tasks, isolates, network adapters (FTP/SMB/WebDAV), streaming session orchestration. |
 | UI Screens | `ui/screens/media_gallery/`, `ui/screens/permissions/`, `ui/screens/settings/` | Feature-specific views with responsive layouts and shared action patterns. |
@@ -71,10 +73,25 @@ lib/
 - **Adding Keys** Update `config/languages/app_localizations.dart`, `config/languages/english_localizations.dart`, and `config/languages/vietnamese_localizations.dart` in tandem.
 - **Reference** `docs/coding-rules/i18n-internationalization-guide.md` documents the workflow.
 
+## Logging Framework
+- **CRITICAL RULE** Never use `print()` statements in production code. Always use the logging framework.
+- **Implementation** Import `utils/app_logger.dart` and use appropriate log levels:
+  ```dart
+  import 'package:cb_file_manager/utils/app_logger.dart';
+
+  AppLogger.debug('Detailed debug info');
+  AppLogger.info('General messages');
+  AppLogger.warning('Warnings');
+  AppLogger.error('Error message', error: e, stackTrace: st);
+  AppLogger.fatal('Fatal errors');
+  ```
+- **Benefits** Structured logging with timestamps, colors, method traces, stack traces, and configurable log levels.
+- **Configuration** Based on `logger` package; supports runtime log level adjustment via `AppLogger.setLevel(Level.info)`.
+
 ## Testing & Tooling
 - **Test Harness** See `test/` and scripts documented in `docs/testing-strategy.md`; infra includes `run_tests.dart`, `stable_tests.dart`, and CI-ready runners.
 - **Coverage Focus** Navigation flows and core widgets presently covered; expand for new galleries or services when modified.
-- **Diagnostics** Use verbose logging toggled in `VideoThumbnailHelper` during `kDebugMode` to trace cache behavior.
+- **Diagnostics** Use `AppLogger.debug()` for verbose logging during development; toggle log levels as needed.
 
 ## Platform Notes
 - **Desktop** `window_manager` ensures minimum window size, hidden title bar, and maximized start on Windows.

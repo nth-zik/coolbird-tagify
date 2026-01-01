@@ -1,15 +1,11 @@
 import 'dart:async';
 import 'dart:ffi';
 import 'dart:io';
-import 'dart:typed_data';
-import 'dart:isolate';
 
 import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:win32/win32.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:video_thumbnail/video_thumbnail.dart';
 import 'package:image/image.dart' as img;
 
 import '../media/fc_native_video_thumbnail.dart';
@@ -34,16 +30,14 @@ class Win32SmbHelper {
   // Cache service for network files
   final NetworkFileCacheService _cacheService = NetworkFileCacheService();
 
-  // Concurrency limits
-  static const int _maxConcurrentOperations = 3;
+  // Active operations tracking (concurrency limit constant was unused)
   final Set<String> _activeOperations = {};
   final Map<String, Completer<Uint8List?>> _pendingOperations = {};
 
   // Flag to check if we're running on Windows
   bool get _isWindows => Platform.isWindows;
 
-  // Thumbnail quality settings
-  static const int _highQualityJpegLevel = 90;
+  // Thumbnail settings
   static const int _standardThumbnailSize = 256;
   static const int _maxReadBufferSize = 4 * 1024 * 1024; // 4MB limit
 
@@ -124,7 +118,7 @@ class Win32SmbHelper {
         final sink = tempFile.openWrite();
 
         // Use larger buffer for better performance
-        final bufferSize = 256 * 1024; // 256KB chunks
+        const bufferSize = 256 * 1024; // 256KB chunks
         final buffer = calloc<Uint8>(bufferSize);
 
         try {
@@ -275,7 +269,7 @@ class Win32SmbHelper {
         }
 
         // For larger files, use chunked reading
-        final bufferSize = 512 * 1024; // 512KB chunks for faster reading
+        const bufferSize = 512 * 1024; // 512KB chunks for faster reading
         final buffer = calloc<Uint8>(bufferSize);
         final tempFile = File(tempFilePath);
         final sink = tempFile.openWrite();
@@ -632,7 +626,7 @@ class Win32SmbHelper {
     malloc.free(uncPathPtr);
 
     try {
-      final bufferSize = 256 * 1024; // 256KB chunks for better throughput
+      const bufferSize = 256 * 1024; // 256KB chunks for better throughput
       final buffer = calloc<Uint8>(bufferSize);
       final bytesReadPtr = calloc<Uint32>();
 
@@ -810,23 +804,5 @@ img.Image _enhanceImage(img.Image image) {
   } catch (e) {
     debugPrint('Error enhancing image: $e');
     return image; // Return original if enhancement fails
-  }
-}
-
-// Helper function for enhancing image quality in isolate
-Uint8List? _enhanceImageQualityIsolate(Uint8List data) {
-  try {
-    // Decode image
-    final image = img.decodeImage(data);
-    if (image == null) return null;
-
-    // Enhance image
-    final enhanced = _enhanceImage(image);
-
-    // Re-encode with high quality
-    return Uint8List.fromList(img.encodeJpg(enhanced, quality: 90));
-  } catch (e) {
-    debugPrint('Error in isolate image enhancement: $e');
-    return null;
   }
 }

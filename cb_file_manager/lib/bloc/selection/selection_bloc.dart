@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'selection_event.dart';
 import 'selection_state.dart';
+import '../../utils/app_logger.dart';
 
 class SelectionBloc extends Bloc<SelectionEvent, SelectionState> {
   SelectionBloc() : super(const SelectionState()) {
@@ -243,7 +244,7 @@ class SelectionBloc extends Bloc<SelectionEvent, SelectionState> {
     // Here you would typically call a service to save the tag in a database
     // For this implementation, we're just updating the UI
     // This is a placeholder - in a real app, this would save to a database
-    print('Added tag ${event.tag} to item ${event.filePath}');
+    AppLogger.debug('Added tag ${event.tag} to item ${event.filePath}');
 
     // In a real implementation, you would:
     // 1. Call a service to save the tag
@@ -259,7 +260,7 @@ class SelectionBloc extends Bloc<SelectionEvent, SelectionState> {
     // Here you would typically call a service to remove the tag in a database
     // For this implementation, we're just updating the UI
     // This is a placeholder - in a real app, this would save to a database
-    print('Removed tag ${event.tag} from item ${event.filePath}');
+    AppLogger.debug('Removed tag ${event.tag} from item ${event.filePath}');
 
     // In a real implementation, you would:
     // 1. Call a service to remove the tag
@@ -274,7 +275,7 @@ class SelectionBloc extends Bloc<SelectionEvent, SelectionState> {
   ) {
     // Here you would typically call a service to load tags from a database
     // For this implementation, we're just printing
-    print('Loading tags for item ${event.filePath}');
+    AppLogger.debug('Loading tags for item ${event.filePath}');
 
     // In a real implementation, you would:
     // 1. Call a service to load tags
@@ -289,7 +290,7 @@ class SelectionBloc extends Bloc<SelectionEvent, SelectionState> {
   ) {
     // Here you would typically call a service to load all tags from a database
     // For this implementation, we're just printing
-    print('Loading all available tags');
+    AppLogger.debug('Loading all available tags');
 
     // In a real implementation, you would:
     // 1. Call a service to load all tags

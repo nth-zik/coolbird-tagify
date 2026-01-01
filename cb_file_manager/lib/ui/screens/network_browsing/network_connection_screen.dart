@@ -7,10 +7,10 @@ import '../../../bloc/network_browsing/network_browsing_event.dart';
 import '../../../bloc/network_browsing/network_browsing_state.dart';
 import '../../../services/network_browsing/network_service_base.dart';
 import '../../tab_manager/core/tab_manager.dart';
-import '../../tab_manager/core/tab_data.dart'; // Import TabData
-import '../../tab_manager/core/tab_main_screen.dart'; // Import TabMainScreen
+// Import TabData
+// Import TabMainScreen
 import 'network_connection_dialog.dart';
-import 'smb_browser_screen.dart'; // Import SMBBrowserScreen
+// Import SMBBrowserScreen
 
 /// Screen to display and manage network connections
 class NetworkConnectionScreen extends StatefulWidget {
@@ -99,8 +99,8 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showConnectionDialog(context),
-        child: const Icon(remix.Remix.add_line),
         tooltip: 'Add Connection',
+        child: const Icon(remix.Remix.add_line),
       ),
     );
   }

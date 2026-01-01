@@ -26,7 +26,7 @@ class BreadcrumbNavigation extends StatelessWidget {
       // Add separator except for the first item
       if (i > 0) {
         breadcrumbs.add(
-          Padding(
+          const Padding(
             padding: EdgeInsets.symmetric(horizontal: 4.0),
             child: Icon(remix.Remix.arrow_right_s_line, size: 16),
           ),

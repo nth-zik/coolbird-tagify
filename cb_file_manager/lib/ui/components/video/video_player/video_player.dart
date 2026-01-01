@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -178,11 +177,10 @@ class VideoPlayer extends StatefulWidget {
     bool showStreamingSpeed = false,
     VoidCallback? onToggleStreamingSpeed,
   }) : this._(
-           key: key,
-           file: file,
-           fileName: pathlib.basename(file.path),
-           fileType:
-               FileTypeRegistry.getCategory(_extensionFromPath(file.path)),
+          key: key,
+          file: file,
+          fileName: pathlib.basename(file.path),
+          fileType: FileTypeRegistry.getCategory(_extensionFromPath(file.path)),
           autoPlay: autoPlay,
           looping: looping,
           showControls: showControls,
@@ -224,11 +222,11 @@ class VideoPlayer extends StatefulWidget {
     bool showStreamingSpeed = false,
     VoidCallback? onToggleStreamingSpeed,
   }) : this._(
-           key: key,
-           streamingUrl: streamingUrl,
-           fileName: fileName,
-           fileType: fileType ??
-               FileTypeRegistry.getCategory(_extensionFromPath(fileName)),
+          key: key,
+          streamingUrl: streamingUrl,
+          fileName: fileName,
+          fileType: fileType ??
+              FileTypeRegistry.getCategory(_extensionFromPath(fileName)),
           autoPlay: autoPlay,
           looping: looping,
           showControls: showControls,
@@ -266,11 +264,11 @@ class VideoPlayer extends StatefulWidget {
     bool showStreamingSpeed = false,
     VoidCallback? onToggleStreamingSpeed,
   }) : this._(
-           key: key,
-           smbMrl: smbMrl,
-           fileName: fileName,
-           fileType: fileType ??
-               FileTypeRegistry.getCategory(_extensionFromPath(fileName)),
+          key: key,
+          smbMrl: smbMrl,
+          fileName: fileName,
+          fileType: fileType ??
+              FileTypeRegistry.getCategory(_extensionFromPath(fileName)),
           autoPlay: autoPlay,
           looping: looping,
           showControls: showControls,
@@ -308,11 +306,11 @@ class VideoPlayer extends StatefulWidget {
     bool showStreamingSpeed = false,
     VoidCallback? onToggleStreamingSpeed,
   }) : this._(
-           key: key,
-           fileStream: fileStream,
-           fileName: fileName,
-           fileType: fileType ??
-               FileTypeRegistry.getCategory(_extensionFromPath(fileName)),
+          key: key,
+          fileStream: fileStream,
+          fileName: fileName,
+          fileType: fileType ??
+              FileTypeRegistry.getCategory(_extensionFromPath(fileName)),
           autoPlay: autoPlay,
           looping: looping,
           showControls: showControls,
@@ -342,7 +340,6 @@ class _VideoPlayerState extends State<VideoPlayer> {
   VlcPlayerController? _vlcController;
   exo.VideoPlayerController?
       _exoController; // ExoPlayer for Android PiP fallback
-  bool _usingExoInPip = false;
   // Fallback timer if VLC fails to start on Android
   Timer? _vlcStartupFallback;
 
@@ -358,7 +355,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
   String _errorMessage = '';
   double _savedVolume = 70.0;
   bool _showControls = true;
-  bool _showSpeedIndicator = false;
+  final bool _showSpeedIndicator = false;
   bool _useFlutterVlc = false;
 
   // Simplified loading state
@@ -369,7 +366,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
   Timer? _seekingTimer;
 
   // New advanced features state
-  List<SubtitleTrack> _subtitleTracks = [];
+  final List<SubtitleTrack> _subtitleTracks = [];
   int? _selectedSubtitleTrack = -1;
   double _playbackSpeed = 1.0;
   bool _isPictureInPicture = false;
@@ -429,24 +426,12 @@ class _VideoPlayerState extends State<VideoPlayer> {
 
   // VLC state
   bool _vlcListenerAttached = false;
-  bool _vlcPlaying = false;
-  Duration _vlcPosition = Duration.zero;
-  Duration _vlcDuration = Duration.zero;
   double _vlcVolume = 70.0;
   double _lastVolume = 70.0;
-  bool _vlcMuted = false;
   bool _isRestoringVolume = false;
-  bool _vlcWasActiveBeforePip = false;
   Map<String, dynamic>?
       _vlcPendingRestore; // {pos: Duration, vol: double0..1or0..100, playing: bool}
   bool _vlcPendingRestoreApplied = false;
-
-  // Exo PiP init guard to prevent concurrent initializations
-  bool _exoInitInProgress = false;
-  bool get _isSmbSource =>
-      widget.smbMrl != null && (widget.smbMrl?.isNotEmpty ?? false);
-  bool _shouldUseExoForPip() =>
-      true; // With local HTTP proxy, prefer Exo for all sources in PiP
 
   Map<String, dynamic>? _videoMetadata;
 
@@ -599,141 +584,9 @@ class _VideoPlayerState extends State<VideoPlayer> {
     } catch (_) {}
   }
 
-  Future<void> _initExoForPip() async {
-    if (_usingExoInPip || _exoInitInProgress || !Platform.isAndroid) return;
-    _exoInitInProgress = true;
-    // For SMB MRLs, we will feed Exo via a local HTTP proxy.
-
-    try {
-      exo.VideoPlayerController controller;
-      if (widget.file != null) {
-        controller = exo.VideoPlayerController.file(widget.file!);
-      } else if (widget.streamingUrl != null) {
-        controller = exo.VideoPlayerController.networkUrl(
-            Uri.parse(widget.streamingUrl!));
-      } else if (widget.smbMrl != null) {
-        final uri = await SmbHttpProxyServer.instance.urlFor(widget.smbMrl!);
-        controller = exo.VideoPlayerController.networkUrl(uri);
-      } else {
-        _exoInitInProgress = false;
-        return;
-      }
-      await controller.initialize();
-
-      // Sync position & volume from current player if available
-      if (_player != null) {
-        final pos = _player!.state.position;
-        if (pos > Duration.zero) {
-          await controller.seekTo(pos);
-        }
-        final vol = _player!.state.volume / 100.0;
-        try {
-          await controller.setVolume(vol);
-        } catch (_) {}
-      } else if (_vlcController != null) {
-        try {
-          final pos = _vlcController!.value.position;
-          if (pos > Duration.zero) {
-            await controller.seekTo(pos);
-          }
-        } catch (_) {}
-        try {
-          await controller.setVolume((_vlcVolume / 100.0).clamp(0.0, 1.0));
-        } catch (_) {}
-      }
-
-      // Always play in PiP for visible frames
-      await controller.play();
-
-      if (mounted) {
-        setState(() {
-          _exoController = controller;
-          _usingExoInPip = true;
-        });
-      }
-    } catch (e) {
-      debugPrint('Exo init error: $e');
-    }
-    _exoInitInProgress = false;
-  }
-
-  Future<void> _waitForExoInitialized(
-      {Duration timeout = const Duration(seconds: 1)}) async {
-    final sw = Stopwatch()..start();
-    while (sw.elapsed < timeout) {
-      if (_exoController != null && _exoController!.value.isInitialized) {
-        break;
-      }
-      await Future.delayed(const Duration(milliseconds: 50));
-    }
-  }
-
-  Future<void> _teardownExoAfterPip() async {
-    if (!Platform.isAndroid) return;
-    final controller = _exoController;
-    if (controller == null) return;
-
-    try {
-      final pos = await controller.position ?? Duration.zero;
-      final playing = controller.value.isPlaying;
-      final vol = controller.value.volume; // 0..1
-
-      // Sync back to the appropriate player
-      if (_vlcController != null) {
-        try {
-          await _vlcController!.seekTo(pos);
-        } catch (_) {}
-        try {
-          await _vlcController!.setVolume((vol * 100).toInt());
-        } catch (_) {}
-        if (playing) {
-          try {
-            await _vlcController!.play();
-          } catch (_) {}
-        }
-      } else if (_player != null) {
-        try {
-          await _player!.seek(pos);
-        } catch (_) {}
-        try {
-          await _player!.setVolume((vol * 100).clamp(0.0, 100.0));
-        } catch (_) {}
-        if (playing) {
-          try {
-            await _player!.play();
-          } catch (_) {}
-        }
-      } else if (_vlcWasActiveBeforePip) {
-        // VLC was active but disposed for PiP. Defer restore until controller re-creates.
-        _vlcPendingRestore = {
-          'pos': pos,
-          'vol': vol, // 0..1
-          'playing': playing,
-        };
-        _vlcPendingRestoreApplied = false;
-      }
-    } catch (e) {
-      debugPrint('Error syncing state after PiP: $e');
-    }
-
-    try {
-      await controller.pause();
-    } catch (_) {}
-    try {
-      await controller.dispose();
-    } catch (_) {}
-
-    if (mounted) {
-      setState(() {
-        _exoController = null;
-        _usingExoInPip = false;
-      });
-    }
-  }
-
   void _setupAndroidPipChannelListener() {
     if (!kIsWeb && Platform.isAndroid) {
-      final channel = MethodChannel('cb_file_manager/pip');
+      const channel = MethodChannel('cb_file_manager/pip');
       channel.setMethodCallHandler((call) async {
         debugPrint('PiP channel method call: ${call.method}');
 
@@ -851,7 +704,6 @@ class _VideoPlayerState extends State<VideoPlayer> {
         _savedVolume = savedVolume.clamp(0.0, 100.0);
         _vlcVolume = _savedVolume;
         _isMuted = savedMuted;
-        _vlcMuted = savedMuted;
       });
 
       debugPrint(
@@ -950,7 +802,6 @@ class _VideoPlayerState extends State<VideoPlayer> {
       if (_isMuted != isMutedNow) {
         setState(() {
           _isMuted = isMutedNow;
-          _vlcMuted = isMutedNow;
         });
 
         prefs.setVideoPlayerMute(isMutedNow).then((_) {
@@ -1540,8 +1391,6 @@ class _VideoPlayerState extends State<VideoPlayer> {
   }
 
   Widget _buildVideoWidget() {
-    final isDesktop =
-        Platform.isWindows || Platform.isLinux || Platform.isMacOS;
     final boxFit = _getBoxFitFromString(_videoScaleMode);
 
     // If suspended (e.g., navigating to image viewer on Android), hide the texture surface
@@ -1672,8 +1521,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
           if (!mounted) return;
           final notReady = _vlcController == null ||
               !_vlcController!.value.isInitialized ||
-              _vlcController!.value.size == null ||
-              (_vlcController!.value.size?.width ?? 0) == 0;
+              _vlcController!.value.size.width == 0;
           if (notReady) {
             debugPrint('VLC not ready, falling back to Exo');
             await _initExoFallback();
@@ -1701,8 +1549,9 @@ class _VideoPlayerState extends State<VideoPlayer> {
               if (pos > Duration.zero) await _vlcController!.seekTo(pos);
             } catch (_) {}
             try {
-              if (vol != null)
+              if (vol != null) {
                 await _vlcController!.setVolume((vol * 100).toInt());
+              }
             } catch (_) {}
             try {
               if (playing) {
@@ -3104,146 +2953,6 @@ class _VideoPlayerState extends State<VideoPlayer> {
     }
   }
 
-  Widget _buildCustomSeekBar() {
-    if (_player != null) {
-      return StreamBuilder<Duration>(
-        stream: _player!.stream.position,
-        builder: (context, snapshot) {
-          final position = snapshot.data ?? Duration.zero;
-          final duration = _player!.state.duration;
-          final progress = duration.inMilliseconds > 0
-              ? position.inMilliseconds / duration.inMilliseconds
-              : 0.0;
-
-          return Container(
-            height: 40,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Text(
-                  _formatDuration(position),
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      trackHeight: 3,
-                      thumbShape:
-                          const RoundSliderThumbShape(enabledThumbRadius: 6),
-                      overlayShape:
-                          const RoundSliderOverlayShape(overlayRadius: 12),
-                    ),
-                    child: Slider(
-                      value: progress.clamp(0.0, 1.0),
-                      onChangeStart: (value) {
-                        // Start seeking when user begins dragging
-                        setState(() {
-                          _isSeeking = true;
-                        });
-                        _seekingTimer?.cancel();
-                      },
-                      onChanged: (value) {
-                        final newPosition = Duration(
-                          milliseconds:
-                              (value * duration.inMilliseconds).round(),
-                        );
-                        _player!.seek(newPosition);
-                      },
-                      onChangeEnd: (value) {
-                        // End seeking after user finishes dragging with a slight delay
-                        _seekingTimer?.cancel();
-                        _seekingTimer =
-                            Timer(const Duration(milliseconds: 300), () {
-                          if (mounted) {
-                            setState(() {
-                              _isSeeking = false;
-                            });
-                          }
-                        });
-                      },
-                      activeColor: Colors.white,
-                      inactiveColor: Colors.white.withValues(alpha: 0.3),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  _formatDuration(duration),
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                ),
-              ],
-            ),
-          );
-        },
-      );
-    } else {
-      // VLC seek bar (avoid full rebuilds by listening directly to controller value)
-      return ValueListenableBuilder<VlcPlayerValue>(
-        valueListenable: _vlcController!,
-        builder: (context, v, _) {
-          final pos = v.position;
-          final dur = v.duration.inMilliseconds > 0
-              ? v.duration
-              : const Duration(seconds: 1);
-          final progress = dur.inMilliseconds > 0
-              ? (pos.inMilliseconds / dur.inMilliseconds).clamp(0.0, 1.0)
-              : 0.0;
-
-          return Container(
-            height: 40,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Text(
-                  _formatDuration(pos),
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Slider(
-                    value: progress,
-                    onChangeStart: (value) {
-                      // Start seeking when user begins dragging
-                      setState(() {
-                        _isSeeking = true;
-                      });
-                      _seekingTimer?.cancel();
-                    },
-                    onChanged: (vv) async {
-                      final targetMs = (dur.inMilliseconds * vv).toInt();
-                      await _vlcController
-                          ?.seekTo(Duration(milliseconds: targetMs));
-                    },
-                    onChangeEnd: (value) {
-                      // End seeking after user finishes dragging with a slight delay
-                      _seekingTimer?.cancel();
-                      _seekingTimer =
-                          Timer(const Duration(milliseconds: 300), () {
-                        if (mounted) {
-                          setState(() {
-                            _isSeeking = false;
-                          });
-                        }
-                      });
-                    },
-                    activeColor: Colors.redAccent,
-                    inactiveColor: Colors.white.withValues(alpha: 0.3),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  _formatDuration(dur),
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                ),
-              ],
-            ),
-          );
-        },
-      );
-    }
-  }
-
   Widget _buildControlButton({
     required IconData icon,
     required VoidCallback? onPressed,
@@ -3413,9 +3122,10 @@ class _VideoPlayerState extends State<VideoPlayer> {
   Future<void> _takeScreenshot() async {
     final localizations = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
-    
+
     // Track if video was playing before we pause it for screenshot
-    final wasPlaying = _player?.state.playing ?? _vlcController?.value.isPlaying ?? false;
+    final wasPlaying =
+        _player?.state.playing ?? _vlcController?.value.isPlaying ?? false;
 
     try {
       Uint8List? screenshotBytes;
@@ -3441,7 +3151,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
 
       // Try to capture screenshot based on active player
       // On mobile, prefer RepaintBoundary first to avoid platform texture issues
-      if ((Platform.isAndroid || Platform.isIOS) && screenshotBytes == null) {
+      if ((Platform.isAndroid || Platform.isIOS)) {
         debugPrint('Mobile: attempting RepaintBoundary screenshot first...');
         try {
           final boundary = _screenshotKey.currentContext?.findRenderObject()
@@ -3518,8 +3228,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
         try {
           final boundary = _screenshotKey.currentContext?.findRenderObject()
               as RenderRepaintBoundary?;
-          debugPrint(
-              'RepaintBoundary fallback available: ${boundary != null}');
+          debugPrint('RepaintBoundary fallback available: ${boundary != null}');
           if (boundary != null) {
             // Ensure the latest frame is painted before capturing
             await Future.delayed(const Duration(milliseconds: 16));
@@ -3585,11 +3294,13 @@ class _VideoPlayerState extends State<VideoPlayer> {
         // Validate screenshot is not completely black/empty by checking file size
         // Completely black images are usually very small (~< 500 bytes)
         if (screenshotBytes.length < 500) {
-          debugPrint('Screenshot rejected: File too small (${screenshotBytes.length} bytes - likely black/empty image)');
+          debugPrint(
+              'Screenshot rejected: File too small (${screenshotBytes.length} bytes - likely black/empty image)');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Capture failed: Image appears to be empty. Try again.'),
+                content: Text(
+                    'Capture failed: Image appears to be empty. Try again.'),
                 duration: Duration(seconds: 3),
               ),
             );
@@ -3608,7 +3319,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
 
             // Save to user's Pictures directory (visible in file manager)
             Directory screenshotsDir;
-            
+
             if (Platform.isAndroid) {
               // On Android, get actual Pictures directory using path_provider
               // This gives us the standard Pictures folder that's accessible
@@ -3632,13 +3343,15 @@ class _VideoPlayerState extends State<VideoPlayer> {
               await screenshotsDir.create(recursive: true);
             }
 
-            final screenshotFile = File(pathlib.join(screenshotsDir.path, fileName));
-            debugPrint('💾 Saving screenshot bytes: ${screenshotBytes.length} bytes to ${screenshotFile.path}');
+            final screenshotFile =
+                File(pathlib.join(screenshotsDir.path, fileName));
+            debugPrint(
+                '💾 Saving screenshot bytes: ${screenshotBytes.length} bytes to ${screenshotFile.path}');
             await screenshotFile.writeAsBytes(screenshotBytes, flush: true);
-            
+
             // Ensure file is fully written to disk
             await Future.delayed(const Duration(milliseconds: 200));
-            
+
             // Verify file is readable
             final fileSize = await screenshotFile.length();
             debugPrint('✅ Screenshot file verified: $fileSize bytes on disk');
@@ -3647,7 +3360,8 @@ class _VideoPlayerState extends State<VideoPlayer> {
 
             // Also save to gallery with Gal package for easy access
             try {
-              await Gal.putImage(screenshotFile.path, album: 'VideoScreenshots');
+              await Gal.putImage(screenshotFile.path,
+                  album: 'VideoScreenshots');
               debugPrint('Screenshot also saved to gallery album');
             } catch (e) {
               debugPrint('Warning: Could not add to gallery: $e');
@@ -3679,12 +3393,12 @@ class _VideoPlayerState extends State<VideoPlayer> {
         }
 
         // Show success message with path
-        if (mounted && screenshotPath != null) {
+        if (mounted) {
           final filePath = screenshotPath; // Non-null local variable
-          
+
           // Cleanup: Delete old black/small screenshot files that are < 1KB
           _cleanupOldBlackScreenshots();
-          
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Column(
@@ -3786,7 +3500,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
   Future<void> _cleanupOldBlackScreenshots() async {
     try {
       Directory screenshotsDir;
-      
+
       if (Platform.isAndroid) {
         final directory = await getExternalStorageDirectory();
         if (directory == null) {
@@ -3804,12 +3518,12 @@ class _VideoPlayerState extends State<VideoPlayer> {
           'Screenshots',
         ));
       }
-      
+
       if (!await screenshotsDir.exists()) return;
-      
+
       final files = screenshotsDir.listSync();
       int deletedCount = 0;
-      
+
       for (final file in files) {
         if (file is File && file.path.endsWith('.png')) {
           try {
@@ -3818,120 +3532,20 @@ class _VideoPlayerState extends State<VideoPlayer> {
             if (fileSize < 1024) {
               await file.delete();
               deletedCount++;
-              debugPrint('🗑️ Deleted black screenshot: ${file.path} (${fileSize} bytes)');
+              debugPrint(
+                  '🗑️ Deleted black screenshot: ${file.path} ($fileSize bytes)');
             }
           } catch (e) {
             debugPrint('Could not delete old screenshot: $e');
           }
         }
       }
-      
+
       if (deletedCount > 0) {
         debugPrint('Cleaned up $deletedCount old black screenshot(s)');
       }
     } catch (e) {
       debugPrint('Error during screenshot cleanup: $e');
-    }
-  }
-
-  Future<void> _openScreenshotFile(String filePath) async {
-    final localizations = AppLocalizations.of(context)!;
-    try {
-      debugPrint('========== SCREENSHOT OPEN FOLDER DEBUG ==========');
-      debugPrint('Attempting to open folder containing: $filePath');
-
-      // Check if file exists
-      final file = File(filePath);
-      final exists = await file.exists();
-      debugPrint('File exists: $exists');
-
-      if (!exists) {
-        debugPrint('File does not exist at path: $filePath');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(localizations.screenshotFileNotFound),
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        }
-        return;
-      }
-
-      // Determine folder path and highlighted file
-      final folderPath = pathlib.dirname(filePath);
-      final highlightedFileName = pathlib.basename(filePath);
-      debugPrint(
-          'Opening folder tab: $folderPath (highlight: $highlightedFileName)');
-
-      // Try opening via TabManager (new tab)
-      bool openedViaTab = false;
-      try {
-        TabNavigator.openTab(
-          context,
-          folderPath,
-          title: 'Screenshots',
-          highlightedFileName: highlightedFileName,
-        );
-        openedViaTab = true;
-        debugPrint('SUCCESS: Opened folder tab via TabManager for $folderPath');
-      } catch (e) {
-        debugPrint(
-            'TabManager.openTab error ($e), trying widget.onOpenFolder if provided.');
-      }
-
-      // Fallback: use provided callback if available
-      if (!openedViaTab) {
-        if (widget.onOpenFolder != null) {
-          try {
-            widget.onOpenFolder!(folderPath, highlightedFileName);
-            debugPrint(
-                'SUCCESS: Delegated to onOpenFolder callback for $folderPath');
-            return;
-          } catch (e) {
-            debugPrint('onOpenFolder callback error: $e');
-          }
-        }
-
-        // Last resort: open system file explorer at the folder path
-        try {
-          final uri = Uri.file(folderPath);
-          final can = await canLaunchUrl(uri);
-          if (can) {
-            await launchUrl(uri);
-            debugPrint('Opened system file explorer at $folderPath');
-          } else {
-            throw 'Cannot launch URI for folder';
-          }
-        } catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(localizations.screenshotCannotOpenTab),
-                duration: const Duration(seconds: 3),
-              ),
-            );
-          }
-        }
-      }
-
-      debugPrint('========== END SCREENSHOT OPEN FOLDER DEBUG ==========');
-    } catch (e, stackTrace) {
-      debugPrint('========== SCREENSHOT OPEN FOLDER ERROR ==========');
-      debugPrint('ERROR Type: ${e.runtimeType}');
-      debugPrint('ERROR Message: $e');
-      debugPrint('Stack trace:');
-      debugPrint(stackTrace.toString());
-      debugPrint('========== END ERROR ==========');
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${localizations.screenshotErrorOpeningFolder}: ${e.toString()}'),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
     }
   }
 
@@ -3969,7 +3583,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
           try {
             ScaffoldMessenger.of(context).hideCurrentSnackBar();
           } catch (_) {}
-          
+
           // Load image bytes before opening viewer
           debugPrint('📂 Loading screenshot from: $filePath');
           final imageFile = File(filePath);
@@ -3979,13 +3593,13 @@ class _VideoPlayerState extends State<VideoPlayer> {
           debugPrint('   ✅ Loaded ${imageBytes.length} bytes');
           // Verify bytes are valid image data (PNG signature: 89 50 4E 47)
           if (imageBytes.length > 4) {
-            final isPng = imageBytes[0] == 0x89 && 
-                         imageBytes[1] == 0x50 && 
-                         imageBytes[2] == 0x4E && 
-                         imageBytes[3] == 0x47;
+            final isPng = imageBytes[0] == 0x89 &&
+                imageBytes[1] == 0x50 &&
+                imageBytes[2] == 0x4E &&
+                imageBytes[3] == 0x47;
             debugPrint('   Is valid PNG: $isPng');
           }
-          
+
           await Navigator.of(context, rootNavigator: true).push(
             MaterialPageRoute(
               builder: (_) => ImageViewerScreen(
@@ -4015,7 +3629,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
               _suspendVideoSurface = true;
             });
           }
-          
+
           // Load image bytes before opening viewer
           debugPrint('📂 Loading screenshot (iOS) from: $filePath');
           final imageFile = File(filePath);
@@ -4025,13 +3639,13 @@ class _VideoPlayerState extends State<VideoPlayer> {
           debugPrint('   ✅ Loaded ${imageBytes.length} bytes');
           // Verify bytes are valid image data
           if (imageBytes.length > 4) {
-            final isPng = imageBytes[0] == 0x89 && 
-                         imageBytes[1] == 0x50 && 
-                         imageBytes[2] == 0x4E && 
-                         imageBytes[3] == 0x47;
+            final isPng = imageBytes[0] == 0x89 &&
+                imageBytes[1] == 0x50 &&
+                imageBytes[2] == 0x4E &&
+                imageBytes[3] == 0x47;
             debugPrint('   Is valid PNG: $isPng');
           }
-          
+
           // Ensure one frame renders without the video texture before pushing new route
           await Future.delayed(const Duration(milliseconds: 50));
           await Navigator.of(context, rootNavigator: true).push(
@@ -4072,7 +3686,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
         // If we got here, TabManagerBloc is available
         final encoded = Uri.encodeComponent(filePath);
         final routePath = '#image?path=$encoded';
-        
+
         TabNavigator.openTab(
           context,
           routePath,
@@ -4081,7 +3695,8 @@ class _VideoPlayerState extends State<VideoPlayer> {
         opened = true;
         debugPrint('SUCCESS: Opened image tab via TabManager: $routePath');
       } catch (e, stackTrace) {
-        debugPrint('TabManager.openTab failed (TabManagerBloc not in context): $e');
+        debugPrint(
+            'TabManager.openTab failed (TabManagerBloc not in context): $e');
         debugPrint('Stack trace: $stackTrace');
         // Continue to fallback methods
       }
@@ -4150,7 +3765,8 @@ class _VideoPlayerState extends State<VideoPlayer> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${localizations.screenshotErrorOpeningFolder}: ${e.toString()}'),
+            content: Text(
+                '${localizations.screenshotErrorOpeningFolder}: ${e.toString()}'),
             duration: const Duration(seconds: 3),
           ),
         );
@@ -4174,7 +3790,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
   /// Advanced controls menu với popup menu để giảm số nút trên thanh điều khiển
   Widget _buildAdvancedControlsMenu() {
     return PopupMenuButton<String>(
-      icon: Icon(
+      icon: const Icon(
         Icons.more_vert,
         color: Colors.white,
         size: 24,
@@ -4213,17 +3829,18 @@ class _VideoPlayerState extends State<VideoPlayer> {
         PopupMenuItem<String>(
           value: 'screenshot',
           child: ListTile(
-            leading: Icon(Icons.photo_camera, color: Colors.white, size: 20),
+            leading:
+                const Icon(Icons.photo_camera, color: Colors.white, size: 20),
             title: Text(
               AppLocalizations.of(context)!.takeScreenshot,
-              style: TextStyle(color: Colors.white),
+              style: const TextStyle(color: Colors.white),
             ),
             dense: true,
             contentPadding: EdgeInsets.zero,
           ),
         ),
         if (Platform.isWindows)
-          PopupMenuItem<String>(
+          const PopupMenuItem<String>(
             value: 'audio_tracks',
             child: ListTile(
               leading: Icon(Icons.audiotrack, color: Colors.white, size: 20),
@@ -4252,9 +3869,9 @@ class _VideoPlayerState extends State<VideoPlayer> {
         PopupMenuItem<String>(
           value: 'speed',
           child: ListTile(
-            leading: Icon(Icons.speed, color: Colors.white, size: 20),
+            leading: const Icon(Icons.speed, color: Colors.white, size: 20),
             title: Text('Playback Speed (${_playbackSpeed}x)',
-                style: TextStyle(color: Colors.white)),
+                style: const TextStyle(color: Colors.white)),
             dense: true,
             contentPadding: EdgeInsets.zero,
           ),
@@ -4269,12 +3886,12 @@ class _VideoPlayerState extends State<VideoPlayer> {
                 color: Colors.white,
                 size: 20),
             title: Text(_isPictureInPicture ? 'Exit PiP' : 'Picture in Picture',
-                style: TextStyle(color: Colors.white)),
+                style: const TextStyle(color: Colors.white)),
             dense: true,
             contentPadding: EdgeInsets.zero,
           ),
         ),
-        PopupMenuItem<String>(
+        const PopupMenuItem<String>(
           value: 'filters',
           child: ListTile(
             leading: Icon(Icons.tune, color: Colors.white, size: 20),
@@ -4298,8 +3915,8 @@ class _VideoPlayerState extends State<VideoPlayer> {
             contentPadding: EdgeInsets.zero,
           ),
         ),
-        PopupMenuDivider(),
-        PopupMenuItem<String>(
+        const PopupMenuDivider(),
+        const PopupMenuItem<String>(
           value: 'settings',
           child: ListTile(
             leading: Icon(Icons.settings, color: Colors.white, size: 20),
@@ -4842,7 +4459,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
     // Android: enter native Picture-in-Picture
     if (Platform.isAndroid) {
       try {
-        final channel = MethodChannel('cb_file_manager/pip');
+        const channel = MethodChannel('cb_file_manager/pip');
 
         // Determine aspect ratio from current video if possible
         int w = 16;
@@ -5360,14 +4977,15 @@ class _VideoPlayerState extends State<VideoPlayer> {
         _suspendVideoSurface = false;
       });
     }
-    
+
     // On Android, we need to rebuild controllers after they were disposed during suspend
     if (Platform.isAndroid) {
       // Check if we were using VLC before suspension
       final needsVlcRestore = _useFlutterVlc && _vlcController == null;
-      // Check if we were using Media Kit before suspension  
-      final needsMediaKitRestore = !_useFlutterVlc && _videoController == null && _player != null;
-      
+      // Check if we were using Media Kit before suspension
+      final needsMediaKitRestore =
+          !_useFlutterVlc && _videoController == null && _player != null;
+
       if (needsVlcRestore) {
         try {
           // Re-initialize VLC controller based on source type
@@ -5378,7 +4996,8 @@ class _VideoPlayerState extends State<VideoPlayer> {
             final creds = uri.userInfo.isNotEmpty
                 ? uri.userInfo.split(':')
                 : const <String>[];
-            final user = creds.isNotEmpty ? Uri.decodeComponent(creds[0]) : null;
+            final user =
+                creds.isNotEmpty ? Uri.decodeComponent(creds[0]) : null;
             final pwd = creds.length > 1 ? Uri.decodeComponent(creds[1]) : null;
             final cleanUrl = uri.replace(userInfo: '').toString();
 
@@ -5427,7 +5046,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
               ),
             );
           }
-          
+
           debugPrint('VLC controller restored after route pop');
           _vlcListenerAttached = false; // Reset listener flag
           if (mounted) {
@@ -5454,7 +5073,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
           debugPrint('Error restoring Media Kit VideoController: $e');
         }
       }
-      
+
       // Resume playback if needed
       if (resumePlaying) {
         try {
@@ -5469,7 +5088,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
       }
       return;
     }
-    
+
     // Desktop: Re-create media_kit video controller if needed
     if (_player != null && _videoController == null) {
       try {

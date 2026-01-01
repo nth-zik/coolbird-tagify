@@ -2,7 +2,6 @@ import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cb_file_manager/models/objectbox/album.dart';
-import 'package:cb_file_manager/models/objectbox/album_file.dart';
 import 'package:cb_file_manager/services/album_service.dart';
 import 'package:cb_file_manager/ui/utils/base_screen.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/image_viewer_screen.dart';
@@ -37,7 +36,6 @@ class AlbumDetailScreen extends StatefulWidget {
 class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
   final AlbumService _albumService = AlbumService.instance;
 
-  List<AlbumFile> _albumFiles = [];
   List<File> _imageFiles = [];
   List<File> _originalImageFiles = [];
   bool _isLoading = true;
@@ -205,7 +203,6 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
 
       if (mounted) {
         setState(() {
-          _albumFiles = albumFiles;
           _originalImageFiles = List<File>.from(imageFiles);
           _applyFiltersAndOrder();
           _isLoading = false;
@@ -345,62 +342,6 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
     } catch (_) {}
   }
 
-  Future<List<String>> _getStorageRoots() async {
-    final roots = <String>[];
-    try {
-      if (Platform.isAndroid) {
-        // Typical Android storage roots
-        final base = Directory('/storage');
-        if (await base.exists()) {
-          try {
-            await for (final entity in base.list(recursive: false)) {
-              if (entity is Directory) roots.add(entity.path);
-            }
-          } catch (_) {}
-        }
-        // Ensure the primary internal storage is included
-        const emu0 = '/storage/emulated/0';
-        if (await Directory(emu0).exists()) roots.add(emu0);
-      } else if (Platform.isWindows) {
-        for (var c in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')) {
-          final drive = Directory('$c:\\');
-          try {
-            if (await drive.exists()) roots.add(drive.path);
-          } catch (_) {}
-        }
-      } else if (Platform.isMacOS) {
-        // macOS volumes
-        final vols = Directory('/Volumes');
-        if (await vols.exists()) {
-          try {
-            await for (final entity in vols.list(recursive: false)) {
-              if (entity is Directory) roots.add(entity.path);
-            }
-          } catch (_) {}
-        }
-        // Home directory
-        final home = Directory(Platform.environment['HOME'] ?? '');
-        if (await home.exists()) roots.add(home.path);
-      } else {
-        // Linux and others
-        final home = Directory(Platform.environment['HOME'] ?? '');
-        if (await home.exists()) roots.add(home.path);
-        for (final p in ['/mnt', '/media']) {
-          final d = Directory(p);
-          if (await d.exists()) {
-            try {
-              await for (final e in d.list(recursive: false)) {
-                if (e is Directory) roots.add(e.path);
-              }
-            } catch (_) {}
-          }
-        }
-      }
-    } catch (_) {}
-
-    // Deduplicate
-    return roots.toSet().toList();
-  }
 
   Future<void> _loadCachedSmartImages() async {
     try {

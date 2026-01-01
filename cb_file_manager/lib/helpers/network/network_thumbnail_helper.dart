@@ -1,9 +1,7 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:async';
 import 'dart:isolate';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:path/path.dart' as p;
 import 'package:cb_file_manager/services/network_browsing/network_service_registry.dart';
@@ -68,12 +66,11 @@ class NetworkThumbnailHelper {
 
   // Debouncing for rapid requests (tăng delay khi scroll)
   static final Map<String, Timer> _debounceTimers = {};
-  static Duration _debounceDelay = Duration(
+  static Duration _debounceDelay = const Duration(
     milliseconds: 200,
   ); // Tăng delay mặc định
 
-  // Scroll detection
-  static DateTime _lastScrollTime = DateTime.now();
+  // Scroll detection (we only track whether scrolling is active)
   static bool _isScrolling = false;
   static Timer? _scrollTimer;
 
@@ -85,7 +82,6 @@ class NetworkThumbnailHelper {
 
   // Cache directory management
   static Directory? _cacheDirectory;
-  static const String _cacheDirName = 'smb_thumbnails';
 
   // Cache cleanup settings
   static const int _maxCacheFiles = 500;
@@ -112,7 +108,6 @@ class NetworkThumbnailHelper {
     _visiblePaths.add(path);
 
     // Update scroll detection
-    _lastScrollTime = DateTime.now();
     _updateScrollState();
 
     // Di chuyển các request đang hiển thị lên đầu queue
@@ -133,15 +128,15 @@ class NetworkThumbnailHelper {
     if (!_isScrolling) {
       _isScrolling = true;
       // Increase debounce delay during scroll
-      _debounceDelay = Duration(milliseconds: 500);
+      _debounceDelay = const Duration(milliseconds: 500);
       // debugPrint('Scroll detected - increasing debounce delay and reducing concurrency');
     }
 
     // Set timer to detect when scrolling stops
-    _scrollTimer = Timer(Duration(milliseconds: 300), () {
+    _scrollTimer = Timer(const Duration(milliseconds: 300), () {
       _isScrolling = false;
       // Restore normal debounce delay
-      _debounceDelay = Duration(milliseconds: 150);
+      _debounceDelay = const Duration(milliseconds: 150);
       // debugPrint('Scroll stopped - restoring normal performance settings');
 
       // Process queued requests now that scrolling stopped
@@ -238,14 +233,6 @@ class NetworkThumbnailHelper {
     }
   }
 
-  /// Get the cache directory, creating it if needed
-  Future<Directory> _getCacheDirectory() async {
-    if (_cacheDirectory == null) {
-      await _initializeCacheDirectory();
-    }
-    return _cacheDirectory!;
-  }
-
   /// Perform cache cleanup based on age, size, and file count
   Future<void> _performCacheCleanup() async {
     try {
@@ -266,8 +253,7 @@ class NetworkThumbnailHelper {
       debugPrint('Starting cache cleanup...');
 
       final files = await _cacheDirectory!.list().toList();
-      final thumbnailFiles =
-          files.where((f) => f is File).cast<File>().toList();
+      final thumbnailFiles = files.whereType<File>().cast<File>().toList();
 
       if (thumbnailFiles.isEmpty) {
         debugPrint('No files to cleanup');
@@ -348,7 +334,7 @@ class NetworkThumbnailHelper {
           }
         }
 
-        final targetSize = _maxCacheSizeMB * 1024 * 1024;
+        const targetSize = _maxCacheSizeMB * 1024 * 1024;
         for (final file in finalFiles) {
           if (currentSize <= targetSize) break;
 
@@ -439,7 +425,7 @@ class NetworkThumbnailHelper {
       if (durationSinceLast < backoffDelay) {
         // Skip if failed within backoff period
         debugPrint(
-          'Skipping thumbnail generation for $networkFilePath (failed ${retryCount} times, backoff ${backoffMinutes}min)',
+          'Skipping thumbnail generation for $networkFilePath (failed $retryCount times, backoff ${backoffMinutes}min)',
         );
         // Return a special marker to indicate skip due to backoff
         throw ThumbnailSkippedException(
@@ -468,7 +454,7 @@ class NetworkThumbnailHelper {
       if (_isScrolling) {
         // Re-debounce with longer delay during scroll
         _debounceTimers[requestKey] = Timer(
-          Duration(milliseconds: 800),
+          const Duration(milliseconds: 800),
           () async {
             _debounceTimers.remove(requestKey);
             if (_visiblePaths.contains(networkFilePath) && !_isScrolling) {
@@ -708,7 +694,7 @@ class NetworkThumbnailHelper {
           try {
             final bytes = await service
                 ?.getThumbnail(smbFilePath, size)
-                ?.timeout(const Duration(seconds: 5), onTimeout: () => null);
+                .timeout(const Duration(seconds: 5), onTimeout: () => null);
             if (bytes != null && bytes.isNotEmpty) {
               return await _saveThumbnailToFile(smbFilePath, bytes, size);
             }
@@ -849,187 +835,6 @@ class NetworkThumbnailHelper {
       await File(targetPath).writeAsBytes(encoded);
       return targetPath;
     } catch (_) {
-      return null;
-    }
-  }
-
-  /// New direct image thumbnail generation without using isolates
-  Future<String?> _generateImageThumbnailDirect(
-    dynamic service,
-    String smbFilePath,
-    int size,
-  ) async {
-    try {
-      // Open file stream
-      final fileStream = service.openFileStream(smbFilePath);
-      if (fileStream == null) {
-        debugPrint('Failed to open file stream for $smbFilePath');
-        return null;
-      }
-
-      // Buffer reasonable amount for image (max 2MB)
-      final bufferedFile = await _cacheService.bufferPartialFile(
-        smbFilePath,
-        fileStream,
-        maxBytes: 2 * 1024 * 1024, // 2MB max
-      );
-
-      // Use an isolate to process the image so the UI thread stays responsive
-      await _initializeCacheDirectory();
-      final String thumbnailPath = _getThumbnailFilePath(smbFilePath, size);
-
-      // Chỉ truyền các tham số cần thiết qua isolate, không truyền _failedAttempts
-      final String? resultPath = await compute(
-        NetworkThumbnailHelper._imageThumbnailIsolate,
-        {
-          'sourcePath': bufferedFile.path,
-          'targetPath': thumbnailPath,
-          'size': size,
-        },
-      );
-
-      if (resultPath != null && File(resultPath).existsSync()) {
-        // Store in secondary cache service for cross-session reuse
-        try {
-          final bytes = await File(resultPath).readAsBytes();
-          await _cacheService.cacheThumbnail(smbFilePath, bytes, size);
-        } catch (e) {
-          debugPrint('Error caching thumbnail: $e');
-        }
-
-        _thumbnailPathCache[smbFilePath] = resultPath;
-        return resultPath;
-      }
-
-      return null;
-    } catch (e) {
-      debugPrint('Error generating image thumbnail for $smbFilePath: $e');
-      // Ghi nhận thất bại nhưng không truyền qua isolate
-      _failedAttempts['$smbFilePath:$size'] = DateTime.now();
-      return null;
-    }
-  }
-
-  /// Generate image thumbnail using progressive streaming approach
-  Future<String?> _generateImageThumbnailProgressive(
-    dynamic service,
-    String smbFilePath,
-    int size,
-  ) async {
-    try {
-      // Open file stream
-      final fileStream = service.openFileStream(smbFilePath);
-      if (fileStream == null) {
-        debugPrint('Failed to open file stream for $smbFilePath');
-        return null;
-      }
-
-      // Progressive buffer strategy for high quality thumbnails
-      // Start with enough data for decent quality, then increase for problematic images
-      final bufferSizes = [
-        128 * 1024, // 128KB - baseline quality
-        256 * 1024, // 256KB - good quality
-        512 * 1024, // 512KB - high quality
-        1024 * 1024, // 1MB - very high quality
-        2 * 1024 * 1024, // 2MB - maximum quality
-      ];
-
-      for (final bufferSize in bufferSizes) {
-        try {
-          // debugPrint('Trying buffer size: $bufferSize bytes');
-
-          // Buffer just enough to try decoding
-          final bufferedFile = await _cacheService.bufferPartialFile(
-            smbFilePath,
-            fileStream,
-            maxBytes: bufferSize,
-          );
-
-          final imageBytes = await bufferedFile.readAsBytes();
-
-          // Validate image data
-          if (imageBytes.isEmpty) {
-            // debugPrint('Empty image data with buffer size $bufferSize for $smbFilePath');
-            continue;
-          }
-
-          if (imageBytes.length < 100) {
-            // debugPrint('Image data too small (${imageBytes.length} bytes) with buffer size $bufferSize for $smbFilePath');
-            continue;
-          }
-
-          // Decode and process directly - avoid isolate issues
-          final image = img.decodeImage(imageBytes);
-          if (image == null) {
-            // debugPrint('Failed to decode image data (${imageBytes.length} bytes) with buffer size $bufferSize for $smbFilePath - invalid image data');
-            continue;
-          }
-
-          // Calculate optimal thumbnail dimensions
-          final aspectRatio = image.width / image.height;
-          int targetWidth, targetHeight;
-
-          if (aspectRatio > 1) {
-            targetWidth = size;
-            targetHeight = (size / aspectRatio).round();
-          } else {
-            targetHeight = size;
-            targetWidth = (size * aspectRatio).round();
-          }
-
-          // Ensure minimum dimensions
-          targetWidth = targetWidth.clamp(1, size);
-          targetHeight = targetHeight.clamp(1, size);
-
-          // Resize directly
-          final thumbnail = img.copyResize(
-            image,
-            width: targetWidth,
-            height: targetHeight,
-            interpolation:
-                img.Interpolation.average, // Faster but still decent quality
-          );
-
-          // Enhance and encode
-          final enhanced = _enhanceImageSynchronously(thumbnail);
-          final thumbnailData = Uint8List.fromList(
-            img.encodePng(enhanced, level: 6),
-          );
-
-          return await _saveThumbnailToFile(smbFilePath, thumbnailData, size);
-        } catch (e) {
-          // debugPrint('Error with buffer size $bufferSize: $e');
-          continue; // Try next buffer size
-        }
-      }
-
-      // If all progressive attempts failed, try service fallback
-      return await _tryServiceFallback(service, smbFilePath, size);
-    } catch (e) {
-      debugPrint('Error in progressive thumbnail generation: $e');
-      // Ghi nhận thất bại nhưng không truyền qua isolate
-      _failedAttempts['$smbFilePath:$size'] = DateTime.now();
-      return null;
-    }
-  }
-
-  /// Try service fallback for thumbnail generation
-  Future<String?> _tryServiceFallback(
-    dynamic service,
-    String smbFilePath,
-    int size,
-  ) async {
-    try {
-      // debugPrint('Trying service fallback for: $smbFilePath');
-
-      final fallbackData = await service?.getThumbnail(smbFilePath, size);
-      if (fallbackData != null && fallbackData.isNotEmpty) {
-        return await _saveThumbnailToFile(smbFilePath, fallbackData, size);
-      }
-
-      return null;
-    } catch (e) {
-      debugPrint('Service fallback failed: $e');
       return null;
     }
   }
@@ -1205,42 +1010,6 @@ class NetworkThumbnailHelper {
     await _performCacheCleanup();
   }
 
-  /// Enhance image quality - synchronous version
-  img.Image _enhanceImageSynchronously(img.Image image) {
-    try {
-      // Only enhance if the image is small enough
-      if (image.width <= 512 && image.height <= 512) {
-        // Apply subtle adjustments
-        var enhanced = img.adjustColor(
-          image,
-          contrast: 1.05, // Slightly increase contrast
-          saturation: 1.1, // Increase saturation for more vivid colors
-          brightness: 1.02, // Slight brightness boost
-        );
-
-        // Apply slight sharpening for small images
-        if (image.width <= 256 && image.height <= 256) {
-          try {
-            enhanced = img.convolution(
-              enhanced,
-              filter: [0, -1, 0, -1, 5, -1, 0, -1, 0], // Basic sharpen filter
-              div: 1,
-            );
-          } catch (e) {
-            // Ignore convolution errors, return the enhanced image
-            // debugPrint('Error in convolution: $e');
-          }
-        }
-
-        return enhanced;
-      }
-      return image;
-    } catch (e) {
-      // debugPrint('Error enhancing image: $e');
-      return image; // Return original on error
-    }
-  }
-
   // NOTE: Restored helper methods that were removed during refactor ----------------
 
   // Process next item in queue when a slot becomes available
@@ -1338,7 +1107,7 @@ class NetworkThumbnailHelper {
   // Basic resource cleanup: trims caches and triggers periodic cleanup
   void _cleanupResources() {
     // Aggressive memory pressure management
-    final memoryPressureThreshold = 0.8; // 80% of limits
+    const memoryPressureThreshold = 0.8; // 80% of limits
 
     // Trim thumbnail path cache if too large
     if (_thumbnailPathCache.length > 100) {

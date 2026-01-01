@@ -5,7 +5,6 @@ import 'package:cb_file_manager/helpers/media/thumbnail_helper.dart';
 import 'package:cb_file_manager/ui/dialogs/open_with_dialog.dart';
 import 'package:cb_file_manager/ui/utils/base_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:path/path.dart' as pathlib;
 import 'package:flutter/services.dart';
 import '../../components/video/video_player/video_player.dart';
@@ -40,7 +39,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
     super.initState();
     _fileStatFuture = widget.file.stat();
     // Listen PiP changes to hide BaseScreen AppBar when in PiP
-    final channel = MethodChannel('cb_file_manager/pip');
+    const channel = MethodChannel('cb_file_manager/pip');
     channel.setMethodCallHandler((call) async {
       if (call.method == 'onPipChanged') {
         final args = call.arguments;
@@ -62,14 +61,12 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
         if (widget.initialTab == 1) {
           // Find a simpler way to scroll to the Tags section
           final scrollController = PrimaryScrollController.of(context);
-          if (scrollController != null) {
-            // Scroll to the estimated position of the Tags section (value based on UI height)
-            scrollController.animateTo(
-              500, // Estimated position of the Tags section
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-            );
-          }
+          // Scroll to the estimated position of the Tags section (value based on UI height)
+          scrollController.animateTo(
+            500, // Estimated position of the Tags section
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
         }
       });
     }
@@ -282,9 +279,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
   }
 
   Widget _buildHeaderSection() {
-    final localizations = AppLocalizations.of(context)!;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final extension = widget.file.extension().toLowerCase();
     final Color textColor = isDarkMode ? Colors.white : Colors.black87;
 
     IconData fileIcon;

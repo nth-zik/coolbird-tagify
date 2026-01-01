@@ -4,6 +4,7 @@ import 'package:remixicon/remixicon.dart' as remix;
 import 'external_app_helper.dart';
 import 'windows_app_icon.dart';
 import 'package:cb_file_manager/helpers/files/file_type_registry.dart';
+import '../../utils/app_logger.dart';
 
 /// Helper class to get file icons, including app icons for file types
 class FileIconHelper {
@@ -21,18 +22,18 @@ class FileIconHelper {
     // For APK files, use file-specific cache key to avoid cache conflicts
     final String cacheKey =
         extension == 'apk' ? '${file.path}_$size' : '${extension}_$size';
-    print('APK_ICON_DEBUG: Cache key: $cacheKey');
-    print(
-        'APK_ICON_DEBUG: Cache contains key: ${_iconCache.containsKey(cacheKey)}');
+    AppLogger.debug('APK_ICON_DEBUG:Cache key: $cacheKey');
+    AppLogger.debug(
+        'APK_ICON_DEBUG:Cache contains key: ${_iconCache.containsKey(cacheKey)}');
 
     if (_iconCache.containsKey(cacheKey)) {
-      print('APK_ICON_DEBUG: Using cached icon for: $cacheKey');
+      AppLogger.debug('APK_ICON_DEBUG:Using cached icon for: $cacheKey');
       final cachedIcon = _iconCache[cacheKey]!;
-      print('APK_ICON_DEBUG: Cached icon type: ${cachedIcon.runtimeType}');
+      AppLogger.debug('APK_ICON_DEBUG:Cached icon type: ${cachedIcon.runtimeType}');
       return cachedIcon;
     }
 
-    print('APK_ICON_DEBUG: No cached icon for: $cacheKey');
+    AppLogger.debug('APK_ICON_DEBUG:No cached icon for: $cacheKey');
 
     // For images and videos, return a generic icon
     if (_isImageFile(extension)) {
@@ -51,20 +52,20 @@ class FileIconHelper {
     try {
       // For APK files on Android, try to get the installed app icon
       if (extension == 'apk' && Platform.isAndroid) {
-        print('APK_ICON_DEBUG: Processing APK file: ${file.path}');
+        AppLogger.debug('APK_ICON_DEBUG:Processing APK file: ${file.path}');
 
         // Test APK info first
         final testInfo = await ExternalAppHelper.testApkInfo(file.path);
         if (testInfo != null) {
-          print('APK_ICON_DEBUG: Test info: $testInfo');
+          AppLogger.debug('APK_ICON_DEBUG:Test info: $testInfo');
         }
 
         final appInfo =
             await ExternalAppHelper.getApkInstalledAppInfo(file.path);
         if (appInfo != null) {
-          print(
-              'APK_ICON_DEBUG: Got app info: ${appInfo.appName} (installed: ${appInfo.isInstalled})');
-          print('APK_ICON_DEBUG: App icon type: ${appInfo.icon.runtimeType}');
+          AppLogger.debug(
+              'APK_ICON_DEBUG:Got app info: ${appInfo.appName} (installed: ${appInfo.isInstalled})');
+          AppLogger.debug('APK_ICON_DEBUG:App icon type: ${appInfo.icon.runtimeType}');
 
           // Use the installed app icon
           final Widget appIcon = SizedBox(
@@ -72,25 +73,25 @@ class FileIconHelper {
             height: size,
             child: appInfo.icon,
           );
-          print(
-              'APK_ICON_DEBUG: Created appIcon widget: ${appIcon.runtimeType}');
+          AppLogger.debug(
+              'APK_ICON_DEBUG:Created appIcon widget: ${appIcon.runtimeType}');
           _iconCache[cacheKey] = appIcon;
-          print('APK_ICON_DEBUG: Cached appIcon with key: $cacheKey');
-          print('APK_ICON_DEBUG: Returning appIcon widget');
+          AppLogger.debug('APK_ICON_DEBUG:Cached appIcon with key: $cacheKey');
+          AppLogger.debug('APK_ICON_DEBUG:Returning appIcon widget');
           return appIcon;
         } else {
-          print('APK_ICON_DEBUG: No app info returned for APK, using fallback');
+          AppLogger.debug('APK_ICON_DEBUG:No app info returned for APK, using fallback');
           // Use fallback APK icon
           final Widget fallbackIcon = Icon(
             remix.Remix.smartphone_line,
             size: size,
             color: Colors.green,
           );
-          print(
-              'APK_ICON_DEBUG: Created fallback icon: ${fallbackIcon.runtimeType}');
+          AppLogger.debug(
+              'APK_ICON_DEBUG:Created fallback icon: ${fallbackIcon.runtimeType}');
           _iconCache[cacheKey] = fallbackIcon;
-          print('APK_ICON_DEBUG: Cached fallback icon with key: $cacheKey');
-          print('APK_ICON_DEBUG: Returning fallback icon');
+          AppLogger.debug('APK_ICON_DEBUG:Cached fallback icon with key: $cacheKey');
+          AppLogger.debug('APK_ICON_DEBUG:Returning fallback icon');
           return fallbackIcon;
         }
       }
@@ -136,12 +137,12 @@ class FileIconHelper {
     final icon = Icon(iconData, size: size, color: iconColor);
     
     if (extension == 'apk') {
-      print('APK_ICON_DEBUG: Created generic APK icon: ${icon.runtimeType}');
+      AppLogger.debug('APK_ICON_DEBUG:Created generic APK icon: ${icon.runtimeType}');
     }
 
     _iconCache[cacheKey] = icon;
-    print('APK_ICON_DEBUG: Cached generic icon with key: $cacheKey');
-    print('APK_ICON_DEBUG: Returning generic icon');
+    AppLogger.debug('APK_ICON_DEBUG:Cached generic icon with key: $cacheKey');
+    AppLogger.debug('APK_ICON_DEBUG:Returning generic icon');
     return icon;
   }
 
@@ -216,41 +217,41 @@ class FileIconHelper {
     final String cacheKey = '${file.path}_$size';
     _iconCache.remove(cacheKey); // Remove from cache first
 
-    print('APK_ICON_DEBUG: Force refreshing APK icon for: ${file.path}');
+    AppLogger.debug('APK_ICON_DEBUG:Force refreshing APK icon for: ${file.path}');
     return await getIconForFile(file, size: size);
   }
 
   /// Test method to debug APK icon issues
   static Future<void> debugApkIcons() async {
-    print('APK_ICON_DEBUG: === Starting APK Icon Debug ===');
-    print('APK_ICON_DEBUG: Cache size: ${_iconCache.length}');
-    print('APK_ICON_DEBUG: APK cache entries:');
+    AppLogger.debug('APK_ICON_DEBUG:=== Starting APK Icon Debug ===');
+    AppLogger.debug('APK_ICON_DEBUG:Cache size: ${_iconCache.length}');
+    AppLogger.debug('APK_ICON_DEBUG:APK cache entries:');
     _iconCache.forEach((key, value) {
       if (key.contains('.apk')) {
-        print('APK_ICON_DEBUG:   $key -> ${value.runtimeType}');
+        AppLogger.debug('APK_ICON_DEBUG:  $key -> ${value.runtimeType}');
       }
     });
 
     // Clear all APK cache
     clearApkCache();
-    print('APK_ICON_DEBUG: Cleared APK cache');
-    print('APK_ICON_DEBUG: New cache size: ${_iconCache.length}');
+    AppLogger.debug('APK_ICON_DEBUG:Cleared APK cache');
+    AppLogger.debug('APK_ICON_DEBUG:New cache size: ${_iconCache.length}');
 
     // Test creating a simple APK icon
-    print('APK_ICON_DEBUG: Testing simple APK icon creation...');
-    final testIcon = Icon(
+    AppLogger.debug('APK_ICON_DEBUG:Testing simple APK icon creation...');
+    const testIcon = Icon(
       remix.Remix.smartphone_line,
       size: 24,
       color: Colors.green,
     );
-    print('APK_ICON_DEBUG: Test icon created: ${testIcon.runtimeType}');
+    AppLogger.debug('APK_ICON_DEBUG:Test icon created: ${testIcon.runtimeType}');
 
     // Force clear all cache
     _iconCache.clear();
-    print('APK_ICON_DEBUG: Cleared ALL cache');
-    print('APK_ICON_DEBUG: Final cache size: ${_iconCache.length}');
+    AppLogger.debug('APK_ICON_DEBUG:Cleared ALL cache');
+    AppLogger.debug('APK_ICON_DEBUG:Final cache size: ${_iconCache.length}');
 
-    print('APK_ICON_DEBUG: === End APK Icon Debug ===');
+    AppLogger.debug('APK_ICON_DEBUG:=== End APK Icon Debug ===');
   }
 
   // Helper methods to identify file types using FileTypeRegistry

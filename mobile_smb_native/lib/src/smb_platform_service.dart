@@ -123,7 +123,7 @@ class SmbPlatformService {
     if (!_isNativeAvailable) {
       debugPrint(
           'File streaming with progress failed: Native service not available');
-      return Stream.empty();
+      return const Stream.empty();
     }
 
     try {
@@ -131,7 +131,7 @@ class SmbPlatformService {
           .streamFileWithProgress(path, onProgress: onProgress);
     } catch (e) {
       debugPrint('File streaming with progress error: $e');
-      return Stream.empty();
+      return const Stream.empty();
     }
   }
 

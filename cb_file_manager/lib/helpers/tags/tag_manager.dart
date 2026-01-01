@@ -257,7 +257,7 @@ class TagManager {
         await File(targetPath).writeAsBytes(data);
       }
 
-      debugPrint('TagManager: Migrated legacy tags file from ' + legacyPath);
+      debugPrint('TagManager: Migrated legacy tags file from $legacyPath');
       return true;
     } catch (_) {
       return false;

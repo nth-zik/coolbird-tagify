@@ -619,7 +619,7 @@ class _FileItemContentState extends State<_FileItemContent> {
               children: [
                 Text(sizeText, style: Theme.of(context).textTheme.bodySmall),
                 const SizedBox(width: 12),
-                Icon(remix.Remix.calendar_line, size: 12, color: Colors.grey),
+                const Icon(remix.Remix.calendar_line, size: 12, color: Colors.grey),
                 const SizedBox(width: 4),
                 Text(modifiedText,
                     style: Theme.of(context).textTheme.bodySmall),
@@ -639,7 +639,7 @@ class _FileItemContentState extends State<_FileItemContent> {
             children: [
               Text(sizeText, style: Theme.of(context).textTheme.bodySmall),
               const SizedBox(width: 12),
-              Icon(remix.Remix.calendar_line, size: 12, color: Colors.grey),
+              const Icon(remix.Remix.calendar_line, size: 12, color: Colors.grey),
               const SizedBox(width: 4),
               Text(modifiedText, style: Theme.of(context).textTheme.bodySmall),
             ],

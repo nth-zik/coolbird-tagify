@@ -345,8 +345,9 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
       tabs[tabIndex] = tabs[tabIndex].copyWith(path: previousPath);
 
       // Emit the new state directly (don't use UpdateTabPath as it would modify history again)
+      // ignore: invalid_use_of_visible_for_testing_member
       emit(state.copyWith(tabs: tabs));
-      
+
       debugPrint('TabManager: Successfully navigated back to: $previousPath');
 
       // Return the path we navigated to
@@ -373,6 +374,7 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
       tabs[tabIndex] = tabs[tabIndex].copyWith(path: nextPath);
 
       // Emit the new state directly (don't use UpdateTabPath as it would modify history again)
+      // ignore: invalid_use_of_visible_for_testing_member
       emit(state.copyWith(tabs: tabs));
 
       // Return the path we navigated to

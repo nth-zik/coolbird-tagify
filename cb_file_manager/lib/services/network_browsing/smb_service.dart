@@ -1,8 +1,6 @@
 import 'dart:ffi';
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:async';
-import 'dart:developer';
 
 import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart';
@@ -10,7 +8,6 @@ import 'package:remixicon/remixicon.dart' as remix;
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:image/image.dart' as img;
-import 'package:flutter/rendering.dart';
 
 import 'network_service_base.dart';
 import 'i_smb_service.dart';
@@ -190,7 +187,7 @@ class SMBService implements ISmbService {
 
     // Build the UNC path
     final uncPath =
-        '\\\\$host\\$share${folders.isNotEmpty ? '\\' + folders.join('\\') : ''}';
+        '\\\\$host\\$share${folders.isNotEmpty ? '\\${folders.join('\\')}' : ''}';
     debugPrint('Converting tab path to UNC path: $tabPath -> $uncPath');
 
     return uncPath;
@@ -494,7 +491,6 @@ class SMBService implements ISmbService {
     }
   }
 
-  @override
   Future<bool> delete(String tabPath, {bool recursive = false}) async {
     if (!isConnected) throw Exception('Not connected.');
     // Note: Native RemoveDirectory requires the directory to be empty.
@@ -627,6 +623,7 @@ class SMBService implements ISmbService {
   ///
   /// Returns a [Uint8List] containing the PNG data of the thumbnail,
   /// or `null` if a thumbnail could not be generated.
+  @override
   Future<Uint8List?> getThumbnail(String tabPath, int size) async {
     if (!isAvailable() || !isConnected) return null;
 
@@ -809,6 +806,7 @@ class SMBService implements ISmbService {
   }
 
   /// Get file size without downloading the file
+  @override
   Future<int?> getFileSize(String tabPath) async {
     if (!isConnected) return null;
 
@@ -816,10 +814,6 @@ class SMBService implements ISmbService {
     final uncPathPtr = uncPath.toNativeUtf16();
 
     try {
-      // Use FindFirstFile to get file information
-      final searchPath = uncPath;
-      final searchPathPtr = searchPath.toNativeUtf16();
-
       // We can use the existing ListDirectory but filter for just this file
       // For now, return null and let the caller handle it
       return null;

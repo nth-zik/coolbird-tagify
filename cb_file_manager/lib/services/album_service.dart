@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:async';
-import 'dart:isolate';
 import 'package:flutter/foundation.dart';
 import '../models/objectbox/album.dart';
 import '../models/objectbox/album_file.dart';

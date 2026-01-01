@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:remixicon/remixicon.dart' as remix;
 import 'package:cb_file_manager/ui/screens/tag_management/tag_management_tab.dart';
-import 'package:cb_file_manager/ui/tab_manager/core/tabbed_folder_list_screen.dart';
+import 'package:cb_file_manager/ui/tab_manager/core/tabbed_folder/tabbed_folder_list_screen.dart';
 import 'package:cb_file_manager/ui/screens/network_browsing/network_connection_screen.dart';
 import 'package:cb_file_manager/ui/screens/network_browsing/network_browser_screen.dart';
 import 'package:cb_file_manager/ui/screens/network_browsing/smb_browser_screen.dart';

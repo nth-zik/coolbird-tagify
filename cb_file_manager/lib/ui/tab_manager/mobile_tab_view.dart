@@ -700,7 +700,7 @@ class MobileTabView extends StatelessWidget {
                       width: double.infinity,
                       decoration: BoxDecoration(
                         color:
-                            theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                            theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       alignment: Alignment.center,

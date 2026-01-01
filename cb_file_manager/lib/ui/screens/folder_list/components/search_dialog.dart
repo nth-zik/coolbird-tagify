@@ -34,7 +34,6 @@ class _SearchDialogState extends State<SearchDialog> {
   List<Directory> _filteredFolders = [];
   bool _isSearchingTags = false;
   List<String> _suggestedTags = [];
-  String? _error;
 
   // Overlay entry for tag suggestions
   OverlayEntry? _overlayEntry;
@@ -192,7 +191,7 @@ class _SearchDialogState extends State<SearchDialog> {
               itemCount: tags.length,
               itemBuilder: (context, index) {
                 return ListTile(
-                  leading: Icon(remix.Remix.price_tag_3_line),
+                  leading: const Icon(remix.Remix.price_tag_3_line),
                   title: Text(tags[index]),
                   onTap: () {
                     // Insert tag into search query
@@ -318,8 +317,9 @@ class _SearchDialogState extends State<SearchDialog> {
             border: InputBorder.none,
             hintStyle: const TextStyle(color: Colors.white70),
             prefixIcon: _isSearchingTags
-                ? Icon(remix.Remix.price_tag_3_line, color: Colors.white70)
-                : Icon(remix.Remix.search_line, color: Colors.white70),
+                ? const Icon(remix.Remix.price_tag_3_line,
+                    color: Colors.white70)
+                : const Icon(remix.Remix.search_line, color: Colors.white70),
           ),
           style: const TextStyle(color: Colors.white),
           autofocus: true,
@@ -399,7 +399,7 @@ class _SearchDialogState extends State<SearchDialog> {
 
   Widget _buildFolderItem(Directory folder) {
     return ListTile(
-      leading: Icon(remix.Remix.folder_line, color: Colors.amber),
+      leading: const Icon(remix.Remix.folder_line, color: Colors.amber),
       title: Text(folder.basename()),
       onTap: () {
         Navigator.pop(context); // Close search dialog

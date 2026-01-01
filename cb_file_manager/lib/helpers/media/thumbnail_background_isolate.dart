@@ -1,8 +1,5 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:isolate';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 
 /// Background isolate manager for thumbnail generation
 /// This ensures thumbnail operations don't block the UI thread
@@ -151,18 +148,11 @@ class ThumbnailBackgroundIsolate {
     // Add a small delay to simulate processing
     await Future.delayed(const Duration(milliseconds: 50));
 
-    final videoPath = request['videoPath'] as String;
-    final outputPath = request['outputPath'] as String;
-    final width = request['width'] as int;
-    final format = request['format'] as String;
-    final timeSeconds = request['timeSeconds'] as int?;
-    final quality = request['quality'] as int;
-
     // Since we can't use platform channels in isolates,
     // we'll need to return to main thread for actual native calls
     // This isolate serves as a queue manager and prevents UI blocking
 
     // For now, return success - actual implementation would call native
-    return outputPath;
+    return request['outputPath'] as String;
   }
 }

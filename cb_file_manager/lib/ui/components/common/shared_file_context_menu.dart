@@ -119,7 +119,7 @@ class SharedFileContextMenu extends StatelessWidget {
                       Row(
                         children: [
                           if (webDavSize != null) ...[
-                            Icon(remix.Remix.hard_drive_2_line, size: 14),
+                            const Icon(remix.Remix.hard_drive_2_line, size: 14),
                             const SizedBox(width: 4),
                             Text(webDavSize,
                                 style: TextStyle(
@@ -130,7 +130,7 @@ class SharedFileContextMenu extends StatelessWidget {
                           ],
                           if (webDavModified != null) ...[
                             const SizedBox(width: 12),
-                            Icon(remix.Remix.calendar_event_line, size: 14),
+                            const Icon(remix.Remix.calendar_event_line, size: 14),
                             const SizedBox(width: 4),
                             Text(webDavModified,
                                 style: TextStyle(
@@ -146,7 +146,7 @@ class SharedFileContextMenu extends StatelessWidget {
                 ),
               ),
               IconButton(
-                icon: Icon(remix.Remix.close_line),
+                icon: const Icon(remix.Remix.close_line),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
@@ -223,7 +223,7 @@ class SharedFileContextMenu extends StatelessWidget {
         if ((currentService is WebDAVService || currentService is FTPService) &&
             remotePath != null)
           ListTile(
-            leading: Icon(remix.Remix.download_line, color: Colors.blue),
+            leading: const Icon(remix.Remix.download_line, color: Colors.blue),
             title: Text(
               AppLocalizations.of(context)!.download,
               style:
@@ -277,7 +277,7 @@ class SharedFileContextMenu extends StatelessWidget {
 
         // Cut option
         ListTile(
-          leading: Icon(remix.Remix.scissors_cut_line),
+          leading: const Icon(remix.Remix.scissors_cut_line),
           title: Text(
             AppLocalizations.of(context)!.cut,
             style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
@@ -537,7 +537,7 @@ class SharedFolderContextMenu extends StatelessWidget {
                 ),
               ),
               IconButton(
-                icon: Icon(remix.Remix.close_line),
+                icon: const Icon(remix.Remix.close_line),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
@@ -638,7 +638,7 @@ class SharedFolderContextMenu extends StatelessWidget {
 
         // Tag management option
         ListTile(
-          leading: Icon(remix.Remix.bookmark_line, color: Colors.green),
+          leading: const Icon(remix.Remix.bookmark_line, color: Colors.green),
             title: Text(
             AppLocalizations.of(context)!.manageTags,
             style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
@@ -686,7 +686,7 @@ class SharedFolderContextMenu extends StatelessWidget {
           controller: controller,
           decoration: InputDecoration(
             labelText: AppLocalizations.of(context)!.newNameLabel,
-            border: OutlineInputBorder(),
+            border: const OutlineInputBorder(),
           ),
           autofocus: true,
         ),
@@ -975,7 +975,7 @@ void _showRenameDialogStandalone(BuildContext context, File file) {
         controller: nameController,
         decoration: InputDecoration(
           labelText: AppLocalizations.of(context)!.newNameLabel,
-          border: OutlineInputBorder(),
+          border: const OutlineInputBorder(),
         ),
         autofocus: true,
       ),
@@ -996,7 +996,7 @@ void _showRenameDialogStandalone(BuildContext context, File file) {
                 .add(RenameFileOrFolder(file, newName));
             Navigator.pop(context);
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Renamed to \"$newName\"')),
+              SnackBar(content: Text('Renamed to "$newName"')),
             );
           },
           child: const Text('RENAME'),
@@ -1264,7 +1264,8 @@ Widget _propertyRow(String label, String value) {
 String _formatSize(int bytes) {
   if (bytes < 1024) return '$bytes B';
   if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-  if (bytes < 1024 * 1024 * 1024)
+  if (bytes < 1024 * 1024 * 1024) {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
   return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
 }

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/components/index.dart'
     as folder_list_components;
+import 'package:cb_file_manager/config/languages/app_localizations.dart';
+import 'package:cb_file_manager/ui/utils/platform_utils.dart';
 
 /// Displays search results from tag and filename searches
 class SearchResultsView extends StatelessWidget {
@@ -39,8 +41,7 @@ class SearchResultsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isDesktop =
-        Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+    final bool isDesktop = isDesktopPlatform;
     // Wrap the entire widget with a Listener to detect mouse button events
     return Listener(
       onPointerDown: (PointerDownEvent event) {
@@ -74,12 +75,12 @@ class SearchResultsView extends StatelessWidget {
                 ),
                 const SizedBox(width: 8.0),
                 Expanded(
-                  child: Text(_getSearchTitle()),
+                  child: Text(_getSearchTitle(context)),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
                   onPressed: onClearSearch,
-                  tooltip: 'Xóa tìm kiếm',
+                  tooltip: AppLocalizations.of(context)!.clearSearch,
                 ),
               ],
             ),
@@ -119,7 +120,8 @@ class SearchResultsView extends StatelessWidget {
   }
 
   // Tạo tiêu đề dựa trên loại tìm kiếm
-  String _getSearchTitle() {
+  String _getSearchTitle(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     // Đếm số lượng thư mục và tệp trong kết quả
     int folderCount = 0;
     int fileCount = 0;
@@ -132,49 +134,63 @@ class SearchResultsView extends StatelessWidget {
       }
     }
 
-    String countText = "";
-    if (folderCount > 0 && fileCount > 0) {
-      countText = " ($folderCount thư mục, $fileCount tệp)";
-    } else if (folderCount > 0) {
-      countText = " ($folderCount thư mục)";
-    } else if (fileCount > 0) {
-      countText = " ($fileCount tệp)";
-    } else {
-      countText = " (0 kết quả)";
-    }
+    final String countText = _buildCountText(l10n, folderCount, fileCount);
 
     if (state.currentSearchTag != null) {
       if (state.isGlobalSearch) {
-        return 'Kết quả tìm kiếm toàn cục cho tag "${state.currentSearchTag}"$countText';
-      } else {
-        return 'Kết quả tìm kiếm cho tag "${state.currentSearchTag}"$countText';
+        return l10n.searchResultsTitleForTagGlobal(
+            state.currentSearchTag!, countText);
       }
-    } else if (state.currentSearchQuery != null) {
-      return 'Kết quả tìm kiếm cho "${state.currentSearchQuery}"$countText';
-    } else if (state.currentFilter != null) {
-      return 'Kết quả lọc cho "${state.currentFilter}" (${state.filteredFiles.length} tệp)';
+      return l10n.searchResultsTitleForTag(state.currentSearchTag!, countText);
+    }
+    if (state.currentSearchQuery != null) {
+      return l10n.searchResultsTitleForQuery(
+          state.currentSearchQuery!, countText);
+    }
+    if (state.currentFilter != null) {
+      final int filteredCount = state.filteredFiles.length;
+      final String filteredCountText =
+          ' ($filteredCount ${filteredCount == 1 ? l10n.file : l10n.files})';
+      return l10n.searchResultsTitleForFilter(
+          state.currentFilter!, filteredCountText);
     } else if (state.currentMediaSearch != null) {
-      String mediaType = "";
+      String mediaType = '';
       switch (state.currentMediaSearch) {
         case MediaType.image:
-          mediaType = "hình ảnh";
+          mediaType = l10n.image;
           break;
         case MediaType.video:
-          mediaType = "video";
+          mediaType = l10n.video;
           break;
         case MediaType.audio:
-          mediaType = "âm thanh";
+          mediaType = l10n.audio;
           break;
         case MediaType.document:
-          mediaType = "tài liệu";
+          mediaType = l10n.document;
           break;
         default:
-          mediaType = "";
+          mediaType = '';
           break;
       }
-      return 'Kết quả tìm kiếm cho $mediaType$countText';
+      return l10n.searchResultsTitleForMedia(mediaType, countText);
     }
-    return 'Kết quả tìm kiếm$countText';
+    return l10n.searchResultsTitle(countText);
+  }
+
+  String _buildCountText(AppLocalizations l10n, int folderCount, int fileCount) {
+    if (folderCount == 0 && fileCount == 0) {
+      return ' (0 ${l10n.results})';
+    }
+
+    final parts = <String>[];
+    if (folderCount > 0) {
+      parts.add(
+          '$folderCount ${folderCount == 1 ? l10n.folder : l10n.folders}');
+    }
+    if (fileCount > 0) {
+      parts.add('$fileCount ${fileCount == 1 ? l10n.file : l10n.files}');
+    }
+    return ' (${parts.join(', ')})';
   }
 
   Widget _buildListView(bool isDesktop) {

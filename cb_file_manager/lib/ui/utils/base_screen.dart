@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:cb_file_manager/main.dart' show goHome, CBFileApp;
 import 'package:cb_file_manager/ui/drawer.dart';
 import 'package:cb_file_manager/helpers/core/user_preferences.dart'; // Add UserPreferences import
-import 'package:cb_file_manager/config/translation_helper.dart'; // Import translation helper
+// Import translation helper
 import 'package:remixicon/remixicon.dart' as remix;
-import 'package:cb_file_manager/ui/utils/route.dart'; // Import RouteUtils
+// Import RouteUtils
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
 // For Platform check

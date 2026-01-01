@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
-import '../../components/common/shared_action_bar.dart';
-import 'mobile_search_dialog.dart';
 
 /// Controller to manage file actions from mobile action bar
 /// This allows the mobile action buttons to communicate with TabbedFolderListScreen

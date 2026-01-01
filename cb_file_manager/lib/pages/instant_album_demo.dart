@@ -12,7 +12,7 @@ class InstantAlbumDemo extends StatefulWidget {
 }
 
 class _InstantAlbumDemoState extends State<InstantAlbumDemo> {
-  List<FileInfo> _files = [];
+  final List<FileInfo> _files = [];
   String? _currentDirectory;
   StreamSubscription? _scanSubscription;
 

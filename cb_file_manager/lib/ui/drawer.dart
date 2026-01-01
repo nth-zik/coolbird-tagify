@@ -1,5 +1,4 @@
 import 'dart:ui'; // Import for ImageFilter
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:remixicon/remixicon.dart' as remix;
@@ -92,7 +91,8 @@ class _CBDrawerContent extends StatelessWidget {
                 // Scrollable menu items
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                     children: [
                       // Main navigation items
                       DrawerNavigationItem(
@@ -105,8 +105,10 @@ class _CBDrawerContent extends StatelessWidget {
 
                       // Storage section with expansion
                       StorageSectionWidget(
-                        onNavigate: (path, name) => _navigateTo(context, path, name, isStorage: true),
-                        onTrashTap: () => _navigateTo(context, '#trash', 'Trash'),
+                        onNavigate: (path, name) =>
+                            _navigateTo(context, path, name, isStorage: true),
+                        onTrashTap: () =>
+                            _navigateTo(context, '#trash', 'Trash'),
                       ),
 
                       const SizedBox(height: 8),
@@ -121,7 +123,8 @@ class _CBDrawerContent extends StatelessWidget {
                       DrawerNavigationItem(
                         icon: remix.Remix.wifi_line,
                         title: context.tr.networksMenu,
-                        onTap: () => _navigateTo(context, '#network', context.tr.networkTab),
+                        onTap: () => _navigateTo(
+                            context, '#network', context.tr.networkTab),
                       ),
 
                       Padding(
@@ -165,7 +168,8 @@ class _CBDrawerContent extends StatelessWidget {
     );
   }
 
-  void _navigateTo(BuildContext context, String path, String name, {bool isStorage = false}) {
+  void _navigateTo(BuildContext context, String path, String name,
+      {bool isStorage = false}) {
     if (!isPinned) {
       RouteUtils.safePopDialog(context);
     }
@@ -174,7 +178,7 @@ class _CBDrawerContent extends StatelessWidget {
       _openInCurrentTab(context, path, name);
     } else {
       final tabBloc = BlocProvider.of<TabManagerBloc>(context);
-      
+
       // Check if tab exists for special paths
       if (path.startsWith('#')) {
         final existingTab = tabBloc.state.tabs.firstWhere(
@@ -223,7 +227,6 @@ class _CBDrawerContent extends StatelessWidget {
       }
     } else {
       // Fallback navigation
-      final currentContext = context;
       Navigator.of(context)
           .pushAndRemoveUntil(
               MaterialPageRoute(builder: (context) => const TabMainScreen()),

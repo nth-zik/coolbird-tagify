@@ -5,10 +5,10 @@ import 'dart:async'; // Add this import for Completer
 import 'package:cb_file_manager/helpers/ui/frame_timing_optimizer.dart';
 import '../../components/common/shared_action_bar.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart'; // Import for mouse buttons
+// Import for mouse buttons
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/helpers/core/user_preferences.dart';
-import 'package:flutter/services.dart'; // Import for keyboard keys
+// Import for keyboard keys
 import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
 import 'package:cb_file_manager/ui/utils/fluent_background.dart'; // Import the Fluent Design background
 
@@ -30,8 +30,6 @@ import 'package:cb_file_manager/ui/tab_manager/components/index.dart'
 import 'package:cb_file_manager/ui/tab_manager/core/tab_data.dart'; // Import TabData explicitly
 
 // Add imports for hardware acceleration
-import 'package:flutter/rendering.dart' show RendererBinding;
-import 'package:flutter/foundation.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 
 import 'package:path/path.dart' as p;
@@ -40,52 +38,8 @@ import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 import 'package:cb_file_manager/ui/components/common/skeleton_helper.dart';
 import 'package:cb_file_manager/helpers/network/streaming_helper.dart';
-import 'package:cb_file_manager/ui/utils/route.dart';
-import 'package:cb_file_manager/services/network_browsing/webdav_service.dart';
-
-// Helper class to listen to multiple ValueNotifiers
-class ValueListenableBuilder3<A, B, C> extends StatelessWidget {
-  final ValueListenable<A> valueListenable1;
-  final ValueListenable<B> valueListenable2;
-  final ValueListenable<C> valueListenable3;
-  final Widget Function(
-          BuildContext context, A value1, B value2, C value3, Widget? child)
-      builder;
-  final Widget? child;
-
-  const ValueListenableBuilder3({
-    Key? key,
-    required this.valueListenable1,
-    required this.valueListenable2,
-    required this.valueListenable3,
-    required this.builder,
-    this.child,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<A>(
-      valueListenable: valueListenable1,
-      builder: (context, value1, _) {
-        return ValueListenableBuilder<B>(
-          valueListenable: valueListenable2,
-          builder: (context, value2, _) {
-            return ValueListenableBuilder<C>(
-              valueListenable: valueListenable3,
-              builder: (context, value3, _) {
-                return builder(context, value1, value2, value3, child);
-              },
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-// Helper function to determine if we're on desktop
-bool get isDesktopPlatform =>
-    Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+import 'package:cb_file_manager/ui/utils/platform_utils.dart';
+import 'package:cb_file_manager/ui/widgets/value_listenable_builders.dart';
 
 /// A screen for browsing network locations, with a UI consistent with TabbedFolderListScreen
 class NetworkBrowserScreen extends StatefulWidget {
@@ -119,7 +73,6 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
   int _gridZoomLevel = 3;
   ColumnVisibility _columnVisibility = const ColumnVisibility();
   bool _arePreferencesLoading = true;
-  bool _showFileTags = true;
 
   // Network browsing BLoC
   late NetworkBrowsingBloc _networkBrowsingBloc;
@@ -224,9 +177,6 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    // Reset pagination when changing dependencies
-    _currentPage = 1;
-
     // Set up a listener for TabManagerBloc state changes
     final tabBloc = BlocProvider.of<TabManagerBloc>(context);
     final activeTab = tabBloc.state.activeTab;
@@ -277,7 +227,6 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
       final sortOption = await prefs.getSortOption();
       final gridZoomLevel = await prefs.getGridZoomLevel();
       final columnVisibility = await prefs.getColumnVisibility();
-      final showFileTags = await prefs.getShowFileTags();
 
       if (mounted) {
         setState(() {
@@ -285,7 +234,6 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
           _sortOption = sortOption;
           _gridZoomLevel = gridZoomLevel;
           _columnVisibility = columnVisibility;
-          _showFileTags = showFileTags;
           _arePreferencesLoading = false;
         });
       }
@@ -447,10 +395,6 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
     final tabName = lastPart.isEmpty ? 'Network' : lastPart;
 
     context.read<TabManagerBloc>().add(UpdateTabName(widget.tabId, tabName));
-  }
-
-  void _handlePathSubmit(String path) {
-    _navigateToPath(path);
   }
 
   Future<bool> _handleBackButton() async {
@@ -963,7 +907,6 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
 
   // Scroll controller for auto load more
   late ScrollController _scrollController;
-  int _currentPage = 1;
   bool _isLoadingMore = false;
 
   void _onScroll() {

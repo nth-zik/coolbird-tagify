@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'address_bar_menu.dart';
 
@@ -72,9 +71,9 @@ class _PathNavigationBarState extends State<PathNavigationBar> {
         child: Container(
           alignment: Alignment.centerLeft,
           padding: const EdgeInsets.symmetric(horizontal: 8.0),
-          child: Text(
+          child: const Text(
             'This PC',
-            style: const TextStyle(fontSize: 16.0),
+            style: TextStyle(fontSize: 16.0),
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -131,7 +130,7 @@ class _PathNavigationBarState extends State<PathNavigationBar> {
     return Container(
       height: 40.0,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.background.withOpacity(0.7),
+        color: Theme.of(context).colorScheme.surface.withOpacity(0.7),
         borderRadius: BorderRadius.circular(8.0),
         border: Border.all(
           color: Theme.of(context).colorScheme.primary.withOpacity(0.5),

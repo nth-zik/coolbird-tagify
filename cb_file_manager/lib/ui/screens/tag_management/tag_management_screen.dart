@@ -148,7 +148,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content:
-                Text(AppLocalizations.of(context)!.errorLoadingTags + '$e'),
+                Text('${AppLocalizations.of(context)!.errorLoadingTags}$e'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -409,7 +409,6 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
       if (_selectedTag == tag) {
         _clearTagSelection();
       }
-    } catch (e) {
     } finally {
       if (mounted) {
         setState(() {
@@ -570,12 +569,12 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
           ? FloatingActionButton(
               onPressed: _showCreateTagDialog,
               backgroundColor: Theme.of(context).primaryColor,
+              tooltip: AppLocalizations.of(context)!.newTagTooltip,
               child: const Icon(
                 Icons.add_rounded,
                 color: Colors.white,
                 size: 28,
               ),
-              tooltip: AppLocalizations.of(context)!.newTagTooltip,
             )
           : null,
     );
@@ -741,8 +740,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '${_filteredTags.length} ' +
-                                  AppLocalizations.of(context)!.tagsCreated,
+                              '${_filteredTags.length} ${AppLocalizations.of(context)!.tagsCreated}',
                               style: TextStyle(
                                 fontSize: 14,
                                 color: isDarkMode
@@ -953,8 +951,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                       tooltip: AppLocalizations.of(context)!.previousPage,
                     ),
                     Text(
-                      AppLocalizations.of(context)!.page +
-                          ' ${_currentPage + 1} / $_totalPages',
+                      '${AppLocalizations.of(context)!.page} ${_currentPage + 1} / $_totalPages',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -1241,7 +1238,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
         'TagManagementScreen: _buildTagsGridView - _currentPageTags.length: ${_currentPageTags.length}');
 
     return GridView.builder(
-      padding: EdgeInsets.all(12),
+      padding: const EdgeInsets.all(12),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: screenWidth > 1200
             ? 8
@@ -1524,8 +1521,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        '${_filesBySelectedTag.length} ' +
-                            AppLocalizations.of(context)!.filesWithTagCount,
+                        '${_filesBySelectedTag.length} ${AppLocalizations.of(context)!.filesWithTagCount}',
                         style: TextStyle(
                           fontSize: 16,
                           color: isDarkMode ? Colors.white70 : Colors.black54,
@@ -1818,7 +1814,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content:
-                Text(AppLocalizations.of(context)!.errorCreatingTag + '$e'),
+                Text('${AppLocalizations.of(context)!.errorCreatingTag}$e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -1841,7 +1837,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text(
-                  AppLocalizations.of(context)!.openingFolder + '$folderPath')),
+                  '${AppLocalizations.of(context)!.openingFolder}$folderPath')),
         );
 
         // Nếu trong môi trường tab, thêm tab mới hoặc chuyển đến tab đã mở
@@ -1886,7 +1882,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
             content: Text(
-                AppLocalizations.of(context)!.folderNotFound + '$folderPath')),
+                '${AppLocalizations.of(context)!.folderNotFound}$folderPath')),
       );
     }
   }

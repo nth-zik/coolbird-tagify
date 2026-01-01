@@ -36,13 +36,16 @@ class WindowsPipOverlay {
       );
     });
     _entry = entry;
-    Overlay.of(context, rootOverlay: true)?.insert(entry);
+    Overlay.of(context, rootOverlay: true).insert(entry);
   }
 }
 
 class _WindowsPipOverlayWidget extends StatefulWidget {
   final Map<String, dynamic> args;
-  final void Function({required int positionMs, required double volume, required bool playing}) onClose;
+  final void Function(
+      {required int positionMs,
+      required double volume,
+      required bool playing}) onClose;
   final VoidCallback onRemove;
   const _WindowsPipOverlayWidget({
     Key? key,
@@ -52,14 +55,14 @@ class _WindowsPipOverlayWidget extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<_WindowsPipOverlayWidget> createState() => _WindowsPipOverlayWidgetState();
+  State<_WindowsPipOverlayWidget> createState() =>
+      _WindowsPipOverlayWidgetState();
 }
 
 class _WindowsPipOverlayWidgetState extends State<_WindowsPipOverlayWidget> {
   Player? _player;
   VideoController? _controller;
   bool _isPlaying = true;
-  bool _dragging = false;
   Offset _offset = const Offset(24, 24);
   Size _size = const Size(384, 216); // 16:9
   StreamSubscription<Duration>? _posSub;
@@ -192,21 +195,13 @@ class _WindowsPipOverlayWidgetState extends State<_WindowsPipOverlayWidget> {
         top: 0,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onPanStart: (_) {
-            setState(() {
-              _dragging = true;
-            });
-          },
+          onPanStart: (_) {},
           onPanUpdate: (d) {
             setState(() {
               _offset = _offset + d.delta;
             });
           },
-          onPanEnd: (_) {
-            setState(() {
-              _dragging = false;
-            });
-          },
+          onPanEnd: (_) {},
           child: Container(
             height: 28,
             color: Colors.black.withOpacity(0.45),
@@ -214,21 +209,26 @@ class _WindowsPipOverlayWidgetState extends State<_WindowsPipOverlayWidget> {
             alignment: Alignment.centerLeft,
             child: Row(
               children: [
-                const Icon(Icons.picture_in_picture_alt, color: Colors.white70, size: 16),
+                const Icon(Icons.picture_in_picture_alt,
+                    color: Colors.white70, size: 16),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     (widget.args['fileName'] as String?) ?? 'PiP',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600),
                   ),
                 ),
                 IconButton(
                   visualDensity: VisualDensity.compact,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
-                  icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white, size: 16),
+                  icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow,
+                      color: Colors.white, size: 16),
                   onPressed: () async {
                     if (_player == null) return;
                     if (_player!.state.playing) {
@@ -251,7 +251,8 @@ class _WindowsPipOverlayWidgetState extends State<_WindowsPipOverlayWidget> {
                     final vol = (_player?.state.volume ?? 100).toDouble();
                     final playing = _player?.state.playing ?? _isPlaying;
                     widget.onRemove();
-                    widget.onClose(positionMs: pos, volume: vol, playing: playing);
+                    widget.onClose(
+                        positionMs: pos, volume: vol, playing: playing);
                   },
                 ),
               ],
@@ -271,33 +272,44 @@ class _WindowsPipOverlayWidgetState extends State<_WindowsPipOverlayWidget> {
           color: Colors.black.withOpacity(0.45),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           child: Row(children: [
-            Text(_fmt(_position), style: const TextStyle(color: Colors.white70, fontSize: 11)),
+            Text(_fmt(_position),
+                style: const TextStyle(color: Colors.white70, fontSize: 11)),
             const SizedBox(width: 6),
             Expanded(
               child: SliderTheme(
                 data: SliderTheme.of(context).copyWith(
                   trackHeight: 2,
-                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                  thumbShape:
+                      const RoundSliderThumbShape(enabledThumbRadius: 6),
                 ),
                 child: Slider(
-                  value: _duration.inMilliseconds == 0 ? 0 : _position.inMilliseconds.toDouble(),
+                  value: _duration.inMilliseconds == 0
+                      ? 0
+                      : _position.inMilliseconds.toDouble(),
                   min: 0,
-                  max: (_duration.inMilliseconds == 0 ? 1 : _duration.inMilliseconds).toDouble(),
+                  max: (_duration.inMilliseconds == 0
+                          ? 1
+                          : _duration.inMilliseconds)
+                      .toDouble(),
                   activeColor: Colors.white,
                   inactiveColor: Colors.white24,
-                  onChanged: (v) => setState(() => _position = Duration(milliseconds: v.toInt())),
-                  onChangeEnd: (v) => _player?.seek(Duration(milliseconds: v.toInt())),
+                  onChanged: (v) => setState(
+                      () => _position = Duration(milliseconds: v.toInt())),
+                  onChangeEnd: (v) =>
+                      _player?.seek(Duration(milliseconds: v.toInt())),
                 ),
               ),
             ),
             const SizedBox(width: 6),
-            Text(_fmt(_duration), style: const TextStyle(color: Colors.white70, fontSize: 11)),
+            Text(_fmt(_duration),
+                style: const TextStyle(color: Colors.white70, fontSize: 11)),
             const SizedBox(width: 8),
             const Icon(Icons.volume_up, color: Colors.white70, size: 14),
             SizedBox(
               width: 80,
               child: Slider(
-                value: ((_player?.state.volume ?? 100).clamp(0, 100)).toDouble(),
+                value:
+                    ((_player?.state.volume ?? 100).clamp(0, 100)).toDouble(),
                 min: 0,
                 max: 100,
                 activeColor: Colors.white,
@@ -352,7 +364,8 @@ class _WindowsPipOverlayWidgetState extends State<_WindowsPipOverlayWidget> {
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.white24, width: 1),
                 boxShadow: const [
-                  BoxShadow(color: Colors.black54, blurRadius: 8, spreadRadius: 2),
+                  BoxShadow(
+                      color: Colors.black54, blurRadius: 8, spreadRadius: 2),
                 ],
               ),
               child: ClipRRect(

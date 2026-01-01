@@ -70,8 +70,6 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
 
   // Lightweight cache polling to recover missed repaints
   Timer? _cachePollTimer;
-  int _cachePollAttempts = 0;
-  static const int _maxCachePollAttempts = 10; // ~5s if 500ms interval
 
   // PERFORMANCE: Debouncing timer for visibility changes
   Timer? _visibilityDebounceTimer;
@@ -119,7 +117,6 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
             _shouldRegenerateThumbnail = false;
             _onThumbnailGenerated(cached);
             _cachePollTimer?.cancel();
-            _cachePollAttempts = 0;
           }
         } catch (_) {}
       }
@@ -274,7 +271,6 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
         _onThumbnailGenerated(path);
         // Stop polling if running
         _cachePollTimer?.cancel();
-        _cachePollAttempts = 0;
       } else {
         // Use the helper's throttled log method
         VideoThumbnailHelper.logWithThrottle(
@@ -390,7 +386,6 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
       // Immediately handle becoming invisible (no debounce needed)
       _visibilityNotifier.value = false;
       _cachePollTimer?.cancel();
-      _cachePollAttempts = 0;
     }
   }
 
@@ -432,7 +427,6 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
   // Now we rely on the thumbnail ready stream subscription instead
   void _startCachePolling() {
     _cachePollTimer?.cancel();
-    _cachePollAttempts = 0;
 
     // Single delayed check instead of periodic polling
     // This dramatically reduces timer overhead during scrolling

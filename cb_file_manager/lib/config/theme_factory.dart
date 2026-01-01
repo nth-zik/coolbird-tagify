@@ -35,7 +35,7 @@ class ThemeFactory {
       useMaterial3: opts.useMaterial3,
       brightness: brightness,
       primaryColor: colorScheme.primary,
-      scaffoldBackgroundColor: colorScheme.background,
+      scaffoldBackgroundColor: colorScheme.surface,
       colorScheme: colorScheme,
       
       // AppBar Theme
@@ -234,7 +234,6 @@ class ThemeFactory {
     );
 
     return baseScheme.copyWith(
-      background: background ?? baseScheme.background,
       surface: surface ?? baseScheme.surface,
     );
   }

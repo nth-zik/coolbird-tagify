@@ -1,10 +1,7 @@
-import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:remixicon/remixicon.dart' as remix;
-import 'package:path/path.dart' as path;
 
 import '../../../bloc/network_browsing/network_browsing_bloc.dart';
 import '../../../bloc/network_browsing/network_browsing_event.dart';
@@ -13,7 +10,6 @@ import '../../../services/network_browsing/network_service_base.dart';
 import '../../../services/network_credentials_service.dart';
 import '../../../models/database/network_credentials.dart';
 import '../../tab_manager/core/tab_manager.dart';
-import '../../utils/fluent_background.dart';
 import '../system_screen.dart';
 import 'network_connection_dialog.dart';
 
@@ -37,8 +33,8 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
   late NetworkBrowsingBloc _networkBloc;
 
   List<NetworkCredentials> _savedCredentials = [];
-  Set<int> _connectingCredentialIds = {};
-  Map<String, int> _pendingTabCredentialMap = {};
+  final Set<int> _connectingCredentialIds = {};
+  final Map<String, int> _pendingTabCredentialMap = {};
 
   final TextEditingController _hostController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();

@@ -60,7 +60,7 @@ class NativeVlcDirectHelper {
         debugPrint('NativeVlcDirectHelper: Fallback to constructed SMB URL');
       }
 
-      debugPrint('NativeVlcDirectHelper: Final SMB MRL => ' + finalSmbMrl);
+      debugPrint('NativeVlcDirectHelper: Final SMB MRL => $finalSmbMrl');
 
       await Navigator.of(context).push(
         MaterialPageRoute(

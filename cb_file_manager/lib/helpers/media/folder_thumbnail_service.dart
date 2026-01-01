@@ -1,10 +1,10 @@
-import 'dart:io';
 import 'dart:async';
-import 'package:flutter/material.dart';
-import 'package:path/path.dart' as path;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
+
 import 'package:cb_file_manager/helpers/media/video_thumbnail_helper.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class FolderThumbnailService {
   static const String _customThumbnailsKey = 'folder_custom_thumbnails';
@@ -237,7 +237,6 @@ class FolderThumbnailService {
           }
         }
       }
-
     } catch (e) {
       debugPrint('Error scanning folder: $e');
     }
@@ -260,8 +259,6 @@ class FolderThumbnailService {
 
       for (final entity in entities) {
         if (entity is File) {
-          final extension = path.extension(entity.path).toLowerCase();
-
           // Check for supported media files using FileTypeUtils
           if (FileTypeUtils.isImageFile(entity.path) ||
               VideoThumbnailHelper.isSupportedVideoFormat(entity.path)) {

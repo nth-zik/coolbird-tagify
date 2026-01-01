@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:mobile_smb_native/mobile_smb_native.dart';
@@ -70,7 +69,7 @@ class OptimizedSMBService implements ISmbService {
     try {
       // 1. Get credentials
       final credentials = NetworkCredentialsService()
-          .findCredentials(serviceType: 'SMB', host: _connectedHost!);
+          .findCredentials(serviceType: 'SMB', host: _connectedHost);
       if (credentials == null) {
         debugPrint(
             'OptimizedSMBService: No credentials found for $_connectedHost');
@@ -79,12 +78,6 @@ class OptimizedSMBService implements ISmbService {
 
       final username = credentials.username;
       final password = credentials.password;
-
-      if (username == null || password == null) {
-        debugPrint(
-            'OptimizedSMBService: Incomplete credentials for $_connectedHost');
-        return null;
-      }
 
       // 2. Get the relative SMB path from the tab path
       final smbPath = _getSmbPathFromTabPath(tabPath);
@@ -150,7 +143,7 @@ class OptimizedSMBService implements ISmbService {
       final shareName = Uri.decodeComponent(parts[2]);
       final folders =
           parts.sublist(3).map((f) => Uri.decodeComponent(f)).toList();
-      return '/$shareName/' + folders.join('/');
+      return '/$shareName/${folders.join('/')}';
     }
 
     return '/';
@@ -292,7 +285,6 @@ class OptimizedSMBService implements ISmbService {
     }
 
     try {
-      final lowerPath = tabPath.toLowerCase();
       final pathWithoutPrefix = tabPath.substring('#network/'.length);
       final parts =
           pathWithoutPrefix.split('/').where((p) => p.isNotEmpty).toList();
@@ -487,6 +479,7 @@ class OptimizedSMBService implements ISmbService {
   }
 
   /// Optimized file streaming with prefetch and caching
+  @override
   Stream<List<int>>? openFileStream(String remotePath, {int startOffset = 0}) {
     try {
       debugPrint(
@@ -507,35 +500,6 @@ class OptimizedSMBService implements ISmbService {
     } catch (e) {
       debugPrint('OptimizedSMBService openFileStream error: $e');
       return null;
-    }
-  }
-
-  /// Set up file for streaming with prefetch controller
-  Future<void> _setupFileForStreaming(String smbPath, int startOffset) async {
-    try {
-      debugPrint(
-          'OptimizedSMBService: Setting up file for streaming: $smbPath at offset: $startOffset');
-
-      if (_chunkReader != null) {
-        final fileSet = await _chunkReader!.setFile(smbPath);
-        if (!fileSet) {
-          debugPrint('OptimizedSMBService: Failed to set file in chunk reader');
-          return;
-        }
-        debugPrint(
-            'OptimizedSMBService: File set in chunk reader successfully');
-      }
-
-      if (_prefetchController != null) {
-        await _prefetchController!.seek(startOffset);
-        debugPrint(
-            'OptimizedSMBService: Prefetch controller seeked to offset: $startOffset');
-      }
-
-      debugPrint('OptimizedSMBService: File set up for streaming successfully');
-    } catch (e) {
-      debugPrint(
-          'OptimizedSMBService: Error setting up file for streaming: $e');
     }
   }
 
@@ -596,7 +560,7 @@ class OptimizedSMBService implements ISmbService {
           // Log progress for debugging
           if (chunkCount % 10 == 0) {
             debugPrint(
-                'OptimizedSMBService: Streamed ${chunkCount} chunks, ${(totalBytes / 1024 / 1024).toStringAsFixed(2)} MB');
+                'OptimizedSMBService: Streamed $chunkCount chunks, ${(totalBytes / 1024 / 1024).toStringAsFixed(2)} MB');
           }
 
           controller.add(chunk);
@@ -608,7 +572,7 @@ class OptimizedSMBService implements ISmbService {
       },
       onDone: () {
         debugPrint(
-            'OptimizedSMBService: Stream completed - ${chunkCount} chunks, ${(totalBytes / 1024 / 1024).toStringAsFixed(2)} MB total');
+            'OptimizedSMBService: Stream completed - $chunkCount chunks, ${(totalBytes / 1024 / 1024).toStringAsFixed(2)} MB total');
         closeStream();
       },
       cancelOnError: false,
@@ -795,6 +759,7 @@ class OptimizedSMBService implements ISmbService {
   }
 
   /// Generate thumbnail for image or video file
+  @override
   Future<Uint8List?> getThumbnail(String tabPath, int size) async {
     if (!isConnected) {
       debugPrint(
@@ -913,7 +878,7 @@ class OptimizedSMBService implements ISmbService {
       if (stream != null) {
         int totalBytes = 0;
         int chunkCount = 0;
-        final testDuration = const Duration(seconds: 5);
+        const testDuration = Duration(seconds: 5);
         final endTime = startTime.add(testDuration);
 
         await for (final chunk in stream) {

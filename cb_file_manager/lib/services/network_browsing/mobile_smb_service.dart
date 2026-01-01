@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:remixicon/remixicon.dart' as remix;
 import 'package:mobile_smb_native/mobile_smb_native.dart';
@@ -44,7 +43,7 @@ class MobileSMBService implements ISmbService {
     try {
       // 1. Get credentials
       final credentials = NetworkCredentialsService()
-          .findCredentials(serviceType: 'SMB', host: _connectedHost!);
+          .findCredentials(serviceType: 'SMB', host: _connectedHost);
       if (credentials == null) {
         debugPrint(
             'MobileSMBService: No credentials found for $_connectedHost');
@@ -53,12 +52,6 @@ class MobileSMBService implements ISmbService {
 
       final username = credentials.username;
       final password = credentials.password;
-
-      if (username == null || password == null) {
-        debugPrint(
-            'MobileSMBService: Incomplete credentials for $_connectedHost');
-        return null;
-      }
 
       // 2. Get the relative SMB path from the tab path
       final smbPath = _getSmbPathFromTabPath(tabPath);
@@ -125,7 +118,7 @@ class MobileSMBService implements ISmbService {
       final shareName = Uri.decodeComponent(parts[2]);
       final folders =
           parts.sublist(3).map((f) => Uri.decodeComponent(f)).toList();
-      return '/$shareName/' + folders.join('/');
+      return '/$shareName/${folders.join('/')}';
     }
 
     return '/';
@@ -238,7 +231,6 @@ class MobileSMBService implements ISmbService {
 
     try {
       // Check if we're listing shares (server root)
-      final lowerPath = tabPath.toLowerCase();
       final pathWithoutPrefix = tabPath.substring('#network/'.length);
       final parts =
           pathWithoutPrefix.split('/').where((p) => p.isNotEmpty).toList();
@@ -661,6 +653,7 @@ class MobileSMBService implements ISmbService {
   }
 
   /// Generate thumbnail for image or video file using mobile_smb_native
+  @override
   Future<Uint8List?> getThumbnail(String tabPath, int size) async {
     if (!isConnected) {
       debugPrint('MobileSMBService: Not connected, cannot generate thumbnail');
@@ -684,8 +677,8 @@ class MobileSMBService implements ISmbService {
           final config = SmbConnectionConfig(
             host: _connectedHost,
             shareName: _connectedShare,
-            username: credentials.username ?? '',
-            password: credentials.password ?? '',
+            username: credentials.username,
+            password: credentials.password,
           );
           await smbService.connect(config);
         }

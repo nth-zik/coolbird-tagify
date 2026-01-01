@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:mobile_smb_native/mobile_smb_native.dart';
 

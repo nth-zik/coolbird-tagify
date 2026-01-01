@@ -1,6 +1,6 @@
-# Helpers Directory Structure
+# Helpers & Utils Directory Structure
 
-Thư mục helpers được tổ chức lại để dễ quản lý và maintain hơn.
+Thư mục helpers và utils được tổ chức lại để dễ quản lý và maintain hơn.
 
 ## Cấu trúc thư mục
 
@@ -36,6 +36,9 @@ helpers/
 └── ui/                        # UI & performance
     ├── frame_timing_optimizer.dart
     └── ui_blocking_prevention.dart
+
+utils/
+└── app_logger.dart            # Centralized logging framework
 ```
 
 ## Cách sử dụng
@@ -58,6 +61,28 @@ import 'package:cb_file_manager/helpers/media/video_thumbnail_helper.dart';
 // Network helpers
 import 'package:cb_file_manager/helpers/network/streaming_helper.dart';
 ```
+
+### Logging (Utils):
+
+**QUAN TRỌNG**: Không bao giờ sử dụng `print()` trong production code. Luôn sử dụng logging framework:
+
+```dart
+import 'package:cb_file_manager/utils/app_logger.dart';
+
+// Các mức độ log
+AppLogger.debug('Chi tiết debug');
+AppLogger.info('Thông tin chung');
+AppLogger.warning('Cảnh báo');
+AppLogger.error('Lỗi xảy ra', error: exception, stackTrace: stackTrace);
+AppLogger.fatal('Lỗi nghiêm trọng');
+```
+
+**Lợi ích:**
+- Structured logging với timestamps và màu sắc
+- Các mức độ log để lọc (debug, info, warning, error, fatal)
+- Tự động theo dõi method call traces
+- Stack traces cho errors
+- Sẵn sàng cho production với error context đầy đủ
 
 ## Thay đổi từ cấu trúc cũ
 

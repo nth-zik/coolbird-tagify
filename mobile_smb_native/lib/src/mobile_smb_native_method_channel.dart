@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -195,7 +194,7 @@ class MethodChannelMobileSmbNative extends MobileSmbNativePlatform {
             'SMB openFileStream: Using method channel streaming for mobile');
         // First start the native stream, then return the event channel stream
         return Stream.fromFuture(_startFileStreamOnNative(path)).asyncExpand(
-            (_) => _createMobileFileStream(path) ?? Stream.empty());
+            (_) => _createMobileFileStream(path) ?? const Stream.empty());
       }
 
       // Use the platform service for streaming on desktop
@@ -260,7 +259,7 @@ class MethodChannelMobileSmbNative extends MobileSmbNativePlatform {
       debugPrint('SMB _startFileStreamOnNative: Successfully started stream');
     } catch (e) {
       debugPrint('SMB _startFileStreamOnNative error: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -315,7 +314,7 @@ class MethodChannelMobileSmbNative extends MobileSmbNativePlatform {
                 _startOptimizedFileStreamOnNative(path, chunkSize))
             .asyncExpand((_) =>
                 _createOptimizedMobileFileStream(path, chunkSize) ??
-                Stream.empty());
+                const Stream.empty());
       }
 
       // Use the platform service for streaming on desktop
@@ -362,7 +361,7 @@ class MethodChannelMobileSmbNative extends MobileSmbNativePlatform {
                 _startSeekFileStreamOnNative(path, offset, chunkSize))
             .asyncExpand((_) =>
                 _createSeekMobileFileStream(path, offset, chunkSize) ??
-                Stream.empty());
+                const Stream.empty());
       }
 
       // Use the platform service for streaming on desktop with seek
@@ -444,7 +443,7 @@ class MethodChannelMobileSmbNative extends MobileSmbNativePlatform {
           'SMB _startOptimizedFileStreamOnNative: Successfully started optimized stream');
     } catch (e) {
       debugPrint('SMB _startOptimizedFileStreamOnNative error: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -500,7 +499,7 @@ class MethodChannelMobileSmbNative extends MobileSmbNativePlatform {
           'SMB _startSeekFileStreamOnNative: Successfully started seek stream');
     } catch (e) {
       debugPrint('SMB _startSeekFileStreamOnNative error: $e');
-      throw e;
+      rethrow;
     }
   }
 }

@@ -7,7 +7,7 @@ void main() {
       final client = MobileSmbClient();
 
       // Test connection (this would need a real SMB server for full testing)
-      final config = SmbConnectionConfig(
+      const _ = SmbConnectionConfig(
         host: 'test-server',
         port: 445,
         username: 'testuser',
@@ -41,7 +41,7 @@ void main() {
 
   group('SMB Connection Config Tests', () {
     test('should create config with default SMB version', () {
-      final config = SmbConnectionConfig(
+      const config = SmbConnectionConfig(
         host: 'test-server',
         username: 'testuser',
         password: 'testpass',
@@ -51,7 +51,7 @@ void main() {
     });
 
     test('should create config with custom SMB version', () {
-      final config = SmbConnectionConfig(
+      const config = SmbConnectionConfig(
         host: 'test-server',
         username: 'testuser',
         password: 'testpass',
@@ -62,7 +62,7 @@ void main() {
     });
 
     test('should serialize and deserialize config', () {
-      final originalConfig = SmbConnectionConfig(
+      const originalConfig = SmbConnectionConfig(
         host: 'test-server',
         port: 445,
         username: 'testuser',

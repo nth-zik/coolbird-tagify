@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as pathlib;
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
-import 'package:cb_file_manager/helpers/core/filesystem_utils.dart'; // For formatFileSize
+// For formatFileSize
 
 class GalleryListView extends StatelessWidget {
   final List<File> imageFiles;

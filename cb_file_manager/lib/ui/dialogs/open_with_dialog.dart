@@ -147,7 +147,7 @@ class _OpenWithDialogState extends State<OpenWithDialog> {
                       ),
                       const Divider(),
                       ListTile(
-                        leading: Icon(remix.Remix.more_line),
+                        leading: const Icon(remix.Remix.more_line),
                         title: const Text('Choose another app...'),
                         onTap: () async {
                           // Close the dialog

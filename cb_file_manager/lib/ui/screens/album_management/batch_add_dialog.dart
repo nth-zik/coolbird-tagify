@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:cb_file_manager/services/album_service.dart';
-import 'dart:io';
 
 class BatchAddDialog extends StatefulWidget {
   final int albumId;

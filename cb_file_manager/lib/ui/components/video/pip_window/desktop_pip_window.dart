@@ -55,7 +55,6 @@ class _DesktopPipWindowState extends State<DesktopPipWindow>
   // IPC back to main window
   Socket? _ipc;
   String? _ipcToken;
-  int? _ipcPort;
   String? _openError;
 
   @override
@@ -273,22 +272,6 @@ class _DesktopPipWindowState extends State<DesktopPipWindow>
     }
   }
 
-  Future<void> _waitForReady(
-      {Duration timeout = const Duration(seconds: 2)}) async {
-    try {
-      // If already has duration, return quickly
-      if (_player?.state.duration.inMilliseconds != 0) return;
-      final d = await _player!.stream.duration
-          .firstWhere((d) => d.inMilliseconds > 0)
-          .timeout(timeout);
-      if (mounted) {
-        setState(() => _duration = d);
-      }
-    } catch (_) {
-      // Timeout or stream closed: continue anyway
-    }
-  }
-
   @override
   void dispose() {
     windowManager.removeListener(this);
@@ -394,7 +377,7 @@ class _DesktopPipWindowState extends State<DesktopPipWindow>
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      'Lỗi mở video: ${_openError}',
+                      'Lỗi mở video: $_openError',
                       style: const TextStyle(color: Colors.white, fontSize: 12),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 3,
@@ -553,21 +536,6 @@ class _DesktopPipWindowState extends State<DesktopPipWindow>
     );
   }
 
-  Widget _circleButton({required IconData icon, required VoidCallback onTap}) {
-    return Material(
-      color: Colors.black.withOpacity(0.5),
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Icon(icon, color: Colors.white, size: 18),
-        ),
-      ),
-    );
-  }
-
   // Persist PiP window size so next launch restores it
   Future<void> _saveCurrentSize() async {
     try {
@@ -599,7 +567,7 @@ class _DesktopPipWindowState extends State<DesktopPipWindow>
           await windowManager.setAspectRatio(ratio);
           _initialAspectApplied = true;
           final current = await windowManager.getSize();
-          final min = const Size(240, 135);
+          const min = Size(240, 135);
           double newW = current.width;
           double newH = newW / ratio;
           if (newH < min.height) {
@@ -807,18 +775,11 @@ class _DesktopPipWindowState extends State<DesktopPipWindow>
   }
 }
 
-extension on Socket {
-  void writeln(String s) {
-    add(utf8.encode('$s\n'));
-  }
-}
-
 extension _IpcHelpers on _DesktopPipWindowState {
   Future<void> _initIpc() async {
     final port = widget.args['ipcPort'];
     final token = widget.args['ipcToken'];
     if (port is int && token is String) {
-      _ipcPort = port;
       _ipcToken = token;
       try {
         final sock = await Socket.connect(InternetAddress.loopbackIPv4, port,

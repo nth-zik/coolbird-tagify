@@ -24,7 +24,7 @@ class _BufferInfoWidgetState extends State<BufferInfoWidget>
   Timer? _updateTimer;
   late AnimationController _progressController;
   late Animation<double> _progressAnimation;
-  List<int> _recentChunkSizes = [];
+  final List<int> _recentChunkSizes = [];
   static const int _maxRecentChunks = 5;
 
   @override

@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 import 'thumbnail_queue_manager.dart';
-import '../ui/ui_blocking_prevention.dart';
 
 /// A Flutter plugin to access Windows native video thumbnail generation
 /// This uses the Windows thumbnail cache system for efficient thumbnail extraction
@@ -316,48 +315,5 @@ class FcNativeVideoThumbnail {
       priority: 10,
       isVisible: true,
     );
-  }
-
-  static Future<String?> _originalSafeThumbnailGenerate({
-    required String videoPath,
-    required String outputPath,
-    int width = 1024,
-    String format = 'png',
-    int? timeSeconds,
-    int quality = 95,
-  }) async {
-    // For safety in isolates, first try to use this class's standard method
-    try {
-      return await generateThumbnail(
-        videoPath: videoPath,
-        outputPath: outputPath,
-        width: width,
-        format: format,
-        timeSeconds: timeSeconds,
-        quality: quality,
-      );
-    } catch (e) {
-      // If we get any errors, fallback to a pure Dart implementation
-      try {
-        debugPrint(
-            'FcNativeVideoThumbnail: Fallback to pure Dart implementation');
-
-        // Basic validation
-        final videoFile = File(videoPath);
-        if (!await videoFile.exists()) {
-          return null;
-        }
-
-        // Ensure output directory exists
-        final directory = path.dirname(outputPath);
-        await Directory(directory).create(recursive: true);
-
-        // We can't use platform channels safely, so return null
-        // The caller should fall back to VideoThumbnail package
-        return null;
-      } catch (e) {
-        return null;
-      }
-    }
   }
 }

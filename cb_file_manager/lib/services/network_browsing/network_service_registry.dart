@@ -1,11 +1,10 @@
-import 'dart:convert'; // For Uri encoding
+// For Uri encoding
 import 'dart:io';
 import 'network_service_base.dart';
 import 'smb_service.dart'; // Reverted back to the original smb_service
 import 'mobile_smb_service.dart'; // Mobile SMB service for Android/iOS
 import 'ftp_service.dart';
 import 'webdav_service.dart';
-import 'package:flutter/foundation.dart';
 
 /// Registry for managing all network service providers
 class NetworkServiceRegistry {

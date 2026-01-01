@@ -4,6 +4,7 @@ import 'package:path/path.dart' as path;
 import '../models/objectbox/album.dart';
 import '../models/objectbox/album_config.dart';
 import 'album_file_scanner.dart';
+import '../utils/app_logger.dart';
 
 class LazyAlbumScanner {
   static LazyAlbumScanner? _instance;
@@ -54,7 +55,6 @@ class LazyAlbumScanner {
       _loadedFiles[albumId] = [];
 
       int totalProcessed = 0;
-      const batchSize = 5; // Smaller batch - show files faster
       const delayBetweenBatches =
           Duration(milliseconds: 10); // Very small delay
 
@@ -94,7 +94,7 @@ class LazyAlbumScanner {
       config.updateScanStats(_loadedFiles[albumId]!.length);
     } catch (e) {
       _isScanning[albumId] = false;
-      print('Lazy scanning error for album ${album.name}: $e');
+      AppLogger.error('Lazy scanning error for album ${album.name}', error: e);
     }
   }
 
@@ -105,20 +105,6 @@ class LazyAlbumScanner {
     _loadedFiles[albumId]!.add(fileInfo);
 
     // Notify listeners with updated list immediately
-    if (_albumStreams.containsKey(albumId)) {
-      _albumStreams[albumId]!.add(List.from(_loadedFiles[albumId]!));
-    }
-  }
-
-  /// Add batch of files to album and notify listeners
-  void _addBatchToAlbum(int albumId, List<FileInfo> batch, AlbumConfig config) {
-    // Add to loaded files
-    _loadedFiles[albumId]!.addAll(batch);
-
-    // Sort current files
-    _sortFiles(_loadedFiles[albumId]!, config.sortBy, config.sortAscending);
-
-    // Notify listeners with updated list
     if (_albumStreams.containsKey(albumId)) {
       _albumStreams[albumId]!.add(List.from(_loadedFiles[albumId]!));
     }
@@ -164,24 +150,6 @@ class LazyAlbumScanner {
     }
   }
 
-  /// Sort files based on criteria
-  void _sortFiles(List<FileInfo> files, String sortBy, bool ascending) {
-    switch (sortBy) {
-      case 'name':
-        files.sort((a, b) =>
-            ascending ? a.name.compareTo(b.name) : b.name.compareTo(a.name));
-        break;
-      case 'date':
-        files.sort((a, b) => ascending
-            ? a.modifiedTime.compareTo(b.modifiedTime)
-            : b.modifiedTime.compareTo(a.modifiedTime));
-        break;
-      case 'size':
-        files.sort((a, b) =>
-            ascending ? a.size.compareTo(b.size) : b.size.compareTo(a.size));
-        break;
-    }
-  }
 
   /// Check if file is image
   bool _isImageFile(String extension) {

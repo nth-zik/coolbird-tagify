@@ -48,7 +48,7 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       title: Text(
         title,
-        style: TextStyle(
+        style: const TextStyle(
           fontWeight: FontWeight.w500,
           fontSize: 18,
         ),
@@ -93,12 +93,12 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
         // Action buttons for selection mode
         TextButton.icon(
-          icon: Icon(remix.Remix.add_circle_line, size: 18),
+          icon: const Icon(remix.Remix.add_circle_line, size: 18),
           label: const Text('Tag'),
           onPressed: () => showBatchAddTagDialog(context, selectedFiles),
         ),
         TextButton.icon(
-          icon: Icon(remix.Remix.delete_bin_2_line, size: 18),
+          icon: const Icon(remix.Remix.delete_bin_2_line, size: 18),
           label: const Text('Delete'),
           style: TextButton.styleFrom(
             foregroundColor: Colors.red[400],
@@ -110,7 +110,7 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
           },
         ),
         IconButton(
-          icon: Icon(remix.Remix.close_line, size: 24),
+          icon: const Icon(remix.Remix.close_line, size: 24),
           tooltip: 'Cancel selection',
           onPressed: clearSelection,
         ),
@@ -151,13 +151,13 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
         // Search button
         IconButton(
-          icon: Icon(remix.Remix.search_line, size: 24),
+          icon: const Icon(remix.Remix.search_line, size: 24),
           tooltip: 'Search',
           onPressed: showSearchScreen,
         ),
         // More actions menu
         PopupMenuButton<String>(
-          icon: Icon(remix.Remix.more_2_line, size: 24),
+          icon: const Icon(remix.Remix.more_2_line, size: 24),
           elevation: 2,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),

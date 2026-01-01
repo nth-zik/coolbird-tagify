@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:cb_file_manager/services/network_browsing/ftp_client/ftp_client.dart';
 import 'package:cb_file_manager/bloc/network_browsing/network_browsing_bloc.dart';
 import 'package:cb_file_manager/bloc/network_browsing/network_browsing_event.dart';

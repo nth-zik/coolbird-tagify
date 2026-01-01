@@ -3,8 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:remixicon/remixicon.dart' as remix;
-import 'package:path/path.dart'
-    as path_utils; // Aliased to avoid conflict with 'path' in _openSavedConnection
+// Aliased to avoid conflict with 'path' in _openSavedConnection
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../bloc/network_browsing/network_browsing_bloc.dart';
@@ -132,13 +131,6 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
     _discoveryService.cancelScan();
     _deviceStreamSubscription?.cancel();
     super.dispose();
-  }
-
-  // Method để clear cache khi cần thiết
-  static void clearCache() {
-    _cachedDiscoveredDevices.clear();
-    _cachedHasScanned = false;
-    _cachedIsScanning = false;
   }
 
   Future<void> _checkNetworkDiscovery() async {
@@ -362,8 +354,7 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
         initialService: 'SMB',
         initialHost: ipAddress,
         onConnectionRequested: (connectionPath, tabName) {
-          if (connectionPath != null &&
-              connectionPath.startsWith('#network/')) {
+          if (connectionPath.startsWith('#network/')) {
             debugPrint(
                 'Opening SMB connection in tab with path: $connectionPath');
 
@@ -375,11 +366,9 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
             ));
           } else {
             // Handle cases where connectionPath is null (dialog cancelled) or not the expected format
-            if (connectionPath != null) {
-              debugPrint(
-                  'SMBBrowserScreen: Received unexpected connection path: $connectionPath');
-            }
-          }
+            debugPrint(
+                'SMBBrowserScreen: Received unexpected connection path: $connectionPath');
+                    }
         },
       ),
     );
@@ -452,8 +441,7 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
               builder: (dialogContext) => NetworkConnectionDialog(
                 initialService: 'SMB',
                 onConnectionRequested: (connectionPath, tabName) {
-                  if (connectionPath != null &&
-                      connectionPath.startsWith('#network/')) {
+                  if (connectionPath.startsWith('#network/')) {
                     debugPrint(
                         'Opening new SMB connection in tab with path: $connectionPath');
                     tabBloc.add(AddTab(
@@ -491,12 +479,12 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                           const Icon(remix.Remix.error_warning_line,
                               color: Colors.orange),
                           const SizedBox(width: 8),
-                          Expanded(
+                          const Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Text(
+                                Text(
                                   'Network discovery may not be enabled',
                                   style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
@@ -537,7 +525,7 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                         decoration: BoxDecoration(
                           color: Theme.of(context)
                               .colorScheme
-                              .surfaceVariant
+                              .surfaceContainerHighest
                               .withOpacity(0.3),
                           borderRadius: BorderRadius.circular(8.0),
                           border: Border.all(
@@ -671,7 +659,7 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
           child: Row(
             children: [
               Icon(remix.Remix.information_line, color: Colors.grey[600], size: 20),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -720,7 +708,7 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                 color: Colors.blue.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(remix.Remix.computer_line, color: Colors.blue, size: 20),
+              child: const Icon(remix.Remix.computer_line, color: Colors.blue, size: 20),
             ),
             title: Text(
               serverName,
@@ -776,31 +764,31 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
   Widget _buildDiscoveredDevices() {
     if (_discoveredDevices.isEmpty) {
       if (_isScanning) {
-        return Expanded(
+        return const Expanded(
           child: Center(
             child: Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: EdgeInsets.all(24.0),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const SizedBox(
+                  SizedBox(
                     width: 32,
                     height: 32,
                     child: CircularProgressIndicator(strokeWidth: 3),
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
+                  SizedBox(height: 16),
+                  Text(
                     'Scanning for SMB servers...',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
+                  SizedBox(height: 8),
+                  Text(
                     'Devices will appear here as they are discovered',
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
+                  SizedBox(height: 8),
+                  Text(
                     'This may take a few moments',
                     style: TextStyle(fontSize: 11, color: Colors.grey),
                     textAlign: TextAlign.center,
@@ -890,16 +878,16 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                 ),
                 const Spacer(),
                 if (_isScanning)
-                  Row(
+                  const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const SizedBox(
+                      SizedBox(
                         width: 12,
                         height: 12,
                         child: CircularProgressIndicator(strokeWidth: 1),
                       ),
-                      const SizedBox(width: 8),
-                      const Text(
+                      SizedBox(width: 8),
+                      Text(
                         'Scanning...',
                         style: TextStyle(fontSize: 12, color: Colors.blue),
                       ),

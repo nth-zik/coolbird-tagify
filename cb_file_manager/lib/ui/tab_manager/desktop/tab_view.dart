@@ -4,7 +4,7 @@ import 'package:remixicon/remixicon.dart' as remix;
 import 'package:cb_file_manager/config/translation_helper.dart';
 import '../core/tab_manager.dart';
 import '../core/tab_data.dart';
-import '../core/tabbed_folder_list_screen.dart';
+import '../core/tabbed_folder/tabbed_folder_list_screen.dart';
 
 /// A widget that displays tabs and their content
 class TabView extends StatelessWidget {

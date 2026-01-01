@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:remixicon/remixicon.dart' as remix;
 import '../../../utils/fluent_background.dart';
 import '../../common/window_caption_buttons.dart';

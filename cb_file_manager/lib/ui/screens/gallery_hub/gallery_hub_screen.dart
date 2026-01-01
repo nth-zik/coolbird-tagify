@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:remixicon/remixicon.dart' as remix;
-import 'package:cb_file_manager/ui/screens/media_gallery/image_gallery_screen.dart';
-import 'package:cb_file_manager/ui/screens/album_management/album_management_screen.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
-import 'package:cb_file_manager/config/translation_helper.dart';
 import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/helpers/platform_paths.dart';
@@ -13,7 +9,6 @@ import 'package:cb_file_manager/models/objectbox/album.dart';
 import 'package:cb_file_manager/ui/screens/settings/featured_albums_settings_screen.dart';
 
 import 'dart:io';
-import 'dart:math' as math;
 
 class GalleryHubScreen extends StatefulWidget {
   const GalleryHubScreen({Key? key}) : super(key: key);
@@ -72,14 +67,14 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
   Future<void> _loadImageCount() async {
     try {
       final count = await _countAllImages();
-      if (this.mounted) {
+      if (mounted) {
         setState(() {
           _totalImages = count;
           _isLoading = false;
         });
       }
     } catch (e) {
-      if (this.mounted) {
+      if (mounted) {
         setState(() {
           _isLoading = false;
         });
@@ -90,14 +85,14 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
   Future<void> _loadFeaturedAlbums() async {
     try {
       final albums = await FeaturedAlbumsService.instance.getFeaturedAlbums();
-      if (this.mounted) {
+      if (mounted) {
         setState(() {
           _featuredAlbums = albums;
           _loadingFeaturedAlbums = false;
         });
       }
     } catch (e) {
-      if (this.mounted) {
+      if (mounted) {
         setState(() {
           _loadingFeaturedAlbums = false;
         });
@@ -379,7 +374,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
           builder: (context, constraints) {
             int crossAxis = 2;
             double aspectRatio = 1.2;
-            
+
             if (constraints.maxWidth > 1200) {
               crossAxis = 4;
               aspectRatio = 1.2;
@@ -467,7 +462,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
         final iconPadding = isMobile ? 10.0 : 12.0;
         final iconSize = isMobile ? 20.0 : 24.0;
         final spacing = isMobile ? 8.0 : 12.0;
-        
+
         return Material(
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(16),
@@ -528,7 +523,8 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                     child: Text(
                       description,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.7),
                         fontSize: isMobile ? 11 : null,
                       ),
                       textAlign: TextAlign.center,
@@ -733,7 +729,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                         value: 'remove',
                         child: Row(
                           children: [
-                            Icon(remix.Remix.star_line, size: 16),
+                            const Icon(remix.Remix.star_line, size: 16),
                             const SizedBox(width: 8),
                             Text(_localizations.removeFromFeatured),
                           ],
@@ -898,115 +894,6 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
     );
   }
 
-  Widget _buildCompactQuickActions(ThemeData theme) {
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 3,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 1.0,
-      children: [
-        _buildCompactActionCard(
-          theme,
-          _localizations.allImages,
-          remix.Remix.image_line,
-          Colors.indigo,
-          () => _navigateToAllImages(),
-        ),
-        _buildCompactActionCard(
-          theme,
-          _localizations.albums,
-          remix.Remix.album_line,
-          Colors.purple,
-          () => _navigateToAlbums(),
-        ),
-        _buildCompactActionCard(
-          theme,
-          _localizations.camera,
-          remix.Remix.camera_line,
-          Colors.green,
-          () => _navigateToCamera(),
-        ),
-        _buildCompactActionCard(
-          theme,
-          _localizations.downloads,
-          remix.Remix.download_line,
-          Colors.orange,
-          () => _navigateToDownloads(),
-        ),
-        _buildCompactActionCard(
-          theme,
-          _localizations.recent,
-          remix.Remix.time_line,
-          Colors.red,
-          () => _navigateToRecent(),
-        ),
-        _buildCompactActionCard(
-          theme,
-          _localizations.folders,
-          remix.Remix.folder_image_line,
-          Colors.blue,
-          () => _navigateToFolders(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCompactActionCard(
-    ThemeData theme,
-    String title,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: theme.colorScheme.outline.withValues(alpha: 0.1),
-            ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  icon,
-                  size: 20,
-                  color: color,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   void _navigateToAllImages() async {
     // Navigate to special route that shows all images from entire device
     final tabBloc = BlocProvider.of<TabManagerBloc>(_context);
@@ -1045,7 +932,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
     // Navigate within current tab to maintain navigation history
     final path = await PlatformPaths.getCameraPath();
     final displayName = PlatformPaths.getCameraDisplayName();
-    if (!this.mounted) return;
+    if (!mounted) return;
     final tabBloc = BlocProvider.of<TabManagerBloc>(_context);
     final activeTab = tabBloc.state.activeTab;
     if (activeTab != null) {
@@ -1065,7 +952,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
     // Navigate within current tab to maintain navigation history
     final path = await PlatformPaths.getDownloadsPath();
     final displayName = PlatformPaths.getDownloadsDisplayName();
-    if (!this.mounted) return;
+    if (!mounted) return;
     final tabBloc = BlocProvider.of<TabManagerBloc>(_context);
     final activeTab = tabBloc.state.activeTab;
     if (activeTab != null) {
@@ -1079,18 +966,6 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
         switchToTab: true,
       ));
     }
-  }
-
-  void _navigateToRecent() {
-    // TODO: Implement recent images logic
-    ScaffoldMessenger.of(_context).showSnackBar(
-      const SnackBar(content: Text('Recent images feature coming soon!')),
-    );
-  }
-
-  void _navigateToFolders() {
-    // Navigate back to file manager with image filter
-    Navigator.pop(_context);
   }
 
   void _navigateToAlbum(Album album) {
@@ -1114,7 +989,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
   void _removeFromFeatured(Album album) async {
     final success =
         await FeaturedAlbumsService.instance.removeFromFeatured(album.id);
-    if (success && this.mounted) {
+    if (success && mounted) {
       // Reload featured albums
       _loadFeaturedAlbums();
       ScaffoldMessenger.of(_context).showSnackBar(

@@ -18,6 +18,8 @@ class EnglishLocalizations implements AppLocalizations {
   @override
   String get close => 'Close';
   @override
+  String get exit => 'Exit';
+  @override
   String get search => 'Search';
   @override
   String get settings => 'Settings';
@@ -345,19 +347,19 @@ class EnglishLocalizations implements AppLocalizations {
   @override
   String get tagManagement => 'Tag Management';
   @override
-  String deleteTagConfirmation(String tag) => 'Delete tag "${tag}"?';
+  String deleteTagConfirmation(String tag) => 'Delete tag "$tag"?';
   @override
   String get tagDeleteConfirmationText =>
       'This will remove the tag from all files. This action cannot be undone.';
   @override
-  String tagDeleted(String tag) => 'Tag "${tag}" deleted successfully';
+  String tagDeleted(String tag) => 'Tag "$tag" deleted successfully';
   @override
-  String errorDeletingTag(String error) => 'Error deleting tag: ${error}';
+  String errorDeletingTag(String error) => 'Error deleting tag: $error';
   @override
-  String chooseTagColor(String tag) => 'Choose Color for "${tag}"';
+  String chooseTagColor(String tag) => 'Choose Color for "$tag"';
   @override
   String tagColorUpdated(String tag) =>
-      'Color for tag "${tag}" has been updated';
+      'Color for tag "$tag" has been updated';
   @override
   String get allTags => 'All Tags';
   @override
@@ -405,7 +407,7 @@ class EnglishLocalizations implements AppLocalizations {
   String get createNewTagButton => 'Create New Tag';
   @override
   String noMatchingTagsMessage(String searchTags) =>
-      'No tags match "${searchTags}"';
+      'No tags match "$searchTags"';
   @override
   String get clearSearch => 'Clear Search';
   @override
@@ -448,7 +450,7 @@ class EnglishLocalizations implements AppLocalizations {
   @override
   String get noFilesWithTag => 'No files found with this tag';
   @override
-  String debugInfo(String tag) => 'Debug info: searching for tag "${tag}"';
+  String debugInfo(String tag) => 'Debug info: searching for tag "$tag"';
   @override
   String get backToAllTags => 'Back to All Tags';
   @override
@@ -466,10 +468,10 @@ class EnglishLocalizations implements AppLocalizations {
   @override
   String get enterTagName => 'Enter tag name...';
   @override
-  String tagAlreadyExists(String tagName) => 'Tag "${tagName}" already exists';
+  String tagAlreadyExists(String tagName) => 'Tag "$tagName" already exists';
   @override
   String tagCreatedSuccessfully(String tagName) =>
-      'Tag "${tagName}" created successfully';
+      'Tag "$tagName" created successfully';
   @override
   String get errorCreatingTag => 'Error creating tag: ';
   @override
@@ -758,6 +760,10 @@ class EnglishLocalizations implements AppLocalizations {
       'No files found with tags ${args['tags']} globally';
 
   @override
+  String noFilesFoundQuery(Map<String, String> args) =>
+      'No results found for "${args['query']}"';
+
+  @override
   String errorSearchTag(Map<String, String> args) =>
       'Error searching by tag: ${args['error']}';
 
@@ -856,6 +862,29 @@ class EnglishLocalizations implements AppLocalizations {
 
   @override
   String get results => 'results';
+
+  @override
+  String searchResultsTitle(String countText) => 'Search results$countText';
+
+  @override
+  String searchResultsTitleForQuery(String query, String countText) =>
+      'Search results for "$query"$countText';
+
+  @override
+  String searchResultsTitleForTag(String tag, String countText) =>
+      'Tag search results for "$tag"$countText';
+
+  @override
+  String searchResultsTitleForTagGlobal(String tag, String countText) =>
+      'Global tag search results for "$tag"$countText';
+
+  @override
+  String searchResultsTitleForFilter(String filter, String countText) =>
+      'Filtered results for "$filter"$countText';
+
+  @override
+  String searchResultsTitleForMedia(String mediaType, String countText) =>
+      'Search results for $mediaType$countText';
 
   @override
   String get searchByFilenameDesc => 'Enter a filename to search.';
@@ -1149,10 +1178,19 @@ class EnglishLocalizations implements AppLocalizations {
 
   // Folder / Trash
   @override
+  String get items => 'items';
+
+  @override
+  String get files => 'files';
+
+  @override
   String movedToTrash(String name) => '$name moved to trash';
   @override
   String moveItemsToTrashConfirmation(int count, String itemType) =>
       'Move $count $itemType to trash?';
+  @override
+  String get moveItemsToTrashDescription =>
+      'These items will be moved to the trash bin. You can restore them later if needed.';
   @override
   String get clearFilter => 'Clear Filter';
   @override
@@ -1175,6 +1213,8 @@ class EnglishLocalizations implements AppLocalizations {
   String errorSavingTags(String error) => 'Error saving tags: $error';
   @override
   String errorCreatingFolder(String error) => 'Error creating folder: $error';
+  @override
+  String get pathNotAccessible => 'Path does not exist or cannot be accessed';
 
   // UI labels
   @override

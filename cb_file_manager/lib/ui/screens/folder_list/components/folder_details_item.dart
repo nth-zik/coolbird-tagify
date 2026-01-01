@@ -140,7 +140,8 @@ class _FolderDetailsItemState extends State<FolderDetailsItem> {
           );
 
     return GestureDetector(
-      onSecondaryTapDown: (details) => _showFolderContextMenu(context, details.globalPosition),
+      onSecondaryTapDown: (details) =>
+          _showFolderContextMenu(context, details.globalPosition),
       child: MouseRegion(
         onEnter: (_) => setState(() => _isHovering = true),
         onExit: (_) => setState(() => _isHovering = false),
@@ -304,12 +305,10 @@ class _FolderDetailsItemState extends State<FolderDetailsItem> {
 class _FolderInteractionLayer extends StatefulWidget {
   final VoidCallback onTap;
   final VoidCallback onDoubleTap;
-  final VoidCallback? onLongPress;
 
   const _FolderInteractionLayer({
     required this.onTap,
     required this.onDoubleTap,
-    this.onLongPress,
   });
 
   @override
@@ -356,7 +355,7 @@ class _FolderInteractionLayerState extends State<_FolderInteractionLayer> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: _handleTapDown,
-      onLongPress: widget.onLongPress,
+      onLongPress: null,
     );
   }
 }

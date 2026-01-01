@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:remixicon/remixicon.dart' as remix;
@@ -8,8 +7,6 @@ import 'package:path/path.dart' as path;
 import 'ftp_client/index.dart';
 
 import 'network_service_base.dart';
-import 'ftp_client/ftp_service_adapter.dart';
-import 'ftp_client/ftp_file_info.dart';
 
 /// Service for FTP (File Transfer Protocol) network file access
 class FTPService implements NetworkServiceBase {
@@ -32,7 +29,7 @@ class FTPService implements NetworkServiceBase {
   Timer? _keepAliveTimer;
 
   // Debugging info
-  Map<String, dynamic> _lastConnectionInfo = {};
+  final Map<String, dynamic> _lastConnectionInfo = {};
 
   // FTP metadata storage (UI path -> meta)
   final Map<String, _FtpMeta> _metaMap = {};
@@ -349,7 +346,7 @@ class FTPService implements NetworkServiceBase {
     }
 
     // Join the remaining parts with / to create the FTP path
-    return '/' + parts.sublist(3).join('/');
+    return '/${parts.sublist(3).join('/')}';
   }
 
   /// Convert FTP path to UI path
@@ -473,7 +470,7 @@ class FTPService implements NetworkServiceBase {
         if (onProgress != null) {
           if (totalSize != null && totalSize > 0) {
             // If we know the total size, calculate percentage
-            final progressValue = bytesReceived / totalSize!;
+            final progressValue = bytesReceived / totalSize;
             onProgress(progressValue.clamp(0.0, 1.0));
           } else {
             // If we don't know the size, just report bytes received

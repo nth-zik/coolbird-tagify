@@ -51,7 +51,8 @@ class _AutoRulesScreenState extends State<AutoRulesScreen> {
   Future<void> _showCreateRuleDialog() async {
     Album? fixedAlbum;
     if (widget.scopedAlbumId != null) {
-      fixedAlbum = await AlbumService.instance.getAlbumById(widget.scopedAlbumId!);
+      fixedAlbum =
+          await AlbumService.instance.getAlbumById(widget.scopedAlbumId!);
     }
 
     final result = await showDialog<AlbumAutoRule>(
@@ -460,7 +461,6 @@ class _CreateAutoRuleDialogState extends State<CreateAutoRuleDialog> {
   RuleCondition _selectedCondition = RuleCondition.contains;
   List<Album> _albums = [];
   bool _isLoading = true;
-  int _currentStep = 0;
 
   final List<Map<String, dynamic>> _templates = [
     {
@@ -738,7 +738,7 @@ class _CreateAutoRuleDialogState extends State<CreateAutoRuleDialog> {
         const SizedBox(height: 16),
         if (widget.fixedAlbum == null)
           DropdownButtonFormField<Album>(
-            value: _selectedAlbum,
+            initialValue: _selectedAlbum,
             decoration: const InputDecoration(
               labelText: 'Target Album',
               border: OutlineInputBorder(),
@@ -766,7 +766,7 @@ class _CreateAutoRuleDialogState extends State<CreateAutoRuleDialog> {
             Expanded(
               flex: 2,
               child: DropdownButtonFormField<RuleCondition>(
-                value: _selectedCondition,
+                initialValue: _selectedCondition,
                 decoration: const InputDecoration(
                   labelText: 'Condition',
                   border: OutlineInputBorder(),
@@ -1129,7 +1129,7 @@ class _EditAutoRuleDialogState extends State<EditAutoRuleDialog> {
         ),
         const SizedBox(height: 16),
         DropdownButtonFormField<Album>(
-          value: _selectedAlbum,
+          initialValue: _selectedAlbum,
           decoration: const InputDecoration(
             labelText: 'Target Album',
             border: OutlineInputBorder(),
@@ -1148,7 +1148,7 @@ class _EditAutoRuleDialogState extends State<EditAutoRuleDialog> {
             Expanded(
               flex: 2,
               child: DropdownButtonFormField<RuleCondition>(
-                value: _selectedCondition,
+                initialValue: _selectedCondition,
                 decoration: const InputDecoration(
                   labelText: 'Condition',
                   border: OutlineInputBorder(),

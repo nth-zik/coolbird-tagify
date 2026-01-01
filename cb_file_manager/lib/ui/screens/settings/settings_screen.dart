@@ -33,7 +33,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late bool _showFileTags;
 
   // Cache clearing states
-  bool _isClearingVideoCache = false;
+  final bool _isClearingVideoCache = false;
   bool _isClearingNetworkCache = false;
   bool _isClearingTempFiles = false;
   bool _isClearingCache = false;
@@ -71,7 +71,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content:
-                Text(AppLocalizations.of(context)!.errorLoadingTags + '$e'),
+                Text('${AppLocalizations.of(context)!.errorLoadingTags}$e'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -109,8 +109,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(AppLocalizations.of(context)!.thumbnailPositionUpdated +
-            '$percentage%'),
+        content: Text('${AppLocalizations.of(context)!.thumbnailPositionUpdated}$percentage%'),
         duration: const Duration(seconds: 1),
         behavior: SnackBarBehavior.floating,
         width: 320,
@@ -170,7 +169,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-                AppLocalizations.of(context)!.errorClearingThumbnail + '$e'),
+                '${AppLocalizations.of(context)!.errorClearingThumbnail}$e'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
@@ -340,7 +339,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color:
-                Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+                Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -408,7 +407,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     height: 16,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Icon(remix.Remix.delete_bin_2_line),
+                : const Icon(remix.Remix.delete_bin_2_line),
             label: Text(AppLocalizations.of(context)!.clearAllCache),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red.withOpacity(0.1),
@@ -534,7 +533,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       trailing: trailing ??
           (onTap != null
-              ? Icon(remix.Remix.arrow_right_s_line, size: 16)
+              ? const Icon(remix.Remix.arrow_right_s_line, size: 16)
               : null),
       onTap: onTap,
     );
@@ -657,7 +656,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content:
-                Text(AppLocalizations.of(context)!.errorClearingCache + '$e'),
+                Text('${AppLocalizations.of(context)!.errorClearingCache}$e'),
             behavior: SnackBarBehavior.floating,
             backgroundColor: Colors.red,
           ),
@@ -694,7 +693,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content:
-                Text(AppLocalizations.of(context)!.errorClearingCache + '$e'),
+                Text('${AppLocalizations.of(context)!.errorClearingCache}$e'),
             behavior: SnackBarBehavior.floating,
             backgroundColor: Colors.red,
           ),
@@ -735,7 +734,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content:
-                Text(AppLocalizations.of(context)!.errorClearingCache + '$e'),
+                Text('${AppLocalizations.of(context)!.errorClearingCache}$e'),
             behavior: SnackBarBehavior.floating,
             backgroundColor: Colors.red,
           ),

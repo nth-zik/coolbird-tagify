@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:cb_file_manager/services/album_service.dart';
 import 'package:cb_file_manager/models/objectbox/album.dart';
+import '../utils/app_logger.dart';
 
 class FeaturedAlbumsService {
   static const String _configFileName = 'featured_albums_config.json';
@@ -36,7 +37,7 @@ class FeaturedAlbumsService {
       final json = jsonDecode(content) as Map<String, dynamic>;
       return FeaturedAlbumsConfig.fromJson(json);
     } catch (e) {
-      print('Error loading featured albums config: $e');
+      AppLogger.error('Error loading featured albums config', error: e);
       return FeaturedAlbumsConfig.defaultConfig();
     }
   }
@@ -51,7 +52,7 @@ class FeaturedAlbumsService {
       await file.writeAsString(jsonEncode(json));
       return true;
     } catch (e) {
-      print('Error saving featured albums config: $e');
+      AppLogger.error('Error saving featured albums config', error: e);
       return false;
     }
   }
@@ -87,7 +88,7 @@ class FeaturedAlbumsService {
 
       return featuredAlbums.take(config.maxFeaturedAlbums).toList();
     } catch (e) {
-      print('Error getting featured albums: $e');
+      AppLogger.error('Error getting featured albums', error: e);
       return [];
     }
   }
@@ -102,7 +103,7 @@ class FeaturedAlbumsService {
       }
       return true;
     } catch (e) {
-      print('Error adding album to featured: $e');
+      AppLogger.error('Error adding album to featured', error: e);
       return false;
     }
   }
@@ -114,7 +115,7 @@ class FeaturedAlbumsService {
       config.featuredAlbumIds.remove(albumId);
       return await saveConfig(config);
     } catch (e) {
-      print('Error removing album from featured: $e');
+      AppLogger.error('Error removing album from featured', error: e);
       return false;
     }
   }

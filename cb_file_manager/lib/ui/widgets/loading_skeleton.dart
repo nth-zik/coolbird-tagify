@@ -220,6 +220,6 @@ class _ShimmerBoxState extends State<_ShimmerBox> with SingleTickerProviderState
 Color _skeletonColor(BuildContext context) {
   final theme = Theme.of(context);
   // Use a surfaceVariant-like tone for better theming
-  return theme.colorScheme.surfaceVariant.withOpacity(theme.brightness == Brightness.dark ? 0.35 : 0.6);
+  return theme.colorScheme.surfaceContainerHighest.withOpacity(theme.brightness == Brightness.dark ? 0.35 : 0.6);
 }
 

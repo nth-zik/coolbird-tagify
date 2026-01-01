@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:cb_file_manager/services/album_service.dart';
 import 'package:cb_file_manager/services/smart_album_service.dart';
-import 'package:cb_file_manager/models/objectbox/album.dart';
 import 'package:path/path.dart' as path;
+import '../utils/app_logger.dart';
 
 enum RuleCondition {
   contains,
@@ -144,7 +144,7 @@ class AlbumAutoRuleService {
           .map((ruleJson) => AlbumAutoRule.fromJson(ruleJson))
           .toList();
     } catch (e) {
-      print('Error loading auto rules: $e');
+      AppLogger.error('Error loading auto rules', error: e);
       return [];
     }
   }
@@ -162,7 +162,7 @@ class AlbumAutoRuleService {
       await file.writeAsString(jsonEncode(json));
       return true;
     } catch (e) {
-      print('Error saving auto rules: $e');
+      AppLogger.error('Error saving auto rules', error: e);
       return false;
     }
   }
@@ -238,7 +238,7 @@ class AlbumAutoRuleService {
       
       return false;
     } catch (e) {
-      print('Error processing file with auto rules: $e');
+      AppLogger.error('Error processing file with auto rules', error: e);
       return false;
     }
   }

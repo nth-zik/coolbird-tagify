@@ -13,7 +13,6 @@ import 'package:cb_file_manager/models/database/database_manager.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 import 'package:cb_file_manager/services/permission_state_service.dart';
 import 'package:cb_file_manager/helpers/core/filesystem_sorter.dart';
-import 'package:cb_file_manager/config/languages/app_localizations.dart';
 
 import 'folder_list_event.dart';
 import 'folder_list_state.dart';
@@ -27,7 +26,7 @@ class SearchErrorMessages {
   // Helper methods to get localized messages
   // Currently defaults to English as BLoC doesn't have context
   static final _defaultLocalizations = EnglishLocalizations();
-  
+
   static String noFilesFoundTag(String tag) {
     return _defaultLocalizations.noFilesFoundTag({'tag': tag});
   }
@@ -59,8 +58,6 @@ class SearchErrorMessages {
   static String errorSearchTagsGlobal(String error) {
     return _defaultLocalizations.errorSearchTagsGlobal({'error': error});
   }
-
-
 }
 
 class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
@@ -190,6 +187,7 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
     FolderListLoad event,
     Emitter<FolderListState> emit,
   ) async {
+    debugPrint('🟢 [FolderListBloc] Loading path: ${event.path}');
     emit(state.copyWith(isLoading: true, currentPath: Directory(event.path)));
 
     // Special case for empty path on Windows - this is used for the drive listing view
@@ -233,14 +231,40 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
             }
           }
 
-          // For mobile, add retry mechanism for directory listing
-          List<FileSystemEntity> contents = [];
+          // Stream-based loading with batch emission for lazy loading
+          // Files will be displayed progressively as they are discovered
+          final List<FileSystemEntity> folders = [];
+          final List<FileSystemEntity> files = [];
+          int batchCount = 0;
+          const int batchSize = 30; // Emit partial state every 30 items
           int retryCount = 0;
           const maxRetries = 3;
 
           while (retryCount < maxRetries) {
             try {
-              contents = await directory.list().toList();
+              // Use stream-based loading for progressive display
+              await for (final entity in directory.list()) {
+                if (entity is Directory) {
+                  folders.add(entity);
+                } else if (entity is File) {
+                  // Skip tag files and hidden config files
+                  if (!entity.path.endsWith('.tags') &&
+                      pathlib.basename(entity.path) != '.cbfile_config.json') {
+                    files.add(entity);
+                  }
+                }
+                batchCount++;
+
+                // Emit partial state every batchSize items for lazy loading effect
+                if (batchCount % batchSize == 0) {
+                  emit(state.copyWith(
+                    isLoading: true,
+                    folders: List.from(folders),
+                    files: List.from(files),
+                    error: null,
+                  ));
+                }
+              }
               break; // Success, exit retry loop
             } catch (e) {
               retryCount++;
@@ -254,37 +278,9 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
             }
           }
 
-          // Separate folders and files
-          final List<FileSystemEntity> folders = [];
-          final List<FileSystemEntity> files = [];
-
-          debugPrint('DEBUG: Directory listing found ${contents.length} items');
+          debugPrint(
+              'DEBUG: Directory listing found ${folders.length + files.length} items');
           debugPrint('DEBUG: Directory path: ${event.path}');
-
-          // Debug: Log all items first
-          for (var entity in contents) {
-            debugPrint(
-                'DEBUG: Raw item: ${entity.path} (${entity.runtimeType})');
-          }
-
-          for (var entity in contents) {
-            if (entity is Directory) {
-              folders.add(entity);
-              debugPrint('DEBUG: Found folder: ${entity.path}');
-            } else if (entity is File) {
-              debugPrint('DEBUG: Found file: ${entity.path}');
-              // Skip tag files - no longer needed with global tags
-              // Also skip hidden config files
-              if (!entity.path.endsWith('.tags') &&
-                  pathlib.basename(entity.path) != '.cbfile_config.json') {
-                files.add(entity);
-                debugPrint('DEBUG: Added file to list: ${entity.path}');
-              } else {
-                debugPrint('DEBUG: Skipped file (tag/config): ${entity.path}');
-              }
-            }
-          }
-
           debugPrint(
               'DEBUG: Final result - ${folders.length} folders, ${files.length} files');
 
@@ -349,6 +345,10 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
           // Prefetch thumbnails for the entire directory in background
           _prefetchThumbnailsForDirectory(files, event.path);
         } catch (e) {
+          debugPrint('🔴 [FolderListBloc] ERROR loading directory: $e');
+          debugPrint('🔴 [FolderListBloc] Error type: ${e.runtimeType}');
+          debugPrint('🔴 [FolderListBloc] Stack trace: ${StackTrace.current}');
+
           // Handle specific permission errors
           if (e.toString().toLowerCase().contains('permission denied') ||
               e.toString().toLowerCase().contains('access denied')) {
@@ -373,11 +373,16 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
           }
         }
       } else {
+        debugPrint(
+            '🔴 [FolderListBloc] Directory does not exist: ${event.path}');
         emit(
           state.copyWith(isLoading: false, error: "Directory does not exist"),
         );
       }
     } catch (e) {
+      debugPrint('🔴 [FolderListBloc] OUTER ERROR: $e');
+      debugPrint('🔴 [FolderListBloc] Error type: ${e.runtimeType}');
+
       // Improved error handling with user-friendly messages
       if (e.toString().toLowerCase().contains('permission denied') ||
           e.toString().toLowerCase().contains('access denied')) {
@@ -416,7 +421,7 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
         folders.cast<Directory>(),
         sortOption,
       );
-      
+
       final sortedFiles = await FileSystemSorter.sortFiles(
         files.cast<File>(),
         sortOption,
@@ -540,13 +545,13 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
 
         // Apply sorting FIRST, then emit final state with isLoading: false
         // This ensures UI shows complete, sorted content without gaps
-        
+
         // Use FileSystemSorter to sort folders and files
         final sortedFolders = await FileSystemSorter.sortDirectories(
           folders.cast<Directory>(),
           sortOptionToUse,
         );
-        
+
         final sortedFiles = await FileSystemSorter.sortFiles(
           files.cast<File>(),
           sortOptionToUse,
@@ -643,44 +648,6 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
       );
     } catch (e) {
       debugPrint('Error prefetching thumbnails for $dirPath: $e');
-    }
-  }
-
-  // New method to generate thumbnails without blocking UI
-  Future<void> _generateThumbnailsInBackground(
-    List<FileSystemEntity> videoFiles,
-  ) async {
-    if (videoFiles.isEmpty) return;
-
-    try {
-      for (var videoFile in videoFiles) {
-        if (videoFile is File) {
-          try {
-            // Check with the VideoThumbnailHelper if we should continue processing
-            // This will prevent thumbnail generation from continuing if user navigates away
-            if (VideoThumbnailHelper.shouldStopProcessing()) {
-              debugPrint('Thumbnail generation canceled due to navigation');
-              break;
-            }
-
-            await VideoThumbnailHelper.forceRegenerateThumbnail(
-              videoFile.path,
-            ).timeout(
-              const Duration(seconds: 3),
-              onTimeout: () {
-                debugPrint(
-                    'Thumbnail generation timed out for: ${videoFile.path}');
-                return;
-              },
-            );
-          } catch (e) {
-            debugPrint('Error generating thumbnail for ${videoFile.path}: $e');
-            // Continue with next file, don't stop on error
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('Error in background thumbnail generation: $e');
     }
   }
 
@@ -977,7 +944,23 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
       sortedFolders.sort(compareFunction);
       sortedFiles.sort(compareFunction);
       sortedFilteredFiles.sort(compareFunction);
-      sortedSearchResults.sort(compareFunction);
+
+      final sortedSearchFolders = sortedSearchResults
+          .whereType<Directory>()
+          .toList()
+        ..sort(compareFunction);
+      final sortedSearchFiles = sortedSearchResults.whereType<File>().toList()
+        ..sort(compareFunction);
+      final sortedSearchOthers = sortedSearchResults
+          .where((e) => e is! Directory && e is! File)
+          .toList()
+        ..sort(compareFunction);
+
+      sortedSearchResults = [
+        ...sortedSearchFolders,
+        ...sortedSearchOthers,
+        ...sortedSearchFiles,
+      ];
 
       // Emit the new state with sorted lists and the updated sort option
       emit(
@@ -1209,14 +1192,14 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
       if (event.recursive) {
         // Recursive search in current directory and subdirectories
         final currentDir = Directory(state.currentPath.path);
-        
+
         debugPrint('🔍 Starting recursive search in: ${currentDir.path}');
         debugPrint('🔍 Query: "$query"');
-        
+
         int scannedCount = 0;
         int matchedCount = 0;
         int errorCount = 0;
-        
+
         // Use manual recursive search to handle permission errors gracefully
         await _recursiveSearch(
           currentDir,
@@ -1226,15 +1209,17 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
             scannedCount = scanned;
             matchedCount = matched;
             errorCount = errors;
-            
+
             // Log progress every 100 items
             if (scannedCount % 100 == 0) {
-              debugPrint('🔍 Scanned: $scannedCount, Matched: $matchedCount, Errors: $errorCount');
+              debugPrint(
+                  '🔍 Scanned: $scannedCount, Matched: $matchedCount, Errors: $errorCount');
             }
           },
         );
-        
-        debugPrint('🔍 Search complete! Scanned: $scannedCount, Matched: $matchedCount, Errors: $errorCount');
+
+        debugPrint(
+            '🔍 Search complete! Scanned: $scannedCount, Matched: $matchedCount, Errors: $errorCount');
       } else {
         // Search in current directory only (both files and folders)
         final allFiles = state.files;
@@ -1259,10 +1244,16 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
         }
       }
 
+      final groupedResults = <FileSystemEntity>[
+        ...searchResults.whereType<Directory>(),
+        ...searchResults.where((e) => e is! Directory && e is! File),
+        ...searchResults.whereType<File>(),
+      ];
+
       // Update state with search results
       emit(state.copyWith(
         isLoading: false,
-        searchResults: searchResults,
+        searchResults: groupedResults,
         currentSearchQuery: event.query,
         currentSearchTag: null, // Clear any previous tag search
         searchRecursive: event.recursive,
@@ -1288,22 +1279,22 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
     int scannedCount = 0;
     int matchedCount = 0;
     int errorCount = 0;
-    
+
     try {
       // List current directory (non-recursive)
       await for (var entity in dir.list(recursive: false, followLinks: false)) {
         try {
           scannedCount++;
-          
+
           final entityName = pathlib.basename(entity.path);
-          
+
           // Check if entity matches query
           if (TextUtils.matchesVietnamese(entityName, query)) {
             results.add(entity);
             matchedCount++;
             debugPrint('✅ Match found: ${entity.path}');
           }
-          
+
           // If it's a directory, recursively search it
           if (entity is Directory) {
             try {
@@ -1319,7 +1310,7 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
               debugPrint('⚠️ Skipping directory: ${entity.path} - $e');
             }
           }
-          
+
           onProgress(scannedCount, matchedCount, errorCount);
         } catch (e) {
           // Skip individual entities that cause errors

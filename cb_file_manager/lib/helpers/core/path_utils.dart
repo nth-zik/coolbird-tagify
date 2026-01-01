@@ -1,7 +1,6 @@
 /// Common path utilities used across helpers
 library path_utils;
 
-import 'package:path/path.dart' as p;
 
 /// Replace characters that are not allowed in file names with '_'.
 String sanitizePath(String path) {
@@ -28,13 +27,15 @@ String smbTabPathToUNC(String tabPath) {
       : '';
 
   final buffer = StringBuffer('\\\\')..write(host);
-  if (share.isNotEmpty)
+  if (share.isNotEmpty) {
     buffer
       ..write('\\')
       ..write(share);
-  if (sub.isNotEmpty)
+  }
+  if (sub.isNotEmpty) {
     buffer
       ..write('\\')
       ..write(sub);
+  }
   return buffer.toString();
 }

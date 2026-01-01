@@ -2,7 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Added import for HapticFeedback
 import 'package:remixicon/remixicon.dart' as remix;
-import 'package:cb_file_manager/config/app_theme.dart'; // Import app theme
+// Import app theme
 import 'package:window_manager/window_manager.dart'; // Import window_manager
 import 'dart:io'; // Import dart:io for Platform check
 import '../../components/common/window_caption_buttons.dart';
@@ -249,9 +249,9 @@ class _ModernTabBarState extends State<_ModernTabBar> {
                   isActive ? widget.labelColor : widget.unselectedLabelColor,
               labelStyle:
                   isActive ? widget.labelStyle : widget.unselectedLabelStyle,
-              child: widget.tabs[index],
               onClose: () => widget.onTabClose?.call(index),
               theme: widget.theme,
+              child: widget.tabs[index],
             );
           }),
 
@@ -394,7 +394,7 @@ class _ModernTabState extends State<_ModernTab>
         builder: (context, child) {
           return _OptimizedTabInteraction(
             onTap: widget.onTap,
-            onMiddleClick: widget.onClose != null ? widget.onClose! : null,
+            onMiddleClick: widget.onClose,
             child: Stack(
               children: [
                 Container(

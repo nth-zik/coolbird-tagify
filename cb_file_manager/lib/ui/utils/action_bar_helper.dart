@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cb_file_manager/ui/utils/base_screen.dart';
-import 'package:cb_file_manager/main.dart' show goHome;
 import 'package:cb_file_manager/ui/utils/route.dart';
 import 'package:remixicon/remixicon.dart' as remix;
 
@@ -43,56 +42,6 @@ class ActionBarHelper {
         icon: const Icon(remix.Remix.menu_2_line),
         onPressed: () => BaseScreen.openDrawer(),
       );
-    }
-  }
-
-  /// Handles back navigation, either popping the current route or showing a dialog
-  static void _handleBackNavigation(BuildContext context) {
-    try {
-      if (Navigator.of(context).canPop()) {
-        RouteUtils.safePopDialog(context);
-      } else {
-        // Show exit confirmation dialog when trying to exit the app
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Exit Application?'),
-            content:
-                const Text('Are you sure you want to exit the application?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Exit'),
-              ),
-            ],
-          ),
-        ).then((value) {
-          if (value == true && context.mounted) {
-            // Exit the app if confirmed
-            try {
-              RouteUtils.safePopDialog(context);
-            } catch (e) {
-              debugPrint('Error exiting app: $e');
-              // If pop fails, try to go home
-              goHome(context);
-            }
-          }
-        });
-      }
-    } catch (e) {
-      debugPrint('Error in back navigation: $e');
-      // Last resort: try to go home
-      try {
-        if (context.mounted) {
-          goHome(context);
-        }
-      } catch (homeError) {
-        debugPrint('Failed to go home: $homeError');
-      }
     }
   }
 

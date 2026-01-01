@@ -62,7 +62,9 @@ class ImageMemoryPool {
   }
 
   static void clear() {
-    _imagePool.values.forEach((image) => image.dispose());
+    for (var image in _imagePool.values) {
+      image.dispose();
+    }
     _imagePool.clear();
     _lastUsed.clear();
   }
@@ -462,12 +464,6 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
     }
 
     super.dispose();
-  }
-
-  // Static method to reset failed attempts (useful for network reconnection)
-  static void resetFailedAttempts() {
-    _failedAttempts.clear();
-    _lastAttemptTime.clear();
   }
 
   // Tránh tải lại thumbnail không cần thiết

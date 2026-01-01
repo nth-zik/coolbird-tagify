@@ -46,7 +46,7 @@ class ScreenMenuRegistry {
   /// Khởi tạo menu cho tag management screen
   static void _initializeTagManagementMenu(BuildContext context) {
     _menuRegistry['#tags'] = [
-      ScreenMenuItem.divider(),
+      const ScreenMenuItem.divider(),
       ScreenMenuItem(
         title: 'Tạo thẻ mới',
         icon: remix.Remix.add_line,
@@ -88,7 +88,7 @@ class ScreenMenuRegistry {
   /// Khởi tạo menu cho file browser screen
   static void _initializeFileBrowserMenu(BuildContext context) {
     _menuRegistry['#filebrowser'] = [
-      ScreenMenuItem.divider(),
+      const ScreenMenuItem.divider(),
       ScreenMenuItem(
         title: 'Tạo thư mục mới',
         icon: remix.Remix.folder_add_line,
@@ -120,7 +120,7 @@ class ScreenMenuRegistry {
   /// Khởi tạo menu cho settings screen
   static void _initializeSettingsMenu(BuildContext context) {
     _menuRegistry['#settings'] = [
-      ScreenMenuItem.divider(),
+      const ScreenMenuItem.divider(),
       ScreenMenuItem(
         title: 'Xuất cài đặt',
         icon: remix.Remix.download_line,
@@ -142,7 +142,7 @@ class ScreenMenuRegistry {
   /// Khởi tạo menu cho network screen
   static void _initializeNetworkMenu(BuildContext context) {
     _menuRegistry['#network'] = [
-      ScreenMenuItem.divider(),
+      const ScreenMenuItem.divider(),
       ScreenMenuItem(
         title: 'Thêm kết nối mới',
         icon: remix.Remix.add_line,

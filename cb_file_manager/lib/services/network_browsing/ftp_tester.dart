@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
 import 'ftp_client/index.dart';
 import 'package:path/path.dart' as path;
 
@@ -28,9 +27,6 @@ class FTPTester {
       if (!connected) {
         throw Exception("Connection failed");
       }
-
-      // Kiểm tra thư mục hiện tại
-      String? currentDir = ftpClient.currentDirectory;
 
       // Liệt kê nội dung thư mục
       final listing = await ftpClient.listDirectory();

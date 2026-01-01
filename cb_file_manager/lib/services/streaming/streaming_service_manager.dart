@@ -19,14 +19,14 @@ class StreamingServiceManager {
       // _helpers.add(NativeSmbStreamingHelper()); // Removed - using flutter_vlc_player
 
       // Sort helpers by priority (highest first)
-      _helpers.sort((a, b) => (b as StreamingHelperBase)
+      _helpers.sort((a, b) => (b)
           .priority
-          .compareTo((a as StreamingHelperBase).priority));
+          .compareTo((a).priority));
 
       debugPrint(
           'StreamingServiceManager: Initialized with ${_helpers.length} helpers');
       for (final helper in _helpers) {
-        final typedHelper = helper as StreamingHelperBase;
+        final typedHelper = helper;
         debugPrint(
             '  - ${typedHelper.name} (priority: ${typedHelper.priority})');
       }
@@ -40,7 +40,7 @@ class StreamingServiceManager {
       if (helper.isServiceSupported(smbService) &&
           helper.isSupportedMediaType(fileName)) {
         debugPrint(
-            'StreamingServiceManager: Selected ${(helper as StreamingHelperBase).name} for $fileName');
+            'StreamingServiceManager: Selected ${(helper).name} for $fileName');
         return helper;
       }
     }
@@ -58,7 +58,7 @@ class StreamingServiceManager {
     final capabilities = <String, dynamic>{};
 
     for (final helper in _helpers) {
-      final typedHelper = helper as StreamingHelperBase;
+      final typedHelper = helper;
       capabilities[typedHelper.name] = typedHelper.getCapabilities();
     }
 
@@ -115,7 +115,7 @@ class StreamingServiceManager {
 
     // Return a placeholder media player object
     return {
-      'helper': (helper as StreamingHelperBase).name,
+      'helper': (helper).name,
       'service': service.runtimeType.toString(),
       'mediaType': mediaType,
       'created': DateTime.now().toIso8601String(),

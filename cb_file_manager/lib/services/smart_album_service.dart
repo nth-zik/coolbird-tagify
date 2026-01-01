@@ -23,11 +23,13 @@ class SmartAlbumService {
     try {
       final path = await _getFilePath();
       final f = File(path);
-      if (!await f.exists()) return {
+      if (!await f.exists()) {
+        return {
         'smartAlbumIds': <int>[],
         'roots': <String, List<String>>{},
         'cache': <String, Map<String, dynamic>>{},
       };
+      }
       final content = await f.readAsString();
       return jsonDecode(content) as Map<String, dynamic>;
     } catch (_) {

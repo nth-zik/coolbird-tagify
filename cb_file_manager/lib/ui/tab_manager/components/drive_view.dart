@@ -11,6 +11,7 @@ import '../core/tab_manager.dart';
 import '../../screens/folder_list/folder_list_bloc.dart';
 import '../../screens/folder_list/folder_list_event.dart';
 import '../../screens/folder_list/folder_list_state.dart';
+import 'package:cb_file_manager/config/languages/app_localizations.dart';
 
 /// Component for displaying the drive list view with storage information
 class DriveView extends StatelessWidget {
@@ -128,7 +129,9 @@ class DriveView extends StatelessWidget {
             }
             final drives = snapshot.data ?? [];
             if (drives.isEmpty) {
-              return const Center(child: Text('Không tìm thấy ổ đĩa nào!'));
+              return Center(
+                  child: Text(
+                      AppLocalizations.of(context)!.noStorageLocationsFound));
             }
 
             return Container(
@@ -174,10 +177,6 @@ class DriveView extends StatelessWidget {
                               ? Colors.grey[800]!
                               : Colors.grey[200]!;
 
-                          Color textColor = isDarkMode
-                              ? Colors.grey[300]!
-                              : Colors.grey[700]!;
-
                           Color headerTextColor =
                               isDarkMode ? Colors.white : Colors.black87;
 
@@ -189,6 +188,10 @@ class DriveView extends StatelessWidget {
 
                           return InkWell(
                             onTap: () {
+                              debugPrint(
+                                  '🔵 [DriveView] Drive clicked: ${drive.path}');
+                              debugPrint('🔵 [DriveView] Tab ID: $tabId');
+
                               context
                                   .read<TabManagerBloc>()
                                   .add(UpdateTabPath(tabId, drive.path));
@@ -196,6 +199,9 @@ class DriveView extends StatelessWidget {
                                   .read<TabManagerBloc>()
                                   .add(UpdateTabName(tabId, drive.path));
                               onPathChanged(drive.path);
+
+                              debugPrint(
+                                  '🔵 [DriveView] Triggering FolderListLoad for: ${drive.path}');
                               folderListBloc.add(FolderListLoad(drive.path));
                             },
                             child: Column(
@@ -204,7 +210,7 @@ class DriveView extends StatelessWidget {
                                 // Drive title and icon
                                 Row(
                                   children: [
-                                    Icon(remix.Remix.hard_drive_2_line,
+                                    const Icon(remix.Remix.hard_drive_2_line,
                                         size: 36),
                                     const SizedBox(width: 12),
                                     FutureBuilder<String>(
@@ -230,7 +236,7 @@ class DriveView extends StatelessWidget {
                                         );
                                       },
                                     ),
-                                    Icon(remix.Remix.arrow_right_s_line,
+                                    const Icon(remix.Remix.arrow_right_s_line,
                                         size: 16),
                                   ],
                                 ),

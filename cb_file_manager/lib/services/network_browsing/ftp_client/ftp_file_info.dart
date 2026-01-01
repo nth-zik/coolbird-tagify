@@ -40,7 +40,6 @@ class FtpFileInfo implements FileSystemEntity {
   @override
   bool get isAbsolute => path.startsWith('/');
 
-  @override
   String get basename => name;
 
   @override

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'theme_factory.dart';
 
 /// Lớp cấu hình Theme toàn cục cho ứng dụng
@@ -46,7 +45,6 @@ class AppTheme {
       primaryContainer: lightBlue.withOpacity(0.15),
       surface: surfaceLight,
       onSurface: darkBlue,
-      background: lightBackground,
     );
 
     return ThemeFactory.createTheme(
@@ -71,7 +69,6 @@ class AppTheme {
       primaryContainer: primaryBlue.withOpacity(0.3),
       surface: surfaceDark,
       onSurface: Colors.white,
-      background: darkBackground,
     );
 
     return ThemeFactory.createTheme(
