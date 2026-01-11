@@ -79,7 +79,7 @@ class ThemeFactory {
             borderRadius: BorderRadius.circular(opts.borderRadius),
           ),
           side: BorderSide(
-            color: (isLight ? colorScheme.primary : Colors.white).withOpacity(0.3),
+            color: (isLight ? colorScheme.primary : Colors.white).withValues(alpha: 0.3),
             width: 1,
           ),
         ),
@@ -110,7 +110,7 @@ class ThemeFactory {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: BorderSide(
-            color: (isLight ? Colors.grey : Colors.grey).withOpacity(0.1),
+            color: (isLight ? Colors.grey : Colors.grey).withValues(alpha: 0.1),
             width: 1,
           ),
         ),
@@ -128,7 +128,7 @@ class ThemeFactory {
       // Divider Theme
       dividerTheme: DividerThemeData(
         thickness: 0.5,
-        color: isLight ? const Color(0xFFEEEEEE) : Colors.grey.withOpacity(0.2),
+        color: isLight ? const Color(0xFFEEEEEE) : Colors.grey.withValues(alpha: 0.2),
       ),
 
       // InputDecoration Theme
@@ -139,21 +139,21 @@ class ThemeFactory {
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(opts.borderRadius),
           borderSide: BorderSide(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withValues(alpha: 0.2),
             width: 1,
           ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(opts.borderRadius),
           borderSide: BorderSide(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withValues(alpha: 0.2),
             width: 1,
           ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(opts.borderRadius),
           borderSide: BorderSide(
-            color: colorScheme.primary.withOpacity(0.5),
+            color: colorScheme.primary.withValues(alpha: 0.5),
             width: 1,
           ),
         ),

@@ -26,7 +26,7 @@ class AppProgressIndicator extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     final effectiveBackgroundColor =
-        backgroundColor ?? colorScheme.surfaceContainerHighest.withOpacity(0.3);
+        backgroundColor ?? colorScheme.surfaceContainerHighest.withValues(alpha: 0.3);
     final effectiveValueColor = valueColor ?? colorScheme.primary;
     final effectiveBorderRadius =
         borderRadius ?? BorderRadius.circular(height! / 2);
@@ -54,7 +54,7 @@ class AppProgressIndicator extends StatelessWidget {
                   borderRadius: effectiveBorderRadius,
                   boxShadow: [
                     BoxShadow(
-                      color: effectiveValueColor.withOpacity(0.4),
+                      color: effectiveValueColor.withValues(alpha: 0.4),
                       blurRadius: 8,
                       spreadRadius: 1,
                     ),

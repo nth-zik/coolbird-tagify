@@ -261,11 +261,13 @@ class _FileItemState extends State<FileItem> {
       } else {
         ExternalAppHelper.openFileWithApp(widget.file.path, 'shell_open')
             .then((success) {
-          if (!success && context.mounted) {
-            showDialog(
-                context: context,
-                builder: (context) =>
-                    OpenWithDialog(filePath: widget.file.path));
+          if (!success) {
+            if (mounted) {
+              showDialog(
+                  context: context,
+                  builder: (dialogContext) =>
+                      OpenWithDialog(filePath: widget.file.path));
+            }
           }
         });
       }
@@ -316,7 +318,7 @@ class _FileItemState extends State<FileItem> {
             final Color backgroundColor = isSelected
                 ? Theme.of(context).colorScheme.primaryContainer
                 : isHovering && widget.isDesktopMode
-                    ? Theme.of(context).colorScheme.surface.withOpacity(0.6)
+                    ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.6)
                     : Colors.transparent;
 
             return RepaintBoundary(
@@ -563,7 +565,7 @@ class _FileItemContentState extends State<_FileItemContent> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(8),
                         color: theme.colorScheme.surfaceContainerHighest
-                            .withOpacity(0.3),
+                            .withValues(alpha: 0.3),
                       ),
                       child: Icon(
                         isVideo
@@ -589,7 +591,7 @@ class _FileItemContentState extends State<_FileItemContent> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8),
                       color: theme.colorScheme.surfaceContainerHighest
-                          .withOpacity(0.3),
+                          .withValues(alpha: 0.3),
                     ),
                     child: Icon(
                       remix.Remix.file_3_line,

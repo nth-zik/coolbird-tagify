@@ -122,7 +122,7 @@ class SearchFilterResultsView extends StatelessWidget {
           blurAmount: 8.0,
           opacity: 0.7,
           backgroundColor:
-              Theme.of(context).colorScheme.primaryContainer.withOpacity(0.7),
+              Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.7),
           child: Container(
             padding:
                 const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
@@ -185,7 +185,7 @@ class SearchFilterResultsView extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(8.0),
           color:
-              Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+              Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
           child: Row(
             children: [
               const Icon(remix.Remix.filter_3_line, size: 16),

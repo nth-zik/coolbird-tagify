@@ -373,7 +373,7 @@ class _DesktopPipWindowState extends State<DesktopPipWindow>
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.85),
+                      color: Colors.red.withValues(alpha: 0.85),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -426,7 +426,7 @@ class _DesktopPipWindowState extends State<DesktopPipWindow>
                         width: 16,
                         height: 16,
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.35),
+                          color: Colors.black.withValues(alpha: 0.35),
                           borderRadius: BorderRadius.circular(3),
                           border: Border.all(color: Colors.white24, width: 1),
                         ),
@@ -479,7 +479,7 @@ class _DesktopPipWindowState extends State<DesktopPipWindow>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8),
         height: 36,
-        decoration: BoxDecoration(color: Colors.black.withOpacity(0.66)),
+        decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.66)),
         child: Row(
           children: [
             const SizedBox(width: 4),
@@ -636,7 +636,7 @@ class _DesktopPipWindowState extends State<DesktopPipWindow>
     if (posMs > totalMs) posMs = totalMs;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(color: Colors.black.withOpacity(0.7)),
+      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.7)),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

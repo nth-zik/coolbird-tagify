@@ -120,7 +120,7 @@ class _FolderItemState extends State<FolderItem> {
         final Color backgroundColor = widget.isSelected
             ? Theme.of(context).colorScheme.primaryContainer
             : isHovering && widget.isDesktopMode
-                ? Theme.of(context).colorScheme.surface.withOpacity(0.6)
+                ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.6)
                 : Colors.transparent;
 
         return GestureDetector(
@@ -150,7 +150,7 @@ class _FolderItemState extends State<FolderItem> {
                           width: 48,
                           height: 48,
                           decoration: BoxDecoration(
-                            color: Colors.amber.withOpacity(0.15),
+                            color: Colors.amber.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Center(
@@ -193,7 +193,7 @@ class _FolderItemState extends State<FolderItem> {
                                             color: Theme.of(context)
                                                 .colorScheme
                                                 .onSurface
-                                                .withOpacity(0.7),
+                                                .withValues(alpha: 0.7),
                                           ),
                                     );
                                   } else if (snapshot.hasError) {
@@ -207,7 +207,7 @@ class _FolderItemState extends State<FolderItem> {
                                             color: Theme.of(context)
                                                 .colorScheme
                                                 .onSurface
-                                                .withOpacity(0.5),
+                                                .withValues(alpha: 0.5),
                                           ),
                                     );
                                   }
@@ -220,7 +220,7 @@ class _FolderItemState extends State<FolderItem> {
                                           color: Theme.of(context)
                                               .colorScheme
                                               .onSurface
-                                              .withOpacity(0.5),
+                                              .withValues(alpha: 0.5),
                                         ),
                                   );
                                 },

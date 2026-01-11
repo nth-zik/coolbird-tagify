@@ -238,7 +238,7 @@ class _SearchDialogState extends State<SearchDialog> {
       final loadingOverlay = OverlayEntry(
         builder: (context) => Positioned.fill(
           child: Container(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             child: const Center(
               child: CircularProgressIndicator(),
             ),
@@ -286,12 +286,14 @@ class _SearchDialogState extends State<SearchDialog> {
       }
     } catch (e) {
       debugPrint('Lỗi khi tìm kiếm tag: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Lỗi khi tìm kiếm: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi khi tìm kiếm: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

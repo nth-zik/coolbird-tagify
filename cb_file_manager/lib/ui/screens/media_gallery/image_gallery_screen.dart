@@ -745,20 +745,20 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Text('Xóa $count hình ảnh?'),
         content: const Text(
             'Bạn có chắc chắn muốn xóa các hình ảnh đã chọn? Hành động này không thể hoàn tác.'),
         actions: [
           TextButton(
             onPressed: () {
-              RouteUtils.safePopDialog(context);
+              RouteUtils.safePopDialog(dialogContext);
             },
             child: const Text('HỦY'),
           ),
           TextButton(
             onPressed: () async {
-              RouteUtils.safePopDialog(context);
+              RouteUtils.safePopDialog(dialogContext);
 
               int successCount = 0;
               List<String> failedPaths = [];
@@ -780,16 +780,18 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
                 _isSelectionMode = false;
               });
 
-              if (failedPaths.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Đã xóa $successCount hình ảnh')),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content: Text(
-                          'Đã xóa $successCount hình ảnh, ${failedPaths.length} lỗi')),
-                );
+              if (dialogContext.mounted) {
+                if (failedPaths.isEmpty) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    SnackBar(content: Text('Đã xóa $successCount hình ảnh')),
+                  );
+                } else {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    SnackBar(
+                        content: Text(
+                            'Đã xóa $successCount hình ảnh, ${failedPaths.length} lỗi')),
+                  );
+                }
               }
             },
             child: const Text(
@@ -810,25 +812,26 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
     try {
       final albums = await _albumService.getAllAlbums();
 
-      if (!mounted) return;
+      if (!context.mounted) return;
 
-      if (albums.isEmpty) {
-        // Show dialog to create first album
-        showDialog(
+      if (context.mounted) {
+        if (albums.isEmpty) {
+          // Show dialog to create first album
+          showDialog(
           context: context,
-          builder: (context) => AlertDialog(
+          builder: (dialogContext) => AlertDialog(
             title: const Text('No Albums Found'),
             content: const Text(
                 'You need to create an album first. Would you like to go to the Album Management screen?'),
             actions: [
               TextButton(
-                onPressed: () => RouteUtils.safePopDialog(context),
+                onPressed: () => RouteUtils.safePopDialog(dialogContext),
                 child: const Text('Cancel'),
               ),
               ElevatedButton(
                 onPressed: () {
-                  RouteUtils.safePopDialog(context);
-                  Navigator.pushNamed(context, '/albums');
+                  RouteUtils.safePopDialog(dialogContext);
+                  Navigator.pushNamed(dialogContext, '/albums');
                 },
                 child: const Text('Go to Albums'),
               ),
@@ -841,7 +844,7 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
       // Show album selection dialog
       final selectedAlbum = await showDialog<Album>(
         context: context,
-        builder: (context) => AlertDialog(
+        builder: (dialogContext) => AlertDialog(
           title: Text(
               'Add ${paths.length} ${paths.length == 1 ? 'image' : 'images'} to Album'),
           content: SizedBox(
@@ -888,19 +891,19 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => RouteUtils.safePopDialog(context),
+              onPressed: () => RouteUtils.safePopDialog(dialogContext),
               child: const Text('Cancel'),
             ),
           ],
         ),
       );
 
-      if (selectedAlbum != null) {
+      if (selectedAlbum != null && context.mounted) {
         // Show loading dialog
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (context) => const AlertDialog(
+          builder: (loadingContext) => const AlertDialog(
             content: Row(
               children: [
                 CircularProgressIndicator(),
@@ -914,7 +917,7 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
         final successCount =
             await _albumService.addFilesToAlbum(selectedAlbum.id, paths);
 
-        if (mounted) {
+        if (context.mounted) {
           Navigator.pop(context); // Close loading dialog
 
           setState(() {
@@ -928,11 +931,12 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
                   'Added $successCount ${successCount == 1 ? 'image' : 'images'} to "${selectedAlbum.name}"'),
             ),
           );
+          }
         }
       }
     } catch (e) {
       debugPrint('Error adding images to album: $e');
-      if (mounted) {
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error adding images to album: ${e.toString()}'),
@@ -971,7 +975,7 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Create New Album'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -996,19 +1000,21 @@ class ImageGalleryScreenState extends State<ImageGalleryScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () async {
               if (albumName.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter an album name')),
-                );
+                if (dialogContext.mounted) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    const SnackBar(content: Text('Please enter an album name')),
+                  );
+                }
                 return;
               }
 
-              Navigator.of(context).pop();
+              Navigator.of(dialogContext).pop();
 
               try {
                 final album = await _albumService.createAlbum(

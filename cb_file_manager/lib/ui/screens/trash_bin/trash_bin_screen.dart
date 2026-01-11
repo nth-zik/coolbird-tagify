@@ -70,10 +70,12 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
       }
 
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('${item.displayNameValue} restored successfully')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text('${item.displayNameValue} restored successfully')),
+          );
+        }
         // Refresh the trash items
         await _loadTrashItems();
       } else {
@@ -131,10 +133,12 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
         }
 
         if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text('${item.displayNameValue} permanently deleted')),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                  content: Text('${item.displayNameValue} permanently deleted')),
+            );
+          }
           // Refresh the trash items
           await _loadTrashItems();
         } else {
@@ -184,9 +188,11 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
         final success = await _trashManager.emptyTrash();
 
         if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Trash emptied successfully')),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Trash emptied successfully')),
+            );
+          }
           // Refresh the trash items
           await _loadTrashItems();
         } else {
@@ -209,9 +215,11 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
       try {
         await _trashManager.openWindowsRecycleBin();
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error opening Recycle Bin: $e')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error opening Recycle Bin: $e')),
+          );
+        }
       }
     }
   }
@@ -251,15 +259,17 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
         message += ', $failedCount failed';
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
 
-      // Clear selection and refresh
-      setState(() {
-        _isSelectionMode = false;
-        _selectedItems.clear();
-      });
+        // Clear selection and refresh
+        setState(() {
+          _isSelectionMode = false;
+          _selectedItems.clear();
+        });
+      }
 
       await _loadTrashItems();
     } catch (e) {
@@ -328,15 +338,17 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
           message += ', $failedCount failed';
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(message)),
+          );
 
-        // Clear selection and refresh
-        setState(() {
-          _isSelectionMode = false;
-          _selectedItems.clear();
-        });
+          // Clear selection and refresh
+          setState(() {
+            _isSelectionMode = false;
+            _selectedItems.clear();
+          });
+        }
 
         await _loadTrashItems();
       } catch (e) {

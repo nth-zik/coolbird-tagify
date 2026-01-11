@@ -204,7 +204,7 @@ class _WindowsPipOverlayWidgetState extends State<_WindowsPipOverlayWidget> {
           onPanEnd: (_) {},
           child: Container(
             height: 28,
-            color: Colors.black.withOpacity(0.45),
+            color: Colors.black.withValues(alpha: 0.45),
             padding: const EdgeInsets.symmetric(horizontal: 8),
             alignment: Alignment.centerLeft,
             child: Row(
@@ -269,7 +269,7 @@ class _WindowsPipOverlayWidgetState extends State<_WindowsPipOverlayWidget> {
         right: 0,
         bottom: 0,
         child: Container(
-          color: Colors.black.withOpacity(0.45),
+          color: Colors.black.withValues(alpha: 0.45),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           child: Row(children: [
             Text(_fmt(_position),
@@ -334,7 +334,7 @@ class _WindowsPipOverlayWidgetState extends State<_WindowsPipOverlayWidget> {
           child: Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: Colors.red.withOpacity(0.85),
+              color: Colors.red.withValues(alpha: 0.85),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(

@@ -125,7 +125,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
                     color: Colors.black,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
+                        color: Colors.black.withValues(alpha: 0.2),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -311,7 +311,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: iconColor.withOpacity(0.1),
+            color: iconColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(
@@ -458,7 +458,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.purple.withOpacity(0.2),
+              color: Colors.purple.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
             child: const Icon(remix.Remix.music_2_line,

@@ -112,7 +112,7 @@ class _PathNavigationBarState extends State<PathNavigationBar> {
                 fillColor: Theme.of(context)
                     .inputDecorationTheme
                     .fillColor
-                    ?.withOpacity(0.7),
+                    ?.withValues(alpha: 0.7),
               ),
               onSubmitted: widget.onPathSubmitted,
               textInputAction: TextInputAction.go,

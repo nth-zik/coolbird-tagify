@@ -89,7 +89,7 @@ class _PathNavigationBarState extends State<PathNavigationBar> {
           height: 40,
           decoration: BoxDecoration(
             color: _isHovering
-                ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(8.0),
           ),
@@ -130,10 +130,10 @@ class _PathNavigationBarState extends State<PathNavigationBar> {
     return Container(
       height: 40.0,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withOpacity(0.7),
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(8.0),
         border: Border.all(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
           width: 1.5,
         ),
       ),
@@ -151,7 +151,7 @@ class _PathNavigationBarState extends State<PathNavigationBar> {
           hintText: 'Enter path...',
           hintStyle: TextStyle(
             color:
-                Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.6),
+                Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6),
           ),
         ),
         style: TextStyle(

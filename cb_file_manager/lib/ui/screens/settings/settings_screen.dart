@@ -85,17 +85,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _currentLanguageCode = languageCode;
     });
 
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-            '${AppLocalizations.of(context)!.language} ${AppLocalizations.of(context)!.save}'),
-        duration: const Duration(seconds: 1),
-        behavior: SnackBarBehavior.floating,
-        width: 200,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              '${AppLocalizations.of(context)!.language} ${AppLocalizations.of(context)!.save}'),
+          duration: const Duration(seconds: 1),
+          behavior: SnackBarBehavior.floating,
+          width: 200,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
   }
 
   Future<void> _updateVideoThumbnailPercentage(int percentage) async {
@@ -106,16 +108,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     await VideoThumbnailHelper.refreshThumbnailPercentage();
 
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${AppLocalizations.of(context)!.thumbnailPositionUpdated}$percentage%'),
-        duration: const Duration(seconds: 1),
-        behavior: SnackBarBehavior.floating,
-        width: 320,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${AppLocalizations.of(context)!.thumbnailPositionUpdated}$percentage%'),
+          duration: const Duration(seconds: 1),
+          behavior: SnackBarBehavior.floating,
+          width: 320,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
   }
 
   Future<void> _updateShowFileTags(bool showTags) async {
@@ -124,18 +128,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _showFileTags = showTags;
     });
 
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(showTags
-            ? AppLocalizations.of(context)!.fileTagsEnabled
-            : AppLocalizations.of(context)!.fileTagsDisabled),
-        duration: const Duration(seconds: 1),
-        behavior: SnackBarBehavior.floating,
-        width: 200,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(showTags
+              ? AppLocalizations.of(context)!.fileTagsEnabled
+              : AppLocalizations.of(context)!.fileTagsDisabled),
+          duration: const Duration(seconds: 1),
+          behavior: SnackBarBehavior.floating,
+          width: 200,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
   }
 
   Future<void> _clearVideoThumbnailCache() async {
@@ -284,7 +290,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withOpacity(0.1),
+                      color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -339,7 +345,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color:
-                Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -410,7 +416,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 : const Icon(remix.Remix.delete_bin_2_line),
             label: Text(AppLocalizations.of(context)!.clearAllCache),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.withOpacity(0.1),
+              backgroundColor: Colors.red.withValues(alpha: 0.1),
               foregroundColor: Colors.red,
               elevation: 0,
               padding: const EdgeInsets.symmetric(vertical: 12),
@@ -471,7 +477,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: Theme.of(context).dividerColor.withOpacity(0.1),
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
         ),
       ),
       child: Column(
@@ -484,7 +490,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).primaryColor.withOpacity(0.1),
+                    color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(

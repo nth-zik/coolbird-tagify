@@ -135,8 +135,9 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
     if (confirmed != true) return;
 
     // Show loading dialog
-    showDialog(
-      context: context,
+    if (context.mounted) {
+      showDialog(
+        context: context,
       barrierDismissible: false,
       builder: (context) => const AlertDialog(
         content: Row(
@@ -147,7 +148,8 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
           ],
         ),
       ),
-    );
+      );
+    }
 
     try {
       final successCount = await _albumService.addFolderToAlbum(

@@ -38,7 +38,7 @@ class _StorageSectionWidgetState extends State<StorageSectionWidget> {
             borderRadius: BorderRadius.circular(12),
             child: Material(
               color: _isExpanded
-                  ? theme.colorScheme.surface.withOpacity(0.7)
+                  ? theme.colorScheme.surface.withValues(alpha: 0.7)
                   : Colors.transparent,
               child: ExpansionTile(
                 shape: RoundedRectangleBorder(
@@ -58,7 +58,7 @@ class _StorageSectionWidgetState extends State<StorageSectionWidget> {
                   ),
                 ),
                 collapsedBackgroundColor: Colors.transparent,
-                backgroundColor: theme.colorScheme.surface.withOpacity(0.7),
+                backgroundColor: theme.colorScheme.surface.withValues(alpha: 0.7),
                 childrenPadding: const EdgeInsets.only(bottom: 8),
                 initiallyExpanded: _isExpanded,
                 onExpansionChanged: (isExpanded) {
@@ -148,7 +148,7 @@ class _StorageSectionWidgetState extends State<StorageSectionWidget> {
       leading: Icon(
         icon,
         size: 20,
-        color: iconColor ?? theme.colorScheme.primary.withOpacity(0.8),
+        color: iconColor ?? theme.colorScheme.primary.withValues(alpha: 0.8),
       ),
       title: Text(
         title,

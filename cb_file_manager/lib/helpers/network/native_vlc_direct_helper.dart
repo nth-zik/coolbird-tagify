@@ -62,23 +62,25 @@ class NativeVlcDirectHelper {
 
       debugPrint('NativeVlcDirectHelper: Final SMB MRL => $finalSmbMrl');
 
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => Scaffold(
-            backgroundColor: Colors.black,
-            appBar: (Platform.isAndroid || Platform.isIOS) ? null : null,
-            body: SafeArea(
-              top: Platform.isAndroid || Platform.isIOS,
-              bottom: Platform.isAndroid || Platform.isIOS,
-              child: VideoPlayer.smb(
-                smbMrl: finalSmbMrl,
-                fileName: fileName,
-                fileType: fileType,
+      if (context.mounted) {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => Scaffold(
+              backgroundColor: Colors.black,
+              appBar: (Platform.isAndroid || Platform.isIOS) ? null : null,
+              body: SafeArea(
+                top: Platform.isAndroid || Platform.isIOS,
+                bottom: Platform.isAndroid || Platform.isIOS,
+                child: VideoPlayer.smb(
+                  smbMrl: finalSmbMrl,
+                  fileName: fileName,
+                  fileType: fileType,
+                ),
               ),
             ),
           ),
-        ),
-      );
+        );
+      }
     } catch (e) {
       debugPrint('NativeVlcDirectHelper: Error opening media: $e');
 

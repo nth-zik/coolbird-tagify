@@ -130,7 +130,7 @@ class ActionBarHelper {
       ),
       title: Text('$selectedCount selected'),
       actions: actions,
-      backgroundColor: Theme.of(context).primaryColor.withOpacity(0.85),
+      backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.85),
     );
   }
 }

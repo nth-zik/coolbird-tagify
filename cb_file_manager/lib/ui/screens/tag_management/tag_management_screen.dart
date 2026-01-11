@@ -530,7 +530,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
               children: [
                 Container(
                   padding: const EdgeInsets.all(16),
-                  color: Theme.of(context).primaryColor.withOpacity(0.1),
+                  color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
                   child: TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
@@ -634,7 +634,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
             Icon(
               Icons.label_off,
               size: 80, // Larger icon
-              color: Theme.of(context).colorScheme.secondary.withOpacity(0.5),
+              color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 24),
             Text(
@@ -669,7 +669,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
             Icon(
               Icons.search_off,
               size: 80, // Larger icon
-              color: Theme.of(context).colorScheme.secondary.withOpacity(0.5),
+              color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 24),
             Text(
@@ -715,7 +715,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           color:
-                              Theme.of(context).primaryColor.withOpacity(0.1),
+                              Theme.of(context).primaryColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(
@@ -759,8 +759,8 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                         Container(
                           decoration: BoxDecoration(
                             color: isDarkMode
-                                ? Colors.grey[800]?.withOpacity(0.6)
-                                : Colors.grey[100]?.withOpacity(0.8),
+                                ? Colors.grey[800]?.withValues(alpha: 0.6)
+                                : Colors.grey[100]?.withValues(alpha: 0.8),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: PopupMenuButton<String>(
@@ -892,8 +892,8 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                         Container(
                           decoration: BoxDecoration(
                             color: isDarkMode
-                                ? Colors.grey[800]?.withOpacity(0.6)
-                                : Colors.grey[100]?.withOpacity(0.8),
+                                ? Colors.grey[800]?.withValues(alpha: 0.6)
+                                : Colors.grey[100]?.withValues(alpha: 0.8),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: IconButton(
@@ -985,7 +985,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 5,
                       offset: const Offset(0, -2),
                     ),
@@ -1132,16 +1132,16 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: isDarkMode
-                      ? Colors.grey[800]?.withOpacity(0.6)
+                      ? Colors.grey[800]?.withValues(alpha: 0.6)
                       : Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: tagColor.withOpacity(0.3),
+                    color: tagColor.withValues(alpha: 0.3),
                     width: 1,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -1158,7 +1158,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: tagColor.withOpacity(0.5),
+                            color: tagColor.withValues(alpha: 0.5),
                             blurRadius: 4,
                             spreadRadius: 1,
                           )
@@ -1211,7 +1211,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                             Icons.delete_outline,
                             size: 24,
                             color: Colors.redAccent
-                                .withOpacity(isDarkMode ? 0.8 : 0.7),
+                                .withValues(alpha: isDarkMode ? 0.8 : 0.7),
                           ),
                           onPressed: () => _confirmDeleteTag(tag),
                           tooltip: AppLocalizations.of(context)!
@@ -1266,16 +1266,16 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: isDarkMode
-                    ? Colors.grey[800]?.withOpacity(0.6)
+                    ? Colors.grey[800]?.withValues(alpha: 0.6)
                     : Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: tagColor.withOpacity(0.3),
+                  color: tagColor.withValues(alpha: 0.3),
                   width: 1,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
@@ -1293,7 +1293,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: tagColor.withOpacity(0.5),
+                          color: tagColor.withValues(alpha: 0.5),
                           blurRadius: 3,
                           spreadRadius: 0.5,
                         ),
@@ -1337,7 +1337,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                           Icons.delete_outline,
                           size: 16,
                           color: Colors.redAccent
-                              .withOpacity(isDarkMode ? 0.8 : 0.7),
+                              .withValues(alpha: isDarkMode ? 0.8 : 0.7),
                         ),
                         onPressed: () => _confirmDeleteTag(tag),
                         tooltip: AppLocalizations.of(context)!.deleteTag,
@@ -1374,7 +1374,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
             Icon(
               Icons.find_in_page,
               size: 80, // Larger icon
-              color: Theme.of(context).colorScheme.secondary.withOpacity(0.5),
+              color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 24),
             Text(
@@ -1441,8 +1441,8 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
           Container(
             decoration: BoxDecoration(
               color: isDarkMode
-                  ? Theme.of(context).primaryColor.withOpacity(0.15)
-                  : Theme.of(context).primaryColor.withOpacity(0.1),
+                  ? Theme.of(context).primaryColor.withValues(alpha: 0.15)
+                  : Theme.of(context).primaryColor.withValues(alpha: 0.1),
               border: Border(
                 bottom: BorderSide(
                   color: isDarkMode ? Colors.white10 : Colors.black12,
@@ -1569,10 +1569,10 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                             color: isDarkMode
                                 ? Theme.of(context)
                                     .primaryColor
-                                    .withOpacity(0.2)
+                                    .withValues(alpha: 0.2)
                                 : Theme.of(context)
                                     .primaryColor
-                                    .withOpacity(0.1),
+                                    .withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -1641,8 +1641,8 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
               Container(
                 width: double.infinity,
                 color: isDarkMode
-                    ? Theme.of(context).primaryColor.withOpacity(0.1)
-                    : Theme.of(context).primaryColor.withOpacity(0.05),
+                    ? Theme.of(context).primaryColor.withValues(alpha: 0.1)
+                    : Theme.of(context).primaryColor.withValues(alpha: 0.05),
                 padding:
                     const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 child: Column(

@@ -18,7 +18,7 @@ class AppTheme {
   static MaterialColor createMaterialColor(Color color) {
     List<double> strengths = <double>[.05, .1, .2, .3, .4, .5, .6, .7, .8, .9];
     Map<int, Color> swatch = {};
-    final int r = color.red, g = color.green, b = color.blue;
+    final int r = (color.r * 255.0).round(), g = (color.g * 255.0).round(), b = (color.b * 255.0).round();
 
     for (final double strength in strengths) {
       final double ds = 0.5 - strength;
@@ -30,7 +30,7 @@ class AppTheme {
       );
     }
     swatch[500] = color;
-    return MaterialColor(color.value, swatch);
+    return MaterialColor(color.toARGB32(), swatch);
   }
 
   // Tạo swatch từ màu chính
@@ -42,7 +42,7 @@ class AppTheme {
       primary: primaryBlue,
       secondary: lightBlue,
       onPrimary: Colors.white,
-      primaryContainer: lightBlue.withOpacity(0.15),
+      primaryContainer: lightBlue.withValues(alpha: 0.15),
       surface: surfaceLight,
       onSurface: darkBlue,
     );
@@ -66,7 +66,7 @@ class AppTheme {
       primary: primaryBlue,
       secondary: lightBlue,
       onPrimary: Colors.white,
-      primaryContainer: primaryBlue.withOpacity(0.3),
+      primaryContainer: primaryBlue.withValues(alpha: 0.3),
       surface: surfaceDark,
       onSurface: Colors.white,
     );

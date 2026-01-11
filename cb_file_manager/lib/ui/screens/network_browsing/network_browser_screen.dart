@@ -129,9 +129,11 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
 
         // Only show tab loading when there are actual thumbnail tasks
         final isLoading = _hasPendingThumbnails;
-        context
-            .read<TabManagerBloc>()
-            .add(UpdateTabLoading(widget.tabId, isLoading));
+        if (mounted) {
+          context
+              .read<TabManagerBloc>()
+              .add(UpdateTabLoading(widget.tabId, isLoading));
+        }
       }
     });
 
@@ -588,7 +590,7 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
               borderSide: BorderSide.none,
             ),
             filled: true,
-            fillColor: Theme.of(context).colorScheme.surface.withOpacity(0.8),
+            fillColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
             contentPadding: const EdgeInsets.symmetric(horizontal: 12),
             prefixIcon: const Icon(Icons.search, size: 20),
             suffixIcon: IconButton(
@@ -621,7 +623,7 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface.withOpacity(0.1),
+                color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -829,8 +831,8 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
                           ? Theme.of(context)
                               .colorScheme
                               .primaryContainer
-                              .withOpacity(0.6)
-                          : Theme.of(context).cardColor.withOpacity(0.4),
+                              .withValues(alpha: 0.6)
+                          : Theme.of(context).cardColor.withValues(alpha: 0.4),
                       child: folder_list_components.FolderGridItem(
                         key: ValueKey('folder-grid-item-${folder.path}'),
                         folder: folder,
@@ -854,7 +856,7 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
                 if (_isLoadingStarted && _currentPath == folder.path)
                   Positioned.fill(
                     child: Container(
-                      color: Colors.black.withOpacity(0.3),
+                      color: Colors.black.withValues(alpha: 0.3),
                       child: Center(
                         child: CircularProgressIndicator(
                           strokeWidth: 2.0,
@@ -880,8 +882,8 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
                       ? Theme.of(context)
                           .colorScheme
                           .primaryContainer
-                          .withOpacity(0.6)
-                      : Theme.of(context).cardColor.withOpacity(0.4),
+                          .withValues(alpha: 0.6)
+                      : Theme.of(context).cardColor.withValues(alpha: 0.4),
                   child: folder_list_components.FileGridItem(
                     key: ValueKey('file-grid-item-${file.path}'),
                     file: file,
@@ -984,7 +986,7 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
                 color: Theme.of(context).primaryColor,
                 width: 1,
               ),
-              color: Theme.of(context).primaryColor.withOpacity(0.1),
+              color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
             ),
           ),
         );
@@ -1072,8 +1074,8 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
                     ? Theme.of(context)
                         .colorScheme
                         .primaryContainer
-                        .withOpacity(0.6)
-                    : Theme.of(context).cardColor.withOpacity(0.4),
+                        .withValues(alpha: 0.6)
+                    : Theme.of(context).cardColor.withValues(alpha: 0.4),
                 child: folder_list_components.FolderDetailsItem(
                   key: ValueKey('folder-details-item-${folder.path}'),
                   folder: folder,
@@ -1108,8 +1110,8 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
                     ? Theme.of(context)
                         .colorScheme
                         .primaryContainer
-                        .withOpacity(0.6)
-                    : Theme.of(context).cardColor.withOpacity(0.4),
+                        .withValues(alpha: 0.6)
+                    : Theme.of(context).cardColor.withValues(alpha: 0.4),
                 child: folder_list_components.FileDetailsItem(
                   key: ValueKey('file-details-item-${file.path}'),
                   file: file,
@@ -1177,8 +1179,8 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
                     ? Theme.of(context)
                         .colorScheme
                         .primaryContainer
-                        .withOpacity(0.6)
-                    : Theme.of(context).cardColor.withOpacity(0.4),
+                        .withValues(alpha: 0.6)
+                    : Theme.of(context).cardColor.withValues(alpha: 0.4),
                 child: folder_list_components.FolderItem(
                   key: ValueKey('folder-list-item-${folder.path}'),
                   folder: folder,
@@ -1212,8 +1214,8 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
                     ? Theme.of(context)
                         .colorScheme
                         .primaryContainer
-                        .withOpacity(0.6)
-                    : Theme.of(context).cardColor.withOpacity(0.4),
+                        .withValues(alpha: 0.6)
+                    : Theme.of(context).cardColor.withValues(alpha: 0.4),
                 child: folder_list_components.FileItem(
                   key: ValueKey('file-list-item-${file.path}'),
                   file: file,

@@ -25,8 +25,10 @@ import 'package:cb_file_manager/ui/screens/album_management/auto_rules_screen.da
 import 'package:cb_file_manager/ui/screens/album_management/album_detail_screen.dart';
 import 'package:cb_file_manager/services/album_service.dart';
 import 'package:cb_file_manager/models/objectbox/album.dart';
+import 'package:cb_file_manager/models/objectbox/video_library.dart';
+import 'package:cb_file_manager/services/video_library_service.dart';
 import 'package:cb_file_manager/ui/screens/gallery_hub/gallery_hub_screen.dart';
-import 'package:cb_file_manager/ui/screens/video_hub/video_hub_screen.dart';
+import 'package:cb_file_manager/ui/screens/video_library/video_hub_screen.dart';
 import 'package:cb_file_manager/config/translation_helper.dart';
 import '../utils/route.dart';
 import 'trash_bin/trash_bin_screen.dart';
@@ -109,6 +111,8 @@ class SystemScreenRouter {
     // 2. Handle dynamic paths
     if (path.startsWith('#album/')) {
       return _handleAlbumRoute(path);
+    } else if (path.startsWith('#video-library/')) {
+      return _handleVideoLibraryRoute(path);
     } else if (path.startsWith('#gallery:videos')) {
       return _handleVideoGalleryRoute(path);
     } else if (path.startsWith('#image?')) {
@@ -145,6 +149,30 @@ class SystemScreenRouter {
       );
     }
     return const Center(child: Text('Invalid album ID'));
+  }
+
+  static Widget _handleVideoLibraryRoute(String path) {
+    final libraryIdStr = path.substring('#video-library/'.length);
+    final libraryId = int.tryParse(libraryIdStr);
+    if (libraryId != null) {
+      return FutureBuilder<VideoLibrary?>(
+        future: VideoLibraryService().getLibraryById(libraryId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasData && snapshot.data != null) {
+            return VideoGalleryScreen(
+              path: '',
+              recursive: true,
+              library: snapshot.data!,
+            );
+          }
+          return const Center(child: Text('Video library not found'));
+        },
+      );
+    }
+    return const Center(child: Text('Invalid video library ID'));
   }
 
   static Widget _handleVideoGalleryRoute(String path) {

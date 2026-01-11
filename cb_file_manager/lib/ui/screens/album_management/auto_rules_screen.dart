@@ -55,14 +55,16 @@ class _AutoRulesScreenState extends State<AutoRulesScreen> {
           await AlbumService.instance.getAlbumById(widget.scopedAlbumId!);
     }
 
-    final result = await showDialog<AlbumAutoRule>(
-      context: context,
-      builder: (context) => CreateAutoRuleDialog(fixedAlbum: fixedAlbum),
-    );
+    if (mounted) {
+      final result = await showDialog<AlbumAutoRule>(
+        context: context,
+        builder: (context) => CreateAutoRuleDialog(fixedAlbum: fixedAlbum),
+      );
 
-    if (result != null) {
-      await AlbumAutoRuleService.instance.addRule(result);
-      _loadRules();
+      if (result != null) {
+        await AlbumAutoRuleService.instance.addRule(result);
+        _loadRules();
+      }
     }
   }
 

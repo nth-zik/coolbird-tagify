@@ -1665,5 +1665,97 @@ class EnglishLocalizations implements AppLocalizations {
   @override
   String get closeAction => 'Close';
 
+  // Video library
+  @override
+  String get videoLibrary => 'Video Library';
+
+  @override
+  String get videoLibraries => 'Video Libraries';
+
+  @override
+  String get createVideoLibrary => 'Create Video Library';
+
+  @override
+  String get editVideoLibrary => 'Edit Video Library';
+
+  @override
+  String get deleteVideoLibrary => 'Delete Video Library';
+
+  @override
+  String get addVideoSource => 'Add Video Source';
+
+  @override
+  String get removeVideoSource => 'Remove Source';
+
+  @override
+  String get videoSources => 'Video Sources';
+
+  @override
+  String get noVideoSources => 'No video sources added yet';
+
+  @override
+  String get filterByTags => 'Filter by Tags';
+
+  @override
+  String get clearTagFilter => 'Clear Filter';
+
+  @override
+  String get recentVideos => 'Recent Videos';
+
+  @override
+  String get videoHubTitle => 'Video Hub';
+
+  @override
+  String get videoHubWelcome => 'Manage your video libraries';
+
+  @override
+  String get manageVideoLibraries => 'Manage Video Libraries';
+
+  @override
+  String get videoCount => 'Video Count';
+
+  @override
+  String get scanForVideos => 'Scan for Videos';
+
+  @override
+  String get rescanLibrary => 'Rescan Library';
+
+  @override
+  String deleteVideoLibraryConfirmation(String name) =>
+      'Delete video library "$name"?';
+
+  @override
+  String get libraryDeletedSuccessfully => 'Library deleted successfully';
+
+  @override
+  String get sourceAdded => 'Source added successfully';
+
+  @override
+  String get sourceRemoved => 'Source removed successfully';
+
+  @override
+  String get selectVideoSource => 'Select Video Source Folder';
+
+  @override
+  String get videoLibrarySettings => 'Video Library Settings';
+
+  @override
+  String get manageVideoSources => 'Manage Video Sources';
+
+  @override
+  String get videoExtensions => 'Video Extensions';
+
+  @override
+  String get includeSubdirectories => 'Include Subdirectories';
+
+  @override
+  String get noVideosInLibrary => 'No videos in this library';
+
+  @override
+  String get libraryCreatedSuccessfully => 'Library created successfully';
+
+  @override
+  String videoLibraryCount(int count) => '$count libraries';
+
   // Search errors
 }

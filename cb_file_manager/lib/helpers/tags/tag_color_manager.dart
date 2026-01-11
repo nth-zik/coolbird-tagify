@@ -70,7 +70,7 @@ class TagColorManager {
       // Chuyển đổi Map<String, Color> thành Map<String, int> để lưu
       final Map<String, int> colorValues = {};
       _tagColors.forEach((key, value) {
-        colorValues[key] = value.value;
+        colorValues[key] = value.toARGB32();
       });
 
       await prefs.setString(_prefsKey, jsonEncode(colorValues));

@@ -155,7 +155,7 @@ class _FolderGridItemState extends State<FolderGridItem> {
 
     // Desktop: keep subtle elevation/hover behavior
     final Color backgroundColor = _visuallySelected
-        ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.7)
+        ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.7)
         : _isHovering
             ? Theme.of(context).hoverColor
             : Theme.of(context).cardColor;
@@ -163,7 +163,7 @@ class _FolderGridItemState extends State<FolderGridItem> {
     final Color borderColor = _visuallySelected
         ? Theme.of(context).primaryColor
         : _isHovering
-            ? Theme.of(context).primaryColor.withOpacity(0.5)
+            ? Theme.of(context).primaryColor.withValues(alpha: 0.5)
             : Colors.transparent;
 
     final double elevation = _visuallySelected

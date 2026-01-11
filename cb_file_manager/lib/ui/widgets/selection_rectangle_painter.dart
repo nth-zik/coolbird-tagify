@@ -19,8 +19,8 @@ class SelectionRectanglePainter extends CustomPainter {
 
     final Gradient borderGradient = LinearGradient(
       colors: [
-        borderColor.withOpacity(0.8),
-        borderColor.withOpacity(0.6),
+        borderColor.withValues(alpha: 0.8),
+        borderColor.withValues(alpha: 0.6),
       ],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
@@ -47,7 +47,7 @@ class SelectionRectanglePainter extends CustomPainter {
       );
 
       final Paint highlightPaint = Paint()
-        ..color = Colors.white.withOpacity(0.1)
+        ..color = Colors.white.withValues(alpha: 0.1)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 0.8;
 

@@ -23,8 +23,8 @@ class FcNativeVideoThumbnail {
   /// Semaphore to control access to native operations
   static final _operationSemaphore = Completer<void>()..complete();
 
-  /// Maximum time to wait for a native operation
-  static const Duration _operationTimeout = Duration(seconds: 5);
+  /// Maximum time to wait for a native operation (increased for 4K videos)
+  static const Duration _operationTimeout = Duration(seconds: 30);
 
   /// Initialize the plugin
   /// This is automatically called by [generateThumbnail]

@@ -53,17 +53,17 @@ class SMBFileStream extends Stream<List<int>> {
     try {
       while (!_closed) {
         final result = _bindings.readFileChunk(_handle, _chunkSize);
-        if (result.bytes_read > 0) {
+        if (result.bytesRead > 0) {
           // Copy the bytes into Dart-managed memory BEFORE freeing the native buffer
           final chunkData =
-              Uint8List.fromList(result.data.asTypedList(result.bytes_read));
+              Uint8List.fromList(result.data.asTypedList(result.bytesRead));
           _bindings.freeReadResultData(result.data);
 
           if (!controller.isClosed) {
             controller.add(chunkData);
           }
         } else {
-          if (result.bytes_read < 0) {
+          if (result.bytesRead < 0) {
             // Error
             if (!controller.isClosed) {
               controller.addError(Exception("Error reading file chunk"));
@@ -312,7 +312,7 @@ class SMBService implements ISmbService {
 
         String entityTabPath = p.join(tabPath, itemName).replaceAll('\\', '/');
 
-        if (fileInfo.is_directory) {
+        if (fileInfo.isDirectory) {
           if (!entityTabPath.endsWith('/')) {
             entityTabPath += '/';
           }
@@ -413,15 +413,15 @@ class SMBService implements ISmbService {
       while (true) {
         final result = _bindings.readFileChunk(
             handle, 8192 * 1024); // 8MB chunks for video streaming performance
-        if (result.bytes_read > 0) {
+        if (result.bytesRead > 0) {
           // Copy the bytes into Dart-managed memory BEFORE freeing the native buffer
           final chunkData =
-              Uint8List.fromList(result.data.asTypedList(result.bytes_read));
+              Uint8List.fromList(result.data.asTypedList(result.bytesRead));
           _bindings.freeReadResultData(result.data);
 
           sink.add(chunkData);
         } else {
-          if (result.bytes_read < 0) {
+          if (result.bytesRead < 0) {
             // Error
             throw Exception("Error reading file chunk");
           }

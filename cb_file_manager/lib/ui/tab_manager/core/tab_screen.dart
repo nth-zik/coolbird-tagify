@@ -486,7 +486,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                                     icon: Icon(
                                       remix.Remix.more_2_line,
                                       color: isDarkMode
-                                          ? Colors.white.withOpacity(0.8)
+                                          ? Colors.white.withValues(alpha: 0.8)
                                           : theme.colorScheme.primary,
                                       size: 22,
                                     ),
@@ -495,9 +495,9 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                       backgroundColor: isDarkMode
-                                          ? Colors.white.withOpacity(0.03)
+                                          ? Colors.white.withValues(alpha: 0.03)
                                           : theme.colorScheme.primary
-                                              .withOpacity(0.05),
+                                              .withValues(alpha: 0.05),
                                     ),
                                     onPressed: () => _showTabOptions(context),
                                   ),
@@ -784,14 +784,14 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                       icon: Icon(
                         remix.Remix.close_line,
                         size: 20,
-                        color: textColor?.withOpacity(0.7),
+                        color: textColor?.withValues(alpha: 0.7),
                       ),
                       onPressed: () => RouteUtils.safePopDialog(context),
                       iconSize: 20,
                       style: IconButton.styleFrom(
                         backgroundColor: isDarkMode
-                            ? Colors.white.withOpacity(0.05)
-                            : Colors.black.withOpacity(0.05),
+                            ? Colors.white.withValues(alpha: 0.05)
+                            : Colors.black.withValues(alpha: 0.05),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -888,8 +888,8 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
               height: 36,
               decoration: BoxDecoration(
                 color: isDarkMode
-                    ? theme.colorScheme.primary.withOpacity(0.1)
-                    : theme.colorScheme.primary.withOpacity(0.05),
+                    ? theme.colorScheme.primary.withValues(alpha: 0.1)
+                    : theme.colorScheme.primary.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(

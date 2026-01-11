@@ -66,12 +66,12 @@ class _SkeletonState extends State<Skeleton>
 
   Widget _buildSingleSkeleton(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final baseColor = cs.surfaceContainerHighest.withOpacity(
-        Theme.of(context).brightness == Brightness.dark ? 0.45 : 0.6);
-    final midColor = cs.surfaceContainerHighest.withOpacity(
-        Theme.of(context).brightness == Brightness.dark ? 0.35 : 0.45);
-    final highlightColor = cs.surface.withOpacity(
-        Theme.of(context).brightness == Brightness.dark ? 0.20 : 0.28);
+    final baseColor = cs.surfaceContainerHighest.withValues(
+        alpha: Theme.of(context).brightness == Brightness.dark ? 0.45 : 0.6);
+    final midColor = cs.surfaceContainerHighest.withValues(
+        alpha: Theme.of(context).brightness == Brightness.dark ? 0.35 : 0.45);
+    final highlightColor = cs.surface.withValues(
+        alpha: Theme.of(context).brightness == Brightness.dark ? 0.20 : 0.28);
 
     return AnimatedBuilder(
       animation: _controller,
@@ -95,7 +95,7 @@ class _SkeletonState extends State<Skeleton>
               stops: const [0.0, 0.35, 0.5, 0.65, 1.0],
             ),
             border: Border.all(
-              color: cs.outlineVariant.withOpacity(0.08),
+              color: cs.outlineVariant.withValues(alpha: 0.08),
               width: 0.6,
             ),
           ),
@@ -163,13 +163,13 @@ class _SkeletonListItem extends StatelessWidget {
         padding: const EdgeInsets.all(12.0),
         decoration: BoxDecoration(
           color: Theme.of(context).brightness == Brightness.dark
-              ? Colors.grey[800]?.withOpacity(0.3)
-              : Colors.grey[100]?.withOpacity(0.5),
+              ? Colors.grey[800]?.withValues(alpha: 0.3)
+              : Colors.grey[100]?.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white.withOpacity(0.05)
-                : Colors.black.withOpacity(0.05),
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.05),
             width: 0.5,
           ),
         ),
@@ -240,13 +240,13 @@ class _SkeletonGridItem extends StatelessWidget {
         padding: const EdgeInsets.all(8.0),
         decoration: BoxDecoration(
           color: Theme.of(context).brightness == Brightness.dark
-              ? Colors.grey[800]?.withOpacity(0.2)
-              : Colors.grey[50]?.withOpacity(0.8),
+              ? Colors.grey[800]?.withValues(alpha: 0.2)
+              : Colors.grey[50]?.withValues(alpha: 0.8),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white.withOpacity(0.05)
-                : Colors.black.withOpacity(0.05),
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.05),
             width: 0.5,
           ),
         ),
@@ -348,8 +348,8 @@ class _ShimmerBoxState extends State<ShimmerBox>
     final theme = Theme.of(context);
     final baseColor = _skeletonColor(context);
     final highlightColor = theme.brightness == Brightness.dark
-        ? Colors.white.withOpacity(0.1)
-        : Colors.white.withOpacity(0.8);
+        ? Colors.white.withValues(alpha: 0.1)
+        : Colors.white.withValues(alpha: 0.8);
 
     if (!_isDelayComplete) {
       return Container(
@@ -395,5 +395,5 @@ class _ShimmerBoxState extends State<ShimmerBox>
 Color _skeletonColor(BuildContext context) {
   final theme = Theme.of(context);
   return theme.colorScheme.surfaceContainerHighest
-      .withOpacity(theme.brightness == Brightness.dark ? 0.35 : 0.6);
+      .withValues(alpha: theme.brightness == Brightness.dark ? 0.35 : 0.6);
 }

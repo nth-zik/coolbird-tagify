@@ -58,7 +58,7 @@ class _CBDrawerContent extends StatelessWidget {
 
     return Drawer(
       elevation: 0,
-      backgroundColor: theme.scaffoldBackgroundColor.withOpacity(0.85),
+      backgroundColor: theme.scaffoldBackgroundColor.withValues(alpha: 0.85),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
           topRight: Radius.circular(16),
@@ -250,14 +250,14 @@ class _CBDrawerContent extends StatelessWidget {
           Text(
             'Version 1.0.0',
             style: TextStyle(
-              color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
+              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
               fontSize: 12,
             ),
           ),
           Text(
             '© CoolBird',
             style: TextStyle(
-              color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
+              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
               fontSize: 12,
             ),
           ),

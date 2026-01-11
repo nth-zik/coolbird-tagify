@@ -170,13 +170,16 @@ class VietnameseLocalizations implements AppLocalizations {
   String get columnTypeDescription => 'Hiển thị loại tệp tin (PDF, Word, v.v.)';
 
   @override
-  String get columnDateModifiedDescription => 'Hiển thị ngày giờ tệp được sửa đổi';
+  String get columnDateModifiedDescription =>
+      'Hiển thị ngày giờ tệp được sửa đổi';
 
   @override
-  String get columnDateCreatedDescription => 'Hiển thị ngày giờ tệp được tạo ra';
+  String get columnDateCreatedDescription =>
+      'Hiển thị ngày giờ tệp được tạo ra';
 
   @override
-  String get columnAttributesDescription => 'Hiển thị thuộc tính tệp (quyền đọc/ghi)';
+  String get columnAttributesDescription =>
+      'Hiển thị thuộc tính tệp (quyền đọc/ghi)';
 
   // Column visibility dialog
   @override
@@ -1214,7 +1217,8 @@ class VietnameseLocalizations implements AppLocalizations {
   @override
   String errorCreatingFolder(String error) => 'Lỗi khi tạo thư mục: $error';
   @override
-  String get pathNotAccessible => 'Đường dẫn không tồn tại hoặc không thể truy cập';
+  String get pathNotAccessible =>
+      'Đường dẫn không tồn tại hoặc không thể truy cập';
 
   // UI labels
   @override
@@ -1663,4 +1667,96 @@ class VietnameseLocalizations implements AppLocalizations {
 
   @override
   String get closeAction => 'Đóng';
+
+  // Video library
+  @override
+  String get videoLibrary => 'Thư Viện Video';
+
+  @override
+  String get videoLibraries => 'Thư Viện Video';
+
+  @override
+  String get createVideoLibrary => 'Tạo Thư Viện Video';
+
+  @override
+  String get editVideoLibrary => 'Chỉnh Sửa Thư Viện';
+
+  @override
+  String get deleteVideoLibrary => 'Xóa Thư Viện Video';
+
+  @override
+  String get addVideoSource => 'Thêm Nguồn Video';
+
+  @override
+  String get removeVideoSource => 'Xóa Nguồn';
+
+  @override
+  String get videoSources => 'Nguồn Video';
+
+  @override
+  String get noVideoSources => 'Chưa có nguồn video nào';
+
+  @override
+  String get filterByTags => 'Lọc Theo Thẻ';
+
+  @override
+  String get clearTagFilter => 'Xóa Bộ Lọc';
+
+  @override
+  String get recentVideos => 'Video Gần Đây';
+
+  @override
+  String get videoHubTitle => 'Trung Tâm Video';
+
+  @override
+  String get videoHubWelcome => 'Quản lý thư viện video của bạn';
+
+  @override
+  String get manageVideoLibraries => 'Quản Lý Thư Viện Video';
+
+  @override
+  String get videoCount => 'Số Lượng Video';
+
+  @override
+  String get scanForVideos => 'Quét Video';
+
+  @override
+  String get rescanLibrary => 'Quét Lại Thư Viện';
+
+  @override
+  String deleteVideoLibraryConfirmation(String name) =>
+      'Xóa thư viện video "$name"?';
+
+  @override
+  String get libraryDeletedSuccessfully => 'Đã xóa thư viện thành công';
+
+  @override
+  String get sourceAdded => 'Đã thêm nguồn thành công';
+
+  @override
+  String get sourceRemoved => 'Đã xóa nguồn thành công';
+
+  @override
+  String get selectVideoSource => 'Chọn Thư Mục Nguồn Video';
+
+  @override
+  String get videoLibrarySettings => 'Cài Đặt Thư Viện Video';
+
+  @override
+  String get manageVideoSources => 'Quản Lý Nguồn Video';
+
+  @override
+  String get videoExtensions => 'Định Dạng Video';
+
+  @override
+  String get includeSubdirectories => 'Bao Gồm Thư Mục Con';
+
+  @override
+  String get noVideosInLibrary => 'Chưa có video trong thư viện này';
+
+  @override
+  String get libraryCreatedSuccessfully => 'Đã tạo thư viện thành công';
+
+  @override
+  String videoLibraryCount(int count) => '$count thư viện';
 }

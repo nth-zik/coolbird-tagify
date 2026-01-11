@@ -34,17 +34,17 @@ class TagChip extends StatelessWidget {
 
     // Tăng độ sáng cho tag color trong dark mode
     final Color displayColor = isDarkMode
-        ? Color.alphaBlend(Colors.white.withOpacity(0.3), tagColor)
+        ? Color.alphaBlend(Colors.white.withValues(alpha: 0.3), tagColor)
         : tagColor;
 
     // Add subtle shadow for better visibility in both themes
     final BoxShadow shadow = isDarkMode
         ? BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 2,
             offset: const Offset(0, 1))
         : BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 2,
             offset: const Offset(0, 1));
 
@@ -77,7 +77,7 @@ class TagChip extends StatelessWidget {
           elevation: 0, // No additional elevation as we have our own shadow
           side: BorderSide(
             color:
-                isDarkMode ? Colors.white.withOpacity(0.1) : Colors.transparent,
+                isDarkMode ? Colors.white.withValues(alpha: 0.1) : Colors.transparent,
             width: 0.5,
           ),
         ),

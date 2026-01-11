@@ -78,6 +78,9 @@ class StreamingHelper {
     String filePath,
     String fileName,
   ) async {
+    // Capture mounted state early to avoid issues with stale context
+    if (!context.mounted) return;
+
     // For WebDAV, convert local temp path to remote path
     String remotePath = filePath;
     if (_currentNetworkService?.serviceName == 'WebDAV') {
@@ -99,11 +102,13 @@ class StreamingHelper {
     }
     try {
       // Hiển thị loading dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(child: CircularProgressIndicator()),
-      );
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(child: CircularProgressIndicator()),
+        );
+      }
 
       final result = await _openFileDirectly(context, remotePath, fileName);
 
@@ -112,9 +117,9 @@ class StreamingHelper {
         RouteUtils.safePopDialog(context);
       }
 
-      if (result.success) {
+      if (result.success && context.mounted) {
         await _handleSuccessfulOpen(context, result, fileName, remotePath);
-      } else {
+      } else if (!result.success && context.mounted) {
         await _handleOpenError(context, result.errorMessage ?? 'Unknown error');
       }
     } catch (e) {
@@ -122,7 +127,9 @@ class StreamingHelper {
       if (context.mounted) {
         RouteUtils.safePopDialog(context);
       }
-      await _handleOpenError(context, 'Error opening file: $e');
+      if (context.mounted) {
+        await _handleOpenError(context, 'Error opening file: $e');
+      }
     }
   }
 
@@ -223,13 +230,15 @@ class StreamingHelper {
           if (canUseNative) {
             debugPrint(
                 'StreamingHelper: ✅ Attempting Native VLC Direct streaming');
-            await NativeVlcDirectHelper.openMediaWithNativeVlcDirect(
-              context: context,
-              smbPath: remotePath,
-              fileName: fileName,
-              fileType: fileType,
-              smbService: service,
-            );
+            if (context.mounted) {
+              await NativeVlcDirectHelper.openMediaWithNativeVlcDirect(
+                context: context,
+                smbPath: remotePath,
+                fileName: fileName,
+                fileType: fileType,
+                smbService: service,
+              );
+            }
             return FileOpenResult(success: true, viewerLaunched: true);
           } else {
             debugPrint(
@@ -252,13 +261,15 @@ class StreamingHelper {
         try {
           debugPrint(
               'StreamingHelper: ✅ Attempting VLC Direct SMB streaming (fallback)');
-          await VlcDirectSmbHelper.openMediaWithVlcDirectSmb(
-            context: context,
-            smbPath: remotePath,
-            fileName: fileName,
-            fileType: fileType,
-            smbService: service,
-          );
+          if (context.mounted) {
+            await VlcDirectSmbHelper.openMediaWithVlcDirectSmb(
+              context: context,
+              smbPath: remotePath,
+              fileName: fileName,
+              fileType: fileType,
+              smbService: service,
+            );
+          }
           // If VLC player is launched, we return a success result indicating this
           return FileOpenResult(success: true, viewerLaunched: true);
         } catch (e) {
@@ -483,10 +494,12 @@ class StreamingHelper {
 
     // Kiểm tra nếu kết quả không thành công
     if (!result.success) {
-      await _handleOpenError(
-        context,
-        result.errorMessage ?? 'Failed to open file',
-      );
+      if (context.mounted) {
+        await _handleOpenError(
+          context,
+          result.errorMessage ?? 'Failed to open file',
+        );
+      }
       return;
     }
 
@@ -499,22 +512,30 @@ class StreamingHelper {
 
     if (result.requiresUserChoice) {
       // Hiển thị dialog cho người dùng chọn
-      await _showFileOptionsDialog(context, result, fileName);
+      if (context.mounted) {
+        await _showFileOptionsDialog(context, result, fileName);
+      }
       return;
     }
 
     if (result.fileStream != null || result.streamingUrl != null) {
       // Mở media player hoặc image viewer với stream, URL hoặc SMB MRL
-      await _openStreamingViewer(context, result, fileName, remotePath);
+      if (context.mounted) {
+        await _openStreamingViewer(context, result, fileName, remotePath);
+      }
     } else if (result.localPath != null) {
       // File đã được tải về và mở
-      _showSuccessMessage(
-        context,
-        result.message ?? 'File opened successfully',
-      );
+      if (context.mounted) {
+        _showSuccessMessage(
+          context,
+          result.message ?? 'File opened successfully',
+        );
+      }
     } else {
       // Không có dữ liệu để mở file
-      await _handleOpenError(context, 'No data available to open this file');
+      if (context.mounted) {
+        await _handleOpenError(context, 'No data available to open this file');
+      }
     }
   }
 
@@ -538,23 +559,25 @@ class StreamingHelper {
 
     if (result.fileType == FileCategory.image) {
       // Mở image viewer
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => result.fileStream != null
-              ? StreamingImageViewer.fromStream(
-                  fileStream: result.fileStream!,
-                  fileName: fileName,
-                )
-              : result.streamingUrl != null
-                  ? StreamingImageViewer.fromUrl(
-                      streamingUrl: result.streamingUrl!,
-                      fileName: fileName,
-                    )
-                  : throw Exception(
-                      'Neither fileStream nor streamingUrl available',
-                    ),
-        ),
-      );
+      if (context.mounted) {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => result.fileStream != null
+                ? StreamingImageViewer.fromStream(
+                    fileStream: result.fileStream!,
+                    fileName: fileName,
+                  )
+                : result.streamingUrl != null
+                    ? StreamingImageViewer.fromUrl(
+                        streamingUrl: result.streamingUrl!,
+                        fileName: fileName,
+                      )
+                    : throw Exception(
+                        'Neither fileStream nor streamingUrl available',
+                      ),
+          ),
+        );
+      }
     } else if (result.fileType == FileCategory.video ||
         result.fileType == FileCategory.audio) {
       // Debug thông tin trước khi kiểm tra VLC Direct SMB
@@ -593,33 +616,35 @@ class StreamingHelper {
       }
 
       // Fallback: Mở media player với các phương thức khác
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => Scaffold(
-            backgroundColor: Colors.black,
-            appBar: (Platform.isAndroid || Platform.isIOS) ? null : null,
-            body: SafeArea(
-              top: Platform.isAndroid || Platform.isIOS,
-              bottom: Platform.isAndroid || Platform.isIOS,
-              child: result.fileStream != null
-                  ? VideoPlayer.stream(
-                      fileStream: result.fileStream!,
-                      fileName: fileName,
-                      fileType: result.fileType!,
-                    )
-                  : result.streamingUrl != null
-                      ? VideoPlayer.url(
-                          streamingUrl: result.streamingUrl!,
-                          fileName: fileName,
-                          fileType: result.fileType!,
-                        )
-                      : throw Exception(
-                          'No streaming data available',
-                        ),
+      if (context.mounted) {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => Scaffold(
+              backgroundColor: Colors.black,
+              appBar: (Platform.isAndroid || Platform.isIOS) ? null : null,
+              body: SafeArea(
+                top: Platform.isAndroid || Platform.isIOS,
+                bottom: Platform.isAndroid || Platform.isIOS,
+                child: result.fileStream != null
+                    ? VideoPlayer.stream(
+                        fileStream: result.fileStream!,
+                        fileName: fileName,
+                        fileType: result.fileType!,
+                      )
+                    : result.streamingUrl != null
+                        ? VideoPlayer.url(
+                            streamingUrl: result.streamingUrl!,
+                            fileName: fileName,
+                            fileType: result.fileType!,
+                          )
+                        : throw Exception(
+                            'No streaming data available',
+                          ),
+              ),
             ),
           ),
-        ),
-      );
+        );
+      }
     } else {
       // Handle other file types (text, documents, etc.)
       debugPrint(
@@ -670,16 +695,20 @@ class StreamingHelper {
                 }
               });
             } else {
-              await _handleOpenError(
-                  context, 'Failed to open file with system default app');
+              if (context.mounted) {
+                await _handleOpenError(
+                    context, 'Failed to open file with system default app');
+              }
             }
           } else {
             final result = await Process.run('open', [tempFile.path]);
             debugPrint('StreamingHelper: Process result: ${result.exitCode}');
 
             if (result.exitCode == 0) {
-              _showSuccessMessage(
-                  context, 'File opened with system default app');
+              if (context.mounted) {
+                _showSuccessMessage(
+                    context, 'File opened with system default app');
+              }
 
               // Clean up temp file after a delay
               Future.delayed(const Duration(seconds: 10), () async {
@@ -692,16 +721,22 @@ class StreamingHelper {
                 }
               });
             } else {
-              await _handleOpenError(
-                  context, 'Failed to open file with system default app');
+              if (context.mounted) {
+                await _handleOpenError(
+                    context, 'Failed to open file with system default app');
+              }
             }
           }
         } catch (e) {
           debugPrint('StreamingHelper: Error handling other file type: $e');
-          await _handleOpenError(context, 'Error opening file: $e');
+          if (context.mounted) {
+            await _handleOpenError(context, 'Error opening file: $e');
+          }
         }
       } else {
-        await _handleOpenError(context, 'No file data available to open');
+        if (context.mounted) {
+          await _handleOpenError(context, 'No file data available to open');
+        }
       }
     }
   }
@@ -720,53 +755,59 @@ class StreamingHelper {
         ? fileExtension.substring(1).toUpperCase()
         : "This";
 
-    await showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) => AlertDialog(
-        title: Text('Open $fileTypeString File'),
-        content: Text(
-          '$fileTypeString file type is not directly supported for streaming. Do you want to download it to your device?',
+    if (context.mounted) {
+      await showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (context) => AlertDialog(
+          title: Text('Open $fileTypeString File'),
+          content: Text(
+            '$fileTypeString file type is not directly supported for streaming. Do you want to download it to your device?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => RouteUtils.safePopDialog(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                RouteUtils.safePopDialog(context);
+                await _downloadAndOpen(context, fileName);
+              },
+              child: const Text('Download'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => RouteUtils.safePopDialog(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              RouteUtils.safePopDialog(context);
-              await _downloadAndOpen(context, fileName);
-            },
-            child: const Text('Download'),
-          ),
-        ],
-      ),
-    );
+      );
+    }
   }
 
   /// Tải file về
   Future<void> _downloadAndOpen(BuildContext context, String remotePath) async {
     if (_currentNetworkService == null) {
-      await _handleOpenError(context, 'Network service not available');
+      if (context.mounted) {
+        await _handleOpenError(context, 'Network service not available');
+      }
       return;
     }
 
     try {
       // Hiển thị loading
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 16),
-              Text('Downloading file...'),
-            ],
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const AlertDialog(
+            content: Row(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 16),
+                Text('Downloading file...'),
+              ],
+            ),
           ),
-        ),
-      );
+        );
+      }
 
       // Tạo file tạm thời
       final fileName = p.basename(remotePath);
@@ -786,12 +827,16 @@ class StreamingHelper {
         RouteUtils.safePopDialog(context); // Đóng loading
       }
 
-      _showSuccessMessage(context, 'File downloaded successfully');
+      if (context.mounted) {
+        _showSuccessMessage(context, 'File downloaded successfully');
+      }
     } catch (e) {
       if (context.mounted) {
         RouteUtils.safePopDialog(context); // Đóng loading
       }
-      await _handleOpenError(context, 'Error downloading file: $e');
+      if (context.mounted) {
+        await _handleOpenError(context, 'Error downloading file: $e');
+      }
     }
   }
 
@@ -802,19 +847,21 @@ class StreamingHelper {
   ) async {
     if (!context.mounted) return;
 
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Error'),
-        content: Text(errorMessage),
-        actions: [
-          TextButton(
-            onPressed: () => RouteUtils.safePopDialog(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
+    if (context.mounted) {
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Error'),
+          content: Text(errorMessage),
+          actions: [
+            TextButton(
+              onPressed: () => RouteUtils.safePopDialog(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   /// Hiển thị thông báo thành công

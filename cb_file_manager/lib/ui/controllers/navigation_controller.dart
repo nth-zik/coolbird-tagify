@@ -96,19 +96,23 @@ class NavigationController {
     final directory = Directory(path);
     directory.exists().then((exists) {
       if (exists) {
-        navigateToPath(
-          context,
-          path,
-          pathController,
-          (_) {}, // Empty keyboard focus clear
-        );
+        if (context.mounted) {
+          navigateToPath(
+            context,
+            path,
+            pathController,
+            (_) {}, // Empty keyboard focus clear
+          );
+        }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.pathNotAccessible),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(context)!.pathNotAccessible),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
         // Revert to current path
         pathController.text = currentPath;
       }

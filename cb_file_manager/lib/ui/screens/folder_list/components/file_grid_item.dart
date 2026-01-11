@@ -219,7 +219,7 @@ class FileGridItem extends StatelessWidget {
         ...tagsToShow.map((tag) => Container(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.15),
+                color: Theme.of(context).primaryColor.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -237,7 +237,7 @@ class FileGridItem extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
             decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor.withOpacity(0.15),
+              color: Theme.of(context).primaryColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(

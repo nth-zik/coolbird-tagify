@@ -111,7 +111,7 @@ class TabView extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8.0),
         decoration: BoxDecoration(
           color: isActive
-              ? Theme.of(context).primaryColor.withOpacity(0.1)
+              ? Theme.of(context).primaryColor.withValues(alpha: 0.1)
               : Colors.transparent,
           border: Border(
             bottom: BorderSide(

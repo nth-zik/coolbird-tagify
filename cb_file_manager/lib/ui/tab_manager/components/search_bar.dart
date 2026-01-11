@@ -187,13 +187,13 @@ class _SearchBarState extends State<SearchBar> {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
                 ],
                 border: Border.all(
-                  color: theme.colorScheme.outline.withOpacity(0.2),
+                  color: theme.colorScheme.outline.withValues(alpha: 0.2),
                   width: 1,
                 ),
               ),
@@ -264,7 +264,7 @@ class _SearchBarState extends State<SearchBar> {
                                 child: Container(
                                   color: isSelected
                                       ? theme.colorScheme.primaryContainer
-                                          .withOpacity(0.5)
+                                          .withValues(alpha: 0.5)
                                       : Colors.transparent,
                                   padding: const EdgeInsets.symmetric(
                                       vertical: 8.0, horizontal: 16.0),
@@ -276,7 +276,7 @@ class _SearchBarState extends State<SearchBar> {
                                         color: isSelected
                                             ? theme.colorScheme.primary
                                             : theme.colorScheme.primary
-                                                .withOpacity(0.7),
+                                                .withValues(alpha: 0.7),
                                       ),
                                       const SizedBox(width: 12),
                                       Expanded(
@@ -484,15 +484,15 @@ class _SearchBarState extends State<SearchBar> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
         ],
         border: Border.all(
           color: _isSearchingTags
-              ? theme.colorScheme.primary.withOpacity(0.5)
-              : theme.colorScheme.outline.withOpacity(0.3),
+              ? theme.colorScheme.primary.withValues(alpha: 0.5)
+              : theme.colorScheme.outline.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -575,7 +575,7 @@ class _SearchBarState extends State<SearchBar> {
                       ? localizations.searchHintTextTags
                       : localizations.searchHintText,
                   hintStyle: TextStyle(
-                    color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+                    color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                     fontSize: 14,
                   ),
                   border: InputBorder.none,

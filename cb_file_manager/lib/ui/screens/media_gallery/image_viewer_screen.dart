@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:vector_math/vector_math_64.dart' show Vector3;
 import 'package:path/path.dart' as pathlib;
 import 'package:remixicon/remixicon.dart' as remix;
 import 'package:cb_file_manager/helpers/ui/frame_timing_optimizer.dart';
@@ -30,10 +31,10 @@ class ImageViewerScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _ImageViewerScreenState createState() => _ImageViewerScreenState();
+  ImageViewerScreenState createState() => ImageViewerScreenState();
 }
 
-class _ImageViewerScreenState extends State<ImageViewerScreen>
+class ImageViewerScreenState extends State<ImageViewerScreen>
     with SingleTickerProviderStateMixin {
   late PageController _pageController;
   late TransformationController _transformationController;
@@ -227,9 +228,9 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
       // Create a transformation matrix that zooms to a scale of 2.5x
       // centered on the position that was double-tapped
       final Matrix4 zoomed = Matrix4.identity()
-        ..translate(position.dx, position.dy)
-        ..scale(scale)
-        ..translate(-position.dx, -position.dy);
+        ..translateByVector3(Vector3(position.dx, position.dy, 0))
+        ..scaleByVector3(Vector3(scale, scale, 1))
+        ..translateByVector3(Vector3(-position.dx, -position.dy, 0));
 
       _animation = Matrix4Tween(
         begin: _transformationController.value,
@@ -324,45 +325,49 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
       final fileSize = _formatFileSize(fileStat.size);
       final modified = fileStat.modified;
 
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('Image Details'),
-            content: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _infoRow('File name', pathlib.basename(file.path)),
-                  const Divider(),
-                  _infoRow('Path', file.path),
-                  const Divider(),
-                  _infoRow('Size', fileSize),
-                  const Divider(),
-                  _infoRow('Type', pathlib.extension(file.path).toUpperCase()),
-                  const Divider(),
-                  _infoRow('Last modified',
-                      '${modified.day}/${modified.month}/${modified.year} ${modified.hour}:${modified.minute.toString().padLeft(2, '0')}'),
-                ],
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: const Text('Image Details'),
+              content: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _infoRow('File name', pathlib.basename(file.path)),
+                    const Divider(),
+                    _infoRow('Path', file.path),
+                    const Divider(),
+                    _infoRow('Size', fileSize),
+                    const Divider(),
+                    _infoRow('Type', pathlib.extension(file.path).toUpperCase()),
+                    const Divider(),
+                    _infoRow('Last modified',
+                        '${modified.day}/${modified.month}/${modified.year} ${modified.hour}:${modified.minute.toString().padLeft(2, '0')}'),
+                  ],
+                ),
               ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  RouteUtils.safePopDialog(context);
-                },
-                child: const Text('Close'),
-              ),
-            ],
-          );
-        },
-      );
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    RouteUtils.safePopDialog(context);
+                  },
+                  child: const Text('Close'),
+                ),
+              ],
+            );
+          },
+        );
+      }
     } catch (e) {
       debugPrint('Error showing image info: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to display image information: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to display image information: $e')),
+        );
+      }
     }
   }
 
@@ -394,32 +399,36 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
         // Use TrashManager instead of directly deleting
         final success = await TrashManager().moveToTrash(file.path);
 
-        if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Image moved to trash')),
-          );
+        if (context.mounted) {
+          if (success) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Image moved to trash')),
+            );
 
-          setState(() {
-            _allImages.removeAt(_currentIndex);
-            if (_allImages.isEmpty) {
-              // No more images to show, return to previous screen
-              RouteUtils.safePopDialog(context);
-            } else {
-              // Adjust current index if needed
-              if (_currentIndex >= _allImages.length) {
-                _currentIndex = _allImages.length - 1;
+            setState(() {
+              _allImages.removeAt(_currentIndex);
+              if (_allImages.isEmpty) {
+                // No more images to show, return to previous screen
+                RouteUtils.safePopDialog(context);
+              } else {
+                // Adjust current index if needed
+                if (_currentIndex >= _allImages.length) {
+                  _currentIndex = _allImages.length - 1;
+                }
               }
-            }
-          });
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to move image to trash')),
-          );
+            });
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Failed to move image to trash')),
+            );
+          }
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to move image to trash: $e')),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to move image to trash: $e')),
+          );
+        }
       }
     }
   }
@@ -509,9 +518,9 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
     final double relative = (newScale / (currentScale == 0 ? 1 : currentScale));
 
     final Matrix4 zoomAroundCenter = Matrix4.identity()
-      ..translate(focal.dx, focal.dy)
-      ..scale(relative)
-      ..translate(-focal.dx, -focal.dy);
+      ..translateByVector3(Vector3(focal.dx, focal.dy, 0))
+      ..scaleByVector3(Vector3(relative, relative, 1))
+      ..translateByVector3(Vector3(-focal.dx, -focal.dy, 0));
 
     final Matrix4 target = zoomAroundCenter.multiplied(current);
 
@@ -728,8 +737,8 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        Colors.black.withOpacity(0.85),
-                        Colors.black.withOpacity(0.55),
+                        Colors.black.withValues(alpha: 0.85),
+                        Colors.black.withValues(alpha: 0.55),
                         Colors.transparent,
                       ],
                     ),
@@ -974,8 +983,8 @@ class _ImageViewerScreenState extends State<ImageViewerScreen>
                         begin: Alignment.bottomCenter,
                         end: Alignment.topCenter,
                         colors: [
-                          Colors.black.withOpacity(0.85),
-                          Colors.black.withOpacity(0.55),
+                          Colors.black.withValues(alpha: 0.85),
+                          Colors.black.withValues(alpha: 0.55),
                           Colors.transparent,
                         ],
                       ),

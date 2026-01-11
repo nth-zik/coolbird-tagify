@@ -314,7 +314,7 @@ class TagManager {
 
   /// List to keep track of recently used tags with timestamps
   static List<Map<String, dynamic>> _recentTags = [];
-  static const int MAX_RECENT_TAGS = 40;
+  static const int maxRecentTags = 40;
 
   /// Add a tag to recent tags list
   static void addToRecentTags(String tag) {
@@ -326,8 +326,8 @@ class TagManager {
         0, {'tag': tag, 'timestamp': DateTime.now().millisecondsSinceEpoch});
 
     // Limit the list size
-    if (_recentTags.length > MAX_RECENT_TAGS) {
-      _recentTags = _recentTags.sublist(0, MAX_RECENT_TAGS);
+    if (_recentTags.length > maxRecentTags) {
+      _recentTags = _recentTags.sublist(0, maxRecentTags);
     }
 
     // Save recent tags to shared preferences for persistence
@@ -347,7 +347,9 @@ class TagManager {
         final jsonString = json.encode(_recentTags);
         await prefs.setString('recent_tags', jsonString);
       }
-    } catch (e) {}
+    } catch (e) {
+      // Silently ignore errors when saving recent tags
+    }
   }
 
   /// Load recent tags from database

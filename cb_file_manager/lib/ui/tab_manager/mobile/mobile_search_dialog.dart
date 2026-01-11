@@ -146,7 +146,7 @@ class _MobileSearchDialogState extends State<MobileSearchDialog> {
             decoration: InputDecoration(
               hintText: localizations.searchByNameOrTag,
               hintStyle: TextStyle(
-                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
               ),
               prefixIcon: Icon(
                 Icons.search,
@@ -163,7 +163,7 @@ class _MobileSearchDialogState extends State<MobileSearchDialog> {
                   : null,
               filled: true,
               fillColor:
-                  theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                  theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
@@ -262,7 +262,7 @@ class _MobileSearchDialogState extends State<MobileSearchDialog> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 20, vertical: 12),
                     backgroundColor: theme.colorScheme.surfaceContainerHighest
-                        .withOpacity(0.5),
+                        .withValues(alpha: 0.5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -286,7 +286,7 @@ class _MobileSearchDialogState extends State<MobileSearchDialog> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   backgroundColor: theme.colorScheme.surfaceContainerHighest
-                      .withOpacity(0.5),
+                      .withValues(alpha: 0.5),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),

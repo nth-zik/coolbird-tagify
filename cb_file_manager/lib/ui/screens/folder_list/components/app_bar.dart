@@ -191,13 +191,15 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
                 break;
               case 'debug_apk':
                 await FileIconHelper.debugApkIcons();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                        'APK icon cache cleared. Check console for debug info.'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                          'APK icon cache cleared. Check console for debug info.'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
                 break;
             }
           },

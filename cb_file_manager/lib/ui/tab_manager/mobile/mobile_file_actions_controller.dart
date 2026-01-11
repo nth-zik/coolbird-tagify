@@ -79,7 +79,7 @@ class MobileFileActionsController {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: theme.dividerColor.withOpacity(0.3),
+                    color: theme.dividerColor.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -185,7 +185,7 @@ class MobileFileActionsController {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: theme.dividerColor.withOpacity(0.3),
+                    color: theme.dividerColor.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -271,7 +271,7 @@ class MobileFileActionsController {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: theme.dividerColor.withOpacity(0.3),
+                color: theme.dividerColor.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -386,7 +386,7 @@ class MobileFileActionsController {
         color: theme.scaffoldBackgroundColor,
         boxShadow: [
           BoxShadow(
-            color: theme.shadowColor.withOpacity(0.05),
+            color: theme.shadowColor.withValues(alpha: 0.05),
             blurRadius: 2,
             offset: const Offset(0, 1),
           ),
@@ -494,7 +494,7 @@ class MobileFileActionsController {
               color: theme.scaffoldBackgroundColor,
               boxShadow: [
                 BoxShadow(
-                  color: theme.shadowColor.withOpacity(0.1),
+                  color: theme.shadowColor.withValues(alpha: 0.1),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),

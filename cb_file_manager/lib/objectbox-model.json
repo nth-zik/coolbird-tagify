@@ -325,10 +325,195 @@
         }
       ],
       "relations": []
+    },
+    {
+      "id": "7:1221758574361293866",
+      "lastPropertyId": "8:4150308620522179873",
+      "name": "VideoLibrary",
+      "properties": [
+        {
+          "id": "1:5584380311508327753",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:7074027490295188885",
+          "name": "name",
+          "type": 9,
+          "flags": 2048,
+          "indexId": "8:1356818697637944965"
+        },
+        {
+          "id": "3:1854028471052069891",
+          "name": "description",
+          "type": 9
+        },
+        {
+          "id": "4:3855235098721891924",
+          "name": "coverImagePath",
+          "type": 9
+        },
+        {
+          "id": "5:2054462555020246138",
+          "name": "createdAt",
+          "type": 10
+        },
+        {
+          "id": "6:4067516748570721321",
+          "name": "modifiedAt",
+          "type": 10
+        },
+        {
+          "id": "7:6536621792474958007",
+          "name": "colorTheme",
+          "type": 9
+        },
+        {
+          "id": "8:4150308620522179873",
+          "name": "isSystemLibrary",
+          "type": 1
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "8:5839977632250564203",
+      "lastPropertyId": "16:567327745562898334",
+      "name": "VideoLibraryConfig",
+      "properties": [
+        {
+          "id": "1:6174414858218042375",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:915473089431133066",
+          "name": "videoLibraryId",
+          "type": 6,
+          "flags": 8,
+          "indexId": "9:1976672364964737810"
+        },
+        {
+          "id": "3:5957568411830936336",
+          "name": "includeSubdirectories",
+          "type": 1
+        },
+        {
+          "id": "4:8689645382577592670",
+          "name": "fileExtensions",
+          "type": 9
+        },
+        {
+          "id": "5:4375848151248213422",
+          "name": "autoRefresh",
+          "type": 1
+        },
+        {
+          "id": "6:564004514557567819",
+          "name": "maxFileCount",
+          "type": 6
+        },
+        {
+          "id": "7:3223141345054565399",
+          "name": "sortBy",
+          "type": 9
+        },
+        {
+          "id": "8:8870670427647753203",
+          "name": "sortAscending",
+          "type": 1
+        },
+        {
+          "id": "9:6856377625356011510",
+          "name": "excludePatterns",
+          "type": 9
+        },
+        {
+          "id": "10:7400570477919294979",
+          "name": "enableAutoRules",
+          "type": 1
+        },
+        {
+          "id": "11:9118617357795126334",
+          "name": "directories",
+          "type": 9
+        },
+        {
+          "id": "12:1396750611570234461",
+          "name": "lastScanTime",
+          "type": 10
+        },
+        {
+          "id": "13:5847118959332538714",
+          "name": "fileCount",
+          "type": 6
+        },
+        {
+          "id": "14:4485512187051438041",
+          "name": "fileExtensionsList",
+          "type": 30
+        },
+        {
+          "id": "15:295225553395887163",
+          "name": "excludePatternsList",
+          "type": 30
+        },
+        {
+          "id": "16:567327745562898334",
+          "name": "directoriesList",
+          "type": 30
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "9:1050307742319782002",
+      "lastPropertyId": "6:693465544661155762",
+      "name": "VideoLibraryFile",
+      "properties": [
+        {
+          "id": "1:4735548239728623352",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:8336295703818267215",
+          "name": "videoLibraryId",
+          "type": 6,
+          "flags": 8,
+          "indexId": "10:477406062999369568"
+        },
+        {
+          "id": "3:9220028997854741047",
+          "name": "filePath",
+          "type": 9,
+          "flags": 2048,
+          "indexId": "11:6189961830114533234"
+        },
+        {
+          "id": "4:2278951804529003072",
+          "name": "addedAt",
+          "type": 10
+        },
+        {
+          "id": "5:3845029734220531780",
+          "name": "caption",
+          "type": 9
+        },
+        {
+          "id": "6:693465544661155762",
+          "name": "orderIndex",
+          "type": 6
+        }
+      ],
+      "relations": []
     }
   ],
-  "lastEntityId": "6:8093577245119292471",
-  "lastIndexId": "7:8272886834281330939",
+  "lastEntityId": "9:1050307742319782002",
+  "lastIndexId": "11:6189961830114533234",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,

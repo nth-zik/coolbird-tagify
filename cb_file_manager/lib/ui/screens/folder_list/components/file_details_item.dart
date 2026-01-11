@@ -150,7 +150,7 @@ class _FileDetailsItemState extends State<FileDetailsItem> {
 
     // Calculate colors based on selection state
     final Color itemBackgroundColor = _visuallySelected
-        ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.7)
+        ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.7)
         : _isHovering && widget.isDesktopMode
             ? isDarkMode
                 ? Colors.grey[800]!

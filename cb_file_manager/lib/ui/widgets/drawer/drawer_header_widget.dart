@@ -41,7 +41,7 @@ class DrawerHeaderWidget extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
+                  color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Image.asset(
@@ -94,7 +94,7 @@ class DrawerHeaderWidget extends StatelessWidget {
           Text(
             'File Management Made Simple',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withValues(alpha: 0.9),
               fontSize: 14,
             ),
           ),

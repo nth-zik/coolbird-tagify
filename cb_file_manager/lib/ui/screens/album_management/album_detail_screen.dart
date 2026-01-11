@@ -14,12 +14,14 @@ import 'batch_add_dialog.dart';
 import 'package:path/path.dart' as pathlib;
 import 'package:cb_file_manager/helpers/core/user_preferences.dart';
 import 'package:cb_file_manager/ui/components/common/shared_action_bar.dart';
-import 'package:cb_file_manager/ui/components/common/skeleton_helper.dart';
 import 'package:cb_file_manager/services/smart_album_service.dart';
 import 'package:cb_file_manager/services/album_auto_rule_service.dart';
 import 'auto_rules_screen.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:cb_file_manager/ui/screens/folder_list/components/file_grid_item.dart';
+import 'package:cb_file_manager/helpers/media/video_thumbnail_helper.dart';
+import 'package:cb_file_manager/helpers/files/file_type_registry.dart';
 
 class AlbumDetailScreen extends StatefulWidget {
   final Album album;
@@ -207,6 +209,9 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
           _applyFiltersAndOrder();
           _isLoading = false;
         });
+
+        // Trigger thumbnail preloading for videos
+        _preloadVideoThumbnails();
       }
     } catch (e) {
       debugPrint('Error loading album files: $e');
@@ -215,6 +220,46 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _preloadVideoThumbnails() async {
+    // Preload thumbnails for video files in the album
+    try {
+      final videoFiles = _imageFiles.where((file) {
+        final extension = pathlib.extension(file.path).toLowerCase();
+        final category = FileTypeRegistry.getCategory(extension);
+        return category == FileCategory.video;
+      }).toList();
+
+      if (videoFiles.isEmpty) return;
+
+      debugPrint(
+          'Album: Preloading thumbnails for ${videoFiles.length} videos');
+
+      // Batch preload with limited concurrency to avoid overwhelming the system
+      const batchSize = 5;
+      for (var i = 0; i < videoFiles.length; i += batchSize) {
+        final batch = videoFiles.skip(i).take(batchSize).toList();
+        await Future.wait(
+          batch.map((file) => VideoThumbnailHelper.generateThumbnail(
+                file.path,
+                isPriority: false,
+              ).catchError((e) {
+                debugPrint('Failed to generate thumbnail for ${file.path}: $e');
+                return null;
+              })),
+        );
+
+        // Small delay between batches to prevent system overload
+        if (i + batchSize < videoFiles.length) {
+          await Future.delayed(const Duration(milliseconds: 100));
+        }
+      }
+
+      debugPrint('Album: Finished preloading video thumbnails');
+    } catch (e) {
+      debugPrint('Error preloading video thumbnails: $e');
     }
   }
 
@@ -274,7 +319,9 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
     }
     int matched = 0;
     int processed = 0;
-    final imageExts = {
+    // Include both image and video extensions for smart album scanning
+    final mediaExts = {
+      // Image extensions
       '.jpg',
       '.jpeg',
       '.png',
@@ -282,7 +329,20 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
       '.bmp',
       '.webp',
       '.tif',
-      '.tiff'
+      '.tiff',
+      // Video extensions
+      '.mp4',
+      '.mkv',
+      '.avi',
+      '.mov',
+      '.wmv',
+      '.flv',
+      '.webm',
+      '.m4v',
+      '.3gp',
+      '.ts',
+      '.mts',
+      '.m2ts',
     };
 
     Future<void> scanDir(Directory dir) async {
@@ -293,7 +353,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
           if (entity is File) {
             processed++;
             final ext = pathlib.extension(entity.path).toLowerCase();
-            if (imageExts.contains(ext)) {
+            if (mediaExts.contains(ext)) {
               final name = pathlib.basename(entity.path);
               if (rules.any((r) => r.matches(name))) {
                 matched++;
@@ -331,8 +391,11 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
       setState(() {
         _isLoading = false;
         _isBackgroundProcessing = false;
-        _progressStatus = 'Completed! Found $matched images';
+        _progressStatus = 'Completed! Found $matched files';
       });
+
+      // Trigger thumbnail preloading for videos after smart scan completes
+      _preloadVideoThumbnails();
     }
 
     // Cache results
@@ -341,7 +404,6 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
           widget.album.id, _originalImageFiles.map((f) => f.path).toList());
     } catch (_) {}
   }
-
 
   Future<void> _loadCachedSmartImages() async {
     try {
@@ -375,6 +437,9 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
           _applyFiltersAndOrder();
           _isLoading = false;
         });
+
+        // Trigger thumbnail preloading for videos after loading cached files
+        _preloadVideoThumbnails();
       }
     } catch (_) {}
   }
@@ -393,91 +458,97 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
     final service = SmartAlbumService.instance;
     List<String> roots = await service.getScanRoots(widget.album.id);
 
-    await showDialog(
-      context: context,
-      builder: (context) {
-        List<String> localRoots = List.from(roots);
-        return StatefulBuilder(
-          builder: (context, setState) => AlertDialog(
-            title: const Text('Scan Locations'),
-            content: SizedBox(
-              width: 420,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (localRoots.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 8.0),
-                      child: Text(
-                        'No locations selected. Add folders to scan for this album.',
-                        style: TextStyle(color: Colors.grey),
+    if (mounted) {
+      await showDialog(
+        context: context,
+        builder: (context) {
+          List<String> localRoots = List.from(roots);
+          return StatefulBuilder(
+            builder: (context, setState) => AlertDialog(
+              title: const Text('Scan Locations'),
+              content: SizedBox(
+                width: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (localRoots.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 8.0),
+                        child: Text(
+                          'No locations selected. Add folders to scan for this album.',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ),
+                    Flexible(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: localRoots.length,
+                        itemBuilder: (context, index) {
+                          final p = localRoots[index];
+                          return ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.folder),
+                            title: Text(p,
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete,
+                                  color: Colors.redAccent),
+                              onPressed: () {
+                                setState(() {
+                                  localRoots.removeAt(index);
+                                });
+                              },
+                            ),
+                          );
+                        },
                       ),
                     ),
-                  Flexible(
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: localRoots.length,
-                      itemBuilder: (context, index) {
-                        final p = localRoots[index];
-                        return ListTile(
-                          dense: true,
-                          leading: const Icon(Icons.folder),
-                          title: Text(p,
-                              maxLines: 1, overflow: TextOverflow.ellipsis),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete,
-                                color: Colors.redAccent),
-                            onPressed: () {
-                              setState(() {
-                                localRoots.removeAt(index);
-                              });
-                            },
-                          ),
-                        );
-                      },
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () async {
+                          final dir =
+                              await FilePicker.platform.getDirectoryPath();
+                          if (dir != null && dir.isNotEmpty) {
+                            setState(() {
+                              if (!localRoots.contains(dir)) {
+                                localRoots.add(dir);
+                              }
+                            });
+                          }
+                        },
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add folder'),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
-                      onPressed: () async {
-                        final dir =
-                            await FilePicker.platform.getDirectoryPath();
-                        if (dir != null && dir.isNotEmpty) {
-                          setState(() {
-                            if (!localRoots.contains(dir)) localRoots.add(dir);
-                          });
-                        }
-                      },
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add folder'),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    await service.setScanRoots(widget.album.id, localRoots);
+                    if (mounted) {
+                      Navigator.pop(context);
+                    }
+                    // Re-scan with new roots
+                    if (mounted && _isSmartAlbum) {
+                      _scanSmartAlbumImages();
+                    }
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  await service.setScanRoots(widget.album.id, localRoots);
-                  if (mounted) Navigator.pop(context);
-                  // Re-scan with new roots
-                  if (mounted && _isSmartAlbum) {
-                    _scanSmartAlbumImages();
-                  }
-                },
-                child: const Text('Save'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+          );
+        },
+      );
+    }
   }
 
   void _scheduleAlbumReload() {
@@ -559,6 +630,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
   }
 
   Future<void> _showAddFilesMenu() async {
+    if (!mounted) return;
     final result = await showDialog(
       context: context,
       builder: (context) => BatchAddDialog(albumId: widget.album.id),
@@ -592,12 +664,13 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
   }
 
   Future<void> _editAlbum() async {
+    if (!mounted) return;
     final result = await showDialog<Album>(
       context: context,
       builder: (context) => CreateAlbumDialog(editingAlbum: widget.album),
     );
 
-    if (result != null) {
+    if (result != null && mounted) {
       // Update the album reference and reload if needed
       setState(() {
         // The album object is updated in place
@@ -607,6 +680,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
 
   Future<void> _removeSelectedFiles() async {
     if (_selectedFilePaths.isEmpty) return;
+    if (!mounted) return;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -658,9 +732,6 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
 
   Widget _buildGridView() {
     final columns = _thumbnailSize.round();
-    final thumbSize = _calculateThumbnailSize(context, columns);
-    final pixelRatio = MediaQuery.of(context).devicePixelRatio;
-    final cacheWidth = (thumbSize * pixelRatio).round();
 
     return GridView.builder(
       padding: const EdgeInsets.all(8.0),
@@ -674,17 +745,31 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
         final file = _imageFiles[index];
         final isSelected = _selectedFilePaths.contains(file.path);
 
-        return GestureDetector(
-          onTap: () {
-            if (_isSelectionMode) {
-              setState(() {
-                if (isSelected) {
-                  _selectedFilePaths.remove(file.path);
-                } else {
-                  _selectedFilePaths.add(file.path);
-                }
-              });
-            } else {
+        return FileGridItem(
+          file: file,
+          isSelected: isSelected,
+          isSelectionMode: _isSelectionMode,
+          isDesktopMode: true,
+          toggleFileSelection: (path,
+              {shiftSelect = false, ctrlSelect = false}) {
+            setState(() {
+              if (isSelected) {
+                _selectedFilePaths.remove(path);
+              } else {
+                _selectedFilePaths.add(path);
+              }
+            });
+          },
+          toggleSelectionMode: () {
+            setState(() {
+              _isSelectionMode = !_isSelectionMode;
+              if (!_isSelectionMode) {
+                _selectedFilePaths.clear();
+              }
+            });
+          },
+          onFileTap: (file, isRightClick) {
+            if (!isRightClick && !_isSelectionMode) {
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -697,86 +782,9 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
               );
             }
           },
-          onLongPress: () {
-            if (!_isSelectionMode) {
-              setState(() {
-                _isSelectionMode = true;
-                _selectedFilePaths.add(file.path);
-              });
-            }
-          },
-          child: RepaintBoundary(
-            child: Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    color: Colors.transparent,
-                    child: Hero(
-                      tag: file.path,
-                      child: Image.file(
-                        file,
-                        fit: BoxFit.cover,
-                        filterQuality: FilterQuality.low,
-                        cacheWidth: cacheWidth,
-                        frameBuilder:
-                            (context, child, frame, wasSynchronouslyLoaded) {
-                          if (wasSynchronouslyLoaded) return child;
-                          return AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 200),
-                            child: frame != null
-                                ? child
-                                : SkeletonHelper.box(
-                                    width: double.infinity,
-                                    height: double.infinity,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Center(
-                            child: Icon(
-                              Icons.broken_image,
-                              size: 40,
-                              color: Colors.grey,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-                if (_isSelectionMode)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        isSelected ? Icons.check_circle : Icons.circle_outlined,
-                        color: isSelected ? Colors.blue : Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
         );
       },
     );
-  }
-
-  double _calculateThumbnailSize(BuildContext context, int columns) {
-    const double padding = 8.0; // outer padding
-    const double spacing = 8.0; // grid spacing
-    final double width = MediaQuery.of(context).size.width;
-    final double totalSpacing = (columns - 1) * spacing + padding * 2;
-    final double available = (width - totalSpacing).clamp(50.0, width);
-    return available / columns;
   }
 
   @override
@@ -1170,17 +1178,31 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                       final filePath = file.path;
                       final isSelected = _selectedFilePaths.contains(filePath);
 
-                      return GestureDetector(
-                        onTap: () {
-                          if (_isSelectionMode) {
-                            setState(() {
-                              if (_selectedFilePaths.contains(filePath)) {
-                                _selectedFilePaths.remove(filePath);
-                              } else {
-                                _selectedFilePaths.add(filePath);
-                              }
-                            });
-                          } else {
+                      return FileGridItem(
+                        file: file,
+                        isSelected: isSelected,
+                        isSelectionMode: _isSelectionMode,
+                        isDesktopMode: true,
+                        toggleFileSelection: (path,
+                            {shiftSelect = false, ctrlSelect = false}) {
+                          setState(() {
+                            if (isSelected) {
+                              _selectedFilePaths.remove(path);
+                            } else {
+                              _selectedFilePaths.add(path);
+                            }
+                          });
+                        },
+                        toggleSelectionMode: () {
+                          setState(() {
+                            _isSelectionMode = !_isSelectionMode;
+                            if (!_isSelectionMode) {
+                              _selectedFilePaths.clear();
+                            }
+                          });
+                        },
+                        onFileTap: (file, isRightClick) {
+                          if (!isRightClick && !_isSelectionMode) {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -1193,64 +1215,6 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                             );
                           }
                         },
-                        onLongPress: () {
-                          if (!_isSelectionMode) {
-                            setState(() {
-                              _isSelectionMode = true;
-                              _selectedFilePaths.add(filePath);
-                            });
-                          }
-                        },
-                        child: Hero(
-                          tag: filePath,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              border: isSelected
-                                  ? Border.all(
-                                      color: Theme.of(context).primaryColor,
-                                      width: 3,
-                                    )
-                                  : null,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: ClipRRect(
-                              borderRadius:
-                                  BorderRadius.circular(isSelected ? 9 : 12),
-                              child: Image.file(
-                                file,
-                                fit: BoxFit.cover,
-                                cacheWidth: (_thumbnailSize * 100).round(),
-                                frameBuilder: (BuildContext context,
-                                    Widget child,
-                                    int? frame,
-                                    bool wasSynchronouslyLoaded) {
-                                  if (wasSynchronouslyLoaded) return child;
-                                  return AnimatedSwitcher(
-                                    duration: const Duration(milliseconds: 200),
-                                    child: frame != null
-                                        ? child
-                                        : SkeletonHelper.box(
-                                            width: double.infinity,
-                                            height: double.infinity,
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                          ),
-                                  );
-                                },
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    color: Colors.grey[200],
-                                    child: const Icon(
-                                      Icons.broken_image,
-                                      color: Colors.grey,
-                                      size: 40,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                        ),
                       );
                     },
                   ),

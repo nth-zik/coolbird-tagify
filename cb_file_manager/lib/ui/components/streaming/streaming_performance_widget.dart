@@ -60,9 +60,11 @@ class _StreamingPerformanceWidgetState
 
   Future<void> _runBenchmark() async {
     if (widget.currentFilePath == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No file selected for benchmarking')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No file selected for benchmarking')),
+        );
+      }
       return;
     }
 
@@ -73,23 +75,27 @@ class _StreamingPerformanceWidgetState
     try {
       final results =
           await widget.smbService.benchmarkStreaming(widget.currentFilePath!);
-      setState(() {
-        _benchmarkResults = results;
-        _isBenchmarking = false;
-      });
+      if (mounted) {
+        setState(() {
+          _benchmarkResults = results;
+          _isBenchmarking = false;
+        });
 
-      if (results['error'] != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Benchmark error: ${results['error']}')),
-        );
+        if (results['error'] != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Benchmark error: ${results['error']}')),
+          );
+        }
       }
     } catch (e) {
-      setState(() {
-        _isBenchmarking = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Benchmark failed: $e')),
-      );
+      if (mounted) {
+        setState(() {
+          _isBenchmarking = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Benchmark failed: $e')),
+        );
+      }
     }
   }
 

@@ -1,3 +1,4 @@
+// ignore_for_file: deprecated_member_use
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -501,8 +502,9 @@ class _VideoPlayerState extends State<VideoPlayer> {
       }
     } catch (_) {}
 
-    WindowsPipOverlay.show(
-      context,
+    if (context.mounted) {
+      WindowsPipOverlay.show(
+        context,
       args: {
         'sourceType': sourceType,
         'source': source,
@@ -536,11 +538,12 @@ class _VideoPlayerState extends State<VideoPlayer> {
       },
     );
 
-    if (mounted) {
-      setState(() => _isPictureInPicture = true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã bật PiP overlay trong ứng dụng')),
-      );
+      if (mounted) {
+        setState(() => _isPictureInPicture = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã bật PiP overlay trong ứng dụng')),
+        );
+      }
     }
   }
 
@@ -3160,16 +3163,18 @@ class _VideoPlayerState extends State<VideoPlayer> {
           if (boundary != null) {
             // Ensure a fresh frame has been painted
             await Future.delayed(const Duration(milliseconds: 32));
-            final pixelRatio = MediaQuery.of(context).devicePixelRatio;
-            final image = await boundary.toImage(
-              pixelRatio: pixelRatio.clamp(1.0, 3.0),
-            );
-            final byteData =
-                await image.toByteData(format: ui.ImageByteFormat.png);
-            if (byteData != null) {
-              screenshotBytes = byteData.buffer.asUint8List();
-              debugPrint(
-                  'Mobile RepaintBoundary screenshot successful: ${screenshotBytes.length} bytes');
+            if (mounted) {
+              final pixelRatio = MediaQuery.of(context).devicePixelRatio;
+              final image = await boundary.toImage(
+                pixelRatio: pixelRatio.clamp(1.0, 3.0),
+              );
+              final byteData =
+                  await image.toByteData(format: ui.ImageByteFormat.png);
+              if (byteData != null) {
+                screenshotBytes = byteData.buffer.asUint8List();
+                debugPrint(
+                    'Mobile RepaintBoundary screenshot successful: ${screenshotBytes.length} bytes');
+              }
             }
           }
         } catch (e) {
@@ -3187,17 +3192,19 @@ class _VideoPlayerState extends State<VideoPlayer> {
           if (boundary != null) {
             // Ensure the latest frame is painted before capturing
             await Future.delayed(const Duration(milliseconds: 16));
-            final pixelRatio = MediaQuery.of(context).devicePixelRatio;
-            final image = await boundary.toImage(
-              pixelRatio: pixelRatio.clamp(1.0, 3.0),
-            );
-            debugPrint('Image captured: ${image.width}x${image.height}');
-            final byteData =
-                await image.toByteData(format: ui.ImageByteFormat.png);
-            if (byteData != null) {
-              screenshotBytes = byteData.buffer.asUint8List();
-              debugPrint(
-                  'VLC screenshot successful: ${screenshotBytes.length} bytes');
+            if (mounted) {
+              final pixelRatio = MediaQuery.of(context).devicePixelRatio;
+              final image = await boundary.toImage(
+                pixelRatio: pixelRatio.clamp(1.0, 3.0),
+              );
+              debugPrint('Image captured: ${image.width}x${image.height}');
+              final byteData =
+                  await image.toByteData(format: ui.ImageByteFormat.png);
+              if (byteData != null) {
+                screenshotBytes = byteData.buffer.asUint8List();
+                debugPrint(
+                    'VLC screenshot successful: ${screenshotBytes.length} bytes');
+              }
             }
           }
         } catch (e) {
@@ -3232,16 +3239,18 @@ class _VideoPlayerState extends State<VideoPlayer> {
           if (boundary != null) {
             // Ensure the latest frame is painted before capturing
             await Future.delayed(const Duration(milliseconds: 16));
-            final pixelRatio = MediaQuery.of(context).devicePixelRatio;
-            final image = await boundary.toImage(
-              pixelRatio: pixelRatio.clamp(1.0, 3.0),
-            );
-            final byteData =
-                await image.toByteData(format: ui.ImageByteFormat.png);
-            if (byteData != null) {
-              screenshotBytes = byteData.buffer.asUint8List();
-              debugPrint(
-                  'RepaintBoundary screenshot successful: ${screenshotBytes.length} bytes');
+            if (mounted) {
+              final pixelRatio = MediaQuery.of(context).devicePixelRatio;
+              final image = await boundary.toImage(
+                pixelRatio: pixelRatio.clamp(1.0, 3.0),
+              );
+              final byteData =
+                  await image.toByteData(format: ui.ImageByteFormat.png);
+              if (byteData != null) {
+                screenshotBytes = byteData.buffer.asUint8List();
+                debugPrint(
+                    'RepaintBoundary screenshot successful: ${screenshotBytes.length} bytes');
+              }
             }
           }
         } catch (e) {
@@ -3428,7 +3437,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
                     filePath,
                     style: TextStyle(
                       fontSize: 12,
-                      color: theme.colorScheme.onSurface.withOpacity(0.8),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -3580,9 +3589,11 @@ class _VideoPlayerState extends State<VideoPlayer> {
             (_vlcController?.value.isPlaying == true);
         try {
           await _suspendVideoForRoutePush();
-          try {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          } catch (_) {}
+          if (mounted) {
+            try {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            } catch (_) {}
+          }
 
           // Load image bytes before opening viewer
           debugPrint('📂 Loading screenshot from: $filePath');
@@ -3600,14 +3611,16 @@ class _VideoPlayerState extends State<VideoPlayer> {
             debugPrint('   Is valid PNG: $isPng');
           }
 
-          await Navigator.of(context, rootNavigator: true).push(
-            MaterialPageRoute(
-              builder: (_) => ImageViewerScreen(
-                file: imageFile,
-                imageBytes: imageBytes,
+          if (mounted) {
+            await Navigator.of(context, rootNavigator: true).push(
+              MaterialPageRoute(
+                builder: (_) => ImageViewerScreen(
+                  file: imageFile,
+                  imageBytes: imageBytes,
+                ),
               ),
-            ),
-          );
+            );
+          }
           return;
         } catch (e, stack) {
           debugPrint('Navigator push ImageViewerScreen failed (Android): $e');
@@ -3648,14 +3661,16 @@ class _VideoPlayerState extends State<VideoPlayer> {
 
           // Ensure one frame renders without the video texture before pushing new route
           await Future.delayed(const Duration(milliseconds: 50));
-          await Navigator.of(context, rootNavigator: true).push(
-            MaterialPageRoute(
-              builder: (_) => ImageViewerScreen(
-                file: imageFile,
-                imageBytes: imageBytes,
+          if (mounted) {
+            await Navigator.of(context, rootNavigator: true).push(
+              MaterialPageRoute(
+                builder: (_) => ImageViewerScreen(
+                  file: imageFile,
+                  imageBytes: imageBytes,
+                ),
               ),
-            ),
-          );
+            );
+          }
         } catch (e, stackTrace) {
           debugPrint('Navigator push ImageViewerScreen failed (mobile): $e');
           debugPrint('Stack trace: $stackTrace');
@@ -3681,19 +3696,21 @@ class _VideoPlayerState extends State<VideoPlayer> {
 
       // Try to find TabManagerBloc in the widget tree
       try {
-        // Check if TabManagerBloc is available in the context
-        BlocProvider.of<TabManagerBloc>(context, listen: false);
-        // If we got here, TabManagerBloc is available
-        final encoded = Uri.encodeComponent(filePath);
-        final routePath = '#image?path=$encoded';
+        if (mounted) {
+          // Check if TabManagerBloc is available in the context
+          BlocProvider.of<TabManagerBloc>(context, listen: false);
+          // If we got here, TabManagerBloc is available
+          final encoded = Uri.encodeComponent(filePath);
+          final routePath = '#image?path=$encoded';
 
-        TabNavigator.openTab(
-          context,
-          routePath,
-          // Let SystemScreenRouter update tab title to the image file name
-        );
-        opened = true;
-        debugPrint('SUCCESS: Opened image tab via TabManager: $routePath');
+          TabNavigator.openTab(
+            context,
+            routePath,
+            // Let SystemScreenRouter update tab title to the image file name
+          );
+          opened = true;
+          debugPrint('SUCCESS: Opened image tab via TabManager: $routePath');
+        }
       } catch (e, stackTrace) {
         debugPrint(
             'TabManager.openTab failed (TabManagerBloc not in context): $e');
@@ -3707,13 +3724,15 @@ class _VideoPlayerState extends State<VideoPlayer> {
         // Fallback: push in-app image viewer route
         debugPrint('Attempting fallback: Navigator push ImageViewerScreen');
         try {
-          await Navigator.of(context, rootNavigator: true).push(
-            MaterialPageRoute(
-              builder: (_) => ImageViewerScreen(file: File(filePath)),
-            ),
-          );
-          opened = true;
-          debugPrint('SUCCESS: Opened image via Navigator push');
+          if (mounted) {
+            await Navigator.of(context, rootNavigator: true).push(
+              MaterialPageRoute(
+                builder: (_) => ImageViewerScreen(file: File(filePath)),
+              ),
+            );
+            opened = true;
+            debugPrint('SUCCESS: Opened image via Navigator push');
+          }
         } catch (e, stackTrace) {
           debugPrint('Navigator push ImageViewerScreen failed: $e');
           debugPrint('Stack trace: $stackTrace');
@@ -4551,10 +4570,12 @@ class _VideoPlayerState extends State<VideoPlayer> {
         }
       } catch (e) {
         debugPrint('PIP error: $e');
-        setState(() => _isAndroidPip = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi PiP: $e')),
-        );
+        if (mounted) {
+          setState(() => _isAndroidPip = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Lỗi PiP: $e')),
+          );
+        }
       }
       return;
     }
@@ -4600,9 +4621,11 @@ class _VideoPlayerState extends State<VideoPlayer> {
       }
 
       if (sourceType == null || source == null || source.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không có nguồn video để mở PiP')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Không có nguồn video để mở PiP')),
+          );
+        }
         return;
       }
 
@@ -4644,15 +4667,17 @@ class _VideoPlayerState extends State<VideoPlayer> {
             } else {
               // External failed: close IPC and fallback to overlay
               _closePipIpc();
-              _showWindowsOverlayPip(
-                context,
-                sourceType: sourceType!,
-                source: source!,
-                fileName: widget.fileName,
-                positionMs: positionMs,
-                volume: volume,
-                playing: playing,
-              );
+              if (mounted) {
+                _showWindowsOverlayPip(
+                  context,
+                  sourceType: sourceType!,
+                  source: source!,
+                  fileName: widget.fileName,
+                  positionMs: positionMs,
+                  volume: volume,
+                  playing: playing,
+                );
+              }
             }
           });
         });
@@ -4660,24 +4685,28 @@ class _VideoPlayerState extends State<VideoPlayer> {
       }
 
       // Prefer overlay per user setting
-      _showWindowsOverlayPip(
-        context,
-        sourceType: sourceType,
-        source: source,
-        fileName: widget.fileName,
-        positionMs: positionMs,
-        volume: volume,
-        playing: playing,
-      );
+      if (mounted) {
+        _showWindowsOverlayPip(
+          context,
+          sourceType: sourceType,
+          source: source,
+          fileName: widget.fileName,
+          positionMs: positionMs,
+          volume: volume,
+          playing: playing,
+        );
+      }
       return;
     }
 
     // Other platforms: not implemented yet
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('PiP chưa hỗ trợ trên nền tảng này'),
-      ),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('PiP chưa hỗ trợ trên nền tảng này'),
+        ),
+      );
+    }
   }
 
   Future<Map<String, dynamic>?> _startPipIpcServer() async {

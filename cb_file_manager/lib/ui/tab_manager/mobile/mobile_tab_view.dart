@@ -221,7 +221,7 @@ class MobileTabView extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
         margin: const EdgeInsets.only(left: 8.0),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
@@ -393,7 +393,7 @@ class MobileTabView extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(32.0),
               decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withOpacity(0.2),
+                color: theme.colorScheme.primaryContainer.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -484,7 +484,7 @@ class MobileTabView extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             color: isActive
-                ? theme.colorScheme.primaryContainer.withOpacity(0.3)
+                ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
                 : theme.cardColor,
             borderRadius: BorderRadius.circular(16),
           ),
@@ -544,7 +544,7 @@ class MobileTabView extends StatelessWidget {
                   width: double.infinity,
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surfaceContainerHighest
-                        .withOpacity(0.3),
+                        .withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   clipBehavior: Clip.antiAlias,
@@ -558,7 +558,7 @@ class MobileTabView extends StatelessWidget {
                                 _getPreviewIcon(tab.path),
                                 size: 48,
                                 color: theme.colorScheme.onSurfaceVariant
-                                    .withOpacity(0.5),
+                                    .withValues(alpha: 0.5),
                               ),
                             );
                           },
@@ -568,7 +568,7 @@ class MobileTabView extends StatelessWidget {
                             _getPreviewIcon(tab.path),
                             size: 48,
                             color: theme.colorScheme.onSurfaceVariant
-                                .withOpacity(0.5),
+                                .withValues(alpha: 0.5),
                           ),
                         ),
                 ),
@@ -798,7 +798,7 @@ class MobileTabView extends StatelessWidget {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: theme.dividerColor.withOpacity(0.3),
+                    color: theme.dividerColor.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -836,7 +836,7 @@ class MobileTabView extends StatelessWidget {
                     padding: const EdgeInsets.all(8.0),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.surfaceContainerHighest
-                          .withOpacity(0.5),
+                          .withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(8.0),
                     ),
                     child: Text(
@@ -962,9 +962,9 @@ class MobileTabView extends StatelessWidget {
                                   horizontal: 12, vertical: 8),
                               decoration: BoxDecoration(
                                 color: isCurrentPath
-                                    ? theme.colorScheme.primary.withOpacity(0.2)
+                                    ? theme.colorScheme.primary.withValues(alpha: 0.2)
                                     : theme.colorScheme.surfaceContainerHighest
-                                        .withOpacity(0.5),
+                                        .withValues(alpha: 0.5),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Center(
@@ -1070,7 +1070,7 @@ class AddressBarWidget extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12.0),
         decoration: BoxDecoration(
           // Nền rõ ràng cho thanh địa chỉ (đồng nhất dark)
-          color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(12.0),
         ),
         child: Row(
@@ -1093,7 +1093,7 @@ class AddressBarWidget extends StatelessWidget {
             Icon(
               remix.Remix.arrow_down_s_line,
               size: 20,
-              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
             ),
           ],
         ),

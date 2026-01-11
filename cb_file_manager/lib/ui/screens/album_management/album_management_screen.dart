@@ -348,9 +348,11 @@ class _AlbumManagementScreenState extends State<AlbumManagementScreen> {
                         int crossAxisCount = 2;
                         if (width > 1200) {
                           crossAxisCount = 5;
-                        } else if (width > 900)
+                        } else if (width > 900) {
                           crossAxisCount = 4;
-                        else if (width > 600) crossAxisCount = 3;
+                        } else if (width > 600) {
+                          crossAxisCount = 3;
+                        }
 
                         return GridView.builder(
                           padding: const EdgeInsets.all(12),
@@ -522,26 +524,26 @@ class _AlbumManagementScreenState extends State<AlbumManagementScreen> {
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return SkeletonHelper.box(
-              width: double.infinity,
-              height: double.infinity,
-              borderRadius: BorderRadius.circular(8),
+            width: double.infinity,
+            height: double.infinity,
+            borderRadius: BorderRadius.circular(8),
           );
         }
         final files = (snapshot.data as List?) ?? [];
         if (files.isEmpty) {
           return SkeletonHelper.box(
-              width: double.infinity,
-              height: double.infinity,
-              borderRadius: BorderRadius.circular(8),
+            width: double.infinity,
+            height: double.infinity,
+            borderRadius: BorderRadius.circular(8),
           );
         }
         final idx = album.id % files.length;
         final path = files[idx].filePath as String;
         if (!File(path).existsSync()) {
           return SkeletonHelper.box(
-              width: double.infinity,
-              height: double.infinity,
-              borderRadius: BorderRadius.circular(8),
+            width: double.infinity,
+            height: double.infinity,
+            borderRadius: BorderRadius.circular(8),
           );
         }
         return Image.file(
@@ -557,56 +559,60 @@ class _AlbumManagementScreenState extends State<AlbumManagementScreen> {
   Future<void> _showPickCoverDialog(Album album) async {
     final files = await _albumService.getAlbumFiles(album.id);
     if (files.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No images to pick as cover')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No images to pick as cover')));
+      }
       return;
     }
 
     String? selected;
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Choose Cover Image'),
-          content: SizedBox(
-            width: 600,
-            height: 400,
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-              ),
-              itemCount: files.length,
-              itemBuilder: (context, index) {
-                final p = files[index].filePath;
-                return GestureDetector(
-                  onTap: () {
-                    selected = p;
-                    Navigator.of(context).pop();
-                  },
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.file(
-                      File(p),
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Icon(Icons.broken_image),
+    if (mounted) {
+      await showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Choose Cover Image'),
+            content: SizedBox(
+              width: 600,
+              height: 400,
+              child: GridView.builder(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                ),
+                itemCount: files.length,
+                itemBuilder: (context, index) {
+                  final p = files[index].filePath;
+                  return GestureDetector(
+                    onTap: () {
+                      selected = p;
+                      Navigator.of(context).pop();
+                    },
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(
+                        File(p),
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(Icons.broken_image),
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-          ],
-        );
-      },
-    );
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+            ],
+          );
+        },
+      );
+    }
 
     if (selected != null) {
       final updated = album.copyWith(coverImagePath: selected);

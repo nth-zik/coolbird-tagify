@@ -243,28 +243,32 @@ class _TagManagementHelper {
       await TagManager.addTag(tempFilePath, tagName);
       await TagManager.removeTag(tempFilePath, tagName);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              AppLocalizations.of(context)!.tagCreatedSuccessfully(tagName)),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                AppLocalizations.of(context)!.tagCreatedSuccessfully(tagName)),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              AppLocalizations.of(context)!.errorCreatingTag + e.toString()),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                AppLocalizations.of(context)!.errorCreatingTag + e.toString()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   static void showTagSearchDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Tìm kiếm thẻ'),
         content: TextField(
           decoration: const InputDecoration(
@@ -273,17 +277,19 @@ class _TagManagementHelper {
           ),
           autofocus: true,
           onSubmitted: (value) {
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                  content:
-                      Text(AppLocalizations.of(context)!.searchingFor(value))),
-            );
+            Navigator.pop(dialogContext);
+            if (dialogContext.mounted) {
+              ScaffoldMessenger.of(dialogContext).showSnackBar(
+                SnackBar(
+                    content:
+                        Text(AppLocalizations.of(dialogContext)!.searchingFor(value))),
+              );
+            }
           },
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Hủy'),
           ),
         ],
@@ -325,7 +331,7 @@ class _TagManagementHelper {
   static void showTagSortOptions(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Sắp xếp thẻ'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -334,38 +340,44 @@ class _TagManagementHelper {
               title: const Text('Theo tên (A-Z)'),
               leading: const Icon(Icons.sort_by_alpha),
               onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Sắp xếp theo tên A-Z')),
-                );
+                Navigator.pop(dialogContext);
+                if (dialogContext.mounted) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    const SnackBar(content: Text('Sắp xếp theo tên A-Z')),
+                  );
+                }
               },
             ),
             ListTile(
               title: const Text('Theo độ phổ biến'),
               leading: const Icon(Icons.trending_up),
               onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Sắp xếp theo độ phổ biến')),
-                );
+                Navigator.pop(dialogContext);
+                if (dialogContext.mounted) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    const SnackBar(content: Text('Sắp xếp theo độ phổ biến')),
+                  );
+                }
               },
             ),
             ListTile(
               title: const Text('Theo thời gian gần đây'),
               leading: const Icon(Icons.history),
               onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Sắp xếp theo thời gian gần đây')),
-                );
+                Navigator.pop(dialogContext);
+                if (dialogContext.mounted) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    const SnackBar(
+                        content: Text('Sắp xếp theo thời gian gần đây')),
+                  );
+                }
               },
             ),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Hủy'),
           ),
         ],

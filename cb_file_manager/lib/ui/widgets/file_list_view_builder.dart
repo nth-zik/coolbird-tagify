@@ -215,10 +215,10 @@ class FileListViewBuilder {
                                       ? Theme.of(context)
                                           .colorScheme
                                           .primaryContainer
-                                          .withOpacity(0.6)
+                                          .withValues(alpha: 0.6)
                                       : Theme.of(context)
                                           .cardColor
-                                          .withOpacity(0.4),
+                                          .withValues(alpha: 0.4),
                                   child: folder_list_components.FolderGridItem(
                                     key: ValueKey(
                                         'folder-grid-item-${folder.path}'),
@@ -251,10 +251,10 @@ class FileListViewBuilder {
                                       ? Theme.of(context)
                                           .colorScheme
                                           .primaryContainer
-                                          .withOpacity(0.6)
+                                          .withValues(alpha: 0.6)
                                       : Theme.of(context)
                                           .cardColor
-                                          .withOpacity(0.4),
+                                          .withValues(alpha: 0.4),
                                   child: folder_list_components.FileGridItem(
                                     key:
                                         ValueKey('file-grid-item-${file.path}'),
@@ -473,7 +473,7 @@ class FileListViewBuilder {
                                   ? Theme.of(context)
                                       .colorScheme
                                       .primaryContainer
-                                      .withOpacity(0.6)
+                                      .withValues(alpha: 0.6)
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(8.0),
                               child: RepaintBoundary(
@@ -503,7 +503,7 @@ class FileListViewBuilder {
                                   ? Theme.of(context)
                                       .colorScheme
                                       .primaryContainer
-                                      .withOpacity(0.6)
+                                      .withValues(alpha: 0.6)
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(8.0),
                               child: RepaintBoundary(

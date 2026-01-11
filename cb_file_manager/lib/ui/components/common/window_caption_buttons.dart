@@ -146,10 +146,10 @@ class _CaptionButtonState extends State<_CaptionButton> {
     final isDark = widget.theme.brightness == Brightness.dark;
     final baseIconColor = isDark ? Colors.white70 : Colors.black54;
     final hoverBg = widget.isCloseButton
-        ? Colors.red.withOpacity(0.9)
+        ? Colors.red.withValues(alpha: 0.9)
         : (isDark
-            ? Colors.white.withOpacity(0.10)
-            : Colors.black.withOpacity(0.08));
+            ? Colors.white.withValues(alpha: 0.10)
+            : Colors.black.withValues(alpha: 0.08));
     final hoverIconColor = widget.isCloseButton
         ? Colors.white
         : (isDark ? Colors.white : Colors.black);

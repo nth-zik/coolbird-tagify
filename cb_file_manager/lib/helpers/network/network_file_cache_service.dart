@@ -34,7 +34,7 @@ class NetworkFileCacheService {
   /// Get cache key for a file path
   String _getCacheKey(String path) {
     // Create a deterministic but unique key
-    return 'network-${const Uuid().v5(Uuid.NAMESPACE_URL, path)}';
+    return 'network-${const Uuid().v5(Namespace.url.value, path)}';
   }
 
   /// Get thumbnail cache key

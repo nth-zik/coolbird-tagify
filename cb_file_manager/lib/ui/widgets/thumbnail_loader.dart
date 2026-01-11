@@ -807,7 +807,7 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
               widget.filePath,
               size: genSize,
             )
-            .timeout(const Duration(seconds: 8)) // Longer timeout for videos
+            .timeout(const Duration(seconds: 30)) // Longer timeout for 4K videos
             .then((path) {
           if (_widgetMounted && path != null) {
             setState(() {

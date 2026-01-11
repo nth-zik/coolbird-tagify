@@ -272,7 +272,7 @@ class _TagInputChipState extends State<TagInputChip>
 
     // Use theme colors to better match app design
     final Color tagColor =
-        theme.colorScheme.primary.withOpacity(isDark ? 0.7 : 0.8);
+        theme.colorScheme.primary.withValues(alpha: isDark ? 0.7 : 0.8);
     final Color tagTextColor = isDark ? Colors.white : Colors.white;
     final Color iconColor = isDark ? Colors.white70 : Colors.white70;
 
@@ -294,7 +294,7 @@ class _TagInputChipState extends State<TagInputChip>
                     boxShadow: [
                       if (isHovered && !isDeleting)
                         BoxShadow(
-                          color: theme.colorScheme.primary.withOpacity(0.3),
+                          color: theme.colorScheme.primary.withValues(alpha: 0.3),
                           spreadRadius: 1,
                           blurRadius: 4,
                         )
@@ -320,20 +320,20 @@ class _TagInputChipState extends State<TagInputChip>
                       ),
                       deleteIconColor: iconColor,
                       backgroundColor: isHovered && !isDeleting
-                          ? tagColor.withOpacity(0.9)
+                          ? tagColor.withValues(alpha: 0.9)
                           : tagColor,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                         side: BorderSide(
                           width: 1,
                           color: isDark
-                              ? Colors.white.withOpacity(isHovered ? 0.2 : 0.15)
+                              ? Colors.white.withValues(alpha: isHovered ? 0.2 : 0.15)
                               : Colors.black
-                                  .withOpacity(isHovered ? 0.1 : 0.05),
+                                  .withValues(alpha: isHovered ? 0.1 : 0.05),
                         ),
                       ),
                       elevation: isHovered && !isDeleting ? 2 : 0,
-                      shadowColor: Colors.black.withOpacity(0.2),
+                      shadowColor: Colors.black.withValues(alpha: 0.2),
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       onDeleted: isDeleting ? null : _handleDelete,
                       deleteIcon: Icon(
@@ -351,7 +351,7 @@ class _TagInputChipState extends State<TagInputChip>
                           : (bool value) => widget.onSelected(widget.tag),
                       showCheckmark: false,
                       selected: isHovered,
-                      selectedColor: tagColor.withOpacity(1.0),
+                      selectedColor: tagColor.withValues(alpha: 1.0),
                     ),
                   ),
                 ),

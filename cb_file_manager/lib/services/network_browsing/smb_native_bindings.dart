@@ -9,9 +9,9 @@ class NativeFileInfo extends Struct {
   @Int64()
   external int size;
   @Int64()
-  external int modification_time;
+  external int modificationTime;
   @Bool()
-  external bool is_directory;
+  external bool isDirectory;
 }
 
 class NativeFileList extends Struct {
@@ -35,7 +35,7 @@ class NativeShareList extends Struct {
 
 class ReadResult extends Struct {
   @Int64()
-  external int bytes_read;
+  external int bytesRead;
   external Pointer<Uint8> data;
 }
 
@@ -48,141 +48,141 @@ class ThumbnailResult extends Struct {
 // --- FFI Function Signatures ---
 
 // Connection
-typedef _ConnectNative = Int32 Function(
+typedef ConnectNative = Int32 Function(
     Pointer<Utf16> path, Pointer<Utf16> username, Pointer<Utf16> password);
-typedef _ConnectDart = int Function(
+typedef ConnectDart = int Function(
     Pointer<Utf16> path, Pointer<Utf16> username, Pointer<Utf16> password);
-typedef _DisconnectNative = Int32 Function(Pointer<Utf16> path);
-typedef _DisconnectDart = int Function(Pointer<Utf16> path);
+typedef DisconnectNative = Int32 Function(Pointer<Utf16> path);
+typedef DisconnectDart = int Function(Pointer<Utf16> path);
 
 // File Operations
-typedef _ListDirectoryNative = Pointer<NativeFileList> Function(
+typedef ListDirectoryNative = Pointer<NativeFileList> Function(
     Pointer<Utf16> path);
-typedef _ListDirectoryDart = Pointer<NativeFileList> Function(
+typedef ListDirectoryDart = Pointer<NativeFileList> Function(
     Pointer<Utf16> path);
-typedef _EnumerateSharesNative = Pointer<NativeShareList> Function(
+typedef EnumerateSharesNative = Pointer<NativeShareList> Function(
     Pointer<Utf16> server);
-typedef _EnumerateSharesDart = Pointer<NativeShareList> Function(
+typedef EnumerateSharesDart = Pointer<NativeShareList> Function(
     Pointer<Utf16> server);
-typedef _DeleteFileOrDirNative = Bool Function(Pointer<Utf16> path);
-typedef _DeleteFileOrDirDart = bool Function(Pointer<Utf16> path);
-typedef _CreateDirNative = Bool Function(Pointer<Utf16> path);
-typedef _CreateDirDart = bool Function(Pointer<Utf16> path);
-typedef _RenameNative = Bool Function(
+typedef DeleteFileOrDirNative = Bool Function(Pointer<Utf16> path);
+typedef DeleteFileOrDirDart = bool Function(Pointer<Utf16> path);
+typedef CreateDirNative = Bool Function(Pointer<Utf16> path);
+typedef CreateDirDart = bool Function(Pointer<Utf16> path);
+typedef RenameNative = Bool Function(
     Pointer<Utf16> oldPath, Pointer<Utf16> newPath);
-typedef _RenameDart = bool Function(
+typedef RenameDart = bool Function(
     Pointer<Utf16> oldPath, Pointer<Utf16> newPath);
 
 // File I/O
-typedef _OpenFileForReadingNative = IntPtr Function(Pointer<Utf16> path);
-typedef _OpenFileForReadingDart = int Function(Pointer<Utf16> path);
-typedef _CreateFileForWritingNative = IntPtr Function(Pointer<Utf16> path);
-typedef _CreateFileForWritingDart = int Function(Pointer<Utf16> path);
-typedef _ReadFileChunkNative = ReadResult Function(
+typedef OpenFileForReadingNative = IntPtr Function(Pointer<Utf16> path);
+typedef OpenFileForReadingDart = int Function(Pointer<Utf16> path);
+typedef CreateFileForWritingNative = IntPtr Function(Pointer<Utf16> path);
+typedef CreateFileForWritingDart = int Function(Pointer<Utf16> path);
+typedef ReadFileChunkNative = ReadResult Function(
     IntPtr handle, Int64 chunkSize);
-typedef _ReadFileChunkDart = ReadResult Function(int handle, int chunkSize);
-typedef _WriteFileChunkNative = Bool Function(
+typedef ReadFileChunkDart = ReadResult Function(int handle, int chunkSize);
+typedef WriteFileChunkNative = Bool Function(
     IntPtr handle, Pointer<Uint8> data, Int32 length);
-typedef _WriteFileChunkDart = bool Function(
+typedef WriteFileChunkDart = bool Function(
     int handle, Pointer<Uint8> data, int length);
-typedef _CloseFileNative = Void Function(IntPtr handle);
-typedef _CloseFileDart = void Function(int handle);
+typedef CloseFileNative = Void Function(IntPtr handle);
+typedef CloseFileDart = void Function(int handle);
 
 // Thumbnail
-typedef _GetThumbnailNative = ThumbnailResult Function(
+typedef GetThumbnailNative = ThumbnailResult Function(
     Pointer<Utf16> path, Int32 size);
-typedef _GetThumbnailDart = ThumbnailResult Function(
+typedef GetThumbnailDart = ThumbnailResult Function(
     Pointer<Utf16> path, int size);
 
 // Memory Management
-typedef _FreeFileListNative = Void Function(Pointer<NativeFileList> list);
-typedef _FreeFileListDart = void Function(Pointer<NativeFileList> list);
-typedef _FreeShareListNative = Void Function(Pointer<NativeShareList> list);
-typedef _FreeShareListDart = void Function(Pointer<NativeShareList> list);
-typedef _FreeReadResultDataNative = Void Function(Pointer<Uint8> data);
-typedef _FreeReadResultDataDart = void Function(Pointer<Uint8> data);
-typedef _FreeThumbnailResultNative = Void Function(ThumbnailResult result);
-typedef _FreeThumbnailResultDart = void Function(ThumbnailResult result);
+typedef FreeFileListNative = Void Function(Pointer<NativeFileList> list);
+typedef FreeFileListDart = void Function(Pointer<NativeFileList> list);
+typedef FreeShareListNative = Void Function(Pointer<NativeShareList> list);
+typedef FreeShareListDart = void Function(Pointer<NativeShareList> list);
+typedef FreeReadResultDataNative = Void Function(Pointer<Uint8> data);
+typedef FreeReadResultDataDart = void Function(Pointer<Uint8> data);
+typedef FreeThumbnailResultNative = Void Function(ThumbnailResult result);
+typedef FreeThumbnailResultDart = void Function(ThumbnailResult result);
 
 /// A class that provides a high-level Dart interface to the native SMB functions.
 class SMBNativeBindings {
   late final DynamicLibrary _lib;
 
   // Function lookups
-  late final _ConnectDart connect;
-  late final _DisconnectDart disconnect;
-  late final _ListDirectoryDart listDirectory;
-  late final _EnumerateSharesDart enumerateShares;
-  late final _DeleteFileOrDirDart deleteFileOrDir;
-  late final _CreateDirDart createDir;
-  late final _RenameDart rename;
-  late final _OpenFileForReadingDart openFileForReading;
-  late final _CreateFileForWritingDart createFileForWriting;
-  late final _ReadFileChunkDart readFileChunk;
-  late final _WriteFileChunkDart writeFileChunk;
-  late final _CloseFileDart closeFile;
-  late final _GetThumbnailDart getThumbnail;
-  late final _FreeFileListDart freeFileList;
-  late final _FreeShareListDart freeShareList;
-  late final _FreeReadResultDataDart freeReadResultData;
-  late final _FreeThumbnailResultDart freeThumbnailResult;
+  late final ConnectDart connect;
+  late final DisconnectDart disconnect;
+  late final ListDirectoryDart listDirectory;
+  late final EnumerateSharesDart enumerateShares;
+  late final DeleteFileOrDirDart deleteFileOrDir;
+  late final CreateDirDart createDir;
+  late final RenameDart rename;
+  late final OpenFileForReadingDart openFileForReading;
+  late final CreateFileForWritingDart createFileForWriting;
+  late final ReadFileChunkDart readFileChunk;
+  late final WriteFileChunkDart writeFileChunk;
+  late final CloseFileDart closeFile;
+  late final GetThumbnailDart getThumbnail;
+  late final FreeFileListDart freeFileList;
+  late final FreeShareListDart freeShareList;
+  late final FreeReadResultDataDart freeReadResultData;
+  late final FreeThumbnailResultDart freeThumbnailResult;
 
   SMBNativeBindings() {
     _lib = DynamicLibrary.open('smb_native.dll');
 
     // Look up the functions
     connect = _lib
-        .lookup<NativeFunction<_ConnectNative>>('Connect')
-        .asFunction<_ConnectDart>();
+        .lookup<NativeFunction<ConnectNative>>('Connect')
+        .asFunction<ConnectDart>();
     disconnect = _lib
-        .lookup<NativeFunction<_DisconnectNative>>('Disconnect')
-        .asFunction<_DisconnectDart>();
+        .lookup<NativeFunction<DisconnectNative>>('Disconnect')
+        .asFunction<DisconnectDart>();
     listDirectory = _lib
-        .lookup<NativeFunction<_ListDirectoryNative>>('ListDirectory')
-        .asFunction<_ListDirectoryDart>();
+        .lookup<NativeFunction<ListDirectoryNative>>('ListDirectory')
+        .asFunction<ListDirectoryDart>();
     enumerateShares = _lib
-        .lookup<NativeFunction<_EnumerateSharesNative>>('EnumerateShares')
-        .asFunction<_EnumerateSharesDart>();
+        .lookup<NativeFunction<EnumerateSharesNative>>('EnumerateShares')
+        .asFunction<EnumerateSharesDart>();
     deleteFileOrDir = _lib
-        .lookup<NativeFunction<_DeleteFileOrDirNative>>('DeleteFileOrDir')
-        .asFunction<_DeleteFileOrDirDart>();
+        .lookup<NativeFunction<DeleteFileOrDirNative>>('DeleteFileOrDir')
+        .asFunction<DeleteFileOrDirDart>();
     createDir = _lib
-        .lookup<NativeFunction<_CreateDirNative>>('CreateDir')
-        .asFunction<_CreateDirDart>();
+        .lookup<NativeFunction<CreateDirNative>>('CreateDir')
+        .asFunction<CreateDirDart>();
     rename = _lib
-        .lookup<NativeFunction<_RenameNative>>('Rename')
-        .asFunction<_RenameDart>();
+        .lookup<NativeFunction<RenameNative>>('Rename')
+        .asFunction<RenameDart>();
     openFileForReading = _lib
-        .lookup<NativeFunction<_OpenFileForReadingNative>>('OpenFileForReading')
-        .asFunction<_OpenFileForReadingDart>();
+        .lookup<NativeFunction<OpenFileForReadingNative>>('OpenFileForReading')
+        .asFunction<OpenFileForReadingDart>();
     createFileForWriting = _lib
-        .lookup<NativeFunction<_CreateFileForWritingNative>>(
+        .lookup<NativeFunction<CreateFileForWritingNative>>(
             'CreateFileForWriting')
-        .asFunction<_CreateFileForWritingDart>();
+        .asFunction<CreateFileForWritingDart>();
     readFileChunk = _lib
-        .lookup<NativeFunction<_ReadFileChunkNative>>('ReadFileChunk')
-        .asFunction<_ReadFileChunkDart>();
+        .lookup<NativeFunction<ReadFileChunkNative>>('ReadFileChunk')
+        .asFunction<ReadFileChunkDart>();
     writeFileChunk = _lib
-        .lookup<NativeFunction<_WriteFileChunkNative>>('WriteFileChunk')
-        .asFunction<_WriteFileChunkDart>();
+        .lookup<NativeFunction<WriteFileChunkNative>>('WriteFileChunk')
+        .asFunction<WriteFileChunkDart>();
     closeFile = _lib
-        .lookup<NativeFunction<_CloseFileNative>>('CloseFile')
-        .asFunction<_CloseFileDart>();
+        .lookup<NativeFunction<CloseFileNative>>('CloseFile')
+        .asFunction<CloseFileDart>();
     getThumbnail = _lib
-        .lookup<NativeFunction<_GetThumbnailNative>>('GetThumbnail')
-        .asFunction<_GetThumbnailDart>();
+        .lookup<NativeFunction<GetThumbnailNative>>('GetThumbnail')
+        .asFunction<GetThumbnailDart>();
     freeFileList = _lib
-        .lookup<NativeFunction<_FreeFileListNative>>('FreeFileList')
-        .asFunction<_FreeFileListDart>();
+        .lookup<NativeFunction<FreeFileListNative>>('FreeFileList')
+        .asFunction<FreeFileListDart>();
     freeShareList = _lib
-        .lookup<NativeFunction<_FreeShareListNative>>('FreeShareList')
-        .asFunction<_FreeShareListDart>();
+        .lookup<NativeFunction<FreeShareListNative>>('FreeShareList')
+        .asFunction<FreeShareListDart>();
     freeReadResultData = _lib
-        .lookup<NativeFunction<_FreeReadResultDataNative>>('FreeReadResultData')
-        .asFunction<_FreeReadResultDataDart>();
+        .lookup<NativeFunction<FreeReadResultDataNative>>('FreeReadResultData')
+        .asFunction<FreeReadResultDataDart>();
     freeThumbnailResult = _lib
-        .lookup<NativeFunction<_FreeThumbnailResultNative>>(
+        .lookup<NativeFunction<FreeThumbnailResultNative>>(
             'FreeThumbnailResult')
-        .asFunction<_FreeThumbnailResultDart>();
+        .asFunction<FreeThumbnailResultDart>();
   }
 }

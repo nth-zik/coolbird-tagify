@@ -68,7 +68,7 @@ class FileOperationsHandler {
       // First try to open with the default app
       ExternalAppHelper.openFileWithApp(file.path, 'shell_open')
           .then((success) {
-        if (!success) {
+        if (!success && context.mounted) {
           // If that fails, show the open with dialog
           showDialog(
             context: context,

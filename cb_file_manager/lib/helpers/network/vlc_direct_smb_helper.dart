@@ -60,24 +60,26 @@ class VlcDirectSmbHelper {
       }
 
       // Open with the unified StreamingMediaPlayer directly
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => Scaffold(
-            backgroundColor: Colors.black,
-            appBar: (Platform.isAndroid || Platform.isIOS) ? null : null,
-            body: SafeArea(
-              top: Platform.isAndroid || Platform.isIOS,
-              bottom: Platform.isAndroid || Platform.isIOS,
-              child: VideoPlayer.smb(
-                smbMrl: smbUrl,
-                fileName: fileName,
-                fileType: fileType,
-                onClose: () => RouteUtils.safePopDialog(context),
+      if (context.mounted) {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => Scaffold(
+              backgroundColor: Colors.black,
+              appBar: (Platform.isAndroid || Platform.isIOS) ? null : null,
+              body: SafeArea(
+                top: Platform.isAndroid || Platform.isIOS,
+                bottom: Platform.isAndroid || Platform.isIOS,
+                child: VideoPlayer.smb(
+                  smbMrl: smbUrl,
+                  fileName: fileName,
+                  fileType: fileType,
+                  onClose: () => RouteUtils.safePopDialog(context),
+                ),
               ),
             ),
           ),
-        ),
-      );
+        );
+      }
     } catch (e) {
       debugPrint('VlcDirectSmbHelper: Error opening media: $e');
 

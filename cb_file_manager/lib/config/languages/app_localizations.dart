@@ -725,4 +725,37 @@ abstract class AppLocalizations {
   String get screenshotCannotOpenTab;
   String get screenshotErrorOpeningFolder;
   String get closeAction;
+
+  // Video library
+  String get videoLibrary;
+  String get videoLibraries;
+  String get createVideoLibrary;
+  String get editVideoLibrary;
+  String get deleteVideoLibrary;
+  String get addVideoSource;
+  String get removeVideoSource;
+  String get videoSources;
+  String get noVideoSources;
+  String get filterByTags;
+  String get clearTagFilter;
+  String get recentVideos;
+  String get videoHubTitle;
+  String get videoHubWelcome;
+  String get manageVideoLibraries;
+  String get videoCount;
+  String get scanForVideos;
+  String get rescanLibrary;
+  String deleteVideoLibraryConfirmation(String name);
+  String get libraryDeletedSuccessfully;
+  String get sourceAdded;
+  String get sourceRemoved;
+  String get selectVideoSource;
+  String get videoLibrarySettings;
+  String get manageVideoSources;
+  String get videoExtensions;
+  String get includeSubdirectories;
+  String get noVideosInLibrary;
+  String get libraryCreatedSuccessfully;
+  String videoLibraryCount(int count);
 }
+

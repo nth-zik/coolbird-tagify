@@ -32,9 +32,9 @@ class FTPService implements NetworkServiceBase {
   final Map<String, dynamic> _lastConnectionInfo = {};
 
   // FTP metadata storage (UI path -> meta)
-  final Map<String, _FtpMeta> _metaMap = {};
+  final Map<String, FtpMeta> _metaMap = {};
 
-  _FtpMeta? getMeta(String uiPath) => _metaMap[uiPath];
+  FtpMeta? getMeta(String uiPath) => _metaMap[uiPath];
 
   @override
   String get serviceName => 'FTP';
@@ -234,7 +234,7 @@ class FTPService implements NetworkServiceBase {
             final dir = Directory(uiPath);
             result.add(dir);
             // Save metadata for directory
-            _metaMap[uiPath] = _FtpMeta(
+            _metaMap[uiPath] = FtpMeta(
               size: -1,
               modified: item.lastModified,
               isDirectory: true,
@@ -246,7 +246,7 @@ class FTPService implements NetworkServiceBase {
             final file = File(uiPath);
             result.add(file);
             // Save metadata for file
-            _metaMap[uiPath] = _FtpMeta(
+            _metaMap[uiPath] = FtpMeta(
               size: item.size,
               modified: item.lastModified,
               isDirectory: false,
@@ -737,12 +737,17 @@ class FTPService implements NetworkServiceBase {
   }
 }
 
-class _FtpMeta {
+/// FTP metadata class
+class FtpMeta {
   final int size; // -1 for directories/unknown
   final DateTime? modified;
   final bool isDirectory;
-  const _FtpMeta(
-      {required this.size, required this.modified, required this.isDirectory});
+
+  const FtpMeta({
+    required this.size,
+    required this.modified,
+    required this.isDirectory,
+  });
 }
 
 // Helper class for dynamic loading

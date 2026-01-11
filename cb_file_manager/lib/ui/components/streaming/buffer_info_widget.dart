@@ -116,20 +116,20 @@ class _BufferInfoWidgetState extends State<BufferInfoWidget>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Colors.black.withOpacity(0.9),
-            Colors.black.withOpacity(0.7),
+            Colors.black.withValues(alpha: 0.9),
+            Colors.black.withValues(alpha: 0.7),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: _isActive
-              ? Colors.purple.withOpacity(0.5)
-              : Colors.grey.withOpacity(0.3),
+              ? Colors.purple.withValues(alpha: 0.5)
+              : Colors.grey.withValues(alpha: 0.3),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -161,7 +161,7 @@ class _BufferInfoWidgetState extends State<BufferInfoWidget>
                             boxShadow: _isActive
                                 ? [
                                     BoxShadow(
-                                      color: _getBufferColor().withOpacity(0.5),
+                                      color: _getBufferColor().withValues(alpha: 0.5),
                                       blurRadius: 8,
                                       spreadRadius: 2,
                                     ),
@@ -187,8 +187,8 @@ class _BufferInfoWidgetState extends State<BufferInfoWidget>
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: _isActive
-                      ? Colors.purple.withOpacity(0.2)
-                      : Colors.grey.withOpacity(0.2),
+                      ? Colors.purple.withValues(alpha: 0.2)
+                      : Colors.grey.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -277,7 +277,7 @@ class _BufferInfoWidgetState extends State<BufferInfoWidget>
           Container(
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(2),
             ),
             child: ClipRRect(

@@ -124,7 +124,7 @@ class _FolderDetailsItemState extends State<FolderDetailsItem> {
 
     // Calculate colors based on selection state
     final Color itemBackgroundColor = _visuallySelected
-        ? Theme.of(context).primaryColor.withOpacity(0.15)
+        ? Theme.of(context).primaryColor.withValues(alpha: 0.15)
         : _isHovering && widget.isDesktopMode
             ? isDarkMode
                 ? Colors.grey[800]!

@@ -275,7 +275,7 @@ class _TagManagementSectionState extends State<TagManagementSection> {
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: Theme.of(context).primaryColor.withOpacity(0.5),
+                        color: Theme.of(context).primaryColor.withValues(alpha: 0.5),
                         width: 1,
                       ),
                     ),
@@ -290,8 +290,8 @@ class _TagManagementSectionState extends State<TagManagementSection> {
                     prefixIcon: const Icon(Icons.local_offer, size: 24),
                     filled: true,
                     fillColor: isDarkMode
-                        ? Colors.grey[800]!.withOpacity(0.7)
-                        : Colors.grey[100]!.withOpacity(0.7),
+                        ? Colors.grey[800]!.withValues(alpha: 0.7)
+                        : Colors.grey[100]!.withValues(alpha: 0.7),
                   ),
                   style: const TextStyle(fontSize: 18),
                   onChanged: (updatedTags) async {
@@ -357,7 +357,7 @@ class _TagManagementSectionState extends State<TagManagementSection> {
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
+                      color: Colors.black.withValues(alpha: 0.3),
                       blurRadius: 10,
                       spreadRadius: 2,
                       offset: const Offset(0, 4),
@@ -365,7 +365,7 @@ class _TagManagementSectionState extends State<TagManagementSection> {
                   ],
                   border: Border.all(
                     color:
-                        Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                        Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
                     width: 1.5,
                   ),
                 ),
@@ -381,7 +381,7 @@ class _TagManagementSectionState extends State<TagManagementSection> {
                           color: Theme.of(context)
                               .colorScheme
                               .primary
-                              .withOpacity(0.1),
+                              .withValues(alpha: 0.1),
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 10),
                           child: Row(
@@ -420,7 +420,7 @@ class _TagManagementSectionState extends State<TagManagementSection> {
                         Divider(
                             height: 1,
                             thickness: 1,
-                            color: Colors.grey.withOpacity(0.2)),
+                            color: Colors.grey.withValues(alpha: 0.2)),
                         Expanded(
                           // Wrap ListView.builder with Expanded
                           child: ListView.builder(

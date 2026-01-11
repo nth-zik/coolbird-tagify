@@ -135,20 +135,20 @@ class _StreamSpeedIndicatorState extends State<StreamSpeedIndicator>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Colors.black.withOpacity(0.9),
-            Colors.black.withOpacity(0.7),
+            Colors.black.withValues(alpha: 0.9),
+            Colors.black.withValues(alpha: 0.7),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: _isActive
-              ? Colors.blue.withOpacity(0.5)
-              : Colors.grey.withOpacity(0.3),
+              ? Colors.blue.withValues(alpha: 0.5)
+              : Colors.grey.withValues(alpha: 0.3),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -178,7 +178,7 @@ class _StreamSpeedIndicatorState extends State<StreamSpeedIndicator>
                             boxShadow: _isActive
                                 ? [
                                     BoxShadow(
-                                      color: Colors.green.withOpacity(0.5),
+                                      color: Colors.green.withValues(alpha: 0.5),
                                       blurRadius: 8,
                                       spreadRadius: 2,
                                     ),
@@ -204,8 +204,8 @@ class _StreamSpeedIndicatorState extends State<StreamSpeedIndicator>
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: _isActive
-                      ? Colors.green.withOpacity(0.2)
-                      : Colors.grey.withOpacity(0.2),
+                      ? Colors.green.withValues(alpha: 0.2)
+                      : Colors.grey.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -272,7 +272,7 @@ class _StreamSpeedIndicatorState extends State<StreamSpeedIndicator>
             Container(
               height: 30,
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: ClipRRect(
@@ -308,8 +308,8 @@ class SpeedGraphPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          Colors.blue.withOpacity(0.3),
-          Colors.blue.withOpacity(0.1),
+          Colors.blue.withValues(alpha: 0.3),
+          Colors.blue.withValues(alpha: 0.1),
         ],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
       ..style = PaintingStyle.fill;

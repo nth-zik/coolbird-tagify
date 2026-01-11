@@ -18,15 +18,22 @@ import 'dart:math';
 import 'package:cb_file_manager/helpers/files/folder_sort_manager.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import '../../tab_manager/mobile/mobile_file_actions_controller.dart';
+import 'package:cb_file_manager/models/objectbox/video_library.dart';
+import 'package:cb_file_manager/services/video_library_service.dart';
+import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
+import 'package:cb_file_manager/ui/screens/folder_list/components/file_grid_item.dart';
+import 'widgets/video_tag_filter_bar.dart';
 
 class VideoGalleryScreen extends StatefulWidget {
   final String path;
   final bool recursive;
+  final VideoLibrary? library;
 
   const VideoGalleryScreen({
     Key? key,
     required this.path,
     this.recursive = true,
+    this.library,
   }) : super(key: key);
 
   @override
@@ -57,6 +64,9 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
   bool _isSelectionMode = false;
   final Set<String> _selectedFilePaths = {};
   String? _searchQuery;
+
+  // Tag filtering
+  final Set<String> _selectedTags = {};
 
   // Mobile actions controller
   MobileFileActionsController? _mobileController;
@@ -214,13 +224,55 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
       _isLoadingVideos = true;
     });
 
-    _videoFilesFuture = getAllVideos(widget.path, recursive: widget.recursive);
+    // Load videos from library or path
+    if (widget.library != null) {
+      _loadVideosFromLibrary();
+    } else {
+      _loadVideosFromPath();
+    }
+  }
 
-    _videoFilesFuture.then((videos) {
+  Future<void> _loadVideosFromLibrary() async {
+    try {
+      final service = VideoLibraryService();
+      
+      debugPrint('VideoGallery: Loading videos from library ID: ${widget.library!.id}');
+      
+      // Get videos from library, optionally filtered by tags
+      List<String> videoPaths;
+      if (_selectedTags.isNotEmpty) {
+        // Get videos matching all selected tags
+        final Set<String> allVideos = {};
+        for (final tag in _selectedTags) {
+          final taggedVideos = await service.getVideosByTag(
+            tag,
+            libraryId: widget.library!.id,
+          );
+          if (allVideos.isEmpty) {
+            allVideos.addAll(taggedVideos);
+          } else {
+            // Intersection: keep only videos that have all tags
+            allVideos.retainWhere((path) => taggedVideos.contains(path));
+          }
+        }
+        videoPaths = allVideos.toList();
+      } else {
+        // Get all videos from library
+        videoPaths = await service.getLibraryFiles(widget.library!.id);
+      }
+
+      // Convert paths to File objects
+      final videos = videoPaths.map((path) => File(path)).toList();
+
+      debugPrint('VideoGallery: Loaded ${videos.length} videos from library');
+      if (videos.isNotEmpty) {
+        debugPrint('VideoGallery: First 3 videos: ${videos.take(3).map((v) => v.path).join(", ")}');
+      }
+
       if (_isMounted) {
         setState(() {
           _videoFiles = videos;
-          _isLoadingVideos = false; // Mark loading as complete
+          _isLoadingVideos = false;
           _sortVideoFiles();
 
           if (videos.isNotEmpty) {
@@ -229,6 +281,82 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
         });
 
         if (videos.isNotEmpty) {
+          // Trigger thumbnail generation for all videos (not just first 40)
+          // Use higher limit to ensure all visible videos get thumbnails
+          final preloadCount = videoPaths.length > 100 ? 100 : videoPaths.length;
+          final preloadPaths = videoPaths.take(preloadCount).toList();
+          
+          debugPrint('VideoGallery: Preloading $preloadCount thumbnails from ${videoPaths.length} total videos');
+          
+          // Force generate thumbnails for videos without cache
+          for (final path in preloadPaths) {
+            VideoThumbnailHelper.generateThumbnail(
+              path,
+              isPriority: false,
+            ).catchError((e) {
+              debugPrint('Failed to generate thumbnail for $path: $e');
+              return null;
+            });
+          }
+          
+          VideoThumbnailHelper.optimizedBatchPreload(preloadPaths).then((_) {
+            debugPrint('VideoGallery: Thumbnail preload complete');
+            if (_isMounted) {
+              setState(() {
+                _isLoadingThumbnails = false;
+              });
+            }
+          });
+        }
+      }
+    } catch (error) {
+      debugPrint('VideoGallery: Error loading videos from library: $error');
+      if (_isMounted) {
+        setState(() {
+          _isLoadingVideos = false;
+        });
+        debugPrint('Error loading videos from library: $error');
+      }
+    }
+  }
+
+  Future<void> _loadVideosFromPath() async {
+    _videoFilesFuture = getAllVideos(widget.path, recursive: widget.recursive);
+
+    _videoFilesFuture.then((videos) async {
+      if (_isMounted) {
+        // Apply tag filtering if tags are selected
+        List<File> filteredVideos = videos;
+        if (_selectedTags.isNotEmpty) {
+          // Tag filtering needs to be async, so we filter after loading
+          final filtered = <File>[];
+          for (final file in videos) {
+            bool hasAllTags = true;
+            for (final tag in _selectedTags) {
+              final tags = await TagManager.getTags(file.path);
+              if (!tags.contains(tag)) {
+                hasAllTags = false;
+                break;
+              }
+            }
+            if (hasAllTags) {
+              filtered.add(file);
+            }
+          }
+          filteredVideos = filtered;
+        }
+
+        setState(() {
+          _videoFiles = filteredVideos;
+          _isLoadingVideos = false; // Mark loading as complete
+          _sortVideoFiles();
+
+          if (filteredVideos.isNotEmpty) {
+            _isLoadingThumbnails = true;
+          }
+        });
+
+        if (filteredVideos.isNotEmpty) {
           // Sử dụng VideoThumbnailHelper
           final videoPaths = videos.map((file) => file.path).toList();
 
@@ -435,12 +563,6 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
     }
   }
 
-  double _calculateThumbnailSize(BuildContext context, int columns) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final availableWidth = screenWidth - 16 - ((columns - 1) * 8);
-    return availableWidth / columns;
-  }
-
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -491,7 +613,9 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
     final isMobile = Platform.isAndroid || Platform.isIOS;
 
     return BaseScreen(
-      title: 'Video Gallery: ${pathlib.basename(widget.path)}',
+      title: widget.library != null
+          ? widget.library!.name
+          : 'Video Gallery: ${pathlib.basename(widget.path)}',
       actions: actions,
       showAppBar: !isMobile, // Hide AppBar on mobile
       body: isMobile
@@ -544,14 +668,36 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
     if (_videoFiles.isEmpty) {
       return Center(
         child: Text(
-          localizations.noVideosFound,
+          _selectedTags.isNotEmpty
+              ? localizations.noVideosInLibrary
+              : localizations.noVideosFound,
           style: const TextStyle(fontSize: 16),
         ),
       );
     }
 
-    return Stack(
+    return Column(
       children: [
+        // Tag Filter Bar
+        if (widget.library != null || widget.path.isNotEmpty)
+          VideoTagFilterBar(
+            selectedTags: _selectedTags,
+            onTagsChanged: (newTags) {
+              setState(() {
+                _selectedTags.clear();
+                _selectedTags.addAll(newTags);
+              });
+              _loadVideos();
+            },
+            libraryPath: widget.library != null ? null : widget.path,
+            globalSearch: widget.library != null,
+          ),
+
+        // Main video content
+        Expanded(
+          child: Stack(
+            children: [
+              // Tìm kiếm và hiển thị kết quả
         // Tìm kiếm và hiển thị kết quả
         if (_searchQuery != null && _searchQuery!.isNotEmpty)
           Padding(
@@ -621,6 +767,9 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
               ),
             ),
           ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -628,75 +777,55 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
   // Hiển thị video dạng lưới
   Widget _buildGridView() {
     final columns = _thumbnailSize.round();
-    final thumbnailSize = _calculateThumbnailSize(context, columns);
 
     return GridView.builder(
       controller: _scrollController,
-      padding: const EdgeInsets.all(2.0),
-      // Tối ưu scroll physics để cuộn mượt hơn
+      padding: const EdgeInsets.all(8.0),
       physics: const BouncingScrollPhysics(
         parent: AlwaysScrollableScrollPhysics(),
       ),
-      // Sử dụng caching cho các mục để tránh rebuild khi cuộn
-      cacheExtent: 500, // Cache nhiều hơn để giảm loading khi cuộn nhanh
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: columns,
-        crossAxisSpacing: 2,
-        mainAxisSpacing: 2,
-        childAspectRatio: 16 / 12,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 0.85, // Standard file grid ratio
       ),
       itemCount: _filteredVideos.length,
       itemBuilder: (context, index) {
         final file = _filteredVideos[index];
         final isSelected = _selectedFilePaths.contains(file.path);
-        // Dùng placeholderOnly khi đang cuộn để giảm tải cho main thread
-        final bool usePlaceholder = _isScrolling;
 
-        return Stack(
-          children: [
-            OptimizedVideoThumbnailItem(
-              file: file,
-              width: thumbnailSize,
-              height: thumbnailSize * 12 / 16,
-              usePlaceholder: usePlaceholder, // Thêm flag này
-              onTap: _isSelectionMode
-                  ? () {
-                      setState(() {
-                        if (isSelected) {
-                          _selectedFilePaths.remove(file.path);
-                        } else {
-                          _selectedFilePaths.add(file.path);
-                        }
-                      });
-                    }
-                  : () {
-                      Navigator.of(context, rootNavigator: true).push(
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              VideoPlayerFullScreen(file: file),
-                        ),
-                      );
-                    },
-            ),
-
-            // Hiển thị biểu tượng chọn nếu đang ở chế độ chọn
-            if (_isSelectionMode)
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withAlpha(128),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    isSelected ? Icons.check_circle : Icons.circle_outlined,
-                    color: isSelected ? Colors.blue : Colors.white,
-                    size: 24,
-                  ),
+        return FileGridItem(
+          file: file,
+          isSelected: isSelected,
+          isSelectionMode: _isSelectionMode,
+          isDesktopMode: !Platform.isAndroid && !Platform.isIOS,
+          toggleFileSelection: (path, {shiftSelect = false, ctrlSelect = false}) {
+            setState(() {
+              if (isSelected) {
+                _selectedFilePaths.remove(path);
+              } else {
+                _selectedFilePaths.add(path);
+              }
+            });
+          },
+          toggleSelectionMode: () {
+            setState(() {
+              _isSelectionMode = !_isSelectionMode;
+              if (!_isSelectionMode) {
+                _selectedFilePaths.clear();
+              }
+            });
+          },
+          onFileTap: (file, isVideo) {
+            if (isVideo) {
+              Navigator.of(context, rootNavigator: true).push(
+                MaterialPageRoute(
+                  builder: (context) => VideoPlayerFullScreen(file: file),
                 ),
-              ),
-          ],
+              );
+            }
+          },
         );
       },
     );
@@ -822,7 +951,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
             margin: EdgeInsets.zero,
             decoration: BoxDecoration(
               color: isSelected
-                  ? theme.colorScheme.primary.withOpacity(0.1)
+                  ? theme.colorScheme.primary.withValues(alpha: 0.1)
                   : Colors.transparent,
             ),
             child: listTile,
@@ -891,7 +1020,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
             width: itemWidth,
             height: itemHeight + 32, // Extra space for text area
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Column(
@@ -900,26 +1029,26 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
                 Expanded(
                   child: Container(
                     color: theme.colorScheme.surfaceContainerHighest
-                        .withOpacity(0.5),
+                        .withValues(alpha: 0.5),
                     child: Center(
                       child: Icon(
                         Icons.movie,
                         size: 48,
                         color:
-                            theme.colorScheme.onSurfaceVariant.withOpacity(0.3),
+                            theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
                       ),
                     ),
                   ),
                 ),
                 Container(
                   color: theme.colorScheme.surfaceContainerHighest
-                      .withOpacity(0.5),
+                      .withValues(alpha: 0.5),
                   padding: const EdgeInsets.all(8),
                   child: Container(
                     height: 12,
                     decoration: BoxDecoration(
                       color:
-                          theme.colorScheme.onSurfaceVariant.withOpacity(0.2),
+                          theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
@@ -936,18 +1065,18 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
           width: 60,
           height: 60,
           decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(4),
           ),
           child: Icon(
             Icons.movie,
-            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.3),
+            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
           ),
         ),
         title: Container(
           height: 14,
           decoration: BoxDecoration(
-            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.2),
+            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(4),
           ),
         ),
@@ -957,7 +1086,7 @@ class _VideoGalleryScreenState extends State<VideoGalleryScreen>
             height: 12,
             width: double.infinity,
             decoration: BoxDecoration(
-              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.1),
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(4),
             ),
           ),
@@ -1061,7 +1190,7 @@ class OptimizedVideoThumbnailItem extends StatelessWidget {
 
             // Filename overlay ở dưới
             Container(
-              color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
               padding: EdgeInsets.all(width > 100 ? 8 : 4),
               child: Text(
                 pathlib.basename(file.path),

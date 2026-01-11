@@ -70,7 +70,7 @@ class GalleryMasonryTile extends StatelessWidget {
         ClipRRect(
           borderRadius: BorderRadius.circular(10),
           child: Container(
-            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
             child: AspectRatio(
               aspectRatio: ratio,
               child: Hero(
@@ -111,7 +111,7 @@ class GalleryMasonryTile extends StatelessWidget {
                 end: Alignment.bottomCenter,
                 colors: [
                   Colors.transparent,
-                  Colors.black.withOpacity(0.6),
+                  Colors.black.withValues(alpha: 0.6),
                 ],
               ),
             ),
@@ -136,7 +136,7 @@ class GalleryMasonryTile extends StatelessWidget {
             right: 8,
             child: Container(
               decoration: BoxDecoration(
-                color: theme.colorScheme.surface.withOpacity(0.7),
+                color: theme.colorScheme.surface.withValues(alpha: 0.7),
                 shape: BoxShape.circle,
               ),
               child: Icon(

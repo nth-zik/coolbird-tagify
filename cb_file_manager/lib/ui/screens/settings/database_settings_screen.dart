@@ -129,11 +129,13 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
       if (value && !_isUsingObjectBox) {
         // Switch from JSON to ObjectBox - migrate the data
         final migratedCount = await TagManager.migrateFromJsonToObjectBox();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content:
-                  Text('Migrated $migratedCount files to ObjectBox database')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content:
+                    Text('Migrated $migratedCount files to ObjectBox database')),
+          );
+        }
       }
 
       _isUsingObjectBox = value;
@@ -141,9 +143,11 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
       // Reload statistics
       await _loadStatistics();
 
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       debugPrint('Error toggling ObjectBox: $e');
 
@@ -151,13 +155,15 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
       await _preferences.setUsingObjectBox(!value);
       _isUsingObjectBox = !value;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
 
-      setState(() {
-        _isLoading = false;
-      });
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -171,9 +177,11 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
       await _preferences.setCloudSyncEnabled(value);
       _isCloudSyncEnabled = value;
 
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       debugPrint('Error toggling cloud sync: $e');
 
@@ -182,13 +190,15 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
       await _preferences.setCloudSyncEnabled(!value);
       _isCloudSyncEnabled = !value;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
 
-      setState(() {
-        _isLoading = false;
-      });
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -207,29 +217,33 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
     try {
       final success = await _databaseManager.syncToCloud();
 
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Data synced to cloud successfully')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error syncing to cloud')),
-        );
-      }
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Data synced to cloud successfully')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Error syncing to cloud')),
+          );
+        }
 
-      setState(() {
-        _isSyncing = false;
-      });
+        setState(() {
+          _isSyncing = false;
+        });
+      }
     } catch (e) {
       debugPrint('Error syncing to cloud: $e');
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
 
-      setState(() {
-        _isSyncing = false;
-      });
+        setState(() {
+          _isSyncing = false;
+        });
+      }
     }
   }
 
@@ -252,28 +266,36 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
         // Reload statistics
         await _loadStatistics();
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Data synced from cloud successfully')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Data synced from cloud successfully')),
+          );
+        }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error syncing from cloud')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Error syncing from cloud')),
+          );
+        }
       }
 
-      setState(() {
-        _isSyncing = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isSyncing = false;
+        });
+      }
     } catch (e) {
       debugPrint('Error syncing from cloud: $e');
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
 
-      setState(() {
-        _isSyncing = false;
-      });
+        setState(() {
+          _isSyncing = false;
+        });
+      }
     }
   }
 
@@ -632,7 +654,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
                         backgroundColor: Theme.of(context)
                             .colorScheme
                             .primary
-                            .withOpacity(0.2),
+                            .withValues(alpha: 0.2),
                         avatar: CircleAvatar(
                           backgroundColor:
                               Theme.of(context).colorScheme.primary,

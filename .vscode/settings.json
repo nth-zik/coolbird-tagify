@@ -40,7 +40,8 @@
     "xlocmes": "cpp",
     "xlocmon": "cpp",
     "xlocnum": "cpp",
-    "xloctime": "cpp"
+    "xloctime": "cpp",
+    "algorithm": "cpp"
   },
   "cmake.ignoreCMakeListsMissing": true,
   "terminal.integrated.defaultProfile.windows": "PowerShell",

@@ -24,7 +24,7 @@ class GalleryControls extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
               decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
+                color: Colors.blue.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -55,7 +55,7 @@ class GalleryControls extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.35),
+                  color: Colors.black.withValues(alpha: 0.35),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(

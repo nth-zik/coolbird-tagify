@@ -239,7 +239,7 @@ class MobileTabView extends StatelessWidget {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.3),
+                  color: Colors.grey.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -619,8 +619,8 @@ class MobileTabView extends StatelessWidget {
   }) {
     final theme = Theme.of(context);
     final borderColor = isActive
-        ? theme.colorScheme.primary.withOpacity(0.5)
-        : theme.dividerColor.withOpacity(0.3);
+        ? theme.colorScheme.primary.withValues(alpha: 0.5)
+        : theme.dividerColor.withValues(alpha: 0.3);
 
     return InkWell(
       borderRadius: BorderRadius.circular(12),
@@ -637,7 +637,7 @@ class MobileTabView extends StatelessWidget {
           border: Border.all(color: borderColor),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -700,7 +700,7 @@ class MobileTabView extends StatelessWidget {
                       width: double.infinity,
                       decoration: BoxDecoration(
                         color:
-                            theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                            theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       alignment: Alignment.center,
@@ -883,7 +883,7 @@ class MobileTabView extends StatelessWidget {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.3),
+                    color: Colors.grey.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -1046,7 +1046,7 @@ class MobileTabView extends StatelessWidget {
                                   horizontal: 12, vertical: 8),
                               decoration: BoxDecoration(
                                 color: isCurrentPath
-                                    ? theme.colorScheme.primary.withOpacity(0.2)
+                                    ? theme.colorScheme.primary.withValues(alpha: 0.2)
                                     : isDarkMode
                                         ? Colors.grey[800]
                                         : Colors.grey[200],

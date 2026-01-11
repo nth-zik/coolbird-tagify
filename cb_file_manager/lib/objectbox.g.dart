@@ -20,6 +20,9 @@ import 'models/objectbox/album_config.dart';
 import 'models/objectbox/album_file.dart';
 import 'models/objectbox/file_tag.dart';
 import 'models/objectbox/user_preference.dart';
+import 'models/objectbox/video_library.dart';
+import 'models/objectbox/video_library_config.dart';
+import 'models/objectbox/video_library_file.dart';
 
 export 'package:objectbox/objectbox.dart'; // so that callers only have to import this file
 
@@ -397,6 +400,220 @@ final _entities = <obx_int.ModelEntity>[
     relations: <obx_int.ModelRelation>[],
     backlinks: <obx_int.ModelBacklink>[],
   ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(7, 1221758574361293866),
+    name: 'VideoLibrary',
+    lastPropertyId: const obx_int.IdUid(8, 4150308620522179873),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 5584380311508327753),
+        name: 'id',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 7074027490295188885),
+        name: 'name',
+        type: 9,
+        flags: 2048,
+        indexId: const obx_int.IdUid(8, 1356818697637944965),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 1854028471052069891),
+        name: 'description',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 3855235098721891924),
+        name: 'coverImagePath',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(5, 2054462555020246138),
+        name: 'createdAt',
+        type: 10,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(6, 4067516748570721321),
+        name: 'modifiedAt',
+        type: 10,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(7, 6536621792474958007),
+        name: 'colorTheme',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(8, 4150308620522179873),
+        name: 'isSystemLibrary',
+        type: 1,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(8, 5839977632250564203),
+    name: 'VideoLibraryConfig',
+    lastPropertyId: const obx_int.IdUid(16, 567327745562898334),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 6174414858218042375),
+        name: 'id',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 915473089431133066),
+        name: 'videoLibraryId',
+        type: 6,
+        flags: 8,
+        indexId: const obx_int.IdUid(9, 1976672364964737810),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 5957568411830936336),
+        name: 'includeSubdirectories',
+        type: 1,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 8689645382577592670),
+        name: 'fileExtensions',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(5, 4375848151248213422),
+        name: 'autoRefresh',
+        type: 1,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(6, 564004514557567819),
+        name: 'maxFileCount',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(7, 3223141345054565399),
+        name: 'sortBy',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(8, 8870670427647753203),
+        name: 'sortAscending',
+        type: 1,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(9, 6856377625356011510),
+        name: 'excludePatterns',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(10, 7400570477919294979),
+        name: 'enableAutoRules',
+        type: 1,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(11, 9118617357795126334),
+        name: 'directories',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(12, 1396750611570234461),
+        name: 'lastScanTime',
+        type: 10,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(13, 5847118959332538714),
+        name: 'fileCount',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(14, 4485512187051438041),
+        name: 'fileExtensionsList',
+        type: 30,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(15, 295225553395887163),
+        name: 'excludePatternsList',
+        type: 30,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(16, 567327745562898334),
+        name: 'directoriesList',
+        type: 30,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(9, 1050307742319782002),
+    name: 'VideoLibraryFile',
+    lastPropertyId: const obx_int.IdUid(6, 693465544661155762),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 4735548239728623352),
+        name: 'id',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 8336295703818267215),
+        name: 'videoLibraryId',
+        type: 6,
+        flags: 8,
+        indexId: const obx_int.IdUid(10, 477406062999369568),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 9220028997854741047),
+        name: 'filePath',
+        type: 9,
+        flags: 2048,
+        indexId: const obx_int.IdUid(11, 6189961830114533234),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 2278951804529003072),
+        name: 'addedAt',
+        type: 10,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(5, 3845029734220531780),
+        name: 'caption',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(6, 693465544661155762),
+        name: 'orderIndex',
+        type: 6,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
 ];
 
 /// Shortcut for [obx.Store.new] that passes [getObjectBoxModel] and for Flutter
@@ -437,8 +654,8 @@ Future<obx.Store> openStore({
 obx_int.ModelDefinition getObjectBoxModel() {
   final model = obx_int.ModelInfo(
     entities: _entities,
-    lastEntityId: const obx_int.IdUid(6, 8093577245119292471),
-    lastIndexId: const obx_int.IdUid(7, 8272886834281330939),
+    lastEntityId: const obx_int.IdUid(9, 1050307742319782002),
+    lastIndexId: const obx_int.IdUid(11, 6189961830114533234),
     lastRelationId: const obx_int.IdUid(0, 0),
     lastSequenceId: const obx_int.IdUid(0, 0),
     retiredEntityUids: const [],
@@ -920,6 +1137,278 @@ obx_int.ModelDefinition getObjectBoxModel() {
         return object;
       },
     ),
+    VideoLibrary: obx_int.EntityDefinition<VideoLibrary>(
+      model: _entities[6],
+      toOneRelations: (VideoLibrary object) => [],
+      toManyRelations: (VideoLibrary object) => {},
+      getId: (VideoLibrary object) => object.id,
+      setId: (VideoLibrary object, int id) {
+        object.id = id;
+      },
+      objectToFB: (VideoLibrary object, fb.Builder fbb) {
+        final nameOffset = fbb.writeString(object.name);
+        final descriptionOffset = object.description == null
+            ? null
+            : fbb.writeString(object.description!);
+        final coverImagePathOffset = object.coverImagePath == null
+            ? null
+            : fbb.writeString(object.coverImagePath!);
+        final colorThemeOffset = object.colorTheme == null
+            ? null
+            : fbb.writeString(object.colorTheme!);
+        fbb.startTable(9);
+        fbb.addInt64(0, object.id);
+        fbb.addOffset(1, nameOffset);
+        fbb.addOffset(2, descriptionOffset);
+        fbb.addOffset(3, coverImagePathOffset);
+        fbb.addInt64(4, object.createdAt.millisecondsSinceEpoch);
+        fbb.addInt64(5, object.modifiedAt.millisecondsSinceEpoch);
+        fbb.addOffset(6, colorThemeOffset);
+        fbb.addBool(7, object.isSystemLibrary);
+        fbb.finish(fbb.endTable());
+        return object.id;
+      },
+      objectFromFB: (obx.Store store, ByteData fbData) {
+        final buffer = fb.BufferContext(fbData);
+        final rootOffset = buffer.derefObject(0);
+        final nameParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 6, '');
+        final descriptionParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGetNullable(buffer, rootOffset, 8);
+        final coverImagePathParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGetNullable(buffer, rootOffset, 10);
+        final createdAtParam = DateTime.fromMillisecondsSinceEpoch(
+          const fb.Int64Reader().vTableGet(buffer, rootOffset, 12, 0),
+        );
+        final modifiedAtParam = DateTime.fromMillisecondsSinceEpoch(
+          const fb.Int64Reader().vTableGet(buffer, rootOffset, 14, 0),
+        );
+        final colorThemeParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGetNullable(buffer, rootOffset, 16);
+        final isSystemLibraryParam = const fb.BoolReader().vTableGet(
+          buffer,
+          rootOffset,
+          18,
+          false,
+        );
+        final object = VideoLibrary(
+          name: nameParam,
+          description: descriptionParam,
+          coverImagePath: coverImagePathParam,
+          createdAt: createdAtParam,
+          modifiedAt: modifiedAtParam,
+          colorTheme: colorThemeParam,
+          isSystemLibrary: isSystemLibraryParam,
+        )..id = const fb.Int64Reader().vTableGet(buffer, rootOffset, 4, 0);
+
+        return object;
+      },
+    ),
+    VideoLibraryConfig: obx_int.EntityDefinition<VideoLibraryConfig>(
+      model: _entities[7],
+      toOneRelations: (VideoLibraryConfig object) => [],
+      toManyRelations: (VideoLibraryConfig object) => {},
+      getId: (VideoLibraryConfig object) => object.id,
+      setId: (VideoLibraryConfig object, int id) {
+        object.id = id;
+      },
+      objectToFB: (VideoLibraryConfig object, fb.Builder fbb) {
+        final fileExtensionsOffset = fbb.writeString(object.fileExtensions);
+        final sortByOffset = fbb.writeString(object.sortBy);
+        final excludePatternsOffset = fbb.writeString(object.excludePatterns);
+        final directoriesOffset = fbb.writeString(object.directories);
+        final fileExtensionsListOffset = fbb.writeList(
+          object.fileExtensionsList
+              .map(fbb.writeString)
+              .toList(growable: false),
+        );
+        final excludePatternsListOffset = fbb.writeList(
+          object.excludePatternsList
+              .map(fbb.writeString)
+              .toList(growable: false),
+        );
+        final directoriesListOffset = fbb.writeList(
+          object.directoriesList.map(fbb.writeString).toList(growable: false),
+        );
+        fbb.startTable(17);
+        fbb.addInt64(0, object.id);
+        fbb.addInt64(1, object.videoLibraryId);
+        fbb.addBool(2, object.includeSubdirectories);
+        fbb.addOffset(3, fileExtensionsOffset);
+        fbb.addBool(4, object.autoRefresh);
+        fbb.addInt64(5, object.maxFileCount);
+        fbb.addOffset(6, sortByOffset);
+        fbb.addBool(7, object.sortAscending);
+        fbb.addOffset(8, excludePatternsOffset);
+        fbb.addBool(9, object.enableAutoRules);
+        fbb.addOffset(10, directoriesOffset);
+        fbb.addInt64(11, object.lastScanTime?.millisecondsSinceEpoch);
+        fbb.addInt64(12, object.fileCount);
+        fbb.addOffset(13, fileExtensionsListOffset);
+        fbb.addOffset(14, excludePatternsListOffset);
+        fbb.addOffset(15, directoriesListOffset);
+        fbb.finish(fbb.endTable());
+        return object.id;
+      },
+      objectFromFB: (obx.Store store, ByteData fbData) {
+        final buffer = fb.BufferContext(fbData);
+        final rootOffset = buffer.derefObject(0);
+        final lastScanTimeValue = const fb.Int64Reader().vTableGetNullable(
+          buffer,
+          rootOffset,
+          26,
+        );
+        final videoLibraryIdParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          6,
+          0,
+        );
+        final includeSubdirectoriesParam = const fb.BoolReader().vTableGet(
+          buffer,
+          rootOffset,
+          8,
+          false,
+        );
+        final fileExtensionsParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 10, '');
+        final autoRefreshParam = const fb.BoolReader().vTableGet(
+          buffer,
+          rootOffset,
+          12,
+          false,
+        );
+        final maxFileCountParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          14,
+          0,
+        );
+        final sortByParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 16, '');
+        final sortAscendingParam = const fb.BoolReader().vTableGet(
+          buffer,
+          rootOffset,
+          18,
+          false,
+        );
+        final excludePatternsParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 20, '');
+        final enableAutoRulesParam = const fb.BoolReader().vTableGet(
+          buffer,
+          rootOffset,
+          22,
+          false,
+        );
+        final directoriesParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 24, '');
+        final lastScanTimeParam = lastScanTimeValue == null
+            ? null
+            : DateTime.fromMillisecondsSinceEpoch(lastScanTimeValue);
+        final fileCountParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          28,
+          0,
+        );
+        final object =
+            VideoLibraryConfig(
+                videoLibraryId: videoLibraryIdParam,
+                includeSubdirectories: includeSubdirectoriesParam,
+                fileExtensions: fileExtensionsParam,
+                autoRefresh: autoRefreshParam,
+                maxFileCount: maxFileCountParam,
+                sortBy: sortByParam,
+                sortAscending: sortAscendingParam,
+                excludePatterns: excludePatternsParam,
+                enableAutoRules: enableAutoRulesParam,
+                directories: directoriesParam,
+                lastScanTime: lastScanTimeParam,
+                fileCount: fileCountParam,
+              )
+              ..id = const fb.Int64Reader().vTableGet(buffer, rootOffset, 4, 0)
+              ..fileExtensionsList = const fb.ListReader<String>(
+                fb.StringReader(asciiOptimization: true),
+                lazy: false,
+              ).vTableGet(buffer, rootOffset, 30, [])
+              ..excludePatternsList = const fb.ListReader<String>(
+                fb.StringReader(asciiOptimization: true),
+                lazy: false,
+              ).vTableGet(buffer, rootOffset, 32, [])
+              ..directoriesList = const fb.ListReader<String>(
+                fb.StringReader(asciiOptimization: true),
+                lazy: false,
+              ).vTableGet(buffer, rootOffset, 34, []);
+
+        return object;
+      },
+    ),
+    VideoLibraryFile: obx_int.EntityDefinition<VideoLibraryFile>(
+      model: _entities[8],
+      toOneRelations: (VideoLibraryFile object) => [],
+      toManyRelations: (VideoLibraryFile object) => {},
+      getId: (VideoLibraryFile object) => object.id,
+      setId: (VideoLibraryFile object, int id) {
+        object.id = id;
+      },
+      objectToFB: (VideoLibraryFile object, fb.Builder fbb) {
+        final filePathOffset = fbb.writeString(object.filePath);
+        final captionOffset = object.caption == null
+            ? null
+            : fbb.writeString(object.caption!);
+        fbb.startTable(7);
+        fbb.addInt64(0, object.id);
+        fbb.addInt64(1, object.videoLibraryId);
+        fbb.addOffset(2, filePathOffset);
+        fbb.addInt64(3, object.addedAt.millisecondsSinceEpoch);
+        fbb.addOffset(4, captionOffset);
+        fbb.addInt64(5, object.orderIndex);
+        fbb.finish(fbb.endTable());
+        return object.id;
+      },
+      objectFromFB: (obx.Store store, ByteData fbData) {
+        final buffer = fb.BufferContext(fbData);
+        final rootOffset = buffer.derefObject(0);
+        final videoLibraryIdParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          6,
+          0,
+        );
+        final filePathParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 8, '');
+        final addedAtParam = DateTime.fromMillisecondsSinceEpoch(
+          const fb.Int64Reader().vTableGet(buffer, rootOffset, 10, 0),
+        );
+        final captionParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGetNullable(buffer, rootOffset, 12);
+        final orderIndexParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          14,
+          0,
+        );
+        final object = VideoLibraryFile(
+          videoLibraryId: videoLibraryIdParam,
+          filePath: filePathParam,
+          addedAt: addedAtParam,
+          caption: captionParam,
+          orderIndex: orderIndexParam,
+        )..id = const fb.Int64Reader().vTableGet(buffer, rootOffset, 4, 0);
+
+        return object;
+      },
+    ),
   };
 
   return obx_int.ModelDefinition(model, bindings);
@@ -1193,5 +1682,166 @@ class AlbumConfig_ {
   /// See [AlbumConfig.directoriesList].
   static final directoriesList = obx.QueryStringVectorProperty<AlbumConfig>(
     _entities[5].properties[15],
+  );
+}
+
+/// [VideoLibrary] entity fields to define ObjectBox queries.
+class VideoLibrary_ {
+  /// See [VideoLibrary.id].
+  static final id = obx.QueryIntegerProperty<VideoLibrary>(
+    _entities[6].properties[0],
+  );
+
+  /// See [VideoLibrary.name].
+  static final name = obx.QueryStringProperty<VideoLibrary>(
+    _entities[6].properties[1],
+  );
+
+  /// See [VideoLibrary.description].
+  static final description = obx.QueryStringProperty<VideoLibrary>(
+    _entities[6].properties[2],
+  );
+
+  /// See [VideoLibrary.coverImagePath].
+  static final coverImagePath = obx.QueryStringProperty<VideoLibrary>(
+    _entities[6].properties[3],
+  );
+
+  /// See [VideoLibrary.createdAt].
+  static final createdAt = obx.QueryDateProperty<VideoLibrary>(
+    _entities[6].properties[4],
+  );
+
+  /// See [VideoLibrary.modifiedAt].
+  static final modifiedAt = obx.QueryDateProperty<VideoLibrary>(
+    _entities[6].properties[5],
+  );
+
+  /// See [VideoLibrary.colorTheme].
+  static final colorTheme = obx.QueryStringProperty<VideoLibrary>(
+    _entities[6].properties[6],
+  );
+
+  /// See [VideoLibrary.isSystemLibrary].
+  static final isSystemLibrary = obx.QueryBooleanProperty<VideoLibrary>(
+    _entities[6].properties[7],
+  );
+}
+
+/// [VideoLibraryConfig] entity fields to define ObjectBox queries.
+class VideoLibraryConfig_ {
+  /// See [VideoLibraryConfig.id].
+  static final id = obx.QueryIntegerProperty<VideoLibraryConfig>(
+    _entities[7].properties[0],
+  );
+
+  /// See [VideoLibraryConfig.videoLibraryId].
+  static final videoLibraryId = obx.QueryIntegerProperty<VideoLibraryConfig>(
+    _entities[7].properties[1],
+  );
+
+  /// See [VideoLibraryConfig.includeSubdirectories].
+  static final includeSubdirectories =
+      obx.QueryBooleanProperty<VideoLibraryConfig>(_entities[7].properties[2]);
+
+  /// See [VideoLibraryConfig.fileExtensions].
+  static final fileExtensions = obx.QueryStringProperty<VideoLibraryConfig>(
+    _entities[7].properties[3],
+  );
+
+  /// See [VideoLibraryConfig.autoRefresh].
+  static final autoRefresh = obx.QueryBooleanProperty<VideoLibraryConfig>(
+    _entities[7].properties[4],
+  );
+
+  /// See [VideoLibraryConfig.maxFileCount].
+  static final maxFileCount = obx.QueryIntegerProperty<VideoLibraryConfig>(
+    _entities[7].properties[5],
+  );
+
+  /// See [VideoLibraryConfig.sortBy].
+  static final sortBy = obx.QueryStringProperty<VideoLibraryConfig>(
+    _entities[7].properties[6],
+  );
+
+  /// See [VideoLibraryConfig.sortAscending].
+  static final sortAscending = obx.QueryBooleanProperty<VideoLibraryConfig>(
+    _entities[7].properties[7],
+  );
+
+  /// See [VideoLibraryConfig.excludePatterns].
+  static final excludePatterns = obx.QueryStringProperty<VideoLibraryConfig>(
+    _entities[7].properties[8],
+  );
+
+  /// See [VideoLibraryConfig.enableAutoRules].
+  static final enableAutoRules = obx.QueryBooleanProperty<VideoLibraryConfig>(
+    _entities[7].properties[9],
+  );
+
+  /// See [VideoLibraryConfig.directories].
+  static final directories = obx.QueryStringProperty<VideoLibraryConfig>(
+    _entities[7].properties[10],
+  );
+
+  /// See [VideoLibraryConfig.lastScanTime].
+  static final lastScanTime = obx.QueryDateProperty<VideoLibraryConfig>(
+    _entities[7].properties[11],
+  );
+
+  /// See [VideoLibraryConfig.fileCount].
+  static final fileCount = obx.QueryIntegerProperty<VideoLibraryConfig>(
+    _entities[7].properties[12],
+  );
+
+  /// See [VideoLibraryConfig.fileExtensionsList].
+  static final fileExtensionsList =
+      obx.QueryStringVectorProperty<VideoLibraryConfig>(
+        _entities[7].properties[13],
+      );
+
+  /// See [VideoLibraryConfig.excludePatternsList].
+  static final excludePatternsList =
+      obx.QueryStringVectorProperty<VideoLibraryConfig>(
+        _entities[7].properties[14],
+      );
+
+  /// See [VideoLibraryConfig.directoriesList].
+  static final directoriesList =
+      obx.QueryStringVectorProperty<VideoLibraryConfig>(
+        _entities[7].properties[15],
+      );
+}
+
+/// [VideoLibraryFile] entity fields to define ObjectBox queries.
+class VideoLibraryFile_ {
+  /// See [VideoLibraryFile.id].
+  static final id = obx.QueryIntegerProperty<VideoLibraryFile>(
+    _entities[8].properties[0],
+  );
+
+  /// See [VideoLibraryFile.videoLibraryId].
+  static final videoLibraryId = obx.QueryIntegerProperty<VideoLibraryFile>(
+    _entities[8].properties[1],
+  );
+
+  /// See [VideoLibraryFile.filePath].
+  static final filePath = obx.QueryStringProperty<VideoLibraryFile>(
+    _entities[8].properties[2],
+  );
+
+  /// See [VideoLibraryFile.addedAt].
+  static final addedAt = obx.QueryDateProperty<VideoLibraryFile>(
+    _entities[8].properties[3],
+  );
+
+  /// See [VideoLibraryFile.caption].
+  static final caption = obx.QueryStringProperty<VideoLibraryFile>(
+    _entities[8].properties[4],
+  );
+
+  /// See [VideoLibraryFile.orderIndex].
+  static final orderIndex = obx.QueryIntegerProperty<VideoLibraryFile>(
+    _entities[8].properties[5],
   );
 }

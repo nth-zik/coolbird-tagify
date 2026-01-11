@@ -23,13 +23,17 @@ class TabMainScreen extends StatefulWidget {
   static Future<void> openDefaultPath(BuildContext context) async {
     try {
       final directory = await getApplicationDocumentsDirectory();
-      openPath(context, directory.path);
+      if (context.mounted) {
+        openPath(context, directory.path);
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(
-                '${AppLocalizations.of(context)!.errorAccessingDirectory}$e')),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(
+                  '${AppLocalizations.of(context)!.errorAccessingDirectory}$e')),
+        );
+      }
     }
   }
 

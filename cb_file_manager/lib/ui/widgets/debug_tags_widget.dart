@@ -134,7 +134,7 @@ Popular Tags: $popularTags
                                         backgroundColor: Theme.of(context)
                                             .colorScheme
                                             .primary
-                                            .withOpacity(0.2),
+                                            .withValues(alpha: 0.2),
                                       ))
                                   .toList(),
                             ),
@@ -167,7 +167,7 @@ Popular Tags: $popularTags
                                         backgroundColor: Theme.of(context)
                                             .colorScheme
                                             .secondary
-                                            .withOpacity(0.2),
+                                            .withValues(alpha: 0.2),
                                       ))
                                   .toList(),
                             ),

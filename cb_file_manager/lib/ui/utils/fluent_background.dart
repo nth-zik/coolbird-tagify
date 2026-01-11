@@ -31,7 +31,7 @@ class FluentBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final defaultColor = theme.scaffoldBackgroundColor.withOpacity(opacity);
+    final defaultColor = theme.scaffoldBackgroundColor.withValues(alpha: opacity);
     final bgColor = backgroundColor ?? defaultColor;
 
     return ClipRRect(
@@ -79,7 +79,7 @@ class FluentBackground extends StatelessWidget {
     double opacity = 0.5,
   }) {
     final theme = Theme.of(context);
-    final defaultColor = theme.scaffoldBackgroundColor.withOpacity(opacity);
+    final defaultColor = theme.scaffoldBackgroundColor.withValues(alpha: opacity);
     final bgColor = backgroundColor ?? defaultColor;
 
     return AppBar(
@@ -111,7 +111,7 @@ class FluentBackground extends StatelessWidget {
     bool enableBlur = true,
   }) {
     final theme = Theme.of(context);
-    final defaultColor = theme.cardColor.withOpacity(opacity);
+    final defaultColor = theme.cardColor.withValues(alpha: opacity);
     final bgColor = backgroundColor ?? defaultColor;
 
     return ClipRRect(

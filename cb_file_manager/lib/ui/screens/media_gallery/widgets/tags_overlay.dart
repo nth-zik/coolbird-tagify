@@ -45,7 +45,7 @@ class TagsOverlay extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.6),
+            color: Colors.black.withValues(alpha: 0.6),
             borderRadius: BorderRadius.circular(4),
           ),
           child: Row(
@@ -85,7 +85,7 @@ class TagsOverlay extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.4),
+          color: Colors.black.withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(6),
         ),
         child: Wrap(

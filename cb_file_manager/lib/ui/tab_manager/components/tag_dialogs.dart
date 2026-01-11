@@ -345,11 +345,13 @@ void showBatchAddTagDialog(BuildContext context, List<String> selectedFiles) {
   // Create BatchTagManager instance and find common tags
   final batchTagManager = BatchTagManager.getInstance();
   batchTagManager.findCommonTags(selectedFiles).then((commonTags) {
+    if (!context.mounted) return;
+
     selectedTags = commonTags;
 
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setState) {
             void handleTextChange(String value) {
@@ -637,10 +639,10 @@ void showBatchAddTagDialog(BuildContext context, List<String> selectedFiles) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text(message)),
                             );
-                          }
 
-                          // Close the dialog
-                          RouteUtils.safePopDialog(context);
+                            // Close the dialog
+                            RouteUtils.safePopDialog(context);
+                          }
                         } catch (e) {
                           debugPrint('Error processing batch tags: $e');
                           if (context.mounted) {
