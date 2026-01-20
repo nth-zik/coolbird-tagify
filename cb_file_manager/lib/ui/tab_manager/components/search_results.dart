@@ -8,7 +8,7 @@ import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/ui/utils/platform_utils.dart';
 
 /// Displays search results from tag and filename searches
-class SearchResultsView extends StatelessWidget {
+class SearchResultsView extends StatefulWidget {
   final FolderListState state;
   final bool isSelectionMode;
   final List<String> selectedFiles;
@@ -22,6 +22,7 @@ class SearchResultsView extends StatelessWidget {
   final Function(File, bool)? onFileTap; // Callback for file click
   final VoidCallback? onBackButtonPressed; // Add callback for back button
   final VoidCallback? onForwardButtonPressed; // Add callback for forward button
+  final VoidCallback? onLoadMore;
 
   const SearchResultsView({
     Key? key,
@@ -35,9 +36,40 @@ class SearchResultsView extends StatelessWidget {
     required this.onClearSearch,
     this.onFolderTap,
     this.onFileTap,
-    this.onBackButtonPressed, // New parameter
-    this.onForwardButtonPressed, // New parameter
+    this.onBackButtonPressed,
+    this.onForwardButtonPressed,
+    this.onLoadMore,
   }) : super(key: key);
+
+  @override
+  State<SearchResultsView> createState() => _SearchResultsViewState();
+}
+
+class _SearchResultsViewState extends State<SearchResultsView> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController()..addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!mounted) return;
+    if (widget.onLoadMore == null) return;
+    final state = widget.state;
+    if (!state.hasMoreSearchResults || state.isLoadingMoreSearchResults) return;
+    if (!_scrollController.hasClients) return;
+    if (_scrollController.position.extentAfter > 600) return;
+    widget.onLoadMore?.call();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,18 +78,18 @@ class SearchResultsView extends StatelessWidget {
     return Listener(
       onPointerDown: (PointerDownEvent event) {
         // Mouse button 4 is usually the back button
-        if (event.buttons == 8 && onBackButtonPressed != null) {
-          onBackButtonPressed!();
+        if (event.buttons == 8 && widget.onBackButtonPressed != null) {
+          widget.onBackButtonPressed!();
         }
         // Mouse button 5 is usually the forward button
-        else if (event.buttons == 16 && onForwardButtonPressed != null) {
-          onForwardButtonPressed!();
+        else if (event.buttons == 16 && widget.onForwardButtonPressed != null) {
+          widget.onForwardButtonPressed!();
         }
       },
       child: Column(
         children: [
           // Top progress bar when searching
-          if (state.isLoading)
+          if (widget.state.isLoading)
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.0),
               child: LinearProgressIndicator(),
@@ -79,7 +111,7 @@ class SearchResultsView extends StatelessWidget {
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
-                  onPressed: onClearSearch,
+                  onPressed: widget.onClearSearch,
                   tooltip: AppLocalizations.of(context)!.clearSearch,
                 ),
               ],
@@ -88,7 +120,8 @@ class SearchResultsView extends StatelessWidget {
 
           // Results list
           Expanded(
-            child: state.viewMode == ViewMode.grid
+            child: (widget.state.viewMode == ViewMode.grid ||
+                    widget.state.viewMode == ViewMode.gridPreview)
                 ? _buildGridView(isDesktop)
                 : _buildListView(isDesktop),
           ),
@@ -99,6 +132,7 @@ class SearchResultsView extends StatelessWidget {
 
   // Trả về biểu tượng phù hợp với loại tìm kiếm
   IconData _getSearchIcon() {
+    final state = widget.state;
     if (state.currentSearchTag != null) {
       return Icons.local_offer;
     } else if (state.currentSearchQuery != null) {
@@ -122,6 +156,7 @@ class SearchResultsView extends StatelessWidget {
   // Tạo tiêu đề dựa trên loại tìm kiếm
   String _getSearchTitle(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final state = widget.state;
     // Đếm số lượng thư mục và tệp trong kết quả
     int folderCount = 0;
     int fileCount = 0;
@@ -177,15 +212,16 @@ class SearchResultsView extends StatelessWidget {
     return l10n.searchResultsTitle(countText);
   }
 
-  String _buildCountText(AppLocalizations l10n, int folderCount, int fileCount) {
+  String _buildCountText(
+      AppLocalizations l10n, int folderCount, int fileCount) {
     if (folderCount == 0 && fileCount == 0) {
       return ' (0 ${l10n.results})';
     }
 
     final parts = <String>[];
     if (folderCount > 0) {
-      parts.add(
-          '$folderCount ${folderCount == 1 ? l10n.folder : l10n.folders}');
+      parts
+          .add('$folderCount ${folderCount == 1 ? l10n.folder : l10n.folders}');
     }
     if (fileCount > 0) {
       parts.add('$fileCount ${fileCount == 1 ? l10n.file : l10n.files}');
@@ -194,20 +230,42 @@ class SearchResultsView extends StatelessWidget {
   }
 
   Widget _buildListView(bool isDesktop) {
+    final state = widget.state;
     return ListView.builder(
-      itemCount: state.searchResults.length,
+      controller: _scrollController,
+      itemCount:
+          state.searchResults.length + (state.hasMoreSearchResults ? 1 : 0),
       itemBuilder: (context, index) {
+        if (index >= state.searchResults.length) {
+          if (state.isLoadingMoreSearchResults) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16.0),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12.0),
+            child: Center(
+              child: TextButton(
+                onPressed: widget.onLoadMore,
+                child: Text(AppLocalizations.of(context)!.nextPage),
+              ),
+            ),
+          );
+        }
+
         final entity = state.searchResults[index];
         if (entity is File) {
           return folder_list_components.FileItem(
             file: entity,
             state: state,
-            isSelectionMode: isSelectionMode,
-            isSelected: selectedFiles.contains(entity.path),
-            toggleFileSelection: toggleFileSelection,
-            showDeleteTagDialog: showDeleteTagDialog,
-            showAddTagToFileDialog: showAddTagToFileDialog,
-            onFileTap: onFileTap, // Truyền callback cho file
+            isSelectionMode: widget.isSelectionMode,
+            isSelected: widget.selectedFiles.contains(entity.path),
+            toggleFileSelection: widget.toggleFileSelection,
+            showDeleteTagDialog: widget.showDeleteTagDialog,
+            showAddTagToFileDialog: widget.showAddTagToFileDialog,
+            onFileTap: widget.onFileTap,
             isDesktopMode: isDesktop,
           );
         } else if (entity is Directory) {
@@ -219,9 +277,9 @@ class SearchResultsView extends StatelessWidget {
             // Keep subtitle as full path for reference
             subtitle: Text(entity.path),
             onTap: () {
-              if (onFolderTap != null) {
+              if (widget.onFolderTap != null) {
                 // Sử dụng callback để chuyển đường dẫn trong tab hiện tại
-                onFolderTap!(entity.path);
+                widget.onFolderTap!(entity.path);
               }
             },
           );
@@ -233,34 +291,50 @@ class SearchResultsView extends StatelessWidget {
   }
 
   Widget _buildGridView(bool isDesktop) {
+    final state = widget.state;
     return GridView.builder(
+      controller: _scrollController,
       padding: const EdgeInsets.all(8.0),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: state.gridZoomLevel,
         crossAxisSpacing: 8,
         mainAxisSpacing: 8,
       ),
-      itemCount: state.searchResults.length,
+      itemCount:
+          state.searchResults.length + (state.hasMoreSearchResults ? 1 : 0),
       itemBuilder: (context, index) {
+        if (index >= state.searchResults.length) {
+          if (state.isLoadingMoreSearchResults) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          return Center(
+            child: TextButton(
+              onPressed: widget.onLoadMore,
+              child: Text(AppLocalizations.of(context)!.nextPage),
+            ),
+          );
+        }
+
         final entity = state.searchResults[index];
         if (entity is File) {
           return folder_list_components.FileGridItem(
             file: entity,
             state: state,
-            isSelectionMode: isSelectionMode,
-            isSelected: selectedFiles.contains(entity.path),
-            toggleFileSelection: toggleFileSelection,
-            toggleSelectionMode: toggleSelectionMode,
-            onFileTap: onFileTap, // Truyền callback cho file
+            isSelectionMode: widget.isSelectionMode,
+            isSelected: widget.selectedFiles.contains(entity.path),
+            toggleFileSelection: widget.toggleFileSelection,
+            toggleSelectionMode: widget.toggleSelectionMode,
+            onFileTap: widget.onFileTap,
             isDesktopMode: isDesktop,
           );
         } else if (entity is Directory) {
           // Xử lý thư mục trong chế độ xem lưới
           return InkWell(
             onTap: () {
-              if (onFolderTap != null) {
+              if (widget.onFolderTap != null) {
                 // Sử dụng callback để chuyển đường dẫn trong tab hiện tại
-                onFolderTap!(entity.path);
+                widget.onFolderTap!(entity.path);
               }
             },
             child: Container(

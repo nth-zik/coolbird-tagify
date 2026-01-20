@@ -610,26 +610,42 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
   // ...existing code...
 
   Widget _buildTabContent(TabManagerState state) {
-    final activeTab = state.activeTab;
-    if (activeTab == null) return Container();
+    if (state.tabs.isEmpty) return Container();
 
-    // Check if this is a system path (starting with #)
-    if (activeTab.path.startsWith('#')) {
-      // Use the SystemScreenRouter to route to the appropriate system screen
-      final systemScreen = SystemScreenRouter.routeSystemPath(
-          context, activeTab.path, activeTab.id);
+    final activeTabId = state.activeTabId;
+    final activeIndex = activeTabId == null
+        ? 0
+        : state.tabs.indexWhere((tab) => tab.id == activeTabId);
 
-      // If we have a system screen, return it
-      if (systemScreen != null) {
-        return systemScreen;
+    final safeActiveIndex =
+        activeIndex >= 0 && activeIndex < state.tabs.length ? activeIndex : 0;
+
+    final children = state.tabs.map((tab) {
+      Widget content;
+
+      if (tab.path.startsWith('#')) {
+        content = SystemScreenRouter.routeSystemPath(context, tab.path, tab.id) ??
+            Container();
+      } else {
+        content = TabbedFolderListScreen(
+          key: ValueKey(tab.id),
+          path: tab.path,
+          tabId: tab.id,
+        );
       }
-    }
 
-    // Default to normal folder list for regular file paths
-    return TabbedFolderListScreen(
-      key: ValueKey(activeTab.id),
-      path: activeTab.path,
-      tabId: activeTab.id,
+      return KeyedSubtree(
+        key: ValueKey(tab.id),
+        child: RepaintBoundary(
+          key: tab.repaintBoundaryKey,
+          child: content,
+        ),
+      );
+    }).toList();
+
+    return IndexedStack(
+      index: safeActiveIndex,
+      children: children,
     );
   }
 

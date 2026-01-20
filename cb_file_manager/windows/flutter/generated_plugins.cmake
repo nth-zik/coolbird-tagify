@@ -8,6 +8,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   media_kit_video
   mobile_smb_native
   objectbox_flutter_libs
+  pdfx
   permission_handler_windows
   screen_retriever_windows
   share_plus

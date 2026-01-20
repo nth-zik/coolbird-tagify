@@ -64,6 +64,9 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
   StreamSubscription? _tagChangeSubscription;
   StreamSubscription? _globalTagChangeSubscription;
 
+  static const int _searchResultsPageSize = 200;
+  List<FileSystemEntity> _pendingSearchResults = [];
+
   FolderListBloc() : super(FolderListState("/")) {
     on<FolderListInit>(_onFolderListInit);
     on<FolderListLoad>(_onFolderListLoad);
@@ -93,13 +96,16 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
     on<SetGridZoom>(_onSetGridZoom);
     on<ClearSearchAndFilters>(_onClearSearchAndFilters);
     on<FolderListDeleteFiles>(_onFolderListDeleteFiles);
+    on<FolderListDeleteItems>(_onFolderListDeleteItems);
     on<SetTagSearchResults>(_onSetTagSearchResults);
     on<FolderListReloadCurrentFolder>(_onFolderListReloadCurrentFolder);
     on<FolderListDeleteTagGlobally>(_onFolderListDeleteTagGlobally);
 
     // Register file operation event handlers
     on<CopyFile>(_onCopyFile);
+    on<CopyFiles>(_onCopyFiles);
     on<CutFile>(_onCutFile);
+    on<CutFiles>(_onCutFiles);
     on<PasteFile>(_onPasteFile);
     on<RenameFileOrFolder>(_onRenameFileOrFolder);
 
@@ -112,6 +118,8 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
 
     // Handler for adding tag search results
     on<AddTagSearchResults>(_onAddTagSearchResults);
+
+    on<LoadMoreSearchResults>(_onLoadMoreSearchResults);
   }
 
   // Xử lý khi tag thay đổi
@@ -321,11 +329,19 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
                 null, // Only update state.sortOption if we found a folder-specific one
           );
 
+          final activeFilter = state.currentFilter;
+          final List<FileSystemEntity> filteredFiles =
+              activeFilter != null && activeFilter.isNotEmpty
+                  ? _filterFilesByType(files, activeFilter)
+                  : [];
+
           // Emit state with files and folders (sorting will be handled later)
           final newState = state.copyWith(
             isLoading: false,
             folders: folders,
             files: files,
+            currentFilter: activeFilter,
+            filteredFiles: filteredFiles,
             fileTags: fileTags,
             error: null, // Clear any previous errors
             sortOption: folderSortOption ??
@@ -481,9 +497,7 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
             allUniqueTags: allUniqueTags,
           ));
           return;
-        } else if (event.path.startsWith('#tag:')) {
-          // For tag search, this will be handled by SearchByTagGlobally
-          // Just update loading state to false
+        } else if (event.path.startsWith('#search?tag=')) {
           emit(state.copyWith(
             isLoading: false,
           ));
@@ -569,12 +583,20 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
           }
         }
 
+        final activeFilter = state.currentFilter;
+        final List<FileSystemEntity> filteredFiles =
+            activeFilter != null && activeFilter.isNotEmpty
+                ? _filterFilesByType(sortedFiles, activeFilter)
+                : [];
+
         // Now emit the final state with sorted content and isLoading: false
         emit(
           state.copyWith(
             isLoading: false,
             folders: sortedFolders,
             files: sortedFiles,
+            currentFilter: activeFilter,
+            filteredFiles: filteredFiles,
             fileTags: fileTags,
             allUniqueTags: allUniqueTags,
             error: null,
@@ -664,30 +686,37 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
     emit(state.copyWith(isLoading: true, currentFilter: event.fileType));
 
     try {
-      final List<FileSystemEntity> filteredFiles = state.files.where((file) {
-        if (file is File) {
-          switch (event.fileType) {
-            case 'image':
-              return FileTypeUtils.isImageFile(file.path);
-            case 'video':
-              return FileTypeUtils.isVideoFile(file.path);
-            case 'audio':
-              return FileTypeUtils.isAudioFile(file.path);
-            case 'document':
-              return FileTypeUtils.isDocumentFile(file.path) ||
-                  FileTypeUtils.isSpreadsheetFile(file.path) ||
-                  FileTypeUtils.isPresentationFile(file.path);
-            default:
-              return true;
-          }
-        }
-        return false;
-      }).toList();
-
+      final List<FileSystemEntity> filteredFiles =
+          _filterFilesByType(state.files, event.fileType!);
       emit(state.copyWith(isLoading: false, filteredFiles: filteredFiles));
     } catch (e) {
       emit(state.copyWith(isLoading: false, error: e.toString()));
     }
+  }
+
+  List<FileSystemEntity> _filterFilesByType(
+    List<FileSystemEntity> files,
+    String fileType,
+  ) {
+    return files.where((file) {
+      if (file is File) {
+        switch (fileType) {
+          case 'image':
+            return FileTypeUtils.isImageFile(file.path);
+          case 'video':
+            return FileTypeUtils.isVideoFile(file.path);
+          case 'audio':
+            return FileTypeUtils.isAudioFile(file.path);
+          case 'document':
+            return FileTypeUtils.isDocumentFile(file.path) ||
+                FileTypeUtils.isSpreadsheetFile(file.path) ||
+                FileTypeUtils.isPresentationFile(file.path);
+          default:
+            return true;
+        }
+      }
+      return false;
+    }).toList();
   }
 
   void _onLoadTagsFromFile(
@@ -746,9 +775,6 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
       List<FileSystemEntity> sortedFilteredFiles = List.from(
         state.filteredFiles,
       );
-      List<FileSystemEntity> sortedSearchResults = List.from(
-        state.searchResults,
-      );
 
       // Cache file stats for better performance
       Future<void> cacheFileStats(List<FileSystemEntity> entities) async {
@@ -764,8 +790,8 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
         cacheFileStats(sortedFolders),
         cacheFileStats(sortedFiles),
         cacheFileStats(sortedFilteredFiles),
-        cacheFileStats(sortedSearchResults),
-      ]); // Save the sort option to the current folder (with defensive error handling)
+      ]);
+      // Save the sort option to the current folder (with defensive error handling)
       final folderSortManager = FolderSortManager();
       debugPrint(
           'Trying to save sort option ${event.sortOption} to folder: ${state.currentPath.path}');
@@ -945,6 +971,10 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
       sortedFiles.sort(compareFunction);
       sortedFilteredFiles.sort(compareFunction);
 
+      // Always re-read search results at the end to avoid overwriting newer data.
+      List<FileSystemEntity> sortedSearchResults = List.from(state.searchResults);
+      await cacheFileStats(sortedSearchResults);
+
       final sortedSearchFolders = sortedSearchResults
           .whereType<Directory>()
           .toList()
@@ -988,6 +1018,7 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
     ClearSearchAndFilters event,
     Emitter<FolderListState> emit,
   ) {
+    _pendingSearchResults = [];
     // Reset all search and filter related state variables
     emit(
       state.copyWith(
@@ -995,6 +1026,9 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
         currentSearchQuery: null,
         currentFilter: null,
         searchResults: [],
+        hasMoreSearchResults: false,
+        isLoadingMoreSearchResults: false,
+        searchResultsTotal: null,
         filteredFiles: [],
         isSearchByName: false,
         isSearchByMedia: false,
@@ -1048,6 +1082,84 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
     }
   }
 
+  void _onFolderListDeleteItems(
+    FolderListDeleteItems event,
+    Emitter<FolderListState> emit,
+  ) async {
+    // Don't show loading indicator for delete operation - it's usually fast
+    try {
+      List<String> failedDeletes = [];
+      final trashManager = TrashManager();
+      final deletedPaths = <String>[];
+
+      Future<void> deleteItem(String path, bool isFile) async {
+        try {
+          if (event.permanent) {
+            if (isFile) {
+              final file = File(path);
+              if (await file.exists()) {
+                await file.delete();
+                deletedPaths.add(path);
+              }
+            } else {
+              final dir = Directory(path);
+              if (await dir.exists()) {
+                await dir.delete(recursive: true);
+                deletedPaths.add(path);
+              }
+            }
+          } else {
+            await trashManager.moveToTrash(path);
+            deletedPaths.add(path);
+          }
+        } catch (e) {
+          failedDeletes.add(path);
+          debugPrint('Error deleting $path: $e');
+        }
+      }
+
+      for (var path in event.filePaths) {
+        await deleteItem(path, true);
+      }
+
+      for (var path in event.folderPaths) {
+        await deleteItem(path, false);
+      }
+
+      if (failedDeletes.isNotEmpty) {
+        emit(state.copyWith(
+          error: 'Failed to delete ${failedDeletes.length} items',
+        ));
+        // Still need to refresh if some items failed
+        add(FolderListLoad(state.currentPath.path));
+        return;
+      }
+
+      // Optimized: Remove deleted items from current state instead of reloading entire folder
+      // This is much faster and eliminates lag
+      final updatedFiles = state.files
+          .where((file) => !deletedPaths.contains(file.path))
+          .toList();
+      final updatedFolders = state.folders
+          .where((folder) => !deletedPaths.contains(folder.path))
+          .toList();
+
+      emit(state.copyWith(
+        files: updatedFiles,
+        folders: updatedFolders,
+        error: null,
+      ));
+      
+      debugPrint('Deleted ${deletedPaths.length} items successfully (optimized refresh)');
+    } catch (e) {
+      emit(state.copyWith(
+        error: 'Error deleting items: ${e.toString()}',
+      ));
+      // Fallback: refresh the entire folder if something goes wrong
+      add(FolderListLoad(state.currentPath.path));
+    }
+  }
+
   void _onSetTagSearchResults(
     SetTagSearchResults event,
     Emitter<FolderListState> emit,
@@ -1091,6 +1203,24 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
       );
     } catch (e) {
       emit(state.copyWith(error: 'Error cutting file/folder: ${e.toString()}'));
+    }
+  }
+
+  void _onCopyFiles(CopyFiles event, Emitter<FolderListState> emit) {
+    try {
+      FileOperations().copyFilesToClipboard(event.entities);
+      emit(state.copyWith(error: null));
+    } catch (e) {
+      emit(state.copyWith(error: 'Error copying files: ${e.toString()}'));
+    }
+  }
+
+  void _onCutFiles(CutFiles event, Emitter<FolderListState> emit) {
+    try {
+      FileOperations().cutFilesToClipboard(event.entities);
+      emit(state.copyWith(error: null));
+    } catch (e) {
+      emit(state.copyWith(error: 'Error cutting files: ${e.toString()}'));
     }
   }
 
@@ -1374,7 +1504,14 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
     SearchByTagGlobally event,
     Emitter<FolderListState> emit,
   ) async {
-    emit(state.copyWith(isLoading: true));
+    _pendingSearchResults = [];
+    emit(state.copyWith(
+      isLoading: true,
+      searchResults: [],
+      hasMoreSearchResults: false,
+      isLoadingMoreSearchResults: false,
+      searchResultsTotal: null,
+    ));
 
     try {
       // Clear tag cache to ensure fresh data
@@ -1426,11 +1563,22 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
         }
       }
 
+      final int total = validResults.length;
+      final int initialCount =
+          total > _searchResultsPageSize ? _searchResultsPageSize : total;
+      final initialResults = validResults.take(initialCount).toList();
+      _pendingSearchResults =
+          total > initialCount ? validResults.skip(initialCount).toList() : [];
+
       emit(state.copyWith(
         isLoading: false,
-        searchResults: validResults,
+        searchResults: initialResults,
         currentSearchTag: event.tag,
         currentSearchQuery: null, // Clear any previous text search
+        isGlobalSearch: true,
+        hasMoreSearchResults: _pendingSearchResults.isNotEmpty,
+        isLoadingMoreSearchResults: false,
+        searchResultsTotal: total,
         error: validResults.isEmpty
             ? SearchErrorMessages.noFilesFoundTagGlobal(event.tag)
             : null,
@@ -1463,6 +1611,46 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
       searchResults: currentResults,
       // Keep the current search tag and query unchanged
     ));
+  }
+
+  void _onLoadMoreSearchResults(
+    LoadMoreSearchResults event,
+    Emitter<FolderListState> emit,
+  ) {
+    if (_pendingSearchResults.isEmpty) {
+      emit(
+        state.copyWith(
+          hasMoreSearchResults: false,
+          isLoadingMoreSearchResults: false,
+        ),
+      );
+      return;
+    }
+
+    if (state.isLoadingMoreSearchResults) return;
+
+    emit(state.copyWith(isLoadingMoreSearchResults: true));
+
+    final nextCount = _pendingSearchResults.length > _searchResultsPageSize
+        ? _searchResultsPageSize
+        : _pendingSearchResults.length;
+    final nextChunk = _pendingSearchResults.take(nextCount).toList();
+    _pendingSearchResults = _pendingSearchResults.skip(nextCount).toList();
+
+    final currentResults = List<FileSystemEntity>.from(state.searchResults);
+    for (final entity in nextChunk) {
+      if (!currentResults.any((e) => e.path == entity.path)) {
+        currentResults.add(entity);
+      }
+    }
+
+    emit(
+      state.copyWith(
+        searchResults: currentResults,
+        hasMoreSearchResults: _pendingSearchResults.isNotEmpty,
+        isLoadingMoreSearchResults: false,
+      ),
+    );
   }
 
   // New handler for searching by multiple tags in current directory
@@ -1536,7 +1724,14 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
     SearchByMultipleTagsGlobally event,
     Emitter<FolderListState> emit,
   ) async {
-    emit(state.copyWith(isLoading: true));
+    _pendingSearchResults = [];
+    emit(state.copyWith(
+      isLoading: true,
+      searchResults: [],
+      hasMoreSearchResults: false,
+      isLoadingMoreSearchResults: false,
+      searchResultsTotal: null,
+    ));
 
     try {
       // Clear tag cache to ensure fresh data
@@ -1581,11 +1776,22 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
         }
       }
 
+      final int total = validResults.length;
+      final int initialCount =
+          total > _searchResultsPageSize ? _searchResultsPageSize : total;
+      final initialResults = validResults.take(initialCount).toList();
+      _pendingSearchResults =
+          total > initialCount ? validResults.skip(initialCount).toList() : [];
+
       emit(state.copyWith(
         isLoading: false,
-        searchResults: validResults,
+        searchResults: initialResults,
         currentSearchTag: event.tags.join(", "), // Join tags for display
         currentSearchQuery: null, // Clear any previous text search
+        isGlobalSearch: true,
+        hasMoreSearchResults: _pendingSearchResults.isNotEmpty,
+        isLoadingMoreSearchResults: false,
+        searchResultsTotal: total,
         error: validResults.isEmpty
             ? SearchErrorMessages.noFilesFoundTagsGlobal(tagListStr)
             : null,

@@ -4,14 +4,16 @@ import 'dart:async'; // Thêm import cho StreamSubscription
 // For more responsive animations
 
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
-import 'package:cb_file_manager/ui/screens/media_gallery/video_gallery_screen.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/image_viewer_screen.dart';
+import 'package:cb_file_manager/ui/screens/media_gallery/video_player_full_screen.dart';
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart'; // Import TagManager để lắng nghe thay đổi
 import 'package:flutter/material.dart';
 import 'package:remixicon/remixicon.dart' as remix;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
+import 'package:cb_file_manager/bloc/selection/selection_bloc.dart';
+import 'package:cb_file_manager/bloc/selection/selection_event.dart';
 import 'package:cb_file_manager/ui/dialogs/open_with_dialog.dart';
 import 'package:cb_file_manager/helpers/files/external_app_helper.dart';
 import 'package:cb_file_manager/helpers/files/file_icon_helper.dart';
@@ -288,18 +290,57 @@ class _FileItemState extends State<FileItem> {
   }
 
   void _showContextMenu(BuildContext context, Offset globalPosition) {
-    final bool isVideo = FileTypeUtils.isVideoFile(widget.file.path);
-    final bool isImage = FileTypeUtils.isImageFile(widget.file.path);
+    try {
+      // Check for multiple selection
+      try {
+        final selectionBloc = context.read<SelectionBloc>();
+        final selectionState = selectionBloc.state;
 
-    showFileContextMenu(
-      context: context,
-      file: widget.file,
-      fileTags: _fileTags,
-      isVideo: isVideo,
-      isImage: isImage,
-      showAddTagToFileDialog: widget.showAddTagToFileDialog,
-      globalPosition: globalPosition,
-    );
+        if (selectionState.allSelectedPaths.length > 1 &&
+            selectionState.allSelectedPaths.contains(widget.file.path)) {
+          showMultipleFilesContextMenu(
+            context: context,
+            selectedPaths: selectionState.allSelectedPaths,
+            globalPosition: globalPosition,
+            onClearSelection: () {
+              selectionBloc.add(ClearSelection());
+            },
+          );
+          return;
+        }
+      } catch (e) {
+        debugPrint('Error checking selection state: $e');
+      }
+
+      final bool isVideo = FileTypeUtils.isVideoFile(widget.file.path);
+      final bool isImage = FileTypeUtils.isImageFile(widget.file.path);
+
+      showFileContextMenu(
+        context: context,
+        file: widget.file,
+        fileTags: _fileTags,
+        isVideo: isVideo,
+        isImage: isImage,
+        showAddTagToFileDialog: widget.showAddTagToFileDialog,
+        globalPosition: globalPosition,
+      );
+    } catch (e) {
+      debugPrint('Error showing context menu: $e');
+      // Fallback
+      try {
+        showFileContextMenu(
+          context: context,
+          file: widget.file,
+          fileTags: _fileTags,
+          isVideo: false,
+          isImage: false,
+          showAddTagToFileDialog: widget.showAddTagToFileDialog,
+          globalPosition: globalPosition,
+        );
+      } catch (e2) {
+        debugPrint('Critical error showing fallback context menu: $e2');
+      }
+    }
   }
 
   @override
@@ -318,7 +359,10 @@ class _FileItemState extends State<FileItem> {
             final Color backgroundColor = isSelected
                 ? Theme.of(context).colorScheme.primaryContainer
                 : isHovering && widget.isDesktopMode
-                    ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.6)
+                    ? Theme.of(context)
+                        .colorScheme
+                        .surface
+                        .withValues(alpha: 0.6)
                     : Colors.transparent;
 
             return RepaintBoundary(
@@ -621,7 +665,8 @@ class _FileItemContentState extends State<_FileItemContent> {
               children: [
                 Text(sizeText, style: Theme.of(context).textTheme.bodySmall),
                 const SizedBox(width: 12),
-                const Icon(remix.Remix.calendar_line, size: 12, color: Colors.grey),
+                const Icon(remix.Remix.calendar_line,
+                    size: 12, color: Colors.grey),
                 const SizedBox(width: 4),
                 Text(modifiedText,
                     style: Theme.of(context).textTheme.bodySmall),
@@ -641,7 +686,8 @@ class _FileItemContentState extends State<_FileItemContent> {
             children: [
               Text(sizeText, style: Theme.of(context).textTheme.bodySmall),
               const SizedBox(width: 12),
-              const Icon(remix.Remix.calendar_line, size: 12, color: Colors.grey),
+              const Icon(remix.Remix.calendar_line,
+                  size: 12, color: Colors.grey),
               const SizedBox(width: 4),
               Text(modifiedText, style: Theme.of(context).textTheme.bodySmall),
             ],

@@ -73,6 +73,9 @@ class OptimizedInteractionLayerState extends State<OptimizedInteractionLayer> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: _handleTapDown,
+      // If onLongPress is provided, we must use standard onTap (onUp)
+      // to allow GestureDetector to distinguish between Tap and LongPress
+      onTap: widget.onLongPress != null ? widget.onTap : null,
       onLongPress: widget.onLongPress,
       onSecondaryTap: widget.onSecondaryTap,
       onSecondaryTapUp: widget.onSecondaryTapUp,

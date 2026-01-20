@@ -1,15 +1,22 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:cb_file_manager/helpers/media/video_thumbnail_helper.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as path;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class FolderThumbnailService {
   static const String _customThumbnailsKey = 'folder_custom_thumbnails';
+  static const String _configFileName = '.cbfile_config.json';
+  static const String _folderThumbnailKey = 'folderThumbnail';
+  static const String _folderAutoThumbnailKey = 'folderAutoThumbnail';
   static final FolderThumbnailService _instance =
       FolderThumbnailService._internal();
+  static final StreamController<String> _thumbnailChangedController =
+      StreamController<String>.broadcast();
 
   // In-memory cache for thumbnails with a limit to prevent memory leaks
   final Map<String, String> _thumbnailCache = {};
@@ -20,6 +27,10 @@ class FolderThumbnailService {
 
   // In-memory cache for custom thumbnail settings
   Map<String, String> _customThumbnailSettings = {};
+
+  // Cache folder config to avoid repeated disk reads
+  final Map<String, Map<String, dynamic>> _folderConfigCache = {};
+  final Map<String, Map<String, dynamic>> _systemPathConfigs = {};
 
   // Last cache cleanup timestamp
   DateTime _lastCacheCleanup = DateTime.now();
@@ -76,30 +87,186 @@ class FolderThumbnailService {
     }
   }
 
+  Stream<String> get onThumbnailChanged => _thumbnailChangedController.stream;
+
+  bool _isSystemPath(String folderPath) {
+    return folderPath.startsWith('#');
+  }
+
+  Future<Map<String, dynamic>> _readFolderConfig(String folderPath) async {
+    if (_isSystemPath(folderPath)) {
+      return _systemPathConfigs[folderPath] ?? {};
+    }
+
+    if (_folderConfigCache.containsKey(folderPath)) {
+      return _folderConfigCache[folderPath] ?? {};
+    }
+
+    final configPath = path.join(folderPath, _configFileName);
+    final configFile = File(configPath);
+    if (!await configFile.exists()) {
+      _folderConfigCache[folderPath] = {};
+      return {};
+    }
+
+    try {
+      final contents = await configFile.readAsString();
+      final decoded = json.decode(contents);
+      if (decoded is Map<String, dynamic>) {
+        _folderConfigCache[folderPath] = decoded;
+        return decoded;
+      }
+    } catch (e) {
+      debugPrint('Error reading folder config: $e');
+    }
+
+    _folderConfigCache[folderPath] = {};
+    return {};
+  }
+
+  Future<void> _writeFolderConfig(
+      String folderPath, Map<String, dynamic> config) async {
+    if (_isSystemPath(folderPath)) {
+      _systemPathConfigs[folderPath] = Map<String, dynamic>.from(config);
+      _folderConfigCache[folderPath] = Map<String, dynamic>.from(config);
+      return;
+    }
+
+    _folderConfigCache[folderPath] = Map<String, dynamic>.from(config);
+
+    final configPath = path.join(folderPath, _configFileName);
+    final configFile = File(configPath);
+
+    if (config.isEmpty) {
+      if (await configFile.exists()) {
+        try {
+          await configFile.delete();
+        } catch (e) {
+          debugPrint('Error deleting empty config file: $e');
+        }
+      }
+      return;
+    }
+
+    try {
+      final directory = Directory(folderPath);
+      if (!await directory.exists()) {
+        await directory.create(recursive: true);
+      }
+
+      final jsonString = const JsonEncoder.withIndent('  ').convert(config);
+      await configFile.writeAsString(jsonString);
+
+      if (Platform.isWindows) {
+        try {
+          await Process.run('attrib', ['+H', configPath]);
+        } catch (e) {
+          debugPrint('Error setting hidden attribute: $e');
+        }
+      } else if (Platform.isAndroid) {
+        try {
+          final nomediaFile = File(path.join(folderPath, '.nomedia'));
+          if (!await nomediaFile.exists()) {
+            await nomediaFile.create();
+          }
+        } catch (e) {
+          debugPrint('Error creating .nomedia: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error writing folder config: $e');
+    }
+  }
+
+  void _notifyThumbnailChanged(String folderPath) {
+    _thumbnailChangedController.add(folderPath);
+  }
+
+  String _normalizeThumbnailValue(String value) {
+    if (value.startsWith('video::')) {
+      final parts = value.split('::');
+      if (parts.length >= 2) {
+        return 'video::${parts[1]}';
+      }
+    }
+    return value;
+  }
+
+  Future<String?> _validateThumbnailValue(String value) async {
+    if (value.startsWith('video::')) {
+      final videoPath = value.substring(7);
+      if (await File(videoPath).exists()) {
+        return 'video::$videoPath';
+      }
+      return null;
+    }
+
+    if (await File(value).exists()) {
+      return value;
+    }
+    return null;
+  }
+
   // Set a custom thumbnail for a folder
-  Future<void> setCustomThumbnail(String folderPath, String filePath) async {
-    _customThumbnailSettings[folderPath] = filePath;
-    await _saveCustomThumbnailSettings();
+  Future<void> setCustomThumbnail(
+    String folderPath,
+    String filePath, {
+    bool isVideo = false,
+  }) async {
+    final value = isVideo ? 'video::$filePath' : filePath;
+    await _saveCustomThumbnailToConfig(folderPath, value);
     // Clear from cache to force regeneration
     _removeFromCache(folderPath);
+    _notifyThumbnailChanged(folderPath);
   }
 
   // Clear custom thumbnail for a folder
   Future<void> clearCustomThumbnail(String folderPath) async {
     _customThumbnailSettings.remove(folderPath);
     await _saveCustomThumbnailSettings();
+    await _clearCustomThumbnailInConfig(folderPath);
     // Clear from cache to force regeneration
     _removeFromCache(folderPath);
+    _notifyThumbnailChanged(folderPath);
   }
 
   // Get custom thumbnail path for a folder (if set)
-  String? getCustomThumbnailPath(String folderPath) {
-    return _customThumbnailSettings[folderPath];
+  Future<String?> getCustomThumbnailPath(String folderPath) async {
+    final config = await _readFolderConfig(folderPath);
+    final value = config[_folderThumbnailKey];
+    if (value is String && value.isNotEmpty) {
+      return _normalizeThumbnailValue(value);
+    }
+
+    final legacyValue = _customThumbnailSettings[folderPath];
+    if (legacyValue != null && legacyValue.isNotEmpty) {
+      final normalizedLegacy = _normalizeThumbnailValue(legacyValue);
+      await _saveCustomThumbnailToConfig(folderPath, normalizedLegacy);
+      _customThumbnailSettings.remove(folderPath);
+      await _saveCustomThumbnailSettings();
+      return normalizedLegacy;
+    }
+
+    return null;
   }
 
   // Check if a folder has custom thumbnail
-  bool hasCustomThumbnail(String folderPath) {
-    return _customThumbnailSettings.containsKey(folderPath);
+  Future<bool> hasCustomThumbnail(String folderPath) async {
+    final customValue = await getCustomThumbnailPath(folderPath);
+    return customValue != null && customValue.isNotEmpty;
+  }
+
+  Future<void> _saveCustomThumbnailToConfig(
+      String folderPath, String value) async {
+    final config = await _readFolderConfig(folderPath);
+    config[_folderThumbnailKey] = value;
+    await _writeFolderConfig(folderPath, config);
+  }
+
+  Future<void> _clearCustomThumbnailInConfig(String folderPath) async {
+    final config = await _readFolderConfig(folderPath);
+    config.remove(_folderThumbnailKey);
+    await _writeFolderConfig(folderPath, config);
   }
 
   // Add to cache with LRU management
@@ -153,31 +320,28 @@ class FolderThumbnailService {
     }
 
     // Check if there is a custom thumbnail
-    if (_customThumbnailSettings.containsKey(folderPath)) {
-      final customPath = _customThumbnailSettings[folderPath];
-
-      // Handle video custom thumbnails
-      if (customPath!.startsWith('video::')) {
-        final videoPath = customPath.substring(7);
-        if (File(videoPath).existsSync()) {
-          // Generate actual thumbnail for the video file
-          final thumbnailPath =
-              await VideoThumbnailHelper.generateThumbnail(videoPath);
-          if (thumbnailPath != null) {
-            // Still keep the video:: prefix to identify it's a video
-            // Store the original video path with the thumbnail path for reference
-            final result = 'video::$videoPath::$thumbnailPath';
-            _addToCache(folderPath, result);
-            return result;
-          }
-          // Fallback to original path if thumbnail generation fails
-          _addToCache(folderPath, customPath);
-          return customPath;
-        }
-      } else if (await File(customPath).exists()) {
-        _addToCache(folderPath, customPath);
-        return customPath;
+    final customPath = await getCustomThumbnailPath(folderPath);
+    if (customPath != null) {
+      final validCustom = await _validateThumbnailValue(customPath);
+      if (validCustom != null) {
+        _addToCache(folderPath, validCustom);
+        return validCustom;
       }
+      await clearCustomThumbnail(folderPath);
+    }
+
+    // Check if we already have an auto-selected thumbnail saved
+    final config = await _readFolderConfig(folderPath);
+    final autoValue = config[_folderAutoThumbnailKey];
+    if (autoValue is String && autoValue.isNotEmpty) {
+      final normalized = _normalizeThumbnailValue(autoValue);
+      final validAuto = await _validateThumbnailValue(normalized);
+      if (validAuto != null) {
+        _addToCache(folderPath, validAuto);
+        return validAuto;
+      }
+      config.remove(_folderAutoThumbnailKey);
+      await _writeFolderConfig(folderPath, config);
     }
 
     // Find and generate thumbnail from folder content
@@ -190,6 +354,8 @@ class FolderThumbnailService {
     }
 
     if (thumbnailPath != null) {
+      config[_folderAutoThumbnailKey] = thumbnailPath;
+      await _writeFolderConfig(folderPath, config);
       _addToCache(folderPath, thumbnailPath);
     }
 
@@ -204,44 +370,78 @@ class FolderThumbnailService {
     }
 
     try {
-      final List<FileSystemEntity> entities = await directory.list().toList();
+      String? firstImagePath;
+      await for (final entity in directory.list(followLinks: false)) {
+        if (entity is! File) {
+          continue;
+        }
 
-      // First look for images
-      for (final entity in entities) {
-        if (entity is File) {
-          if (FileTypeUtils.isImageFile(entity.path)) {
-            return entity.path;
-          }
+        final basename = path.basename(entity.path);
+        if (basename == _configFileName || basename == '.nomedia') {
+          continue;
+        }
+
+        if (VideoThumbnailHelper.isSupportedVideoFormat(entity.path)) {
+          debugPrint('Found video file: ${entity.path}');
+          return 'video::${entity.path}';
+        }
+
+        if (firstImagePath == null && FileTypeUtils.isImageFile(entity.path)) {
+          firstImagePath = entity.path;
         }
       }
 
-      // Then look for videos
-      for (final entity in entities) {
-        if (entity is File) {
-          if (VideoThumbnailHelper.isSupportedVideoFormat(entity.path)) {
-            debugPrint('Found video file: ${entity.path}');
-
-            // Generate thumbnail for video
-            final videoPath = entity.path;
-            final thumbnailPath =
-                await VideoThumbnailHelper.generateThumbnail(videoPath);
-
-            if (thumbnailPath != null) {
-              debugPrint('Generated video thumbnail: $thumbnailPath');
-              // Store both video path and thumbnail path for better reference
-              return 'video::$videoPath::$thumbnailPath';
-            }
-
-            // Fallback to original video path if thumbnail generation fails
-            return 'video::${entity.path}';
-          }
-        }
+      if (firstImagePath != null) {
+        return firstImagePath;
       }
     } catch (e) {
       debugPrint('Error scanning folder: $e');
     }
 
     return null;
+  }
+
+  // Find the first image file in a folder (used for fallback when video thumbs fail)
+  Future<String?> findFirstImageInFolder(String folderPath) async {
+    final directory = Directory(folderPath);
+    if (!await directory.exists()) {
+      return null;
+    }
+
+    try {
+      await for (final entity in directory.list(followLinks: false)) {
+        if (entity is! File) {
+          continue;
+        }
+
+        final basename = path.basename(entity.path);
+        if (basename == _configFileName || basename == '.nomedia') {
+          continue;
+        }
+
+        if (FileTypeUtils.isImageFile(entity.path)) {
+          return entity.path;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error scanning folder for images: $e');
+    }
+
+    return null;
+  }
+
+  Future<String?> setAutoThumbnail(String folderPath, String value) async {
+    final config = await _readFolderConfig(folderPath);
+    final customValue = config[_folderThumbnailKey];
+    if (customValue is String && customValue.isNotEmpty) {
+      return null;
+    }
+
+    config[_folderAutoThumbnailKey] = value;
+    await _writeFolderConfig(folderPath, config);
+    _addToCache(folderPath, value);
+    _notifyThumbnailChanged(folderPath);
+    return value;
   }
 
   // Get all media files in a folder for thumbnail selection
@@ -280,6 +480,7 @@ class FolderThumbnailService {
   void clearCache() {
     _thumbnailCache.clear();
     _cacheAccessOrder.clear();
+    _folderConfigCache.clear();
     debugPrint('FolderThumbnailService: Cache cleared');
 
     // Also clear the VideoThumbnailHelper cache

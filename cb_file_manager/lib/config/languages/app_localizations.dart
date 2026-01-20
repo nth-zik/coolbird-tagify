@@ -17,6 +17,7 @@ abstract class AppLocalizations {
   String get close;
   String get exit;
   String get search;
+  String get all;
   String get settings;
   String get moreOptions;
 
@@ -73,6 +74,15 @@ abstract class AppLocalizations {
   String get viewModeList;
   String get viewModeGrid;
   String get viewModeDetails;
+  String get viewModeGridPreview;
+
+  // Preview pane
+  String get previewPaneTitle;
+  String get previewSelectFile;
+  String get previewNotSupported;
+  String get previewUnavailable;
+  String get showPreview;
+  String get hidePreview;
 
   // Column names
   String get columnSize;
@@ -403,6 +413,16 @@ abstract class AppLocalizations {
   String get createCopy;
   String get deleteFile;
 
+  // Folder thumbnails
+  String get folderThumbnail;
+  String get chooseThumbnail;
+  String get clearThumbnail;
+  String get thumbnailAuto;
+  String get folderThumbnailSet;
+  String get folderThumbnailCleared;
+  String get invalidThumbnailFile;
+  String get noMediaFilesFound;
+
   // Video actions
   String get share;
   String get playVideo;
@@ -442,6 +462,10 @@ abstract class AppLocalizations {
   // Folder / Trash
   String get items;
   String get files;
+  String get deleteTitle;
+  String get permanentDeleteTitle;
+  String confirmDeletePermanent(String name);
+  String confirmDeletePermanentMultiple(int count);
   String movedToTrash(String name);
   String moveItemsToTrashConfirmation(int count, String itemType);
   String moveToTrashConfirmMessage(String name);
@@ -758,4 +782,3 @@ abstract class AppLocalizations {
   String get libraryCreatedSuccessfully;
   String videoLibraryCount(int count);
 }
-

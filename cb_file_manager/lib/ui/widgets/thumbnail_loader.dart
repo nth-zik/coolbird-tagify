@@ -276,10 +276,12 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
   StreamSubscription? _cacheChangedSubscription;
   StreamSubscription? _thumbnailReadySubscription;
   bool _widgetMounted = true;
+  bool _showLoadingOverlay = false;
   Timer? _loadTimer;
   Timer? _delayedLoadTimer;
   Timer? _refreshTimer;
   Timer? _visibilityDebounceTimer;
+  Timer? _loadingOverlayTimer;
   String? _networkThumbnailPath; // Store the generated thumbnail path
 
   // PERFORMANCE: Reduced debounce timing for better responsiveness during scrolling
@@ -290,6 +292,7 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
   bool _isScrolling = false;
   Timer? _scrollStopTimer;
   static const Duration _scrollStopDelay = Duration(milliseconds: 150);
+  static const Duration _loadingOverlayDelay = Duration(milliseconds: 120);
 
   // Viewport-based loading priority system
   static final List<String> _loadingQueue = [];
@@ -318,6 +321,7 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
     super.initState();
     _widgetMounted = true;
     WidgetsBinding.instance.addObserver(this);
+    _isLoadingNotifier.addListener(_handleLoadingChanged);
 
     // Listen for cache changes
     _cacheChangedSubscription = VideoThumbnailHelper.onCacheChanged.listen((_) {
@@ -355,6 +359,7 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
     } else {
       // Không khởi tạo thumbnail ngay; chờ khi widget thực sự hiển thị (VisibilityDetector)
     }
+    _handleLoadingChanged();
   }
 
   void _scheduleLoad() {
@@ -442,6 +447,7 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
     WidgetsBinding.instance.removeObserver(this);
     _cacheChangedSubscription?.cancel();
     _thumbnailReadySubscription?.cancel();
+    _isLoadingNotifier.removeListener(_handleLoadingChanged);
     _isLoadingNotifier.dispose();
     _hasErrorNotifier.dispose();
     _widgetMounted = false;
@@ -450,6 +456,7 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
     _refreshTimer?.cancel();
     _visibilityDebounceTimer?.cancel();
     _scrollStopTimer?.cancel();
+    _loadingOverlayTimer?.cancel();
 
     // Clear retry tracking for this path
     _failedAttempts.remove(widget.filePath);
@@ -663,6 +670,8 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
               return ValueListenableBuilder<bool>(
                 valueListenable: _isLoadingNotifier,
                 builder: (context, isLoading, _) {
+                  final bool showSkeleton =
+                      isLoading && widget.showLoadingIndicator && _showLoadingOverlay;
                   return Stack(
                     fit: StackFit.expand,
                     children: [
@@ -670,7 +679,7 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
                       RepaintBoundary(child: _buildThumbnailContent()),
 
                       // Skeleton loading overlay - static for better performance
-                      if (isLoading && widget.showLoadingIndicator)
+                      if (showSkeleton)
                         RepaintBoundary(
                           child: Container(
                             decoration: BoxDecoration(
@@ -691,6 +700,34 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
         ),
       ),
     );
+  }
+
+  void _handleLoadingChanged() {
+    if (!_widgetMounted || !mounted) return;
+
+    if (_isLoadingNotifier.value) {
+      _loadingOverlayTimer?.cancel();
+      if (_showLoadingOverlay) {
+        setState(() {
+          _showLoadingOverlay = false;
+        });
+      }
+      _loadingOverlayTimer = Timer(_loadingOverlayDelay, () {
+        if (!_widgetMounted || !mounted) return;
+        if (_isLoadingNotifier.value && !_showLoadingOverlay) {
+          setState(() {
+            _showLoadingOverlay = true;
+          });
+        }
+      });
+    } else {
+      _loadingOverlayTimer?.cancel();
+      if (_showLoadingOverlay) {
+        setState(() {
+          _showLoadingOverlay = false;
+        });
+      }
+    }
   }
 
   Widget _buildThumbnailContent() {

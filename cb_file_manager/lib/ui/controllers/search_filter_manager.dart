@@ -1,6 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
+import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
+import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
 import 'package:cb_file_manager/bloc/selection/selection.dart';
 import 'package:cb_file_manager/helpers/core/user_preferences.dart';
 import 'package:cb_file_manager/ui/tab_manager/components/index.dart'
@@ -62,6 +65,9 @@ class SearchFilterManager {
       onFileTap: onFileTap,
       onBackButtonPressed: onBackButtonPressed,
       onForwardButtonPressed: onForwardButtonPressed,
+      onLoadMore: () {
+        context.read<FolderListBloc>().add(const LoadMoreSearchResults());
+      },
     );
   }
 

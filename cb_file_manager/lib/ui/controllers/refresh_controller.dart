@@ -8,6 +8,7 @@ import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
 import 'package:cb_file_manager/ui/screens/system_screen_router.dart';
 import 'package:cb_file_manager/helpers/media/video_thumbnail_helper.dart';
+import 'package:cb_file_manager/helpers/core/uri_utils.dart';
 
 /// Controller for handling refresh operations in folder list screens
 ///
@@ -61,9 +62,9 @@ class RefreshController {
         // Clear the system screen router cache for this path
         SystemScreenRouter.refreshSystemPath(currentPath, tabId);
         // Reload tag management data (will be handled by the component)
-      } else if (currentPath.startsWith('#tag:')) {
-        // For tag search screens, extract the tag and re-run the search
-        final tag = currentPath.substring(5); // Remove "#tag:" prefix
+      } else if (currentPath.startsWith('#search?tag=')) {
+        final tag = UriUtils.extractTagFromSearchPath(currentPath) ??
+            currentPath.substring('#search?tag='.length);
         TagManager.clearCache();
         // Clear the system screen router cache for this path
         SystemScreenRouter.refreshSystemPath(currentPath, tabId);
@@ -149,9 +150,9 @@ class RefreshController {
             Future.delayed(const Duration(milliseconds: 500), () {
               completer.complete();
             });
-          } else if (currentPath.startsWith('#tag:')) {
-            // For tag search screens, extract the tag and re-run the search
-            final tag = currentPath.substring(5); // Remove "#tag:" prefix
+          } else if (currentPath.startsWith('#search?tag=')) {
+            final tag = UriUtils.extractTagFromSearchPath(currentPath) ??
+                currentPath.substring('#search?tag='.length);
             TagManager.clearCache();
             // Clear the system screen router cache for this path
             SystemScreenRouter.refreshSystemPath(currentPath, tabId);

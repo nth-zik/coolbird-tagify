@@ -27,30 +27,6 @@ extension _TabbedFolderListMobileActions on _TabbedFolderListScreenState {
         _folderListBloc.state.currentPath.path,
       );
     };
-    controller.onGallerySelected = (value) {
-      if (value == 'image_gallery') {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ImageGalleryScreen(
-              path: _currentPath,
-              recursive: false,
-            ),
-          ),
-        );
-      } else if (value == 'video_gallery') {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => VideoGalleryScreen(
-              path: _currentPath,
-              recursive: false,
-            ),
-          ),
-        );
-      }
-    };
-
     // Set initial state
     controller.currentSortOption = _folderListBloc.state.sortOption;
     controller.currentViewMode = _folderListBloc.state.viewMode;

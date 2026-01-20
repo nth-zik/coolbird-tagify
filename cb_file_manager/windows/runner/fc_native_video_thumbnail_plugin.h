@@ -76,10 +76,13 @@ namespace fc_native_video_thumbnail
     int GetEncoderClsid(const WCHAR *format, CLSID *pClsid);
 
     // Extract a frame from a video at a specific timestamp using MediaFoundation
-    std::string ExtractVideoFrameAtTime(PCWSTR srcFile, PCWSTR destFile, int width, REFGUID format, int timeSeconds);
+    std::string ExtractVideoFrameAtTime(PCWSTR srcFile, PCWSTR destFile, int width, REFGUID format, int timeSeconds, int quality);
 
-    // Save a thumbnail, either using Windows thumbnail cache or MediaFoundation based on if timeSeconds is provided
-    std::string SaveThumbnail(PCWSTR srcFile, PCWSTR destFile, int size, REFGUID type, int *timeSeconds = nullptr);
+    // Extract a thumbnail using Windows shell thumbnail cache
+    std::string ExtractShellThumbnail(PCWSTR srcFile, PCWSTR destFile, int size, REFGUID type);
+
+    // Save a thumbnail using Windows thumbnail cache, or MediaFoundation when timeSeconds is provided
+    std::string SaveThumbnail(PCWSTR srcFile, PCWSTR destFile, int size, REFGUID type, int *timeSeconds, int quality, bool useShellThumbnail);
 
     class FcNativeVideoThumbnailPlugin : public flutter::Plugin
     {
@@ -132,9 +135,6 @@ namespace fc_native_video_thumbnail
         // Cache management
         std::unordered_map<std::string, CacheEntry> thumbnailCache_;
         std::mutex cacheMutex_;
-
-        // Global FFmpeg mutex for thread safety
-        static std::mutex ffmpegMutex_;
 
         // Active request tracking to prevent duplicates
         std::unordered_set<std::string> activeRequests_;

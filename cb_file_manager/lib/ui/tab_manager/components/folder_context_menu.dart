@@ -10,6 +10,10 @@ import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cb_file_manager/helpers/media/folder_thumbnail_service.dart';
+import 'package:cb_file_manager/helpers/media/video_thumbnail_helper.dart';
+import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
+import 'package:cb_file_manager/ui/dialogs/folder_thumbnail_picker_dialog.dart';
 
 /// Displays a context menu for empty areas in folder view
 class FolderContextMenu {
@@ -64,6 +68,12 @@ class FolderContextMenu {
                 value: ViewMode.grid,
                 isChecked: currentViewMode == ViewMode.grid,
               ),
+              if (!Platform.isAndroid && !Platform.isIOS)
+                _buildCheckedPopupMenuItem(
+                  title: 'Grid + Preview',
+                  value: ViewMode.gridPreview,
+                  isChecked: currentViewMode == ViewMode.gridPreview,
+                ),
               _buildCheckedPopupMenuItem(
                 title: 'Details View',
                 value: ViewMode.details,
@@ -468,42 +478,128 @@ class FolderContextMenu {
       }
 
       if (!context.mounted) return;
+      final thumbnailService = FolderThumbnailService();
+      Future<String?> customThumbnailFuture =
+          thumbnailService.getCustomThumbnailPath(path);
+
       showDialog(
         context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Folder Properties'),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  title: const Text('Path'),
-                  subtitle: Text(path),
-                ),
-                ListTile(
-                  title: const Text('Created'),
-                  subtitle: Text(stat.modified.toLocal().toString()),
-                ),
-                ListTile(
-                  title: const Text('Content'),
-                  subtitle: Text('$fileCount files, $folderCount folders'),
-                ),
-                ListTile(
-                  title: const Text('Size (direct children)'),
-                  subtitle: Text(_formatFileSize(totalSize)),
-                ),
-              ],
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, setState) => AlertDialog(
+            title: const Text('Folder Properties'),
+            content: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    title: const Text('Path'),
+                    subtitle: Text(path),
+                  ),
+                  ListTile(
+                    title: const Text('Created'),
+                    subtitle: Text(stat.modified.toLocal().toString()),
+                  ),
+                  ListTile(
+                    title: const Text('Content'),
+                    subtitle: Text('$fileCount files, $folderCount folders'),
+                  ),
+                  ListTile(
+                    title: const Text('Size (direct children)'),
+                    subtitle: Text(_formatFileSize(totalSize)),
+                  ),
+                  const Divider(),
+                  const Text(
+                    'Folder Thumbnail',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 6),
+                  FutureBuilder<String?>(
+                    future: customThumbnailFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Text('Loading...');
+                      }
+                      final value = snapshot.data;
+                      if (value == null || value.isEmpty) {
+                        return const Text('Auto (first video/image)');
+                      }
+                      final displayValue =
+                          value.startsWith('video::') ? value.substring(7) : value;
+                      return Text(displayValue);
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      TextButton(
+                        onPressed: () async {
+                          final selectedPath =
+                              await showFolderThumbnailPickerDialog(
+                            dialogContext,
+                            path,
+                          );
+                          if (selectedPath == null) {
+                            return;
+                          }
+
+                          final isImage =
+                              FileTypeUtils.isImageFile(selectedPath);
+                          final isVideo = VideoThumbnailHelper
+                              .isSupportedVideoFormat(selectedPath);
+                          if (!isImage && !isVideo) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      'Please select an image or video file.'),
+                                ),
+                              );
+                            }
+                            return;
+                          }
+
+                          await thumbnailService.setCustomThumbnail(
+                            path,
+                            selectedPath,
+                            isVideo: isVideo,
+                          );
+                          if (dialogContext.mounted) {
+                            setState(() {
+                              customThumbnailFuture = Future.value(
+                                isVideo ? 'video::$selectedPath' : selectedPath,
+                              );
+                            });
+                          }
+                        },
+                        child: const Text('CHOOSE'),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton(
+                        onPressed: () async {
+                          await thumbnailService.clearCustomThumbnail(path);
+                          if (dialogContext.mounted) {
+                            setState(() {
+                              customThumbnailFuture = Future.value(null);
+                            });
+                          }
+                        },
+                        child: const Text('CLEAR'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  if (dialogContext.mounted) Navigator.pop(dialogContext);
+                },
+                child: const Text('CLOSE'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                if (dialogContext.mounted) Navigator.pop(dialogContext);
-              },
-              child: const Text('CLOSE'),
-            ),
-          ],
         ),
       );
     } catch (e) {

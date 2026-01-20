@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/ui/components/common/shared_action_bar.dart';
-import 'package:cb_file_manager/ui/screens/media_gallery/image_gallery_screen.dart';
-import 'package:cb_file_manager/ui/screens/media_gallery/video_gallery_screen.dart';
 
 /// Builder for folder app bar actions
 class FolderAppBarActions {
@@ -22,6 +20,9 @@ class FolderAppBarActions {
     required Function(int) onGridZoomChange,
     required VoidCallback onColumnSettingsPressed,
     required Function(String)? onGallerySelected,
+    required VoidCallback onPreviewPaneToggled,
+    required bool isPreviewPaneVisible,
+    required bool showPreviewModeOption,
   }) {
     return SharedActionBar.buildCommonActions(
       context: context,
@@ -33,6 +34,7 @@ class FolderAppBarActions {
       onViewModeSelected: onViewModeSelected,
       onRefresh: onRefresh,
       onGridSizePressed: folderListState.viewMode == ViewMode.grid
+          || folderListState.viewMode == ViewMode.gridPreview
           ? () => SharedActionBar.showGridSizeDialog(
                 context,
                 currentGridSize: folderListState.gridZoomLevel,
@@ -42,37 +44,12 @@ class FolderAppBarActions {
       onColumnSettingsPressed: folderListState.viewMode == ViewMode.details
           ? onColumnSettingsPressed
           : null,
+      onPreviewPaneToggled: onPreviewPaneToggled,
+      isPreviewPaneVisible: isPreviewPaneVisible,
+      showPreviewModeOption: showPreviewModeOption,
       onSelectionModeToggled: onSelectionModeToggled,
       onManageTagsPressed: onManageTagsPressed,
-      onGallerySelected: isNetworkPath
-          ? null
-          : (value) {
-              if (value == 'image_gallery') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ImageGalleryScreen(
-                      path: currentPath,
-                      recursive: false,
-                    ),
-                  ),
-                );
-              } else if (value == 'video_gallery') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => VideoGalleryScreen(
-                      path: currentPath,
-                      recursive: false,
-                    ),
-                  ),
-                ).then((result) {
-                  if (onGallerySelected != null) {
-                    onGallerySelected(value);
-                  }
-                });
-              }
-            },
+      onGallerySelected: isNetworkPath ? null : onGallerySelected,
       currentPath: currentPath,
     );
   }

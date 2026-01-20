@@ -75,7 +75,7 @@ class ScreenScaffold extends StatelessWidget {
           ? FluentBackground.appBar(
               context: context,
               title: showSearchBar ? searchBar : pathNavigationBar,
-              actions: showSearchBar ? [] : actions,
+              actions: actions,
               blurAmount: 12.0,
               opacity: 0.6,
             )

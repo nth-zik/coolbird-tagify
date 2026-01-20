@@ -89,3 +89,41 @@ Always handle errors and update loading state. Provide retry button with error m
 
 - Video Gallery: `lib/ui/screens/media_gallery/video_gallery_screen.dart`
 - Image Gallery: `lib/ui/screens/media_gallery/image_gallery_screen.dart`
+
+## Reusable Picker Dialog
+
+Use the common media picker for any "browse + pick" flow instead of creating new dialogs.
+
+**Location**: `lib/ui/dialogs/media_picker_dialog.dart`
+
+**Features**:
+- Folder navigation with path bar + refresh
+- Search, sort, and grid/list toggle
+- Media filter chips (configurable)
+- Optional root restriction to keep users inside a folder
+
+**Example**:
+```dart
+final picked = await showMediaPickerDialog(
+  context,
+  MediaPickerConfig(
+    title: l10n.chooseThumbnail,
+    initialPath: folderPath,
+    rootPath: folderPath,
+    restrictToRoot: true,
+    fileFilter: (path) => FileTypeUtils.isImageFile(path),
+    filters: [
+      MediaPickerFilterOption(
+        id: 'all',
+        label: l10n.all,
+        matches: (_) => true,
+      ),
+      MediaPickerFilterOption(
+        id: 'images',
+        label: l10n.images,
+        matches: FileTypeUtils.isImageFile,
+      ),
+    ],
+  ),
+);
+```

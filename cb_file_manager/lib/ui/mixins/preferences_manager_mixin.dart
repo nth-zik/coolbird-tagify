@@ -5,6 +5,7 @@ import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/helpers/files/folder_sort_manager.dart';
 import 'package:cb_file_manager/ui/components/common/shared_action_bar.dart';
+import 'package:cb_file_manager/ui/utils/platform_utils.dart';
 
 /// Mixin for managing user preferences related to folder list display
 ///
@@ -44,6 +45,12 @@ mixin PreferencesManagerMixin<T extends StatefulWidget> on State<T> {
   /// Whether to show file tags
   bool showFileTags = true; // Default value to prevent LateInitializationError
 
+  /// Whether to show the preview pane in grid preview mode
+  bool isPreviewPaneVisible = true;
+
+  /// Width of the preview pane in grid preview mode
+  double previewPaneWidth = UserPreferences.defaultPreviewPaneWidth;
+
   /// Load all preferences from storage
   Future<void> loadPreferences() async {
     try {
@@ -55,16 +62,24 @@ mixin PreferencesManagerMixin<T extends StatefulWidget> on State<T> {
       final loadedGridZoomLevel = await prefs.getGridZoomLevel();
       final loadedColumnVisibility = await prefs.getColumnVisibility();
       final loadedShowFileTags = await prefs.getShowFileTags();
+      final loadedPreviewPaneVisible = await prefs.getPreviewPaneVisible();
+      final loadedPreviewPaneWidth = await prefs.getPreviewPaneWidth();
+      final effectiveViewMode =
+          !isDesktopPlatform && loadedViewMode == ViewMode.gridPreview
+              ? ViewMode.grid
+              : loadedViewMode;
 
       if (mounted) {
         setState(() {
-          viewMode = loadedViewMode;
+          viewMode = effectiveViewMode;
           gridZoomLevel = loadedGridZoomLevel;
           columnVisibility = loadedColumnVisibility;
           showFileTags = loadedShowFileTags;
+          isPreviewPaneVisible = loadedPreviewPaneVisible;
+          previewPaneWidth = loadedPreviewPaneWidth;
         });
 
-        folderListBloc.add(SetViewMode(loadedViewMode));
+        folderListBloc.add(SetViewMode(effectiveViewMode));
         folderListBloc.add(SetSortOption(sortOption));
         folderListBloc.add(SetGridZoom(loadedGridZoomLevel));
       }
@@ -114,10 +129,12 @@ mixin PreferencesManagerMixin<T extends StatefulWidget> on State<T> {
   /// Toggle between view modes (list -> grid -> details -> list)
   void toggleViewMode() {
     setState(() {
-      // Cycle through view modes: list -> grid -> details -> list
+      // Cycle through view modes: list -> grid -> grid preview -> details -> list
       if (viewMode == ViewMode.list) {
         viewMode = ViewMode.grid;
       } else if (viewMode == ViewMode.grid) {
+        viewMode = isDesktopPlatform ? ViewMode.gridPreview : ViewMode.details;
+      } else if (viewMode == ViewMode.gridPreview) {
         viewMode = ViewMode.details;
       } else {
         viewMode = ViewMode.list;
@@ -130,8 +147,12 @@ mixin PreferencesManagerMixin<T extends StatefulWidget> on State<T> {
 
   /// Set view mode directly to a specific mode
   void setViewMode(ViewMode mode, {String? tabId}) {
+    final effectiveMode =
+        !isDesktopPlatform && mode == ViewMode.gridPreview
+            ? ViewMode.grid
+            : mode;
     setState(() {
-      viewMode = mode;
+      viewMode = effectiveMode;
     });
 
     folderListBloc.add(SetViewMode(viewMode));
@@ -158,6 +179,43 @@ mixin PreferencesManagerMixin<T extends StatefulWidget> on State<T> {
     if (newZoom != currentZoom) {
       folderListBloc.add(SetGridZoom(newZoom));
       saveGridZoomSetting(newZoom);
+    }
+  }
+
+  /// Toggle preview pane visibility
+  void togglePreviewPaneVisibility() {
+    setState(() {
+      isPreviewPaneVisible = !isPreviewPaneVisible;
+    });
+    savePreviewPaneVisibilitySetting(isPreviewPaneVisible);
+  }
+
+  /// Update preview pane width without persisting
+  void updatePreviewPaneWidth(double width) {
+    setState(() {
+      previewPaneWidth = width;
+    });
+  }
+
+  /// Persist preview pane width to storage
+  Future<void> savePreviewPaneWidthSetting(double width) async {
+    try {
+      final UserPreferences prefs = UserPreferences.instance;
+      await prefs.init();
+      await prefs.setPreviewPaneWidth(width);
+    } catch (e) {
+      debugPrint('Error saving preview pane width: $e');
+    }
+  }
+
+  /// Persist preview pane visibility to storage
+  Future<void> savePreviewPaneVisibilitySetting(bool visible) async {
+    try {
+      final UserPreferences prefs = UserPreferences.instance;
+      await prefs.init();
+      await prefs.setPreviewPaneVisible(visible);
+    } catch (e) {
+      debugPrint('Error saving preview pane visibility: $e');
     }
   }
 

@@ -570,119 +570,142 @@ class FileOperations {
   factory FileOperations() => _instance;
   FileOperations._internal();
 
-  // Store the current clipboard item (for copy/cut operations)
-  FileSystemEntity? _clipboardItem;
+  // Store the current clipboard items (for copy/cut operations)
+  List<FileSystemEntity> _clipboardItems = [];
   bool _isCut = false; // Flag to determine if operation is cut or copy
 
-  // Getter to check if clipboard has an item
-  bool get hasClipboardItem => _clipboardItem != null;
+  // Getter to check if clipboard has items
+  bool get hasClipboardItem => _clipboardItems.isNotEmpty;
 
   // Getter to check if clipboard operation is cut
   bool get isClipboardItemCut => _isCut;
 
-  // Getter for the clipboard item
-  FileSystemEntity? get clipboardItem => _clipboardItem;
+  // Getter for the clipboard items
+  List<FileSystemEntity> get clipboardItems => List.unmodifiable(_clipboardItems);
+
+  // Getter for single clipboard item (for backward compatibility)
+  FileSystemEntity? get clipboardItem => _clipboardItems.isNotEmpty ? _clipboardItems.first : null;
 
   // Set clipboard with file or folder
   void copyToClipboard(FileSystemEntity entity) {
-    _clipboardItem = entity;
+    _clipboardItems = [entity];
+    _isCut = false;
+  }
+
+  // Set clipboard with multiple files or folders
+  void copyFilesToClipboard(List<FileSystemEntity> entities) {
+    _clipboardItems = List.from(entities);
     _isCut = false;
   }
 
   // Set clipboard for cut operation
   void cutToClipboard(FileSystemEntity entity) {
-    _clipboardItem = entity;
+    _clipboardItems = [entity];
+    _isCut = true;
+  }
+
+  // Set clipboard for cut operation with multiple files
+  void cutFilesToClipboard(List<FileSystemEntity> entities) {
+    _clipboardItems = List.from(entities);
     _isCut = true;
   }
 
   // Clear clipboard after operation
   void clearClipboard() {
-    _clipboardItem = null;
+    _clipboardItems = [];
     _isCut = false;
   }
 
-  // Paste file or folder from clipboard to destination
-  Future<FileSystemEntity?> pasteFromClipboard(String destinationPath) async {
-    if (_clipboardItem == null) return null;
+  // Paste files or folders from clipboard to destination
+  Future<List<FileSystemEntity>> pasteFromClipboard(String destinationPath) async {
+    if (_clipboardItems.isEmpty) return [];
+
+    List<FileSystemEntity> results = [];
 
     try {
-      final filename = pathlib.basename(_clipboardItem!.path);
-      final newPath = pathlib.join(destinationPath, filename);
+      for (final item in _clipboardItems) {
+        final filename = pathlib.basename(item.path);
+        final newPath = pathlib.join(destinationPath, filename);
 
-      // Check if destination already exists
-      bool exists =
-          await File(newPath).exists() || await Directory(newPath).exists();
+        // Check if destination already exists
+        bool exists =
+            await File(newPath).exists() || await Directory(newPath).exists();
 
-      // Create a unique name if destination exists
-      String uniquePath = newPath;
-      if (exists) {
-        int counter = 1;
-        String extension = '';
-        String baseName = filename;
+        // Create a unique name if destination exists
+        String uniquePath = newPath;
+        if (exists) {
+          int counter = 1;
+          String extension = '';
+          String baseName = filename;
 
-        // Handle file extensions
-        if (_clipboardItem is File) {
-          extension = pathlib.extension(filename);
-          baseName = pathlib.basenameWithoutExtension(filename);
-        }
+          // Handle file extensions
+          if (item is File) {
+            extension = pathlib.extension(filename);
+            baseName = pathlib.basenameWithoutExtension(filename);
+          }
 
-        // Find a unique name
-        while (exists) {
-          String newName = '${baseName}_$counter$extension';
-          uniquePath = pathlib.join(destinationPath, newName);
-          exists = await File(uniquePath).exists() ||
-              await Directory(uniquePath).exists();
-          counter++;
-        }
-      }
-
-      // Perform the operation based on entity type and operation type
-      FileSystemEntity? result;
-
-      if (_clipboardItem is File) {
-        final file = _clipboardItem as File;
-
-        if (_isCut) {
-          // Move operation
-          result = await file.rename(uniquePath);
-        } else {
-          // Copy operation
-          result =
-              await File(uniquePath).writeAsBytes(await file.readAsBytes());
-        }
-      } else if (_clipboardItem is Directory) {
-        final directory = _clipboardItem as Directory;
-        final newDirectory = Directory(uniquePath);
-
-        // Create the new directory
-        await newDirectory.create(recursive: true);
-
-        // Copy all contents recursively
-        await for (final entity in directory.list(recursive: true)) {
-          final relativePath =
-              pathlib.relative(entity.path, from: directory.path);
-          final newEntityPath = pathlib.join(newDirectory.path, relativePath);
-
-          if (entity is File) {
-            // Create parent directories if needed
-            final newEntityParent = Directory(pathlib.dirname(newEntityPath));
-            if (!await newEntityParent.exists()) {
-              await newEntityParent.create(recursive: true);
-            }
-
-            // Copy the file
-            await File(newEntityPath).writeAsBytes(await entity.readAsBytes());
-          } else if (entity is Directory) {
-            // Create directory
-            await Directory(newEntityPath).create(recursive: true);
+          // Find a unique name
+          while (exists) {
+            String newName = '${baseName}_$counter$extension';
+            uniquePath = pathlib.join(destinationPath, newName);
+            exists = await File(uniquePath).exists() ||
+                await Directory(uniquePath).exists();
+            counter++;
           }
         }
 
-        result = newDirectory;
+        // Perform the operation based on entity type and operation type
+        FileSystemEntity? result;
 
-        // If cut operation, delete original directory
-        if (_isCut) {
-          await directory.delete(recursive: true);
+        if (item is File) {
+          final file = item;
+
+          if (_isCut) {
+            // Move operation
+            result = await file.rename(uniquePath);
+          } else {
+            // Copy operation
+            result =
+                await File(uniquePath).writeAsBytes(await file.readAsBytes());
+          }
+        } else if (item is Directory) {
+          final directory = item;
+          final newDirectory = Directory(uniquePath);
+
+          // Create the new directory
+          await newDirectory.create(recursive: true);
+
+          // Copy all contents recursively
+          await for (final entity in directory.list(recursive: true)) {
+            final relativePath =
+                pathlib.relative(entity.path, from: directory.path);
+            final newEntityPath = pathlib.join(newDirectory.path, relativePath);
+
+            if (entity is File) {
+              // Create parent directories if needed
+              final newEntityParent = Directory(pathlib.dirname(newEntityPath));
+              if (!await newEntityParent.exists()) {
+                await newEntityParent.create(recursive: true);
+              }
+
+              // Copy the file
+              await File(newEntityPath).writeAsBytes(await entity.readAsBytes());
+            } else if (entity is Directory) {
+              // Create directory
+              await Directory(newEntityPath).create(recursive: true);
+            }
+          }
+
+          result = newDirectory;
+
+          // If cut operation, delete original directory
+          if (_isCut) {
+            await directory.delete(recursive: true);
+          }
+        }
+
+        if (result != null) {
+          results.add(result);
         }
       }
 
@@ -691,10 +714,10 @@ class FileOperations {
         clearClipboard();
       }
 
-      return result;
+      return results;
     } catch (e) {
       debugPrint('Error during paste operation: $e');
-      return null;
+      return results; // Return whatever was successfully pasted
     }
   }
 

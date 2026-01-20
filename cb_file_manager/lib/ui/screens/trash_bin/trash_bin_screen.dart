@@ -1,10 +1,11 @@
 import 'dart:io';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:remixicon/remixicon.dart' as remix;
 import 'package:cb_file_manager/helpers/files/trash_manager.dart';
 import 'package:intl/intl.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
+import '../../utils/format_utils.dart';
+import '../mixins/selection_mixin.dart';
 
 class TrashBinScreen extends StatefulWidget {
   const TrashBinScreen({Key? key}) : super(key: key);
@@ -13,12 +14,10 @@ class TrashBinScreen extends StatefulWidget {
   State<TrashBinScreen> createState() => _TrashBinScreenState();
 }
 
-class _TrashBinScreenState extends State<TrashBinScreen> {
+class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
   final TrashManager _trashManager = TrashManager();
   List<TrashItem> _trashItems = [];
   bool _isLoading = true;
-  bool _isSelectionMode = false;
-  final Set<String> _selectedItems = {};
   String? _errorMessage;
   bool _showSystemOptions = false;
 
@@ -73,7 +72,8 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content: Text('${item.displayNameValue} restored successfully')),
+                content:
+                    Text('${item.displayNameValue} restored successfully')),
           );
         }
         // Refresh the trash items
@@ -136,7 +136,8 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                  content: Text('${item.displayNameValue} permanently deleted')),
+                  content:
+                      Text('${item.displayNameValue} permanently deleted')),
             );
           }
           // Refresh the trash items
@@ -233,7 +234,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
       int successCount = 0;
       int failedCount = 0;
 
-      for (final trashFileName in _selectedItems) {
+      for (final trashFileName in selectedPaths) {
         final item = _trashItems.firstWhere(
           (item) => item.trashFileName == trashFileName,
           orElse: () => throw Exception('Item not found'),
@@ -265,10 +266,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
         );
 
         // Clear selection and refresh
-        setState(() {
-          _isSelectionMode = false;
-          _selectedItems.clear();
-        });
+        exitSelectionMode();
       }
 
       await _loadTrashItems();
@@ -284,7 +282,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
     final bool confirm = await showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: Text('Permanently Delete ${_selectedItems.length} items?'),
+            title: Text('Permanently Delete ${selectedPaths.length} items?'),
             content: const Text(
               'This action cannot be undone. Are you sure you want to permanently delete these items?',
             ),
@@ -312,7 +310,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
         int successCount = 0;
         int failedCount = 0;
 
-        for (final trashFileName in _selectedItems) {
+        for (final trashFileName in selectedPaths) {
           final item = _trashItems.firstWhere(
             (item) => item.trashFileName == trashFileName,
             orElse: () => throw Exception('Item not found'),
@@ -344,10 +342,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
           );
 
           // Clear selection and refresh
-          setState(() {
-            _isSelectionMode = false;
-            _selectedItems.clear();
-          });
+          exitSelectionMode();
         }
 
         await _loadTrashItems();
@@ -361,64 +356,37 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
   }
 
   void _toggleSelectionMode() {
-    setState(() {
-      _isSelectionMode = !_isSelectionMode;
-      if (!_isSelectionMode) {
-        _selectedItems.clear();
-      }
-    });
+    toggleSelectionMode();
   }
 
   void _toggleItemSelection(String trashFileName) {
     setState(() {
-      if (_selectedItems.contains(trashFileName)) {
-        _selectedItems.remove(trashFileName);
+      if (selectedPaths.contains(trashFileName)) {
+        selectedPaths.remove(trashFileName);
       } else {
-        _selectedItems.add(trashFileName);
+        selectedPaths.add(trashFileName);
       }
     });
   }
 
   void _selectAll() {
     setState(() {
-      if (_selectedItems.length == _trashItems.length) {
+      if (selectedPaths.length == _trashItems.length) {
         // If all are selected, deselect all
-        _selectedItems.clear();
+        selectedPaths.clear();
       } else {
         // Otherwise, select all
-        _selectedItems.clear();
+        selectedPaths.clear();
         for (final item in _trashItems) {
-          _selectedItems.add(item.trashFileName);
+          selectedPaths.add(item.trashFileName);
         }
       }
     });
   }
 
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final dateToCheck = DateTime(date.year, date.month, date.day);
-
-    if (dateToCheck == today) {
-      return 'Today, ${DateFormat.jm().format(date)}';
-    } else if (dateToCheck == yesterday) {
-      return 'Yesterday, ${DateFormat.jm().format(date)}';
-    } else {
-      return DateFormat('MMM d, yyyy').format(date);
-    }
-  }
-
-  String _formatFileSize(int bytes) {
-    const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    if (bytes == 0) return '0 B';
-
-    final i = (math.log(bytes) / math.log(1024)).floor();
-    final size = bytes / math.pow(1024, i);
-    final formattedSize = i == 0 ? size.toInt() : size.toStringAsFixed(1);
-
-    return '$formattedSize ${suffixes[i]}';
-  }
+  // Helper methods using FormatUtils
+  String _formatDate(DateTime date) => FormatUtils.formatDateWithTime(date);
+  String _formatFileSize(int bytes) => FormatUtils.formatFileSize(bytes);
 
   @override
   Widget build(BuildContext context) {
@@ -426,7 +394,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
       appBar: AppBar(
         title: const Text('Trash Bin'),
         actions: [
-          if (_isSelectionMode) ...[
+          if (isSelectionMode) ...[
             IconButton(
               icon: const Icon(remix.Remix.checkbox_line),
               tooltip: 'Select All',
@@ -435,12 +403,12 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
             IconButton(
               icon: const Icon(remix.Remix.refresh_line),
               tooltip: 'Restore Selected',
-              onPressed: _selectedItems.isEmpty ? null : _restoreSelectedItems,
+              onPressed: selectedPaths.isEmpty ? null : _restoreSelectedItems,
             ),
             IconButton(
               icon: const Icon(remix.Remix.delete_bin_2_line),
               tooltip: 'Delete Selected',
-              onPressed: _selectedItems.isEmpty ? null : _deleteSelectedItems,
+              onPressed: selectedPaths.isEmpty ? null : _deleteSelectedItems,
             ),
           ] else ...[
             IconButton(
@@ -545,7 +513,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
         itemCount: _trashItems.length,
         itemBuilder: (context, index) {
           final item = _trashItems[index];
-          final isSelected = _selectedItems.contains(item.trashFileName);
+          final isSelected = selectedPaths.contains(item.trashFileName);
 
           return ListTile(
             leading: _getFileIcon(item.displayNameValue),
@@ -599,7 +567,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
             ),
             isThreeLine: true,
             selected: isSelected,
-            trailing: _isSelectionMode
+            trailing: isSelectionMode
                 ? Checkbox(
                     value: isSelected,
                     onChanged: (value) =>
@@ -614,17 +582,18 @@ class _TrashBinScreenState extends State<TrashBinScreen> {
                         onPressed: () => _restoreItem(item),
                       ),
                       IconButton(
-                        icon: const Icon(remix.Remix.delete_bin_2_line, size: 20),
+                        icon:
+                            const Icon(remix.Remix.delete_bin_2_line, size: 20),
                         tooltip: 'Delete permanently',
                         onPressed: () => _deleteItem(item),
                       ),
                     ],
                   ),
-            onTap: _isSelectionMode
+            onTap: isSelectionMode
                 ? () => _toggleItemSelection(item.trashFileName)
                 : null,
             onLongPress: () {
-              if (!_isSelectionMode) {
+              if (!isSelectionMode) {
                 _toggleSelectionMode();
                 _toggleItemSelection(item.trashFileName);
               }

@@ -226,13 +226,15 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
       await prefs.init();
 
       final viewMode = await prefs.getViewMode();
+      final effectiveViewMode =
+          viewMode == ViewMode.gridPreview ? ViewMode.grid : viewMode;
       final sortOption = await prefs.getSortOption();
       final gridZoomLevel = await prefs.getGridZoomLevel();
       final columnVisibility = await prefs.getColumnVisibility();
 
       if (mounted) {
         setState(() {
-          _viewMode = viewMode;
+          _viewMode = effectiveViewMode;
           _sortOption = sortOption;
           _gridZoomLevel = gridZoomLevel;
           _columnVisibility = columnVisibility;

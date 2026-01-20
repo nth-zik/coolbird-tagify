@@ -7,7 +7,11 @@ import 'package:remixicon/remixicon.dart' as remix;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../bloc/selection/selection_bloc.dart';
+import '../../../../bloc/selection/selection_event.dart';
 import 'thumbnail_only.dart';
+import '../../../components/common/optimized_interaction_handler.dart';
 
 class FileGridItem extends StatelessWidget {
   final FileSystemEntity file;
@@ -45,21 +49,61 @@ class FileGridItem extends StatelessWidget {
   }) : super(key: key);
 
   void _showContextMenu(BuildContext context, Offset globalPosition) {
-    final bool isVideo = FileTypeUtils.isVideoFile(file.path);
-    final bool isImage = FileTypeUtils.isImageFile(file.path);
+    try {
+      // Check for multiple selection
+      try {
+        final selectionBloc = context.read<SelectionBloc>();
+        final selectionState = selectionBloc.state;
 
-    // Get file tags from state if available
-    final List<String> fileTags = state?.getTagsForFile(file.path) ?? [];
+        if (selectionState.allSelectedPaths.length > 1 &&
+            selectionState.allSelectedPaths.contains(file.path)) {
+          showMultipleFilesContextMenu(
+            context: context,
+            selectedPaths: selectionState.allSelectedPaths,
+            globalPosition: globalPosition,
+            onClearSelection: () {
+              selectionBloc.add(ClearSelection());
+            },
+          );
+          return;
+        }
+      } catch (e) {
+        // Ignore if SelectionBloc is not found or error occurs
+        debugPrint('Error checking selection state: $e');
+      }
 
-    showFileContextMenu(
-      context: context,
-      file: file as File,
-      fileTags: fileTags,
-      isVideo: isVideo,
-      isImage: isImage,
-      showAddTagToFileDialog: showAddTagToFileDialog,
-      globalPosition: globalPosition,
-    );
+      final bool isVideo = FileTypeUtils.isVideoFile(file.path);
+      final bool isImage = FileTypeUtils.isImageFile(file.path);
+
+      // Get file tags from state if available
+      final List<String> fileTags = state?.getTagsForFile(file.path) ?? [];
+
+      showFileContextMenu(
+        context: context,
+        file: file as File,
+        fileTags: fileTags,
+        isVideo: isVideo,
+        isImage: isImage,
+        showAddTagToFileDialog: showAddTagToFileDialog,
+        globalPosition: globalPosition,
+      );
+    } catch (e) {
+      debugPrint('Error showing context menu: $e');
+      // Fallback to basic menu if something fails
+      try {
+        showFileContextMenu(
+          context: context,
+          file: file as File,
+          fileTags: [],
+          isVideo: false,
+          isImage: false,
+          showAddTagToFileDialog: showAddTagToFileDialog,
+          globalPosition: globalPosition,
+        );
+      } catch (e2) {
+        debugPrint('Critical error showing fallback context menu: $e2');
+      }
+    }
   }
 
   @override
@@ -85,89 +129,91 @@ class FileGridItem extends StatelessWidget {
 
                   // Selection overlay with tap handling
                   Positioned.fill(
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(8.0),
-                        onTap: () {
-                          final bool isShiftPressed = HardwareKeyboard
-                                  .instance.logicalKeysPressed
-                                  .contains(
-                                LogicalKeyboardKey.shiftLeft,
-                              ) ||
-                              HardwareKeyboard.instance.logicalKeysPressed
-                                  .contains(
-                                LogicalKeyboardKey.shiftRight,
-                              );
-                          final bool isCtrlPressed = HardwareKeyboard
-                                  .instance.logicalKeysPressed
-                                  .contains(
-                                LogicalKeyboardKey.controlLeft,
-                              ) ||
-                              HardwareKeyboard.instance.logicalKeysPressed
-                                  .contains(
-                                LogicalKeyboardKey.controlRight,
-                              );
-                          final bool isVideo =
-                              FileTypeUtils.isVideoFile(file.path);
-
-                          // If in selection mode or modifier keys pressed, handle selection
-                          if (isSelectionMode ||
-                              isShiftPressed ||
-                              isCtrlPressed) {
-                            toggleFileSelection(
-                              file.path,
-                              shiftSelect: isShiftPressed,
-                              ctrlSelect: isCtrlPressed,
+                    child: OptimizedInteractionLayer(
+                      onTap: () {
+                        final bool isShiftPressed = HardwareKeyboard
+                                .instance.logicalKeysPressed
+                                .contains(
+                              LogicalKeyboardKey.shiftLeft,
+                            ) ||
+                            HardwareKeyboard.instance.logicalKeysPressed
+                                .contains(
+                              LogicalKeyboardKey.shiftRight,
                             );
-                          } else if (isDesktopMode && isVideo) {
-                            toggleFileSelection(file.path,
-                                shiftSelect: false, ctrlSelect: false);
-                          } else {
-                            // Single tap opens file when not in selection mode
-                            onFileTap?.call(file as File, isVideo);
-                          }
-                        },
-                        onDoubleTap: () {
-                          onFileTap?.call(file as File,
-                              FileTypeUtils.isVideoFile(file.path));
-                        },
-                        onSecondaryTapDown: (details) {
-                          _showContextMenu(context, details.globalPosition);
-                        },
-                        onLongPress: () {
-                          HapticFeedback.mediumImpact();
-                          toggleFileSelection(file.path);
-                          if (!isSelectionMode) {
-                            toggleSelectionMode();
-                          }
-                        },
-                      ),
+                        final bool isCtrlPressed = HardwareKeyboard
+                                .instance.logicalKeysPressed
+                                .contains(
+                              LogicalKeyboardKey.controlLeft,
+                            ) ||
+                            HardwareKeyboard.instance.logicalKeysPressed
+                                .contains(
+                              LogicalKeyboardKey.controlRight,
+                            );
+                        final bool isVideo =
+                            FileTypeUtils.isVideoFile(file.path);
+                        final bool isPreviewMode = state?.viewMode ==
+                                ViewMode.gridPreview &&
+                            isDesktopMode;
+
+                        // If in selection mode or modifier keys pressed, handle selection
+                        if (isSelectionMode ||
+                            isShiftPressed ||
+                            isCtrlPressed ||
+                            isPreviewMode) {
+                          toggleFileSelection(
+                            file.path,
+                            shiftSelect: isShiftPressed,
+                            ctrlSelect: isCtrlPressed,
+                          );
+                        } else if (isDesktopMode && isVideo) {
+                          toggleFileSelection(file.path,
+                              shiftSelect: false, ctrlSelect: false);
+                        } else {
+                          // Single tap opens file when not in selection mode
+                          onFileTap?.call(file as File, isVideo);
+                        }
+                      },
+                      onDoubleTap: () {
+                        onFileTap?.call(
+                            file as File, FileTypeUtils.isVideoFile(file.path));
+                      },
+                      onSecondaryTapUp: (details) {
+                        _showContextMenu(context, details.globalPosition);
+                      },
+                      onLongPress: () {
+                        HapticFeedback.mediumImpact();
+                        toggleFileSelection(file.path);
+                        if (!isSelectionMode) {
+                          toggleSelectionMode();
+                        }
+                      },
                     ),
                   ),
 
                   // Selection indicator overlay - only show when selected
                   if (isSelected)
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8.0),
-                        color: Theme.of(context)
-                            .primaryColor
-                            .withValues(alpha: 0.2),
-                      ),
-                      child: isDesktopMode
-                          ? null
-                          : Align(
-                              alignment: Alignment.topRight,
-                              child: Padding(
-                                padding: const EdgeInsets.all(4.0),
-                                child: Icon(
-                                  remix.Remix.checkbox_circle_line,
-                                  color: Theme.of(context).primaryColor,
-                                  size: 24,
+                    IgnorePointer(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8.0),
+                          color: Theme.of(context)
+                              .primaryColor
+                              .withValues(alpha: 0.2),
+                        ),
+                        child: isDesktopMode
+                            ? null
+                            : Align(
+                                alignment: Alignment.topRight,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(4.0),
+                                  child: Icon(
+                                    remix.Remix.checkbox_circle_line,
+                                    color: Theme.of(context).primaryColor,
+                                    size: 24,
+                                  ),
                                 ),
                               ),
-                            ),
+                      ),
                     ),
                 ],
               ),

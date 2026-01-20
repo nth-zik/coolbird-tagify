@@ -8,14 +8,10 @@ import 'package:cb_file_manager/ui/screens/network_browsing/network_browser_scre
 import 'package:cb_file_manager/ui/screens/network_browsing/smb_browser_screen.dart';
 import 'package:cb_file_manager/ui/screens/network_browsing/ftp_browser_screen.dart';
 import 'package:cb_file_manager/ui/screens/network_browsing/webdav_browser_screen.dart';
-import 'package:cb_file_manager/ui/screens/media_gallery/image_gallery_screen.dart';
-import 'package:cb_file_manager/ui/screens/media_gallery/video_gallery_screen.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/image_viewer_screen.dart';
-import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
+import 'package:cb_file_manager/ui/screens/video_library/video_library_files_screen.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
-import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
-import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
 import 'package:cb_file_manager/bloc/network_browsing/network_browsing_bloc.dart';
 import 'package:cb_file_manager/services/network_browsing/network_service_registry.dart';
 import 'package:cb_file_manager/ui/screens/home/home_screen.dart';
@@ -100,25 +96,15 @@ class SystemScreenRouter {
         return FTPBrowserScreen(tabId: tabId);
       case '#webdav':
         return WebDAVBrowserScreen(tabId: tabId);
-      case '#gallery:images':
-        return const ImageGalleryScreen(
-          path: '',
-          recursive: true,
-          showAllImages: true,
-        );
     }
 
     // 2. Handle dynamic paths
     if (path.startsWith('#album/')) {
       return _handleAlbumRoute(path);
     } else if (path.startsWith('#video-library/')) {
-      return _handleVideoLibraryRoute(path);
-    } else if (path.startsWith('#gallery:videos')) {
-      return _handleVideoGalleryRoute(path);
+      return _handleVideoLibraryRoute(path, tabId);
     } else if (path.startsWith('#image?')) {
       return _handleImageRoute(context, path, tabId, cacheKey);
-    } else if (path.startsWith('#tag:')) {
-      return _handleTagRoute(context, path, tabId, cacheKey);
     } else if (path.startsWith('#search?tag=')) {
       return _handleSearchRoute(context, path, tabId, cacheKey);
     } else if (path.startsWith('#network/')) {
@@ -151,59 +137,6 @@ class SystemScreenRouter {
     return const Center(child: Text('Invalid album ID'));
   }
 
-  static Widget _handleVideoLibraryRoute(String path) {
-    final libraryIdStr = path.substring('#video-library/'.length);
-    final libraryId = int.tryParse(libraryIdStr);
-    if (libraryId != null) {
-      return FutureBuilder<VideoLibrary?>(
-        future: VideoLibraryService().getLibraryById(libraryId),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasData && snapshot.data != null) {
-            return VideoGalleryScreen(
-              path: '',
-              recursive: true,
-              library: snapshot.data!,
-            );
-          }
-          return const Center(child: Text('Video library not found'));
-        },
-      );
-    }
-    return const Center(child: Text('Invalid video library ID'));
-  }
-
-  static Widget _handleVideoGalleryRoute(String path) {
-    String galleryPath = '';
-    bool recursive = true;
-    final int qIndex = path.indexOf('?');
-    if (qIndex != -1 && qIndex < path.length - 1) {
-      final String query = path.substring(qIndex + 1);
-      try {
-        final params = Uri.splitQueryString(query);
-        if (params.containsKey('path')) {
-          galleryPath = Uri.decodeComponent(params['path'] ?? '');
-        }
-        if (params.containsKey('recursive')) {
-          final v = (params['recursive'] ?? '').toLowerCase();
-          if (v == 'false' || v == '0' || v == 'no') {
-            recursive = false;
-          } else if (v == 'true' || v == '1' || v == 'yes') {
-            recursive = true;
-          }
-        }
-      } catch (_) {
-        // Fallback to defaults if parsing fails
-      }
-    }
-
-    return VideoGalleryScreen(
-      path: galleryPath,
-      recursive: recursive,
-    );
-  }
 
   static Widget _handleImageRoute(
       BuildContext context, String path, String tabId, String cacheKey) {
@@ -230,48 +163,27 @@ class SystemScreenRouter {
     return ImageViewerScreen(file: File(filePath));
   }
 
-  static Widget _handleTagRoute(
-      BuildContext context, String path, String tabId, String cacheKey) {
-    // Check if we already have a cached widget for this tab+path
-    if (_cachedWidgets.containsKey(cacheKey)) {
-      if (!_loggedKeys.contains(cacheKey)) {
-        _loggedKeys.add(cacheKey);
-      }
-      return _cachedWidgets[cacheKey]!;
-    }
-
-    final tag = path.substring(5); // Remove "#tag:" prefix
-
-    Widget tagSearchWidget = Builder(builder: (context) {
-      final tabBloc = BlocProvider.of<TabManagerBloc>(context);
-      tabBloc.add(UpdateTabName(tabId, '${context.tr.tagPrefix}: $tag'));
-
-      TagManager.clearCache();
-      _loggedKeys.add(cacheKey);
-
-      return BlocProvider(
-        create: (_) {
-          final bloc = FolderListBloc();
-          Future.delayed(const Duration(milliseconds: 500), () {
-            if (bloc.isClosed == false) {
-              bloc.add(SearchByTagGlobally(tag));
-            }
-          });
-          return bloc;
+  static Widget _handleVideoLibraryRoute(String path, String tabId) {
+    final libraryIdStr = path.substring('#video-library/'.length);
+    final libraryId = int.tryParse(libraryIdStr);
+    if (libraryId != null) {
+      return FutureBuilder<VideoLibrary?>(
+        future: VideoLibraryService().getLibraryById(libraryId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasData && snapshot.data != null) {
+            return VideoLibraryFilesScreen(
+              library: snapshot.data!,
+              tabId: tabId,
+            );
+          }
+          return const Center(child: Text('Video library not found'));
         },
-        lazy: false,
-        child: TabbedFolderListScreen(
-          key: ValueKey('tag_search_$cacheKey'),
-          path: '',
-          tabId: tabId,
-          searchTag: tag,
-          globalTagSearch: true,
-        ),
       );
-    });
-
-    _cachedWidgets[cacheKey] = tagSearchWidget;
-    return tagSearchWidget;
+    }
+    return const Center(child: Text('Invalid video library ID'));
   }
 
   static Widget _handleSearchRoute(
@@ -283,12 +195,12 @@ class SystemScreenRouter {
       return _cachedWidgets[cacheKey]!;
     }
 
-    final String raw = path.substring('#search?tag='.length);
-    final String tag = UriUtils.safeDecodeComponent(raw);
+    final String tag = UriUtils.extractTagFromSearchPath(path) ??
+        path.substring('#search?tag='.length);
 
     final widgetToCache = TabbedFolderListScreen(
       key: ValueKey('tag_search_$cacheKey'),
-      path: '',
+      path: path,
       tabId: tabId,
       searchTag: tag,
       globalTagSearch: true,

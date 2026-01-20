@@ -10,13 +10,11 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 import 'package:path/path.dart' as path;
-// import 'package:ffmpeg_helper/ffmpeg_helper.dart';
 import 'package:cb_file_manager/helpers/core/user_preferences.dart';
 import 'package:cb_file_manager/helpers/core/app_path_helper.dart';
 import 'package:remixicon/remixicon.dart' as remix;
 
 import 'fc_native_video_thumbnail.dart';
-import '../network/smb_native_thumbnail_helper.dart';
 
 Future<int> _getEstimatedVideoDurationIsolate(String videoPath) async {
   try {
@@ -47,8 +45,8 @@ Future<int> _getEstimatedVideoDurationIsolate(String videoPath) async {
           estimationFactor = 10.0; // Default estimation
       }
 
-      final estimatedSeconds = (fileSize / (1024 * 1024) * estimationFactor)
-          .round();
+      final estimatedSeconds =
+          (fileSize / (1024 * 1024) * estimationFactor).round();
 
       // Clamp to reasonable bounds (minimum 10 seconds, maximum 10 minutes for estimation)
       final clampedDuration = estimatedSeconds.clamp(10, 600);
@@ -79,9 +77,9 @@ Future<int> _calculateTimestampFromPercentageIsolate(
   // For very short videos, use a fixed timestamp
   if (estimatedDuration <= 10) {
     final timestamp = (estimatedDuration / 2).round().clamp(
-      2,
-      estimatedDuration - 2,
-    );
+          2,
+          estimatedDuration - 2,
+        );
     debugPrint(
       'VideoThumbnail: Short video ($estimatedDuration s), using middle timestamp: ${timestamp}s',
     );
@@ -97,14 +95,13 @@ Future<int> _calculateTimestampFromPercentageIsolate(
   }
 
   // Calculate timestamp in seconds
-  int timestampSeconds = ((adjustedPercentage / 100.0) * estimatedDuration)
-      .round();
+  int timestampSeconds =
+      ((adjustedPercentage / 100.0) * estimatedDuration).round();
 
   // Ensure timestamp is within safe bounds (avoid first/last 5 seconds)
   const minTimestamp = 5;
-  final maxTimestamp = estimatedDuration > 10
-      ? estimatedDuration - 5
-      : estimatedDuration ~/ 2;
+  final maxTimestamp =
+      estimatedDuration > 10 ? estimatedDuration - 5 : estimatedDuration ~/ 2;
   timestampSeconds = timestampSeconds.clamp(minTimestamp, maxTimestamp);
 
   // Debug logging to track thumbnail timestamp calculation
@@ -173,8 +170,7 @@ Future<String?> _generateThumbnailIsolate(_ThumbnailIsolateArgs args) async {
     // Non-blocking file check
     bool cacheExists = false;
     try {
-      cacheExists =
-          !args.forceRegenerate &&
+      cacheExists = !args.forceRegenerate &&
           await cacheFile.exists() &&
           await cacheFile.length() > 0;
 
@@ -296,7 +292,10 @@ class VideoThumbnailHelper {
 
   // Reduce maximum concurrent processes to prevent system overload
   // Use slightly higher concurrency on Windows but keep it safe
-  static int get _maxConcurrentProcesses => Platform.isWindows ? 2 : 1;
+  static int get _maxConcurrentProcesses {
+    if (!Platform.isWindows) return 1;
+    return min(4, Platform.numberOfProcessors);
+  }
 
   // Add throttling for native Windows thumbnail operations
 
@@ -484,6 +483,43 @@ class VideoThumbnailHelper {
     cancelThumbnailsNotInDirectory(dirPath);
   }
 
+  static String _normalizePathForComparison(String value) {
+    var normalized = path.normalize(value);
+    if (Platform.isWindows) {
+      normalized = normalized.toLowerCase();
+    }
+    return normalized;
+  }
+
+  static String _cacheKeyForPath(String value) {
+    if (value.isEmpty) return value;
+    if (value.startsWith('#')) return value;
+
+    var resolved = value;
+    if (!resolved.startsWith('\\\\') && !resolved.startsWith('//')) {
+      resolved = path.absolute(resolved);
+    }
+    resolved = path.normalize(resolved);
+
+    if (Platform.isWindows) {
+      resolved = resolved.replaceAll('/', '\\').toLowerCase();
+    }
+    return resolved;
+  }
+
+  static bool _isSameOrWithinDirectory(String baseDir, String candidateDir) {
+    final base = _normalizePathForComparison(baseDir);
+    final candidate = _normalizePathForComparison(candidateDir);
+    if (candidate == base) {
+      return true;
+    }
+    try {
+      return path.isWithin(base, candidate);
+    } catch (_) {
+      return false;
+    }
+  }
+
   static void cancelThumbnailsNotInDirectory(String dirPath) {
     if (dirPath.isEmpty) return;
 
@@ -497,7 +533,7 @@ class VideoThumbnailHelper {
 
     for (final request in _pendingQueue) {
       final requestDir = path.dirname(request.videoPath);
-      if (requestDir != dirPath) {
+      if (!_isSameOrWithinDirectory(dirPath, requestDir)) {
         if (!request.completer.isCompleted) {
           request.completer.complete(null);
         }
@@ -512,7 +548,7 @@ class VideoThumbnailHelper {
     final List<_ThumbnailRequest> processingsToRemove = [];
     for (final request in _processingQueue) {
       final requestDir = path.dirname(request.videoPath);
-      if (requestDir != dirPath) {
+      if (!_isSameOrWithinDirectory(dirPath, requestDir)) {
         if (!request.completer.isCompleted) {
           request.completer.complete(null);
         }
@@ -604,12 +640,15 @@ class VideoThumbnailHelper {
   }
 
   static Future<void> removeFromCache(String videoPath) async {
+    final cacheKey = _cacheKeyForPath(videoPath);
     // Xóa khỏi cache trong bộ nhớ ngay lập tức
     _inMemoryPathCache.remove(videoPath);
+    _inMemoryPathCache.remove(cacheKey);
 
     // Xóa khỏi file cache
-    if (_fileCache.containsKey(videoPath)) {
-      final cachedPath = _fileCache[videoPath]!;
+    final cachedPath = _fileCache[cacheKey] ?? _fileCache[videoPath];
+    if (cachedPath != null) {
+      _fileCache.remove(cacheKey);
       _fileCache.remove(videoPath);
 
       // Xóa file trên đĩa trong background
@@ -709,12 +748,13 @@ class VideoThumbnailHelper {
     int? quality,
     int? thumbnailSize,
   }) {
+    final cacheKey = _cacheKeyForPath(videoPath);
     final existingPending = _pendingQueue.firstWhere(
-      (req) => req.videoPath == videoPath,
+      (req) => req.videoPath == cacheKey,
       orElse: () => _ThumbnailRequest.empty(),
     );
     final existingProcessing = _processingQueue.firstWhere(
-      (req) => req.videoPath == videoPath,
+      (req) => req.videoPath == cacheKey,
       orElse: () => _ThumbnailRequest.empty(),
     );
 
@@ -735,7 +775,7 @@ class VideoThumbnailHelper {
 
     final completer = Completer<String?>();
     final newRequest = _ThumbnailRequest(
-      videoPath: videoPath,
+      videoPath: cacheKey,
       priority: priority,
       completer: completer,
       timestamp: DateTime.now(),
@@ -745,6 +785,12 @@ class VideoThumbnailHelper {
     );
 
     _pendingQueue.add(newRequest);
+    _pendingQueue.sort((a, b) {
+      if (a.priority != b.priority) {
+        return b.priority.compareTo(a.priority);
+      }
+      return a.timestamp.compareTo(b.timestamp);
+    });
 
     Timer.run(_processQueue);
 
@@ -781,9 +827,17 @@ class VideoThumbnailHelper {
         return null;
       }
 
-      final cacheFilename = _createCacheFilename(videoPath);
+      if (!forceRegenerate) {
+        final cached = await getFromCache(videoPath);
+        if (cached != null) {
+          return cached;
+        }
+      }
 
-      String absoluteVideoPath = path.absolute(videoPath);
+      final cacheKey = _cacheKeyForPath(videoPath);
+      final cacheFilename = _createCacheFilename(cacheKey);
+
+      String absoluteVideoPath = cacheKey;
       if (_isWindows) {
         absoluteVideoPath = absoluteVideoPath.replaceAll('\\', '/');
       }
@@ -798,21 +852,21 @@ class VideoThumbnailHelper {
 
       // PERFORMANCE: Ensure all file I/O operations are async (non-blocking)
       // First check if already exists in cache and valid before using compute
-      if (!forceRegenerate && _fileCache.containsKey(videoPath)) {
-        final cachedPath = _fileCache[videoPath]!;
+      if (!forceRegenerate && _fileCache.containsKey(cacheKey)) {
+        final cachedPath = _fileCache[cacheKey]!;
         final cacheFile = File(cachedPath);
         try {
           // All file operations are already async - verified
           if (await cacheFile.exists() && await cacheFile.length() > 0) {
-            _log('VideoThumbnail: Using valid cache for $videoPath');
+            _log('VideoThumbnail: Using valid cache for $cacheKey');
             return cachedPath;
           } else {
-            _log('VideoThumbnail: Cache invalid for $videoPath, regenerating');
-            _fileCache.remove(videoPath);
+            _log('VideoThumbnail: Cache invalid for $cacheKey, regenerating');
+            _fileCache.remove(cacheKey);
           }
         } catch (e) {
           _log('VideoThumbnail: Error checking cache: $e');
-          _fileCache.remove(videoPath);
+          _fileCache.remove(cacheKey);
         }
       }
 
@@ -827,12 +881,13 @@ class VideoThumbnailHelper {
       // On Windows, call directly without isolate because VideoThumbnail package
       // doesn't work in isolates due to BackgroundIsolateBinaryMessenger issues
       String? generatedPath;
-      
+
       if (_isWindows) {
-        _log('VideoThumbnail: Using direct generation on Windows for $videoPath');
+        _log(
+            'VideoThumbnail: Using direct generation on Windows for $cacheKey');
         try {
           generatedPath = await _generateThumbnailDirectWindows(
-            videoPath: videoPath,
+            videoPath: cacheKey,
             cacheFilename: cacheFilename,
             absoluteVideoPath: absoluteVideoPath,
             percentage: percentage.toInt(),
@@ -870,7 +925,8 @@ class VideoThumbnailHelper {
         );
 
         try {
-          generatedPath = await compute(_generateThumbnailIsolate, args).timeout(
+          generatedPath =
+              await compute(_generateThumbnailIsolate, args).timeout(
             const Duration(seconds: 8),
             onTimeout: () {
               _log(
@@ -892,12 +948,12 @@ class VideoThumbnailHelper {
       if (generatedPath != null) {
         final resultFile = File(generatedPath);
         if (await resultFile.exists() && await resultFile.length() > 0) {
-          await _addToFileCache(videoPath, generatedPath);
+          await _addToFileCache(cacheKey, generatedPath);
           // Update in-memory for fast subsequent access
-          _inMemoryPathCache[videoPath] = generatedPath;
+          _inMemoryPathCache[cacheKey] = generatedPath;
           // Notify listeners this specific thumbnail is ready
           try {
-            _thumbnailReadyController.add(videoPath);
+            _thumbnailReadyController.add(cacheKey);
           } catch (_) {}
           _saveCacheToDiskThrottled();
           return generatedPath;
@@ -955,22 +1011,54 @@ class VideoThumbnailHelper {
         } catch (_) {}
       }
 
-      final int timestampSeconds = await _calculateTimestampFromPercentageIsolate(
-        videoPath,
-        percentage.toDouble(),
-      );
+      final bool useFastMode = maxSize <= 200 && quality <= 60;
+      final int? timestampSeconds = useFastMode
+          ? null
+          : await _calculateTimestampFromPercentageIsolate(
+              videoPath,
+              percentage.toDouble(),
+            );
 
       // Use native Windows thumbnail provider (fastest method)
       _log('VideoThumbnail: Using FcNativeVideoThumbnail for $videoPath');
       try {
-        final nativePath = await FcNativeVideoThumbnail.generateThumbnail(
-          videoPath: absoluteVideoPath,
-          outputPath: thumbnailPath,
-          width: maxSize,
-          format: 'jpg',
-          timeSeconds: timestampSeconds,
-          quality: quality,
-        );
+        String? nativePath;
+        if (useFastMode) {
+          _log(
+            'VideoThumbnail: Using shell thumbnail for fast mode on $videoPath',
+          );
+          nativePath = await FcNativeVideoThumbnail.generateThumbnail(
+            videoPath: absoluteVideoPath,
+            outputPath: thumbnailPath,
+            width: maxSize,
+            format: 'jpg',
+            timeSeconds: null,
+            quality: quality,
+          );
+
+          if (nativePath == null) {
+            _log(
+              'VideoThumbnail: Shell thumbnail failed, falling back to timestamp extraction for $videoPath',
+            );
+            nativePath = await FcNativeVideoThumbnail.generateThumbnail(
+              videoPath: absoluteVideoPath,
+              outputPath: thumbnailPath,
+              width: maxSize,
+              format: 'jpg',
+              timeSeconds: 1,
+              quality: quality,
+            );
+          }
+        } else {
+          nativePath = await FcNativeVideoThumbnail.generateThumbnail(
+            videoPath: absoluteVideoPath,
+            outputPath: thumbnailPath,
+            width: maxSize,
+            format: 'jpg',
+            timeSeconds: timestampSeconds,
+            quality: quality,
+          );
+        }
 
         if (nativePath != null) {
           final file = File(nativePath);
@@ -987,54 +1075,6 @@ class VideoThumbnailHelper {
       } catch (e, stackTrace) {
         _log(
           'VideoThumbnail: Native thumbnail error for $videoPath: $e\n$stackTrace',
-          forceShow: true,
-        );
-      }
-
-      // Fallback to FFmpeg if native method fails
-      _log('VideoThumbnail: Falling back to FFmpeg for $videoPath');
-      try {
-        // Get FFmpeg path from bundled binary
-        final exePath = Platform.resolvedExecutable;
-        final exeDir = path.dirname(exePath);
-        final ffmpegPath = path.join(exeDir, 'data', 'flutter_assets', 'windows', 'ffmpeg', 'bin', 'ffmpeg.exe');
-
-        // Fallback to system ffmpeg if bundled not found
-        String ffmpegCommand = ffmpegPath;
-        if (!await File(ffmpegPath).exists()) {
-          ffmpegCommand = 'ffmpeg'; // Use system PATH
-          _log('VideoThumbnail: Bundled FFmpeg not found, using system FFmpeg');
-        }
-
-        final result = await Process.run(
-          ffmpegCommand,
-          [
-            '-ss', timestampSeconds.toString(),
-            '-i', videoPath,
-            '-vframes', '1',
-            '-q:v', quality.toString(),
-            '-vf', 'scale=$maxSize:-1',
-            thumbnailPath,
-            '-y',
-          ],
-          runInShell: false,
-        );
-
-        if (result.exitCode == 0) {
-          final file = File(thumbnailPath);
-          if (await file.exists() && await file.length() > 0) {
-            _log('VideoThumbnail: FFmpeg fallback generation successful for $videoPath');
-            return thumbnailPath;
-          }
-        } else {
-          _log(
-            'VideoThumbnail: FFmpeg failed with exit code ${result.exitCode}: ${result.stderr}',
-            forceShow: true,
-          );
-        }
-      } catch (e, stackTrace) {
-        _log(
-          'VideoThumbnail: FFmpeg error for $videoPath: $e\n$stackTrace',
           forceShow: true,
         );
       }
@@ -1174,14 +1214,16 @@ class VideoThumbnailHelper {
 
     if (forceRegenerate) {
       _log('VideoThumbnail: Force regenerating thumbnail for: $videoPath');
-      _fileCache.remove(videoPath);
+      final cacheKey = _cacheKeyForPath(videoPath);
+      _fileCache.remove(cacheKey);
+      _inMemoryPathCache.remove(cacheKey);
     }
 
     final priority = isPriority ? _visiblePriority : _defaultPriority;
 
     // Choose sensible defaults if not provided
-    final effectiveQuality = quality ?? (isPriority ? 85 : 60);
-    final effectiveSize = thumbnailSize ?? (isPriority ? 260 : 160);
+    final effectiveQuality = quality ?? (isPriority ? 55 : 45);
+    final effectiveSize = thumbnailSize ?? (isPriority ? 200 : 160);
 
     final result = await _requestThumbnail(
       videoPath,
@@ -1230,7 +1272,7 @@ class VideoThumbnailHelper {
               debugPrint(
                 'VideoThumbnail: Thumbnail file is empty: $thumbnailPath',
               );
-              _fileCache.remove(videoPath);
+              await removeFromCache(videoPath);
               try {
                 await thumbnailFile.delete();
               } catch (_) {}
@@ -1240,14 +1282,14 @@ class VideoThumbnailHelper {
             debugPrint(
               'VideoThumbnail: Thumbnail file path obtained but file does not exist: $thumbnailPath',
             );
-            _fileCache.remove(videoPath);
+            await removeFromCache(videoPath);
             return null;
           }
         } catch (e) {
           debugPrint(
             'VideoThumbnail: Error reading thumbnail file $thumbnailPath: $e',
           );
-          _fileCache.remove(videoPath);
+          await removeFromCache(videoPath);
           try {
             final file = File(thumbnailPath);
             if (await file.exists()) await file.delete();
@@ -1276,43 +1318,69 @@ class VideoThumbnailHelper {
       }
     }
 
-    // Kiểm tra cache trong bộ nhớ trước
-    if (_inMemoryPathCache.containsKey(videoPath)) {
-      final cachedPath = _inMemoryPathCache[videoPath];
-      if (cachedPath != null) {
-        final cacheFile = File(cachedPath);
-        if (await cacheFile.exists()) {
-          // Đưa lại lên đầu cache nếu tồn tại
-          final value = _inMemoryPathCache.remove(videoPath)!;
-          _inMemoryPathCache[videoPath] = value;
-          return cachedPath;
-        } else {
-          // Xóa khỏi cache nếu không hợp lệ
-          _inMemoryPathCache.remove(videoPath);
+    final cacheKey = _cacheKeyForPath(videoPath);
+    final keys = <String>{
+      cacheKey,
+      videoPath,
+    }.where((k) => k.isNotEmpty).toList(growable: false);
+
+    for (final key in keys) {
+      if (_inMemoryPathCache.containsKey(key)) {
+        final cachedPath = _inMemoryPathCache[key];
+        if (cachedPath != null) {
+          final cacheFile = File(cachedPath);
+          if (await cacheFile.exists()) {
+            final value = _inMemoryPathCache.remove(key)!;
+            _inMemoryPathCache[key] = value;
+            if (cacheKey != key) {
+              _inMemoryPathCache[cacheKey] = cachedPath;
+            }
+            return cachedPath;
+          } else {
+            _inMemoryPathCache.remove(key);
+          }
         }
       }
     }
 
-    // Kiểm tra cache trên đĩa
-    if (_fileCache.containsKey(videoPath)) {
-      final cachedPath = _fileCache[videoPath]!;
-      try {
-        final file = File(cachedPath);
+    for (final key in keys) {
+      if (_fileCache.containsKey(key)) {
+        final cachedPath = _fileCache[key]!;
+        try {
+          final file = File(cachedPath);
+          if (await file.exists() && await file.length() > 0) {
+            _addToMemoryCache(cacheKey, cachedPath);
+            if (cacheKey != key) {
+              _fileCache[cacheKey] = cachedPath;
+            }
+            return cachedPath;
+          } else {
+            _fileCache.remove(key);
+          }
+        } catch (e) {
+          _log('VideoThumbnail: Error checking cache file $cachedPath: $e');
+          _fileCache.remove(key);
+        }
+      }
+    }
+
+    try {
+      final tempDir = await AppPathHelper.getVideoCacheDir();
+      final candidates = <String>{
+        path.join(tempDir.path, _createCacheFilename(cacheKey)),
+        path.join(tempDir.path, _createCacheFilename(videoPath)),
+      }.toList(growable: false);
+
+      for (final candidate in candidates) {
+        final file = File(candidate);
         if (await file.exists() && await file.length() > 0) {
-          // Thêm vào cache trong bộ nhớ để truy cập nhanh hơn lần sau
-          _addToMemoryCache(videoPath, cachedPath);
-          return cachedPath;
-        } else {
-          // Cache entry không hợp lệ, xóa đi
-          _fileCache.remove(videoPath);
+          _fileCache[cacheKey] = candidate;
+          _addToMemoryCache(cacheKey, candidate);
+          return candidate;
         }
-      } catch (e) {
-        _log('VideoThumbnail: Error checking cache file $cachedPath: $e');
-        _fileCache.remove(videoPath);
       }
-    }
+    } catch (_) {}
 
-    // Không tìm thấy trong cache
     return null;
   }
 
@@ -1374,16 +1442,16 @@ class VideoThumbnailHelper {
     void Function(String?)? onThumbnailGenerated,
   }) {
     defaultFallback() => Container(
-      color: Colors.grey[300],
-      child: const Center(
-        child: Icon(Icons.movie, size: 40, color: Colors.grey),
-      ),
-    );
+          color: Colors.grey[300],
+          child: const Center(
+            child: Icon(Icons.movie, size: 40, color: Colors.grey),
+          ),
+        );
 
     final requestedSize =
         (max(width, height).isFinite && max(width, height) > 0)
-        ? max(width, height).toInt()
-        : null;
+            ? max(width, height).toInt()
+            : null;
 
     return FutureBuilder<String?>(
       key: key ?? ValueKey('thumb_$videoPath'),
@@ -1413,12 +1481,10 @@ class VideoThumbnailHelper {
           );
           content = fallbackBuilder?.call() ?? defaultFallback();
         } else if (thumbnailPath != null) {
-          final int? cWidth = (width.isFinite && width > 0)
-              ? width.toInt()
-              : null;
-          final int? cHeight = (height.isFinite && height > 0)
-              ? height.toInt()
-              : null;
+          final int? cWidth =
+              (width.isFinite && width > 0) ? width.toInt() : null;
+          final int? cHeight =
+              (height.isFinite && height > 0) ? height.toInt() : null;
           content = Image(
             image: ResizeImage(
               FileImage(File(thumbnailPath)),
@@ -1455,7 +1521,9 @@ class VideoThumbnailHelper {
             },
             errorBuilder: (context, error, stackTrace) {
               _log('Error loading thumbnail image file $thumbnailPath: $error');
-              _fileCache.remove(videoPath);
+              final cacheKey = _cacheKeyForPath(videoPath);
+              _fileCache.remove(cacheKey);
+              _inMemoryPathCache.remove(cacheKey);
               unawaited(() async {
                 try {
                   final file = File(thumbnailPath);
@@ -1636,10 +1704,8 @@ class VideoThumbnailHelper {
     // 3. Nhóm còn lại - tải với ưu tiên thấp
 
     final visiblePaths = videoPaths.take(visibleCount).toList();
-    final nearPaths = videoPaths
-        .skip(visibleCount)
-        .take(visibleCount * 2)
-        .toList();
+    final nearPaths =
+        videoPaths.skip(visibleCount).take(visibleCount * 2).toList();
     final otherPaths = videoPaths.skip(visibleCount * 3).toList();
 
     // Tạm dừng các yêu cầu đang chờ để xếp các yêu cầu mới
@@ -1688,18 +1754,19 @@ class VideoThumbnailHelper {
   /// Flag to mark a thumbnail as attempted for generation
   /// This prevents the need to retry generating already failed thumbnails
   static void markAttempted(String videoPath) {
-    _attemptedPaths.add(videoPath);
+    _attemptedPaths.add(_cacheKeyForPath(videoPath));
   }
 
   /// Check if a thumbnail generation was already attempted
   static bool wasAttempted(String videoPath) {
-    return _attemptedPaths.contains(videoPath);
+    return _attemptedPaths.contains(_cacheKeyForPath(videoPath));
   }
 
   /// Restart thumbnail generation for items that come back into viewport
   static Future<String?> restartThumbnailRequest(String videoPath) async {
+    final cacheKey = _cacheKeyForPath(videoPath);
     // Remove from attempted paths to allow regeneration
-    _attemptedPaths.remove(videoPath);
+    _attemptedPaths.remove(cacheKey);
 
     // First try cache
     final cached = await getFromCache(videoPath);
@@ -1863,28 +1930,29 @@ class VideoThumbnailHelper {
       await initializeCache();
     }
 
-    if (videoPath.isEmpty || !await File(videoPath).exists()) {
+    final cacheKey = _cacheKeyForPath(videoPath);
+    if (cacheKey.isEmpty || !await File(cacheKey).exists()) {
       _logWithPathThrottle(
-        'VideoThumbnail: Invalid video path: $videoPath',
-        videoPath,
+        'VideoThumbnail: Invalid video path: $cacheKey',
+        cacheKey,
       );
       return null;
     }
 
     // Check in memory cache first for faster response
-    if (!forceRegenerate && _inMemoryPathCache.containsKey(videoPath)) {
-      final cachedPath = _inMemoryPathCache[videoPath];
+    if (!forceRegenerate && _inMemoryPathCache.containsKey(cacheKey)) {
+      final cachedPath = _inMemoryPathCache[cacheKey];
       if (cachedPath != null) {
         final cacheFile = File(cachedPath);
         if (await cacheFile.exists()) {
           _logWithPathThrottle(
-            'VideoThumbnail: Using in-memory cached thumbnail for $videoPath',
-            videoPath,
+            'VideoThumbnail: Using in-memory cached thumbnail for $cacheKey',
+            cacheKey,
           );
           return cachedPath;
         } else {
           // Remove invalid cache entry
-          _inMemoryPathCache.remove(videoPath);
+          _inMemoryPathCache.remove(cacheKey);
         }
       }
     }
@@ -1894,19 +1962,19 @@ class VideoThumbnailHelper {
       final cachedPath = await getFromCache(videoPath);
       if (cachedPath != null) {
         _logWithPathThrottle(
-          'VideoThumbnail: Using file-cached thumbnail for $videoPath',
-          videoPath,
+          'VideoThumbnail: Using file-cached thumbnail for $cacheKey',
+          cacheKey,
         );
         // Also update in-memory cache
-        _inMemoryPathCache[videoPath] = cachedPath;
+        _inMemoryPathCache[cacheKey] = cachedPath;
         return cachedPath;
       }
     }
 
     // No valid cache entry, generate a new thumbnail
     _logWithPathThrottle(
-      'VideoThumbnail: No cache found or regenerate requested for $videoPath',
-      videoPath,
+      'VideoThumbnail: No cache found or regenerate requested for $cacheKey',
+      cacheKey,
     );
     // Note: thumbnailPercentage is stored globally but not used directly in generateThumbnail
     return generateThumbnail(
@@ -1940,13 +2008,13 @@ class _ThumbnailRequest {
   final int? thumbnailSize;
 
   _ThumbnailRequest.empty()
-    : videoPath = '',
-      priority = -1,
-      completer = Completer<String?>(),
-      timestamp = DateTime(0),
-      forceRegenerate = false,
-      quality = null,
-      thumbnailSize = null;
+      : videoPath = '',
+        priority = -1,
+        completer = Completer<String?>(),
+        timestamp = DateTime(0),
+        forceRegenerate = false,
+        quality = null,
+        thumbnailSize = null;
 
   _ThumbnailRequest({
     required this.videoPath,
@@ -1958,4 +2026,3 @@ class _ThumbnailRequest {
     this.thumbnailSize,
   });
 }
-

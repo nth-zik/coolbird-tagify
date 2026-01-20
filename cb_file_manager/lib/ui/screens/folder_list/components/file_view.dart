@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
@@ -6,6 +7,7 @@ import 'package:cb_file_manager/helpers/ui/frame_timing_optimizer.dart';
 import 'package:flutter/gestures.dart'; // Import for PointerSignalEvent
 import 'package:flutter/services.dart'; // Import for HardwareKeyboard
 import 'package:remixicon/remixicon.dart' as remix;
+import 'package:cb_file_manager/helpers/core/user_preferences.dart';
 
 import 'file_item.dart';
 import 'file_grid_item.dart';
@@ -15,6 +17,24 @@ import 'file_details_item.dart';
 import 'folder_details_item.dart';
 
 class FileView extends StatelessWidget {
+  static const double _gridSpacing = 8.0;
+  static const double _gridAspectRatio = 0.8;
+  static const double _gridReferenceWidth = 960.0;
+
+  static double _gridItemWidthForZoom(int zoomLevel) {
+    final clamped = zoomLevel.clamp(
+      UserPreferences.minGridZoomLevel,
+      UserPreferences.maxGridZoomLevel,
+    );
+    final totalSpacing = _gridSpacing * (clamped - 1);
+    return math.max(56.0, (_gridReferenceWidth - totalSpacing) / clamped);
+  }
+
+  static int _gridCrossAxisCount(double availableWidth, double itemWidth) {
+    final raw =
+        ((availableWidth + _gridSpacing) / (itemWidth + _gridSpacing)).floor();
+    return math.max(1, raw);
+  }
   final List<File> files;
   final List<Directory> folders;
   final FolderListState state;
@@ -390,68 +410,88 @@ class FileView extends StatelessWidget {
           }
         }
       },
-      child: GridView.builder(
-        physics: isDesktop
-            ? const ClampingScrollPhysics(
-                parent: AlwaysScrollableScrollPhysics(),
-              )
-            : isMobile
-                ? const ClampingScrollPhysics()
-                : const ClampingScrollPhysics(
-                    parent: AlwaysScrollableScrollPhysics(),
-                  ),
-        cacheExtent: isDesktop ? 2500 : (isMobile ? 600 : 2000),
-        addAutomaticKeepAlives: false,
-        addRepaintBoundaries: true,
-        addSemanticIndexes: false,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: state.gridZoomLevel,
-          childAspectRatio: 0.8,
-          crossAxisSpacing: 8.0,
-          mainAxisSpacing: 8.0,
-        ),
-        padding: const EdgeInsets.all(8.0),
-        itemCount: folders.length + files.length,
-        itemBuilder: (context, index) {
-          // Generate a stable key to help Flutter optimize rendering
-          final String itemKey = index < folders.length
-              ? 'folder-grid-${folders[index].path}'
-              : 'file-grid-${files[index - folders.length].path}';
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final itemWidth = _gridItemWidthForZoom(state.gridZoomLevel);
+          final availableWidth =
+              math.max(0.0, constraints.maxWidth - (_gridSpacing * 2));
+          final crossAxisCount =
+              _gridCrossAxisCount(availableWidth, itemWidth);
+          final itemHeight = itemWidth / _gridAspectRatio;
 
-          // Use KeyedSubtree with a stable key to prevent unnecessary rebuilds
-          return KeyedSubtree(
-            key: ValueKey(itemKey),
-            child: RepaintBoundary(
-              child: index < folders.length
-                  ? FolderGridItem(
-                      key: ValueKey('folder-grid-item-${folders[index].path}'),
-                      folder: folders[index],
-                      onNavigate: onFolderTap ?? (_) {},
-                      isSelected: selectedFiles.contains(folders[index].path),
-                      toggleFolderSelection: toggleFileSelection,
-                      isDesktopMode: isDesktopMode,
-                      lastSelectedPath: lastSelectedPath,
-                      clearSelectionMode: clearSelectionMode,
-                    )
-                  : FileGridItem(
-                      key: ValueKey(
-                          'file-grid-item-${files[index - folders.length].path}'),
-                      file: files[index - folders.length],
-                      state: state,
-                      isSelected: selectedFiles
-                          .contains(files[index - folders.length].path),
-                      toggleFileSelection: toggleFileSelection,
-                      toggleSelectionMode: toggleSelectionMode,
-                      isSelectionMode: isSelectionMode,
-                      onFileTap: onFileTap,
-                      isDesktopMode: isDesktopMode,
-                      lastSelectedPath: lastSelectedPath,
-                      onThumbnailGenerated: onThumbnailGenerated,
-                      showDeleteTagDialog: showDeleteTagDialog,
-                      showAddTagToFileDialog: showAddTagToFileDialog,
-                      showFileTags: showFileTags,
-                    ),
+          return GridView.builder(
+            physics: isDesktop
+                ? const ClampingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  )
+                : isMobile
+                    ? const ClampingScrollPhysics()
+                    : const ClampingScrollPhysics(
+                        parent: AlwaysScrollableScrollPhysics(),
+                      ),
+            cacheExtent: isDesktop ? 2500 : (isMobile ? 600 : 2000),
+            addAutomaticKeepAlives: false,
+            addRepaintBoundaries: true,
+            addSemanticIndexes: false,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: _gridSpacing,
+              mainAxisSpacing: _gridSpacing,
+              mainAxisExtent: itemHeight,
             ),
+            padding: const EdgeInsets.all(8.0),
+            itemCount: folders.length + files.length,
+            itemBuilder: (context, index) {
+              // Generate a stable key to help Flutter optimize rendering
+              final String itemKey = index < folders.length
+                  ? 'folder-grid-${folders[index].path}'
+                  : 'file-grid-${files[index - folders.length].path}';
+
+              // Use KeyedSubtree with a stable key to prevent unnecessary rebuilds
+              return KeyedSubtree(
+                key: ValueKey(itemKey),
+                child: RepaintBoundary(
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: SizedBox(
+                      width: itemWidth,
+                      height: itemHeight,
+                      child: index < folders.length
+                          ? FolderGridItem(
+                              key: ValueKey(
+                                  'folder-grid-item-${folders[index].path}'),
+                              folder: folders[index],
+                              onNavigate: onFolderTap ?? (_) {},
+                              isSelected:
+                                  selectedFiles.contains(folders[index].path),
+                              toggleFolderSelection: toggleFileSelection,
+                              isDesktopMode: isDesktopMode,
+                              lastSelectedPath: lastSelectedPath,
+                              clearSelectionMode: clearSelectionMode,
+                            )
+                          : FileGridItem(
+                              key: ValueKey(
+                                  'file-grid-item-${files[index - folders.length].path}'),
+                              file: files[index - folders.length],
+                              state: state,
+                              isSelected: selectedFiles.contains(
+                                  files[index - folders.length].path),
+                              toggleFileSelection: toggleFileSelection,
+                              toggleSelectionMode: toggleSelectionMode,
+                              isSelectionMode: isSelectionMode,
+                              onFileTap: onFileTap,
+                              isDesktopMode: isDesktopMode,
+                              lastSelectedPath: lastSelectedPath,
+                              onThumbnailGenerated: onThumbnailGenerated,
+                              showDeleteTagDialog: showDeleteTagDialog,
+                              showAddTagToFileDialog: showAddTagToFileDialog,
+                              showFileTags: showFileTags,
+                            ),
+                    ),
+                  ),
+                ),
+              );
+            },
           );
         },
       ),

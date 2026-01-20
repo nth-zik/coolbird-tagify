@@ -895,17 +895,19 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
   }
 
   void _navigateToAllImages() async {
-    // Navigate to special route that shows all images from entire device
+    final path = await PlatformPaths.getAllImagesPath();
+    final displayName = PlatformPaths.getAllImagesDisplayName();
+    if (!mounted) return;
     final tabBloc = BlocProvider.of<TabManagerBloc>(_context);
     final activeTab = tabBloc.state.activeTab;
     if (activeTab != null) {
-      TabNavigator.updateTabPath(_context, activeTab.id, '#gallery:images');
-      tabBloc.add(UpdateTabName(activeTab.id, 'All Images'));
+      TabNavigator.updateTabPath(_context, activeTab.id, path);
+      tabBloc.add(UpdateTabName(activeTab.id, displayName));
     } else {
       // Fallback: if no active tab exists, create one
       tabBloc.add(AddTab(
-        path: '#gallery:images',
-        name: 'All Images',
+        path: path,
+        name: displayName,
         switchToTab: true,
       ));
     }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import '../../helpers/media/video_thumbnail_helper.dart';
@@ -249,11 +250,16 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
     // Start progress simulation for better UX
     _simulateProgressUpdates();
 
+    final int? thumbnailSize = _resolveThumbnailSize();
+    final bool usePriority =
+        isPriority && !(thumbnailSize != null && thumbnailSize <= 96);
+
     // Use VideoThumbnailHelper directly instead of ThumbnailIsolateManager
     VideoThumbnailHelper.generateThumbnail(
       widget.videoPath,
-      isPriority: isPriority,
+      isPriority: usePriority,
       forceRegenerate: forceRegenerate,
+      thumbnailSize: thumbnailSize,
     ).then((path) {
       if (!mounted) return;
 
@@ -311,6 +317,15 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
     });
   }
 
+  int? _resolveThumbnailSize() {
+    final double target = math.max(widget.width, widget.height);
+    if (!target.isFinite || target <= 0) {
+      return null;
+    }
+    final int size = target.round();
+    return size.clamp(24, 320);
+  }
+
   /// Simulate progress updates for better UX while thumbnail is generating
   /// PERFORMANCE: Removed periodic timer to eliminate timer storm during scrolling
   void _simulateProgressUpdates() {
@@ -362,7 +377,7 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
     if (isNowVisible) {
       // Debounce visibility becoming true to avoid loading during fast scrolling
       _visibilityDebounceTimer = Timer(_visibilityDebounceDuration, () {
-        if (!mounted || !_visibilityNotifier.value) return;
+        if (!mounted) return;
 
         _visibilityNotifier.value = true;
 

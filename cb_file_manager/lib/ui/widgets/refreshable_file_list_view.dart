@@ -9,6 +9,7 @@ import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
 import 'package:cb_file_manager/helpers/media/video_thumbnail_helper.dart';
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
 import 'package:cb_file_manager/ui/screens/system_screen_router.dart';
+import 'package:cb_file_manager/helpers/core/uri_utils.dart';
 
 /// A widget that wraps content with RefreshIndicator and handles complex refresh logic
 class RefreshableFileListView extends StatefulWidget {
@@ -92,9 +93,9 @@ class _RefreshableFileListViewState extends State<RefreshableFileListView> {
         Future.delayed(const Duration(milliseconds: 500), () {
           completer.complete();
         });
-      } else if (widget.currentPath.startsWith('#tag:')) {
-        // For tag search screens, extract the tag and re-run the search
-        final tag = widget.currentPath.substring(5); // Remove "#tag:" prefix
+      } else if (widget.currentPath.startsWith('#search?tag=')) {
+        final tag = UriUtils.extractTagFromSearchPath(widget.currentPath) ??
+            widget.currentPath.substring('#search?tag='.length);
         TagManager.clearCache();
         // Clear the system screen router cache for this path
         SystemScreenRouter.refreshSystemPath(widget.currentPath, widget.tabId);

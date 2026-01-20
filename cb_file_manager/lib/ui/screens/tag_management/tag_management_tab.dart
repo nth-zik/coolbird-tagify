@@ -4,6 +4,7 @@ import 'package:cb_file_manager/ui/screens/tag_management/tag_management_screen.
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
 import 'package:cb_file_manager/ui/tab_manager/core/tab_data.dart';
+import 'package:cb_file_manager/helpers/core/uri_utils.dart';
 
 /// A tab component for the tag management screen
 /// This component wraps the TagManagementScreen inside our SystemScreen base class
@@ -32,9 +33,7 @@ class TagManagementTab extends StatelessWidget {
 
   /// Opens a new tab with search results for the selected tag
   void _openTagSearchTab(BuildContext context, String tag) {
-    // Create a unique system ID for this tag search
-    // We use a format like #tag:tagname to ensure it's unique
-    final searchSystemId = '#tag:$tag';
+    final searchSystemId = UriUtils.buildTagSearchPath(tag);
 
     // Create a tab name that's user-friendly
     final tabName = 'Tag: $tag';

@@ -34,6 +34,7 @@ class SearchFilterResultsView extends StatelessWidget {
   final VoidCallback onBackButtonPressed;
   final VoidCallback onForwardButtonPressed;
   final bool showFileTags;
+  final ValueChanged<int> onZoomLevelChanged;
 
   const SearchFilterResultsView({
     Key? key,
@@ -54,6 +55,7 @@ class SearchFilterResultsView extends StatelessWidget {
     required this.onBackButtonPressed,
     required this.onForwardButtonPressed,
     required this.showFileTags,
+    required this.onZoomLevelChanged,
   }) : super(key: key);
 
   @override
@@ -74,6 +76,23 @@ class SearchFilterResultsView extends StatelessWidget {
   }
 
   Widget _buildSearchResults(BuildContext context) {
+    final bool shouldShowLoading = folderListState.isLoading ||
+        (currentPath.startsWith('#search?tag=') &&
+            currentSearchTag != null &&
+            folderListState.searchResults.isEmpty &&
+            folderListState.currentSearchTag == null &&
+            folderListState.currentSearchQuery == null &&
+            folderListState.error == null);
+
+    if (shouldShowLoading && folderListState.searchResults.isEmpty) {
+      // If we have an error, don't show loading
+      if (folderListState.error != null) {
+        return const SizedBox.shrink();
+      }
+      // User requested to hide the centered loading spinner and only show the top progress bar
+      return const SizedBox.shrink();
+    }
+
     if (folderListState.searchResults.isNotEmpty) {
       return tab_components.SearchResultsView(
         state: folderListState,
@@ -97,6 +116,9 @@ class SearchFilterResultsView extends StatelessWidget {
         onFileTap: onFileTap,
         onBackButtonPressed: onBackButtonPressed,
         onForwardButtonPressed: onForwardButtonPressed,
+        onLoadMore: () {
+          context.read<FolderListBloc>().add(const LoadMoreSearchResults());
+        },
       );
     } else {
       return _buildNoSearchResults(context);
@@ -121,8 +143,10 @@ class SearchFilterResultsView extends StatelessWidget {
         FluentBackground(
           blurAmount: 8.0,
           opacity: 0.7,
-          backgroundColor:
-              Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.7),
+          backgroundColor: Theme.of(context)
+              .colorScheme
+              .primaryContainer
+              .withValues(alpha: 0.7),
           child: Container(
             padding:
                 const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
@@ -162,7 +186,8 @@ class SearchFilterResultsView extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(remix.Remix.search_line, size: 64, color: Colors.grey),
+                const Icon(remix.Remix.search_line,
+                    size: 64, color: Colors.grey),
                 const SizedBox(height: 16),
                 Text(
                   l10n.emptyFolder,
@@ -178,19 +203,22 @@ class SearchFilterResultsView extends StatelessWidget {
 
   Widget _buildFilterResults(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final displayFilter = _displayFilterLabel(context, currentFilter!);
 
     return Column(
       children: [
         // Filter indicator with clear button
         Container(
           padding: const EdgeInsets.all(8.0),
-          color:
-              Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+          color: Theme.of(context)
+              .colorScheme
+              .primaryContainer
+              .withValues(alpha: 0.3),
           child: Row(
             children: [
               const Icon(remix.Remix.filter_3_line, size: 16),
               const SizedBox(width: 8),
-              Text(l10n.filteredBy(currentFilter!)),
+              Text(l10n.filteredBy(displayFilter)),
               const Spacer(),
               TextButton(
                 onPressed: () {
@@ -212,19 +240,33 @@ class SearchFilterResultsView extends StatelessWidget {
                   folders: const [], // No folders in filtered view
                   state: folderListState,
                   isSelectionMode: selectionState.isSelectionMode,
-                  isGridView: folderListState.viewMode == ViewMode.grid,
+                  isGridView: folderListState.viewMode == ViewMode.grid ||
+                      folderListState.viewMode == ViewMode.gridPreview,
                   selectedFiles: selectionState.selectedFilePaths.toList(),
                   toggleFileSelection: toggleFileSelection,
                   toggleSelectionMode: toggleSelectionMode,
                   showDeleteTagDialog: showDeleteTagDialog,
                   showAddTagToFileDialog: showAddTagToFileDialog,
+                  onZoomChanged: onZoomLevelChanged,
                   showFileTags: showFileTags,
                 )
               : Center(
-                  child: Text(l10n.noFilesMatchFilter(currentFilter!)),
+                  child: Text(l10n.noFilesMatchFilter(displayFilter)),
                 ),
         ),
       ],
     );
+  }
+
+  String _displayFilterLabel(BuildContext context, String filter) {
+    final l10n = AppLocalizations.of(context)!;
+    switch (filter) {
+      case 'image':
+        return l10n.image;
+      case 'video':
+        return l10n.video;
+      default:
+        return filter;
+    }
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../screens/folder_list/folder_list_bloc.dart';
 import '../screens/folder_list/folder_list_event.dart';
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
+import 'package:cb_file_manager/helpers/core/uri_utils.dart';
 
 /// Initializes tag search functionality for tabbed folder screens
 ///
@@ -36,13 +37,9 @@ class TagSearchInitializer {
 
       // Initialize with tag search
       if (globalTagSearch) {
-        // Global tag search - force delay to ensure bloc is properly initialized
-        Future.delayed(const Duration(milliseconds: 1000), () {
+        Future.delayed(const Duration(milliseconds: 50), () {
           if (isMounted && !folderListBloc.isClosed) {
-            // Global tag search should be performed without loading a directory first
             folderListBloc.add(SearchByTagGlobally(searchTag));
-
-            // Set tag controller text for search bar
             tagController.text = searchTag;
           }
         });
@@ -61,7 +58,8 @@ class TagSearchInitializer {
       }
     } else if (path.startsWith('#search?tag=')) {
       // Handle search path with tag parameter
-      final tag = path.split('tag=')[1];
+      final tag = UriUtils.extractTagFromSearchPath(path) ??
+          path.substring('#search?tag='.length);
       debugPrint('TabbedFolderListScreen: Handling search path with tag: $tag');
 
       // Set tag controller text for search bar
@@ -72,7 +70,7 @@ class TagSearchInitializer {
       currentSearchTag = tag;
 
       // Perform global tag search
-      Future.delayed(const Duration(milliseconds: 1000), () {
+      Future.delayed(const Duration(milliseconds: 50), () {
         if (isMounted && !folderListBloc.isClosed) {
           folderListBloc.add(SearchByTagGlobally(tag));
         }

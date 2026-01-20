@@ -34,6 +34,7 @@ class FolderContentBuilder {
     required bool isGlobalSearch,
     required VoidCallback onBackButtonPressed,
     required VoidCallback onForwardButtonPressed,
+    required ValueChanged<int> onZoomLevelChanged,
   }) {
     // Handle error state
     if (folderListState.error != null) {
@@ -65,6 +66,7 @@ class FolderContentBuilder {
 
     // Handle search/filter results
     if (folderListState.currentSearchTag != null ||
+        currentSearchTag != null ||
         folderListState.currentSearchQuery != null ||
         (currentFilter != null && currentFilter.isNotEmpty)) {
       return SearchFilterResultsView(
@@ -85,6 +87,7 @@ class FolderContentBuilder {
         onBackButtonPressed: onBackButtonPressed,
         onForwardButtonPressed: onForwardButtonPressed,
         showFileTags: showFileTags,
+        onZoomLevelChanged: onZoomLevelChanged,
       );
     }
 

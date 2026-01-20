@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cb_file_manager/helpers/core/io_extensions.dart';
 import '../../../components/common/shared_file_context_menu.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../bloc/selection/selection_bloc.dart';
+import '../../../../bloc/selection/selection_event.dart';
 import 'folder_thumbnail.dart';
 import '../../../components/common/optimized_interaction_handler.dart';
 
@@ -86,7 +89,8 @@ class _FolderGridItemState extends State<FolderGridItem> {
     // Flat on mobile (no elevation/border). Keep card/elevation on desktop only.
     if (!widget.isDesktopMode) {
       return GestureDetector(
-        onSecondaryTapDown: (details) => _showFolderContextMenu(context, details.globalPosition),
+        onSecondaryTapDown: (details) =>
+            _showFolderContextMenu(context, details.globalPosition),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8.0),
           child: Stack(
@@ -113,8 +117,9 @@ class _FolderGridItemState extends State<FolderGridItem> {
                       style: TextStyle(
                         fontSize: 12,
                         color: isDarkMode ? Colors.white : Colors.black87,
-                        fontWeight:
-                            _visuallySelected ? FontWeight.bold : FontWeight.w500,
+                        fontWeight: _visuallySelected
+                            ? FontWeight.bold
+                            : FontWeight.w500,
                       ),
                     ),
                   ),
@@ -140,11 +145,13 @@ class _FolderGridItemState extends State<FolderGridItem> {
 
               // Selected overlay tint (flat)
               if (_visuallySelected)
-                Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .primaryColor
-                        .withValues(alpha: 0.12),
+                IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .primaryColor
+                          .withValues(alpha: 0.12),
+                    ),
                   ),
                 ),
             ],
@@ -173,7 +180,8 @@ class _FolderGridItemState extends State<FolderGridItem> {
             : 1;
 
     return GestureDetector(
-      onSecondaryTapDown: (details) => _showFolderContextMenu(context, details.globalPosition),
+      onSecondaryTapDown: (details) =>
+          _showFolderContextMenu(context, details.globalPosition),
       child: MouseRegion(
         onEnter: (_) => setState(() => _isHovering = true),
         onExit: (_) => setState(() => _isHovering = false),
@@ -248,6 +256,27 @@ class _FolderGridItemState extends State<FolderGridItem> {
   }
 
   void _showFolderContextMenu(BuildContext context, Offset? globalPosition) {
+    // Check for multiple selection
+    try {
+      final selectionBloc = context.read<SelectionBloc>();
+      final selectionState = selectionBloc.state;
+
+      if (selectionState.allSelectedPaths.length > 1 &&
+          selectionState.allSelectedPaths.contains(widget.folder.path)) {
+        showMultipleFilesContextMenu(
+          context: context,
+          selectedPaths: selectionState.allSelectedPaths,
+          globalPosition: globalPosition ?? Offset.zero,
+          onClearSelection: () {
+            selectionBloc.add(ClearSelection());
+          },
+        );
+        return;
+      }
+    } catch (e) {
+      debugPrint('Error showing context menu: $e');
+    }
+
     // Use the shared folder context menu
     showFolderContextMenu(
       context: context,

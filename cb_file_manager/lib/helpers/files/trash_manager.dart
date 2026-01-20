@@ -294,8 +294,11 @@ class TrashManager {
   Future<bool> moveToTrash(String filePath) async {
     try {
       final file = File(filePath);
-      if (!await file.exists()) {
-        debugPrint('File does not exist: $filePath');
+      final dir = Directory(filePath);
+      final isDir = await dir.exists();
+
+      if (!await file.exists() && !isDir) {
+        debugPrint('File/Directory does not exist: $filePath');
         return false;
       }
 
@@ -317,17 +320,20 @@ class TrashManager {
     // Windows - Use PowerShell command to move to recycle bin
     if (Platform.isWindows) {
       try {
+        final isDir = await Directory(filePath).exists();
+        final method = isDir ? 'DeleteDirectory' : 'DeleteFile';
+
         // Use PowerShell's recycle bin functionality
         final result = await Process.run('powershell.exe', [
           '-Command',
           '''
           Add-Type -AssemblyName Microsoft.VisualBasic
-          [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile('$filePath', 'OnlyErrorDialogs', 'SendToRecycleBin', 'ThrowIfFails')
+          [Microsoft.VisualBasic.FileIO.FileSystem]::$method('$filePath', 'OnlyErrorDialogs', 'SendToRecycleBin', 'ThrowIfFails')
           '''
         ]);
 
         if (result.exitCode == 0) {
-          debugPrint('File moved to Windows Recycle Bin: $filePath');
+          debugPrint('File/Folder moved to Windows Recycle Bin: $filePath');
           return true;
         } else {
           debugPrint('Error moving to Windows Recycle Bin: ${result.stderr}');

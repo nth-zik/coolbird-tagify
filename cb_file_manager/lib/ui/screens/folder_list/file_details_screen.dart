@@ -12,6 +12,7 @@ import 'package:remixicon/remixicon.dart' as remix;
 import 'package:cb_file_manager/ui/widgets/tag_management_section.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
+import '../../utils/format_utils.dart';
 
 class FileDetailsScreen extends StatefulWidget {
   final File file;
@@ -532,7 +533,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
         }
 
         final stat = snapshot.data!;
-        final fileSize = _formatFileSize(stat.size);
+        final fileSize = FormatUtils.formatFileSizeExact(stat.size);
         final formattedDate = stat.modified.toString().split('.')[0];
 
         return Column(
@@ -598,17 +599,5 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
       context: context,
       builder: (context) => OpenWithDialog(filePath: widget.file.path),
     );
-  }
-
-  String _formatFileSize(int size) {
-    if (size < 1024) {
-      return '$size B';
-    } else if (size < 1024 * 1024) {
-      return '${(size / 1024).toStringAsFixed(1)} KB';
-    } else if (size < 1024 * 1024 * 1024) {
-      return '${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
-    } else {
-      return '${(size / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
-    }
   }
 }

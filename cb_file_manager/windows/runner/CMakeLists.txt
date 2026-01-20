@@ -16,8 +16,6 @@ add_executable(${BINARY_NAME} WIN32
   "fc_native_video_thumbnail_plugin.h"
   "smb_native_thumbnail_plugin.cpp"
   "smb_native_thumbnail_plugin.h"
-  "ffmpeg_thumbnail_helper.cpp"
-  "ffmpeg_thumbnail_helper.h"
   "app_icon_plugin.cpp"
   "app_icon_plugin.h"
   "Runner.rc"
@@ -38,21 +36,6 @@ target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION_BUILD=${FLUTT
 # Disable Windows macros that collide with C++ standard library functions.
 target_compile_definitions(${BINARY_NAME} PRIVATE "NOMINMAX")
 
-# FFmpeg include directories and libraries
-set(FFMPEG_DIR "${CMAKE_SOURCE_DIR}/ffmpeg")
-set(FFMPEG_INCLUDE_DIR "${FFMPEG_DIR}/include")
-set(FFMPEG_LIB_DIR "${FFMPEG_DIR}/lib")
-
-# Add FFmpeg include directories
-include_directories(${FFMPEG_INCLUDE_DIR})
-
-# Disable specific warnings for FFmpeg headers
-if(MSVC)
-  # Disable warning C4244 (conversion from 'x' to 'y', possible loss of data)
-  # This warning is common in FFmpeg headers and is usually benign
-  target_compile_options(${BINARY_NAME} PRIVATE "/wd4244")
-endif()
-
 # Add dependency libraries and include directories. Add any application-specific
 # dependencies here.
 target_link_libraries(${BINARY_NAME} PRIVATE flutter flutter_wrapper_app flutter_wrapper_plugin)
@@ -60,15 +43,7 @@ target_link_libraries(${BINARY_NAME} PRIVATE "dwmapi.lib")
 target_link_libraries(${BINARY_NAME} PRIVATE smb_native)
 
 # Add FFmpeg libraries
-target_link_libraries(${BINARY_NAME} PRIVATE
-  "${FFMPEG_LIB_DIR}/avformat.lib"
-  "${FFMPEG_LIB_DIR}/avcodec.lib"
-  "${FFMPEG_LIB_DIR}/avutil.lib"
-  "${FFMPEG_LIB_DIR}/swscale.lib"
-)
-
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
-target_include_directories(${BINARY_NAME} PRIVATE "${FFMPEG_INCLUDE_DIR}")
 
 # Run the Flutter tool portions of the build. This must not be removed.
 add_dependencies(${BINARY_NAME} flutter_assemble)

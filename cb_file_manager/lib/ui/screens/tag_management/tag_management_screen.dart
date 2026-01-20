@@ -11,6 +11,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
 import 'package:cb_file_manager/ui/tab_manager/core/tab_data.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
+import 'package:cb_file_manager/helpers/core/uri_utils.dart';
 import '../../utils/route.dart';
 import '../../widgets/debug_tags_widget.dart';
 
@@ -289,14 +290,23 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
     });
   }
 
+  Future<void> _handleTagTap(String tag) async {
+    final onTagSelected = widget.onTagSelected;
+    if (onTagSelected != null) {
+      onTagSelected(tag);
+      return;
+    }
+
+    await _directTagSearch(tag);
+  }
+
   // Phương thức tìm kiếm tag trực tiếp - mở giao diện duyệt file với filter
   Future<void> _directTagSearch(String tag) async {
     try {
       // Get the TabManagerBloc
       final tabManagerBloc = BlocProvider.of<TabManagerBloc>(context);
 
-      // Create a simple path for this tag search (avoid #tag: format to prevent infinite loop)
-      final tagSearchPath = '#search?tag=$tag';
+      final tagSearchPath = UriUtils.buildTagSearchPath(tag);
 
       // Check if a tab with this tag search already exists
       final existingTab = tabManagerBloc.state.tabs.firstWhere(
@@ -634,7 +644,10 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
             Icon(
               Icons.label_off,
               size: 80, // Larger icon
-              color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.5),
+              color: Theme.of(context)
+                  .colorScheme
+                  .secondary
+                  .withValues(alpha: 0.5),
             ),
             const SizedBox(height: 24),
             Text(
@@ -669,7 +682,10 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
             Icon(
               Icons.search_off,
               size: 80, // Larger icon
-              color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.5),
+              color: Theme.of(context)
+                  .colorScheme
+                  .secondary
+                  .withValues(alpha: 0.5),
             ),
             const SizedBox(height: 24),
             Text(
@@ -714,8 +730,9 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color:
-                              Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                          color: Theme.of(context)
+                              .primaryColor
+                              .withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(
@@ -1126,7 +1143,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
             color: Colors.transparent,
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
-              onTap: () => _directTagSearch(tag),
+              onTap: () => _handleTagTap(tag),
               onLongPress: () => _showTagOptions(tag),
               child: Container(
                 padding: const EdgeInsets.all(16),
@@ -1260,7 +1277,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
-            onTap: () => _directTagSearch(tag),
+            onTap: () => _handleTagTap(tag),
             onLongPress: () => _showTagOptions(tag),
             child: Container(
               padding: const EdgeInsets.all(8),
@@ -1374,7 +1391,10 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
             Icon(
               Icons.find_in_page,
               size: 80, // Larger icon
-              color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.5),
+              color: Theme.of(context)
+                  .colorScheme
+                  .secondary
+                  .withValues(alpha: 0.5),
             ),
             const SizedBox(height: 24),
             Text(

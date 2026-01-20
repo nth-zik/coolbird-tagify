@@ -163,6 +163,21 @@ class FolderListDeleteFiles extends FolderListEvent {
   List<Object> get props => [filePaths];
 }
 
+class FolderListDeleteItems extends FolderListEvent {
+  final List<String> filePaths;
+  final List<String> folderPaths;
+  final bool permanent;
+
+  const FolderListDeleteItems({
+    this.filePaths = const [],
+    this.folderPaths = const [],
+    this.permanent = false,
+  });
+
+  @override
+  List<Object> get props => [filePaths, folderPaths, permanent];
+}
+
 class FolderListBatchAddTag extends FolderListEvent {
   final List<String> filePaths;
   final String tag;
@@ -226,6 +241,15 @@ class CopyFile extends FolderListEvent {
   List<Object> get props => [entity];
 }
 
+class CopyFiles extends FolderListEvent {
+  final List<FileSystemEntity> entities;
+
+  const CopyFiles(this.entities);
+
+  @override
+  List<Object> get props => [entities];
+}
+
 class CutFile extends FolderListEvent {
   final FileSystemEntity entity;
 
@@ -233,6 +257,15 @@ class CutFile extends FolderListEvent {
 
   @override
   List<Object> get props => [entity];
+}
+
+class CutFiles extends FolderListEvent {
+  final List<FileSystemEntity> entities;
+
+  const CutFiles(this.entities);
+
+  @override
+  List<Object> get props => [entities];
 }
 
 class PasteFile extends FolderListEvent {
@@ -256,6 +289,10 @@ class RenameFileOrFolder extends FolderListEvent {
 
 // Enum to represent media types for search
 enum MediaSearchType { images, videos, audio, all }
+
+class LoadMoreSearchResults extends FolderListEvent {
+  const LoadMoreSearchResults();
+}
 
 // Add additional tag search results to existing results
 class AddTagSearchResults extends FolderListEvent {

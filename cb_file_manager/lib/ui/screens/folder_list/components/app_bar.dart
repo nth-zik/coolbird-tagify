@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
-import 'package:cb_file_manager/ui/screens/media_gallery/image_gallery_screen.dart';
-import 'package:cb_file_manager/ui/screens/media_gallery/video_gallery_screen.dart';
 import 'package:cb_file_manager/ui/tab_manager/components/tag_dialogs.dart';
 import 'package:cb_file_manager/helpers/files/file_icon_helper.dart';
 import 'package:remixicon/remixicon.dart' as remix;
@@ -173,22 +171,6 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
               case 'manage_tags':
                 showManageTagsDialog(context, allTags, currentPath);
                 break;
-              case 'photo_gallery':
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ImageGalleryScreen(path: currentPath),
-                  ),
-                );
-                break;
-              case 'video_gallery':
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => VideoGalleryScreen(path: currentPath),
-                  ),
-                );
-                break;
               case 'debug_apk':
                 await FileIconHelper.debugApkIcons();
                 if (context.mounted) {
@@ -234,28 +216,6 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
                       size: 20, color: theme.iconTheme.color),
                   const SizedBox(width: 12),
                   const Text('Manage Tags'),
-                ],
-              ),
-            ),
-            PopupMenuItem(
-              value: 'photo_gallery',
-              child: Row(
-                children: [
-                  Icon(remix.Remix.image_line,
-                      size: 20, color: theme.iconTheme.color),
-                  const SizedBox(width: 12),
-                  const Text('Photo Gallery'),
-                ],
-              ),
-            ),
-            PopupMenuItem(
-              value: 'video_gallery',
-              child: Row(
-                children: [
-                  Icon(remix.Remix.video_line,
-                      size: 20, color: theme.iconTheme.color),
-                  const SizedBox(width: 12),
-                  const Text('Video Gallery'),
                 ],
               ),
             ),

@@ -29,13 +29,11 @@ class AppBarActionsBuilder {
     required Function(int) onGridZoomChange,
     required VoidCallback onColumnSettingsPressed,
     required Function(dynamic)? onGalleryResult,
+    required VoidCallback onPreviewPaneToggled,
+    required bool isPreviewPaneVisible,
+    required bool showPreviewModeOption,
   }) {
-    // In selection mode, return empty list (selection actions are handled by ScreenScaffold)
-    if (selectionState.isSelectionMode) {
-      return [];
-    }
-
-    // In normal mode, build full action list using FolderAppBarActions
+    // Always keep the action bar visible; selection actions are handled elsewhere.
     return FolderAppBarActions.buildActions(
       context: context,
       folderListState: folderListState,
@@ -50,6 +48,9 @@ class AppBarActionsBuilder {
       onManageTagsPressed: onManageTagsPressed,
       onGridZoomChange: onGridZoomChange,
       onColumnSettingsPressed: onColumnSettingsPressed,
+      onPreviewPaneToggled: onPreviewPaneToggled,
+      isPreviewPaneVisible: isPreviewPaneVisible,
+      showPreviewModeOption: showPreviewModeOption,
       onGallerySelected: isNetworkPath
           ? null
           : (value) {

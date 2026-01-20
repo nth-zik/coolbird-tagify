@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:equatable/equatable.dart';
 
 // Define view modes
-enum ViewMode { list, grid, details }
+enum ViewMode { list, grid, details, gridPreview }
 
 // Define sort options
 enum SortOption {
@@ -89,12 +89,16 @@ class ColumnVisibility {
 enum MediaType { image, video, audio, document }
 
 class FolderListState extends Equatable {
+  static const Object _unset = Object();
   final bool isLoading;
   final String? error;
   final Directory currentPath;
   final List<FileSystemEntity> folders;
   final List<FileSystemEntity> files;
   final List<FileSystemEntity> searchResults;
+  final bool hasMoreSearchResults;
+  final bool isLoadingMoreSearchResults;
+  final int? searchResultsTotal;
   final List<FileSystemEntity> filteredFiles;
   final Map<String, List<String>> fileTags;
   final Set<String> allUniqueTags; // All unique tags found in the directory
@@ -119,6 +123,9 @@ class FolderListState extends Equatable {
     List<FileSystemEntity>? folders,
     List<FileSystemEntity>? files,
     List<FileSystemEntity>? searchResults,
+    this.hasMoreSearchResults = false,
+    this.isLoadingMoreSearchResults = false,
+    this.searchResultsTotal,
     List<FileSystemEntity>? filteredFiles,
     Map<String, List<String>>? fileTags,
     Set<String>? allUniqueTags,
@@ -156,22 +163,25 @@ class FolderListState extends Equatable {
   // Create a new state with updated fields
   FolderListState copyWith({
     bool? isLoading,
-    String? error,
+    Object? error = _unset,
     Directory? currentPath,
     List<FileSystemEntity>? folders,
     List<FileSystemEntity>? files,
     List<FileSystemEntity>? searchResults,
+    bool? hasMoreSearchResults,
+    bool? isLoadingMoreSearchResults,
+    Object? searchResultsTotal = _unset,
     List<FileSystemEntity>? filteredFiles,
     Map<String, List<String>>? fileTags,
     Set<String>? allUniqueTags,
-    String? currentFilter,
-    String? currentSearchTag,
-    String? currentSearchQuery,
+    Object? currentFilter = _unset,
+    Object? currentSearchTag = _unset,
+    Object? currentSearchQuery = _unset,
     ViewMode? viewMode,
     SortOption? sortOption,
     int? gridZoomLevel,
     Map<String, FileStat>? fileStatsCache,
-    MediaType? currentMediaSearch,
+    Object? currentMediaSearch = _unset,
     bool? isSearchByName,
     bool? isSearchByMedia,
     bool? isGlobalSearch,
@@ -180,22 +190,34 @@ class FolderListState extends Equatable {
     return FolderListState(
       currentPath?.path ?? this.currentPath.path,
       isLoading: isLoading ?? this.isLoading,
-      error:
-          error, // Not using "?? this.error" to allow clearing errors by passing null
+      error: error == _unset ? this.error : error as String?,
       folders: folders ?? this.folders,
       files: files ?? this.files,
       searchResults: searchResults ?? this.searchResults,
+      hasMoreSearchResults: hasMoreSearchResults ?? this.hasMoreSearchResults,
+      isLoadingMoreSearchResults:
+          isLoadingMoreSearchResults ?? this.isLoadingMoreSearchResults,
+      searchResultsTotal: searchResultsTotal == _unset
+          ? this.searchResultsTotal
+          : searchResultsTotal as int?,
       filteredFiles: filteredFiles ?? this.filteredFiles,
       fileTags: fileTags ?? this.fileTags,
       allUniqueTags: allUniqueTags ?? this.allUniqueTags,
-      currentFilter: currentFilter, // Allow clearing by passing null
-      currentSearchTag: currentSearchTag, // Allow clearing by passing null
-      currentSearchQuery: currentSearchQuery, // Allow clearing by passing null
+      currentFilter:
+          currentFilter == _unset ? this.currentFilter : currentFilter as String?,
+      currentSearchTag: currentSearchTag == _unset
+          ? this.currentSearchTag
+          : currentSearchTag as String?,
+      currentSearchQuery: currentSearchQuery == _unset
+          ? this.currentSearchQuery
+          : currentSearchQuery as String?,
       viewMode: viewMode ?? this.viewMode,
       sortOption: sortOption ?? this.sortOption,
       gridZoomLevel: gridZoomLevel ?? this.gridZoomLevel,
       fileStatsCache: fileStatsCache ?? this.fileStatsCache,
-      currentMediaSearch: currentMediaSearch, // Allow clearing by passing null
+      currentMediaSearch: currentMediaSearch == _unset
+          ? this.currentMediaSearch
+          : currentMediaSearch as MediaType?,
       isSearchByName: isSearchByName ?? this.isSearchByName,
       isSearchByMedia: isSearchByMedia ?? this.isSearchByMedia,
       isGlobalSearch: isGlobalSearch ?? this.isGlobalSearch,
@@ -211,6 +233,9 @@ class FolderListState extends Equatable {
         folders,
         files,
         searchResults,
+        hasMoreSearchResults,
+        isLoadingMoreSearchResults,
+        searchResultsTotal,
         filteredFiles,
         fileTags,
         allUniqueTags,

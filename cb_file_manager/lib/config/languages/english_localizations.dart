@@ -22,6 +22,8 @@ class EnglishLocalizations implements AppLocalizations {
   @override
   String get search => 'Search';
   @override
+  String get all => 'All';
+  @override
   String get settings => 'Settings';
 
   @override
@@ -74,7 +76,7 @@ class EnglishLocalizations implements AppLocalizations {
   String get moreOptionsTooltip => 'More options';
 
   @override
-  String get adjustGridSizeTooltip => 'Adjust grid size';
+  String get adjustGridSizeTooltip => 'Adjust item size';
 
   @override
   String get columnSettingsTooltip => 'Column settings';
@@ -84,7 +86,7 @@ class EnglishLocalizations implements AppLocalizations {
 
   // Dialog titles
   @override
-  String get adjustGridSizeTitle => 'Adjust Grid Size';
+  String get adjustGridSizeTitle => 'Adjust Item Size';
 
   @override
   String get columnVisibilityTitle => 'Customize Column Display';
@@ -146,6 +148,27 @@ class EnglishLocalizations implements AppLocalizations {
   @override
   String get viewModeDetails => 'Details';
 
+  @override
+  String get viewModeGridPreview => 'Grid + Preview';
+
+  @override
+  String get previewPaneTitle => 'Preview';
+
+  @override
+  String get previewSelectFile => 'Select a file to preview';
+
+  @override
+  String get previewNotSupported => 'Preview not available for this file type';
+
+  @override
+  String get previewUnavailable => 'Preview not available';
+
+  @override
+  String get showPreview => 'Show preview';
+
+  @override
+  String get hidePreview => 'Hide preview';
+
   // Column names
   @override
   String get columnSize => 'Size';
@@ -186,11 +209,11 @@ class EnglishLocalizations implements AppLocalizations {
 
   // Grid size dialog
   @override
-  String gridSizeLabel(int count) => '$count cells per row';
+  String gridSizeLabel(int count) => 'Item size level: $count';
 
   @override
   String get gridSizeInstructions =>
-      'Move the slider to select the number of cells to display per row';
+      'Move the slider to adjust the item size';
 
   // More options menu
   @override
@@ -691,6 +714,24 @@ class EnglishLocalizations implements AppLocalizations {
   @override
   String get deleteFile => 'Delete file';
 
+  // Folder thumbnails
+  @override
+  String get folderThumbnail => 'Folder thumbnail';
+  @override
+  String get chooseThumbnail => 'Choose thumbnail';
+  @override
+  String get clearThumbnail => 'Clear thumbnail';
+  @override
+  String get thumbnailAuto => 'Auto (first video/image)';
+  @override
+  String get folderThumbnailSet => 'Folder thumbnail updated';
+  @override
+  String get folderThumbnailCleared => 'Folder thumbnail cleared';
+  @override
+  String get invalidThumbnailFile => 'Please select an image or video file';
+  @override
+  String get noMediaFilesFound => 'No media files found in this folder';
+
   // Video actions
   @override
   String get share => 'Share';
@@ -1182,6 +1223,20 @@ class EnglishLocalizations implements AppLocalizations {
 
   @override
   String get files => 'files';
+
+  @override
+  String get deleteTitle => 'Delete';
+
+  @override
+  String get permanentDeleteTitle => 'Permanent Delete';
+
+  @override
+  String confirmDeletePermanent(String name) =>
+      'Are you sure you want to permanently delete "$name"? This action cannot be undone.';
+
+  @override
+  String confirmDeletePermanentMultiple(int count) =>
+      'Are you sure you want to permanently delete $count items? This action cannot be undone.';
 
   @override
   String movedToTrash(String name) => '$name moved to trash';

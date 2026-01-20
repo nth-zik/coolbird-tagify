@@ -1,6 +1,4 @@
 #include "fc_native_video_thumbnail_plugin.h"
-#include "ffmpeg_thumbnail_helper.h"
-
 // This must be included before many other Windows headers.
 #include <atlimage.h>
 #include <comdef.h>
@@ -46,7 +44,6 @@ namespace fc_native_video_thumbnail
   bool FcNativeVideoThumbnailPlugin::gdiInitialized_ = false;
   ULONG_PTR FcNativeVideoThumbnailPlugin::gdiplusToken_ = 0;
   int FcNativeVideoThumbnailPlugin::instanceCount_ = 0;
-  std::mutex FcNativeVideoThumbnailPlugin::ffmpegMutex_;
 
   const flutter::EncodableValue *ValueOrNull(const flutter::EncodableMap &map, const char *key)
   {
@@ -105,6 +102,96 @@ namespace fc_native_video_thumbnail
     return utf16_string;
   }
 
+  std::wstring NormalizeWindowsPathFromUtf8(const std::string &utf8_path)
+  {
+    auto wide = Utf16FromUtf8(utf8_path);
+    if (wide.empty())
+    {
+      return std::wstring();
+    }
+
+    std::replace(wide.begin(), wide.end(), L'/', L'\\');
+
+    DWORD length = GetFullPathNameW(wide.c_str(), 0, nullptr, nullptr);
+    if (length == 0)
+    {
+      return wide;
+    }
+
+    std::wstring fullPath(length, L'\0');
+    DWORD written = GetFullPathNameW(wide.c_str(), length, fullPath.data(), nullptr);
+    if (written == 0)
+    {
+      return wide;
+    }
+
+    if (!fullPath.empty() && fullPath.back() == L'\0')
+    {
+      fullPath.pop_back();
+    }
+
+    return fullPath;
+  }
+
+  std::wstring AddLongPathPrefix(const std::wstring &path)
+  {
+    if (path.empty())
+    {
+      return path;
+    }
+
+    if (path.rfind(L"\\\\?\\", 0) == 0)
+    {
+      return path;
+    }
+
+    if (path.rfind(L"\\\\", 0) == 0)
+    {
+      return L"\\\\?\\UNC\\" + path.substr(2);
+    }
+
+    if (path.size() >= 2 && path[1] == L':')
+    {
+      return L"\\\\?\\" + path;
+    }
+
+    return path;
+  }
+
+  bool FileExistsWide(const std::wstring &path)
+  {
+    DWORD attrs = GetFileAttributesW(path.c_str());
+    if (attrs != INVALID_FILE_ATTRIBUTES)
+    {
+      return true;
+    }
+
+    const auto longPath = AddLongPathPrefix(path);
+    if (longPath != path)
+    {
+      attrs = GetFileAttributesW(longPath.c_str());
+      return attrs != INVALID_FILE_ATTRIBUTES;
+    }
+
+    return false;
+  }
+
+  std::filesystem::path PathFromUtf8(const std::string &utf8_path)
+  {
+    if (utf8_path.empty())
+    {
+      return std::filesystem::path();
+    }
+
+    auto wide = NormalizeWindowsPathFromUtf8(utf8_path);
+    if (!wide.empty())
+    {
+      return std::filesystem::path(wide);
+    }
+
+    return std::filesystem::path(utf8_path);
+  }
+
   std::string HRESULTToString(HRESULT hr)
   {
     _com_error error(hr);
@@ -155,8 +242,32 @@ namespace fc_native_video_thumbnail
     return -1;
   }
 
+  HRESULT SetReaderOutputSubtype(IMFSourceReader *reader, REFGUID subtype)
+  {
+    IMFMediaType *pMediaType = NULL;
+    HRESULT hr = MFCreateMediaType(&pMediaType);
+    if (SUCCEEDED(hr))
+    {
+      hr = pMediaType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
+    }
+    if (SUCCEEDED(hr))
+    {
+      hr = pMediaType->SetGUID(MF_MT_SUBTYPE, subtype);
+    }
+    if (SUCCEEDED(hr))
+    {
+      hr = reader->SetCurrentMediaType(
+          (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, NULL, pMediaType);
+    }
+    if (pMediaType)
+    {
+      pMediaType->Release();
+    }
+    return hr;
+  }
+
   // Using existing MediaFoundation extraction as fallback option
-  std::string ExtractVideoFrameAtTime(PCWSTR srcFile, PCWSTR destFile, int width, REFGUID format, int timeSeconds, int quality = 95)
+  std::string ExtractVideoFrameAtTime(PCWSTR srcFile, PCWSTR destFile, int width, REFGUID format, int timeSeconds, int quality)
   {
     // Original MediaFoundation extraction implementation with improved quality
 
@@ -172,8 +283,20 @@ namespace fc_native_video_thumbnail
     ULONG_PTR gdiplusToken;
     Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
 
+    IMFAttributes *pAttributes = NULL;
+    hr = MFCreateAttributes(&pAttributes, 2);
+    if (SUCCEEDED(hr))
+    {
+      pAttributes->SetUINT32(MF_SOURCE_READER_ENABLE_VIDEO_PROCESSING, TRUE);
+      pAttributes->SetUINT32(MF_READWRITE_ENABLE_HARDWARE_TRANSFORMS, TRUE);
+    }
+
     IMFSourceReader *pReader = NULL;
-    hr = MFCreateSourceReaderFromURL(srcFile, NULL, &pReader);
+    hr = MFCreateSourceReaderFromURL(srcFile, pAttributes, &pReader);
+    if (pAttributes)
+    {
+      pAttributes->Release();
+    }
     if (!SUCCEEDED(hr))
     {
       MFShutdown();
@@ -181,50 +304,24 @@ namespace fc_native_video_thumbnail
       return "MFCreateSourceReaderFromURL failed with " + HRESULTToString(hr);
     }
 
-    // Configure the source reader to give us progressive RGB32 frames
-    // Create a partial media type that specifies uncompressed RGB32 video
-    IMFMediaType *pMediaType = NULL;
-    hr = MFCreateMediaType(&pMediaType);
+    // Configure the source reader to give us progressive RGB32/ARGB32 frames
+    GUID outputSubtype = MFVideoFormat_RGB32;
+    hr = SetReaderOutputSubtype(pReader, MFVideoFormat_RGB32);
     if (!SUCCEEDED(hr))
     {
-      pReader->Release();
-      MFShutdown();
-      Gdiplus::GdiplusShutdown(gdiplusToken);
-      return "MFCreateMediaType failed with " + HRESULTToString(hr);
+      hr = SetReaderOutputSubtype(pReader, MFVideoFormat_ARGB32);
+      if (SUCCEEDED(hr))
+      {
+        outputSubtype = MFVideoFormat_ARGB32;
+      }
     }
-
-    hr = pMediaType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
     if (!SUCCEEDED(hr))
     {
-      pMediaType->Release();
-      pReader->Release();
-      MFShutdown();
-      Gdiplus::GdiplusShutdown(gdiplusToken);
-      return "SetGUID MF_MT_MAJOR_TYPE failed with " + HRESULTToString(hr);
-    }
-
-    hr = pMediaType->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_RGB32);
-    if (!SUCCEEDED(hr))
-    {
-      pMediaType->Release();
-      pReader->Release();
-      MFShutdown();
-      Gdiplus::GdiplusShutdown(gdiplusToken);
-      return "SetGUID MF_MT_SUBTYPE failed with " + HRESULTToString(hr);
-    }
-
-    // Set this type on the source reader
-    hr = pReader->SetCurrentMediaType(
-        (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, NULL, pMediaType);
-    if (!SUCCEEDED(hr))
-    {
-      pMediaType->Release();
       pReader->Release();
       MFShutdown();
       Gdiplus::GdiplusShutdown(gdiplusToken);
       return "SetCurrentMediaType failed with " + HRESULTToString(hr);
     }
-    pMediaType->Release();
 
     // Calculate the time offset to seek to
     PROPVARIANT var;
@@ -361,7 +458,8 @@ namespace fc_native_video_thumbnail
     }
 
     // Create a GDI+ bitmap from the RGB32 frame data
-    Gdiplus::Bitmap *pGdiPlusBitmap = new Gdiplus::Bitmap(videoWidth, videoHeight, PixelFormat32bppRGB);
+    auto pixelFormat = outputSubtype == MFVideoFormat_ARGB32 ? PixelFormat32bppARGB : PixelFormat32bppRGB;
+    Gdiplus::Bitmap *pGdiPlusBitmap = new Gdiplus::Bitmap(videoWidth, videoHeight, pixelFormat);
     if (!pGdiPlusBitmap)
     {
       pBuffer->Unlock();
@@ -376,7 +474,7 @@ namespace fc_native_video_thumbnail
     // Copy the pixel data to the bitmap
     Gdiplus::BitmapData bitmapData;
     Gdiplus::Rect rect(0, 0, videoWidth, videoHeight);
-    if (pGdiPlusBitmap->LockBits(&rect, Gdiplus::ImageLockModeWrite, PixelFormat32bppRGB, &bitmapData) == Gdiplus::Ok)
+    if (pGdiPlusBitmap->LockBits(&rect, Gdiplus::ImageLockModeWrite, pixelFormat, &bitmapData) == Gdiplus::Ok)
     {
       BYTE *pDest = (BYTE *)bitmapData.Scan0;
       BYTE *pSrc = data;
@@ -517,25 +615,8 @@ namespace fc_native_video_thumbnail
     return "";
   }
 
-  std::string SaveThumbnail(PCWSTR srcFile, PCWSTR destFile, int size, REFGUID type, int *timeSeconds, int quality = 95)
+  std::string ExtractShellThumbnail(PCWSTR srcFile, PCWSTR destFile, int size, REFGUID type)
   {
-    // If timeSeconds is provided, use FFmpeg first (faster and more reliable)
-    if (timeSeconds != nullptr)
-    {
-      // Try FFmpeg implementation first
-      std::string result = FFmpegThumbnailHelper::ExtractThumbnail(srcFile, destFile, size, type, *timeSeconds, quality);
-
-      // If FFmpeg succeeds or file exists, return result
-      if (result.empty() || GetFileAttributesW(destFile) != INVALID_FILE_ATTRIBUTES)
-      {
-        return result;
-      }
-
-      // If FFmpeg fails, fall back to MediaFoundation
-      return ExtractVideoFrameAtTime(srcFile, destFile, size, type, *timeSeconds, quality);
-    }
-
-    // If no timeSeconds, use original Windows thumbnail cache method
     IShellItem *pSI;
     HRESULT hr = SHCreateItemFromParsingName(srcFile, NULL, IID_IShellItem, (void **)&pSI);
     if (!SUCCEEDED(hr))
@@ -586,14 +667,173 @@ namespace fc_native_video_thumbnail
     pSharedBitmap->Release();
     pThumbCache->Release();
 
-    CImage image;
-    image.Attach(hBitmap);
-    hr = image.Save(destFile, type);
+    IWICImagingFactory *pFactory = nullptr;
+    hr = CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pFactory));
+    if (!SUCCEEDED(hr) || !pFactory)
+    {
+      DeleteObject(hBitmap);
+      return "`CoCreateInstance` for WIC factory failed with " + HRESULTToString(hr);
+    }
+
+    IWICBitmap *pWicBitmap = nullptr;
+    hr = pFactory->CreateBitmapFromHBITMAP(hBitmap, nullptr, WICBitmapUseAlpha, &pWicBitmap);
+    if (!SUCCEEDED(hr) || !pWicBitmap)
+    {
+      pFactory->Release();
+      DeleteObject(hBitmap);
+      return "Failed to create WIC bitmap from HBITMAP";
+    }
+
+    IWICStream *pStream = nullptr;
+    hr = pFactory->CreateStream(&pStream);
+    if (!SUCCEEDED(hr) || !pStream)
+    {
+      pWicBitmap->Release();
+      pFactory->Release();
+      DeleteObject(hBitmap);
+      return "Failed to create WIC stream";
+    }
+
+    hr = pStream->InitializeFromFilename(destFile, GENERIC_WRITE);
     if (!SUCCEEDED(hr))
     {
-      return "`image.Attach` failed with " + HRESULTToString(hr);
+      pStream->Release();
+      pWicBitmap->Release();
+      pFactory->Release();
+      DeleteObject(hBitmap);
+      return "Failed to initialize WIC stream";
     }
+
+    GUID containerFormat = (type == Gdiplus::ImageFormatPNG) ? GUID_ContainerFormatPng : GUID_ContainerFormatJpeg;
+    IWICBitmapEncoder *pEncoder = nullptr;
+    hr = pFactory->CreateEncoder(containerFormat, nullptr, &pEncoder);
+    if (!SUCCEEDED(hr) || !pEncoder)
+    {
+      pStream->Release();
+      pWicBitmap->Release();
+      pFactory->Release();
+      DeleteObject(hBitmap);
+      return "Failed to create WIC encoder";
+    }
+
+    hr = pEncoder->Initialize(pStream, WICBitmapEncoderNoCache);
+    if (!SUCCEEDED(hr))
+    {
+      pEncoder->Release();
+      pStream->Release();
+      pWicBitmap->Release();
+      pFactory->Release();
+      DeleteObject(hBitmap);
+      return "Failed to initialize WIC encoder";
+    }
+
+    IWICBitmapFrameEncode *pFrame = nullptr;
+    IPropertyBag2 *pProps = nullptr;
+    hr = pEncoder->CreateNewFrame(&pFrame, &pProps);
+    if (!SUCCEEDED(hr) || !pFrame)
+    {
+      if (pProps)
+        pProps->Release();
+      pEncoder->Release();
+      pStream->Release();
+      pWicBitmap->Release();
+      pFactory->Release();
+      DeleteObject(hBitmap);
+      return "Failed to create WIC frame";
+    }
+
+    if (containerFormat == GUID_ContainerFormatJpeg && pProps)
+    {
+      PROPBAG2 option = {};
+      option.pstrName = const_cast<LPOLESTR>(L"ImageQuality");
+      VARIANT varValue;
+      VariantInit(&varValue);
+      varValue.vt = VT_R4;
+      varValue.fltVal = 0.9f;
+      pProps->Write(1, &option, &varValue);
+      VariantClear(&varValue);
+    }
+
+    hr = pFrame->Initialize(pProps);
+    if (pProps)
+    {
+      pProps->Release();
+    }
+    if (!SUCCEEDED(hr))
+    {
+      pFrame->Release();
+      pEncoder->Release();
+      pStream->Release();
+      pWicBitmap->Release();
+      pFactory->Release();
+      DeleteObject(hBitmap);
+      return "Failed to initialize WIC frame";
+    }
+
+    UINT width = 0;
+    UINT height = 0;
+    pWicBitmap->GetSize(&width, &height);
+    pFrame->SetSize(width, height);
+
+    GUID pixelFormat = GUID_WICPixelFormat32bppBGRA;
+    pFrame->SetPixelFormat(&pixelFormat);
+
+    hr = pFrame->WriteSource(pWicBitmap, nullptr);
+    if (!SUCCEEDED(hr))
+    {
+      pFrame->Release();
+      pEncoder->Release();
+      pStream->Release();
+      pWicBitmap->Release();
+      pFactory->Release();
+      DeleteObject(hBitmap);
+      return "Failed to write WIC frame";
+    }
+
+    pFrame->Commit();
+    pEncoder->Commit();
+
+    pFrame->Release();
+    pEncoder->Release();
+    pStream->Release();
+    pWicBitmap->Release();
+    pFactory->Release();
+    DeleteObject(hBitmap);
     return "";
+  }
+
+  std::string SaveThumbnail(PCWSTR srcFile, PCWSTR destFile, int size, REFGUID type, int *timeSeconds, int quality, bool useShellThumbnail)
+  {
+    if (timeSeconds != nullptr)
+    {
+      std::string mfResult = ExtractVideoFrameAtTime(srcFile, destFile, size, type, *timeSeconds, quality);
+      if (mfResult.empty())
+      {
+        return "";
+      }
+
+      if (useShellThumbnail)
+      {
+        std::string shellResult = ExtractShellThumbnail(srcFile, destFile, size, type);
+        if (shellResult.empty())
+        {
+          return "";
+        }
+        if (shellResult == kGetThumbnailFailedExtraction)
+        {
+          return shellResult;
+        }
+        return "MediaFoundation failed with " + mfResult + "; shell thumbnail failed with " + shellResult;
+      }
+      return "MediaFoundation failed with " + mfResult;
+    }
+
+    // If no timeSeconds, use original Windows thumbnail cache method
+    if (!useShellThumbnail)
+    {
+      return "Shell thumbnail disabled";
+    }
+    return ExtractShellThumbnail(srcFile, destFile, size, type);
   }
 
   void FcNativeVideoThumbnailPlugin::RegisterWithRegistrar(
@@ -717,7 +957,7 @@ namespace fc_native_video_thumbnail
       }
 
       // Check if thumbnail file already exists (even if not in cache)
-      if (std::filesystem::exists(*dest_file))
+      if (std::filesystem::exists(PathFromUtf8(*dest_file)))
       {
         // File exists, update cache and return success to avoid re-rendering
         UpdateCache(*src_file, *dest_file);
@@ -881,6 +1121,9 @@ namespace fc_native_video_thumbnail
   // Worker thread function
   void FcNativeVideoThumbnailPlugin::WorkerThread()
   {
+    const HRESULT coInit = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+    const bool coInitialized = (coInit == S_OK || coInit == S_FALSE);
+
     while (!shutdown_)
     {
       std::unique_ptr<ThumbnailRequest> request;
@@ -906,7 +1149,21 @@ namespace fc_native_video_thumbnail
       if (request && !request->srcFile.empty() && !request->destFile.empty())
       {
         // Check if source file still exists
-        if (!std::filesystem::exists(request->srcFile))
+        const auto normalizedSrc = NormalizeWindowsPathFromUtf8(request->srcFile);
+        if (normalizedSrc.empty())
+        {
+          {
+            std::lock_guard<std::mutex> lock(activeRequestsMutex_);
+            activeRequests_.erase(request->requestId);
+          }
+          if (request->result)
+          {
+            request->result->Error("InvalidRequest", "Invalid source path");
+          }
+          continue;
+        }
+
+        if (!FileExistsWide(normalizedSrc))
         {
           // Cleanup and skip invalid request
           {
@@ -935,6 +1192,11 @@ namespace fc_native_video_thumbnail
         }
       }
     }
+
+    if (coInitialized)
+    {
+      CoUninitialize();
+    }
   }
 
   // Process thumbnail request asynchronously
@@ -956,16 +1218,23 @@ namespace fc_native_video_thumbnail
         timeSeconds = &timeSecondsValue;
       }
 
-      // Protect FFmpeg operations with global mutex for thread safety
-      std::lock_guard<std::mutex> ffmpegLock(ffmpegMutex_);
+      const auto normalizedSrc = NormalizeWindowsPathFromUtf8(request->srcFile);
+      const auto normalizedDest = NormalizeWindowsPathFromUtf8(request->destFile);
+      if (normalizedSrc.empty() || normalizedDest.empty())
+      {
+        request->result->Error("PluginError", "Invalid path encoding");
+        cleanup();
+        return;
+      }
 
       auto oper_res = SaveThumbnail(
-          Utf16FromUtf8(request->srcFile).c_str(),
-          Utf16FromUtf8(request->destFile).c_str(),
+          normalizedSrc.c_str(),
+          normalizedDest.c_str(),
           request->width,
           request->format.compare("png") == 0 ? Gdiplus::ImageFormatPNG : Gdiplus::ImageFormatJPEG,
           timeSeconds,
-          request->quality);
+          request->quality,
+          timeSeconds == nullptr);
 
       if (oper_res == kGetThumbnailFailedExtraction)
       {
@@ -1001,7 +1270,7 @@ namespace fc_native_video_thumbnail
     std::lock_guard<std::mutex> lock(cacheMutex_);
 
     // Check if thumbnail file exists
-    if (!std::filesystem::exists(destFile))
+    if (!std::filesystem::exists(PathFromUtf8(destFile)))
     {
       return false;
     }
@@ -1018,8 +1287,8 @@ namespace fc_native_video_thumbnail
     // Check if source file has been modified
     try
     {
-      auto fileTime = std::filesystem::last_write_time(srcFile);
-      auto fileSize = std::filesystem::file_size(srcFile);
+      auto fileTime = std::filesystem::last_write_time(PathFromUtf8(srcFile));
+      auto fileSize = std::filesystem::file_size(PathFromUtf8(srcFile));
 
       // Convert file_time_type to system_clock::time_point for comparison
       auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
@@ -1048,8 +1317,8 @@ namespace fc_native_video_thumbnail
 
     try
     {
-      auto fileTime = std::filesystem::last_write_time(srcFile);
-      auto fileSize = std::filesystem::file_size(srcFile);
+      auto fileTime = std::filesystem::last_write_time(PathFromUtf8(srcFile));
+      auto fileSize = std::filesystem::file_size(PathFromUtf8(srcFile));
 
       // Convert file_time_type to system_clock::time_point
       auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(

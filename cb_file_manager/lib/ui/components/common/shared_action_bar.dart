@@ -286,35 +286,6 @@ class SharedActionBar {
               );
             }
 
-            // Only show gallery options if the callback and path are provided
-            if (onGallerySelected != null && currentPath != null) {
-              items.add(const PopupMenuDivider());
-              items.add(
-                PopupMenuItem<String>(
-                  value: 'image_gallery',
-                  child: Row(
-                    children: [
-                      const Icon(remix.Remix.image_line, size: 20),
-                      const SizedBox(width: 10),
-                      Text(l10n.viewImageGallery),
-                    ],
-                  ),
-                ),
-              );
-              items.add(
-                PopupMenuItem<String>(
-                  value: 'video_gallery',
-                  child: Row(
-                    children: [
-                      const Icon(remix.Remix.video_line, size: 20),
-                      const SizedBox(width: 10),
-                      Text(l10n.viewVideoGallery),
-                    ],
-                  ),
-                ),
-              );
-            }
-
             return items;
           },
           onSelected: (String value) {
@@ -325,16 +296,6 @@ class SharedActionBar {
               case 'manage_tags':
                 if (onManageTagsPressed != null) {
                   onManageTagsPressed();
-                }
-                break;
-              case 'image_gallery':
-                if (onGallerySelected != null && currentPath != null) {
-                  onGallerySelected('image_gallery');
-                }
-                break;
-              case 'video_gallery':
-                if (onGallerySelected != null && currentPath != null) {
-                  onGallerySelected('video_gallery');
                 }
                 break;
             }
@@ -359,6 +320,9 @@ class SharedActionBar {
     Function(String)? onGallerySelected,
     String? currentPath,
     Function(ViewMode)? onViewModeSelected,
+    VoidCallback? onPreviewPaneToggled,
+    bool isPreviewPaneVisible = true,
+    bool showPreviewModeOption = false,
   }) {
     final l10n = AppLocalizations.of(context)!;
     List<Widget> actions = [];
@@ -451,12 +415,24 @@ class SharedActionBar {
     );
 
     // Add grid size button if in grid mode
-    if (viewMode == ViewMode.grid && onGridSizePressed != null) {
+    if ((viewMode == ViewMode.grid || viewMode == ViewMode.gridPreview) &&
+        onGridSizePressed != null) {
       actions.add(
         IconButton(
           icon: const Icon(remix.Remix.grid_line),
           tooltip: l10n.adjustGridSizeTooltip,
           onPressed: onGridSizePressed,
+        ),
+      );
+    }
+
+    if (viewMode == ViewMode.gridPreview && onPreviewPaneToggled != null) {
+      actions.add(
+        IconButton(
+          icon: const Icon(Icons.vertical_split),
+          tooltip:
+              isPreviewPaneVisible ? l10n.hidePreview : l10n.showPreview,
+          onPressed: onPreviewPaneToggled,
         ),
       );
     }
@@ -532,6 +508,35 @@ class SharedActionBar {
               ],
             ),
           ),
+          if (showPreviewModeOption)
+            PopupMenuItem<ViewMode>(
+              value: ViewMode.gridPreview,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.vertical_split,
+                    size: 20,
+                    color:
+                        viewMode == ViewMode.gridPreview ? Colors.blue : null,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    l10n.viewModeGridPreview,
+                    style: TextStyle(
+                      fontWeight: viewMode == ViewMode.gridPreview
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                      color:
+                          viewMode == ViewMode.gridPreview ? Colors.blue : null,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (viewMode == ViewMode.gridPreview)
+                    const Icon(remix.Remix.check_line,
+                        color: Colors.blue, size: 20),
+                ],
+              ),
+            ),
           PopupMenuItem<ViewMode>(
             value: ViewMode.details,
             child: Row(

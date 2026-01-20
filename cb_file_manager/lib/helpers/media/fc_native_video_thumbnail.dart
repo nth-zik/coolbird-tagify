@@ -134,7 +134,7 @@ class FcNativeVideoThumbnail {
         bool? result;
         try {
           // Add small delay to allow UI thread to update
-          await Future.delayed(const Duration(milliseconds: 50));
+          await Future.delayed(const Duration(milliseconds: 10));
 
           // Wrap platform channel call in try-catch to handle BackgroundIsolateBinaryMessenger errors
           result = await _channel.invokeMethod<bool>('getVideoThumbnail', {
@@ -173,7 +173,7 @@ class FcNativeVideoThumbnail {
 
         if (result == true) {
           // Add small delay before file verification to allow UI updates
-          await Future.delayed(const Duration(milliseconds: 50));
+          await Future.delayed(const Duration(milliseconds: 10));
 
           // Verify the thumbnail was created (async)
           final outputFile = File(outputPath);

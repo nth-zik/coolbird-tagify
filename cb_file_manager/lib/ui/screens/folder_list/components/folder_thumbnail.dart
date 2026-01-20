@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'dart:io';
+
+import 'package:cb_file_manager/helpers/media/folder_thumbnail_service.dart';
+import 'package:cb_file_manager/helpers/media/video_thumbnail_helper.dart';
+import 'package:cb_file_manager/ui/components/common/skeleton.dart';
+import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:remixicon/remixicon.dart' as remix;
-import 'package:cb_file_manager/helpers/media/folder_thumbnail_service.dart';
-import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart';
 
 /// Widget for displaying folder thumbnail
 class FolderThumbnail extends StatefulWidget {
@@ -22,46 +26,142 @@ class FolderThumbnail extends StatefulWidget {
 class _FolderThumbnailState extends State<FolderThumbnail> {
   final FolderThumbnailService _thumbnailService = FolderThumbnailService();
   String? _thumbnailPath;
+  String? _videoPath;
+  String? _cachedVideoThumbnailPath;
   bool _isLoading = true;
   bool _loadFailed = false;
   bool _disposed = false;
+  bool _isVideoThumbnailLoading = false;
+  bool _videoThumbnailRequested = false;
+  Timer? _videoThumbnailDelay;
+  StreamSubscription<String>? _thumbnailChangedSubscription;
+  StreamSubscription<String>? _videoThumbnailReadySubscription;
 
   // Cache for this specific widget instance
   static final Map<String, String> _folderThumbnailPathCache = {};
+  bool _pendingFallback = false;
 
   @override
   void initState() {
     super.initState();
-    // Check if we have the thumbnail path in our cache
-    if (_folderThumbnailPathCache.containsKey(widget.folder.path)) {
-      _thumbnailPath = _folderThumbnailPathCache[widget.folder.path];
-      _isLoading = false;
-    } else {
-      _loadThumbnail();
-    }
+    _thumbnailChangedSubscription =
+        _thumbnailService.onThumbnailChanged.listen((folderPath) {
+      if (folderPath == widget.folder.path) {
+        _folderThumbnailPathCache.remove(folderPath);
+        _loadThumbnail();
+      }
+    });
+    _loadFromCacheOrFetch();
+    _videoThumbnailReadySubscription =
+        VideoThumbnailHelper.onThumbnailReady.listen((readyVideoPath) async {
+      if (_videoPath == null || readyVideoPath != _videoPath) {
+        return;
+      }
+
+      final cached = await VideoThumbnailHelper.getFromCache(readyVideoPath);
+      if (cached == null || _disposed) {
+        return;
+      }
+
+      setState(() {
+        _cachedVideoThumbnailPath = cached;
+        _isVideoThumbnailLoading = false;
+      });
+    });
   }
 
   @override
   void didUpdateWidget(FolderThumbnail oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.folder.path != widget.folder.path) {
-      // Check cache first before reloading
-      if (_folderThumbnailPathCache.containsKey(widget.folder.path)) {
-        setState(() {
-          _thumbnailPath = _folderThumbnailPathCache[widget.folder.path];
-          _isLoading = false;
-          _loadFailed = false;
-        });
-      } else {
-        _loadThumbnail();
-      }
+      _videoPath = null;
+      _cachedVideoThumbnailPath = null;
+      _isVideoThumbnailLoading = false;
+      _videoThumbnailRequested = false;
+      _videoThumbnailDelay?.cancel();
+      _loadFromCacheOrFetch();
     }
   }
 
   @override
   void dispose() {
     _disposed = true;
+    _thumbnailChangedSubscription?.cancel();
+    _videoThumbnailReadySubscription?.cancel();
+    _videoThumbnailDelay?.cancel();
     super.dispose();
+  }
+
+  void _loadFromCacheOrFetch() {
+    final cached = _folderThumbnailPathCache[widget.folder.path];
+    if (cached != null && _isCachedPathValid(cached)) {
+      unawaited(_applyFolderThumbnailPath(cached));
+      return;
+    }
+    if (cached != null) {
+      _folderThumbnailPathCache.remove(widget.folder.path);
+    }
+    _loadThumbnail();
+  }
+
+  bool _isCachedPathValid(String cached) {
+    if (_isVideoPath(cached)) {
+      final videoPath = _getVideoPath(cached);
+      return videoPath.isNotEmpty && File(videoPath).existsSync();
+    }
+    return File(cached).existsSync();
+  }
+
+  void _reloadThumbnailAfterInvalidCache() {
+    if (_disposed || _isLoading) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_disposed || _isLoading) {
+        return;
+      }
+      _folderThumbnailPathCache.remove(widget.folder.path);
+      _loadThumbnail();
+    });
+  }
+
+  Future<void> _fallbackToImageIfPossible() async {
+    if (_pendingFallback || _disposed) {
+      return;
+    }
+    _pendingFallback = true;
+
+    try {
+      final hasCustom =
+          await _thumbnailService.hasCustomThumbnail(widget.folder.path);
+      if (hasCustom) {
+        return;
+      }
+
+      final imagePath =
+          await _thumbnailService.findFirstImageInFolder(widget.folder.path);
+      if (imagePath == null) {
+        return;
+      }
+
+      await _thumbnailService.setAutoThumbnail(
+        widget.folder.path,
+        imagePath,
+      );
+      _folderThumbnailPathCache[widget.folder.path] = imagePath;
+
+      if (!_disposed) {
+        setState(() {
+          _thumbnailPath = imagePath;
+          _videoPath = null;
+          _cachedVideoThumbnailPath = null;
+          _isVideoThumbnailLoading = false;
+          _videoThumbnailRequested = false;
+        });
+      }
+    } finally {
+      _pendingFallback = false;
+    }
   }
 
   Future<void> _loadThumbnail() async {
@@ -75,6 +175,14 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
     try {
       final path =
           await _thumbnailService.getFolderThumbnail(widget.folder.path);
+      String? videoPath;
+      String? cachedVideoThumbnailPath;
+
+      if (path != null && _isVideoPath(path)) {
+        videoPath = _getVideoPath(path);
+        cachedVideoThumbnailPath =
+            await VideoThumbnailHelper.getFromCache(videoPath);
+      }
 
       if (_disposed) return;
 
@@ -83,10 +191,7 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
         _folderThumbnailPathCache[widget.folder.path] = path;
       }
 
-      setState(() {
-        _thumbnailPath = path;
-        _isLoading = false;
-      });
+      await _applyFolderThumbnailPath(path);
     } catch (e) {
       debugPrint(
           'Error loading thumbnail for folder ${widget.folder.path}: $e');
@@ -136,15 +241,7 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
 
   Widget _buildThumbnailContent() {
     if (_isLoading) {
-      return Center(
-        child: SizedBox(
-          width: widget.size * 0.5,
-          height: widget.size * 0.5,
-          child: const CircularProgressIndicator(
-            strokeWidth: 2,
-          ),
-        ),
-      );
+      return _buildLoadingPlaceholder();
     }
 
     // Default folder icon when no thumbnail
@@ -166,50 +263,57 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
       if (isVideo) {
         if (!File(videoPath).existsSync()) {
           debugPrint('Video file does not exist: $videoPath');
+          _reloadThumbnailAfterInvalidCache();
           return _buildFolderIcon();
         }
 
         final bool isMobile = Platform.isAndroid || Platform.isIOS;
-        
+        final cachedPath = _cachedVideoThumbnailPath;
+        final hasCached = cachedPath != null && File(cachedPath).existsSync();
+        if (cachedPath != null && !hasCached && !_videoThumbnailRequested) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_disposed || !mounted) return;
+            setState(() {
+              _cachedVideoThumbnailPath = null;
+              _isVideoThumbnailLoading = true;
+              _videoThumbnailRequested = false;
+            });
+            _scheduleVideoThumbnailGeneration(videoPath);
+          });
+        }
+
         return Container(
           width: double.infinity,
           height: double.infinity,
           margin: const EdgeInsets.all(1),
           decoration: BoxDecoration(
             // Only show border on desktop
-            border: isMobile ? null : Border.all(
-              color: Colors.amber[600]!,
-              width: 1.5,
-            ),
+            border: isMobile
+                ? null
+                : Border.all(
+                    color: Colors.amber[600]!,
+                    width: 1.5,
+                  ),
           ),
           child: Stack(
             fit: StackFit.expand,
             children: [
-              ThumbnailLoader(
-                filePath: videoPath,
-                isVideo: true,
-                isImage: false,
-                width: double.infinity,
-                height: double.infinity,
-                borderRadius: BorderRadius.circular(1),
-                fallbackBuilder: () => Container(
-                  color: Colors.blueGrey[900],
-                  child: Center(
-                    child: Icon(
-                      remix.Remix.video_line,
-                      size: widget.size * 0.4,
-                      color: Colors.white70,
-                    ),
-                  ),
-                ),
-                onThumbnailLoaded: () {
-                  if (mounted && _loadFailed) {
-                    setState(() {
-                      _loadFailed = false;
-                    });
-                  }
-                },
-              ),
+              if (hasCached)
+                Image.file(
+                  File(cachedPath),
+                  width: double.infinity,
+                  height: double.infinity,
+                  fit: BoxFit.cover,
+                  filterQuality: FilterQuality.medium,
+                )
+              else if (_isVideoThumbnailLoading)
+                ShimmerBox(
+                  width: double.infinity,
+                  height: double.infinity,
+                  borderRadius: BorderRadius.circular(4),
+                )
+              else
+                _buildFolderIcon(),
               Positioned(
                 right: 4,
                 bottom: 4,
@@ -233,6 +337,7 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
         final file = File(thumbnailPath);
         if (!file.existsSync()) {
           debugPrint('Image file does not exist: $thumbnailPath');
+          _reloadThumbnailAfterInvalidCache();
           return _buildFolderIcon();
         }
 
@@ -274,6 +379,86 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
         size: widget.size * 0.7,
         color: Colors.amber[700],
       ),
+    );
+  }
+
+  Future<void> _applyFolderThumbnailPath(String? path) async {
+    if (_disposed) return;
+
+    String? videoPath;
+    String? cachedVideoThumbnailPath;
+    if (path != null && _isVideoPath(path)) {
+      videoPath = _getVideoPath(path);
+      cachedVideoThumbnailPath =
+          await VideoThumbnailHelper.getFromCache(videoPath);
+    }
+
+    if (_disposed) return;
+
+    setState(() {
+      _thumbnailPath = path;
+      _videoPath = videoPath;
+      _cachedVideoThumbnailPath = cachedVideoThumbnailPath;
+      _isLoading = false;
+      _loadFailed = false;
+      _isVideoThumbnailLoading =
+          videoPath != null && cachedVideoThumbnailPath == null;
+      _videoThumbnailRequested = false;
+    });
+
+    if (videoPath != null && cachedVideoThumbnailPath == null) {
+      _scheduleVideoThumbnailGeneration(videoPath);
+    }
+  }
+
+  void _scheduleVideoThumbnailGeneration(String videoPath) {
+    if (_videoThumbnailRequested) {
+      return;
+    }
+    _videoThumbnailRequested = true;
+
+    _videoThumbnailDelay?.cancel();
+    _videoThumbnailDelay = Timer(const Duration(milliseconds: 40), () {
+      if (_disposed) return;
+      _startVideoThumbnailGeneration(videoPath);
+    });
+  }
+
+  void _startVideoThumbnailGeneration(String videoPath) {
+    final targetSize = (widget.size * 1.6).round().clamp(120, 160);
+
+    VideoThumbnailHelper.generateThumbnail(
+      videoPath,
+      isPriority: true,
+      quality: 45,
+      thumbnailSize: targetSize,
+    ).then((thumbPath) {
+      if (_disposed) return;
+      if (thumbPath != null && File(thumbPath).existsSync()) {
+        setState(() {
+          _cachedVideoThumbnailPath = thumbPath;
+          _isVideoThumbnailLoading = false;
+        });
+      } else {
+        setState(() {
+          _isVideoThumbnailLoading = false;
+        });
+        unawaited(_fallbackToImageIfPossible());
+      }
+    }).catchError((_) {
+      if (_disposed) return;
+      setState(() {
+        _isVideoThumbnailLoading = false;
+      });
+      unawaited(_fallbackToImageIfPossible());
+    });
+  }
+
+  Widget _buildLoadingPlaceholder() {
+    return ShimmerBox(
+      width: double.infinity,
+      height: double.infinity,
+      borderRadius: BorderRadius.circular(4),
     );
   }
 }

@@ -1,9 +1,7 @@
 import 'dart:io';
 
 import 'package:cb_file_manager/helpers/ui/frame_timing_optimizer.dart';
-import 'package:cb_file_manager/ui/screens/media_gallery/image_gallery_screen.dart';
-import 'package:cb_file_manager/ui/screens/media_gallery/video_gallery_screen.dart';
-import '../../../components/common/shared_action_bar.dart';
+import 'package:cb_file_manager/ui/components/common/shared_action_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/helpers/core/user_preferences.dart';
@@ -13,6 +11,7 @@ import 'package:cb_file_manager/ui/widgets/app_progress_indicator.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 import '../tab_manager.dart';
 import 'package:cb_file_manager/ui/utils/fluent_background.dart';
+import 'package:path/path.dart' as path;
 
 // Import folder list components with explicit alias
 import '../../../screens/folder_list/folder_list_bloc.dart';
@@ -128,6 +127,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
 
   late final TabbedFolderDragSelectionController _dragSelectionController;
   late final TabbedFolderKeyboardController _keyboardController;
+  late final ValueNotifier<double> _previewPaneWidthNotifier;
 
   // Flag to track if there are background thumbnail tasks
   bool _hasPendingThumbnails = false;
@@ -145,6 +145,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
     _tagController = TextEditingController();
     _pathController = TextEditingController(text: _currentPath);
     _keyboardController = TabbedFolderKeyboardController();
+    _previewPaneWidthNotifier = ValueNotifier<double>(previewPaneWidth);
 
     // If this is a new tab with empty path (drive view), enable lazy loading
     if (_currentPath.isEmpty && Platform.isWindows) {
@@ -195,7 +196,10 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
     _saveLastAccessedFolder();
 
     // Load preferences using mixin
-    loadPreferences();
+    loadPreferences().then((_) {
+      if (!mounted) return;
+      _previewPaneWidthNotifier.value = previewPaneWidth;
+    });
 
     // Initialize RefreshController
     _refreshController = RefreshController(
@@ -269,6 +273,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
 
     _dragSelectionController.dispose();
     _keyboardController.dispose();
+    _previewPaneWidthNotifier.dispose();
 
     // Restore default settings
     WidgetsBinding.instance.renderView.automaticSystemUiAdjustment = true;
@@ -303,6 +308,21 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
 
   void _toggleSelectionMode({bool? forceValue}) {
     _selectionCoordinator.toggleSelectionMode(forceValue: forceValue);
+  }
+
+  void _togglePreviewPane() {
+    togglePreviewPaneVisibility();
+  }
+
+  void _updatePreviewPaneWidth(double width) {
+    previewPaneWidth = width;
+    _previewPaneWidthNotifier.value = width;
+  }
+
+  void _commitPreviewPaneWidth(double width) {
+    previewPaneWidth = width;
+    _previewPaneWidthNotifier.value = width;
+    savePreviewPaneWidthSetting(width);
   }
 
   void _toggleFileSelection(String filePath,
@@ -385,9 +405,6 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
     );
   }
 
-  void _handleGalleryResult(dynamic result) {
-    _navigationController.handleGalleryResult(context, result);
-  }
 
   Future<bool> _handleBackButton() async {
     return await _navigationController.handleBackButton(
@@ -395,6 +412,147 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
       _currentPath,
       _pathController,
     );
+  }
+
+  Future<void> _handleDelete(bool permanent) async {
+    if (!mounted) {
+      debugPrint('_handleDelete called but widget not mounted');
+      return;
+    }
+    
+    debugPrint('_handleDelete called - permanent: $permanent');
+    debugPrint('  Selected files: ${_selectionBloc.state.selectedFilePaths.length}');
+    debugPrint('  Selected folders: ${_selectionBloc.state.selectedFolderPaths.length}');
+    debugPrint('  Focused path: ${_keyboardController.focusedPath}');
+    
+    await FileOperationsHandler.handleDelete(
+      context: context,
+      folderListBloc: _folderListBloc,
+      selectedFiles: _selectionBloc.state.selectedFilePaths.toList(),
+      selectedFolders: _selectionBloc.state.selectedFolderPaths.toList(),
+      focusedPath: _keyboardController.focusedPath,
+      permanent: permanent,
+      onClearSelection: () => _selectionBloc.add(ClearSelection()),
+    );
+  }
+
+  void _handleSelectAll() {
+    debugPrint('Select all triggered');
+    final allFiles = _folderListBloc.state.files.map((f) => f.path).toList();
+    final allFolders = _folderListBloc.state.folders.map((f) => f.path).toList();
+    
+    // Enable selection mode if not already enabled
+    if (!_selectionBloc.state.isSelectionMode) {
+      _toggleSelectionMode(forceValue: true);
+    }
+    
+    _selectionBloc.add(SelectAll(
+      allFilePaths: allFiles,
+      allFolderPaths: allFolders,
+    ));
+  }
+
+  void _handleCopy() {
+    final selectionState = _selectionBloc.state;
+    if (selectionState.selectedFilePaths.isEmpty && 
+        selectionState.selectedFolderPaths.isEmpty &&
+        _keyboardController.focusedPath != null) {
+      // Copy focused item if no selection
+      final entity = FileSystemEntity.typeSync(_keyboardController.focusedPath!) == 
+          FileSystemEntityType.directory
+              ? Directory(_keyboardController.focusedPath!)
+              : File(_keyboardController.focusedPath!);
+      FileOperationsHandler.copyToClipboard(
+        context: context,
+        entity: entity,
+        folderListBloc: _folderListBloc,
+      );
+    } else if (selectionState.selectedFilePaths.isNotEmpty || 
+               selectionState.selectedFolderPaths.isNotEmpty) {
+      // Copy all selected items
+      final allPaths = [
+        ...selectionState.selectedFilePaths,
+        ...selectionState.selectedFolderPaths,
+      ];
+      for (final path in allPaths) {
+        final entity = FileSystemEntity.typeSync(path) == FileSystemEntityType.directory
+            ? Directory(path)
+            : File(path);
+        FileOperationsHandler.copyToClipboard(
+          context: context,
+          entity: entity,
+          folderListBloc: _folderListBloc,
+        );
+      }
+    }
+  }
+
+  void _handleCut() {
+    final selectionState = _selectionBloc.state;
+    if (selectionState.selectedFilePaths.isEmpty && 
+        selectionState.selectedFolderPaths.isEmpty &&
+        _keyboardController.focusedPath != null) {
+      // Cut focused item if no selection
+      final entity = FileSystemEntity.typeSync(_keyboardController.focusedPath!) == 
+          FileSystemEntityType.directory
+              ? Directory(_keyboardController.focusedPath!)
+              : File(_keyboardController.focusedPath!);
+      FileOperationsHandler.cutToClipboard(
+        context: context,
+        entity: entity,
+        folderListBloc: _folderListBloc,
+      );
+    } else if (selectionState.selectedFilePaths.isNotEmpty || 
+               selectionState.selectedFolderPaths.isNotEmpty) {
+      // Cut all selected items
+      final allPaths = [
+        ...selectionState.selectedFilePaths,
+        ...selectionState.selectedFolderPaths,
+      ];
+      for (final path in allPaths) {
+        final entity = FileSystemEntity.typeSync(path) == FileSystemEntityType.directory
+            ? Directory(path)
+            : File(path);
+        FileOperationsHandler.cutToClipboard(
+          context: context,
+          entity: entity,
+          folderListBloc: _folderListBloc,
+        );
+      }
+    }
+  }
+
+  void _handlePaste() {
+    FileOperationsHandler.pasteFromClipboard(
+      context: context,
+      destinationPath: _currentPath,
+      folderListBloc: _folderListBloc,
+    );
+  }
+
+  void _handleRename() {
+    final selectionState = _selectionBloc.state;
+    FileSystemEntity? entityToRename;
+
+    // Rename focused item or first selected item
+    if (_keyboardController.focusedPath != null) {
+      final type = FileSystemEntity.typeSync(_keyboardController.focusedPath!);
+      entityToRename = type == FileSystemEntityType.directory
+          ? Directory(_keyboardController.focusedPath!)
+          : File(_keyboardController.focusedPath!);
+    } else if (selectionState.selectedFilePaths.isNotEmpty) {
+      entityToRename = File(selectionState.selectedFilePaths.first);
+    } else if (selectionState.selectedFolderPaths.isNotEmpty) {
+      entityToRename = Directory(selectionState.selectedFolderPaths.first);
+    }
+
+    if (entityToRename != null) {
+      FileOperationsHandler.showRenameDialog(
+        context: context,
+        entity: entityToRename,
+        folderListBloc: _folderListBloc,
+      );
+    }
   }
 
   void _updatePath(String newPath) {
@@ -421,6 +579,28 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
         });
       },
     );
+  }
+
+  String _normalizePath(String value) {
+    if (value.isEmpty) {
+      return '';
+    }
+    var normalized = path.normalize(value);
+    final root = path.rootPrefix(normalized);
+    if (normalized.length > root.length &&
+        normalized.endsWith(path.separator)) {
+      normalized =
+          normalized.substring(0, normalized.length - path.separator.length);
+    }
+    return Platform.isWindows ? normalized.toLowerCase() : normalized;
+  }
+
+  bool _isPathMismatch(FolderListState state) {
+    if (_currentPath.isEmpty) {
+      return false;
+    }
+    return _normalizePath(state.currentPath.path) !=
+        _normalizePath(_currentPath);
   }
 
   @override
@@ -516,6 +696,13 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
                 _onFileTap(entity, false);
               }
             },
+            onDelete: _handleDelete,
+            onSelectAll: _handleSelectAll,
+            onCopy: _handleCopy,
+            onCut: _handleCut,
+            onPaste: _handlePaste,
+            onRename: _handleRename,
+            onRefresh: _refreshFileList,
             event: event,
           );
         },
@@ -558,7 +745,12 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
               },
               child: BlocBuilder<FolderListBloc, FolderListState>(
                 builder: (context, state) {
-                  _currentSearchTag = state.currentSearchTag;
+                  // Only update from state if not in a pending tag search state
+                  // or if state has caught up
+                  if (!_currentPath.startsWith('#search?tag=') ||
+                      state.currentSearchTag != null) {
+                    _currentSearchTag = state.currentSearchTag;
+                  }
                   _currentFilter = state.currentFilter;
 
                   return _buildWithSelectionState(
@@ -636,8 +828,12 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
     // Show content as soon as we have any files/folders (lazy loading)
     // Only show skeleton when truly empty and loading
     final bool hasContent = state.folders.isNotEmpty || state.files.isNotEmpty;
+    final bool isPathMismatch =
+        !_currentPath.startsWith('#') && _isPathMismatch(state);
+    final bool showLoadingIndicator =
+        state.isLoading || _isRefreshing || isPathMismatch;
     final bool shouldShowSkeleton = !hasContent &&
-        state.isLoading &&
+        (state.isLoading || isPathMismatch) &&
         state.error == null &&
         state.searchResults.isEmpty &&
         state.currentSearchTag == null &&
@@ -646,7 +842,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
     return Column(
       children: [
         // Top progress bar when loading, refreshing, or while initial content is being prepared
-        if (state.isLoading || _isRefreshing)
+        if (showLoadingIndicator)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 4.0),
             child: AppProgressIndicatorBeautiful(),
@@ -695,6 +891,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
       isGlobalSearch: isGlobalSearch,
       onBackButtonPressed: _handleMouseBackButton,
       onForwardButtonPressed: _handleMouseForwardButton,
+      onZoomLevelChanged: handleZoomLevelChange,
     );
 
     // If content builder returns a widget (error, empty, or search results), show it
@@ -748,6 +945,12 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
           toggleSelectionMode: _toggleSelectionMode,
           columnVisibility: columnVisibility,
           showContextMenu: _showContextMenu,
+          isPreviewPaneVisible: isPreviewPaneVisible,
+          previewPaneWidthListenable: _previewPaneWidthNotifier,
+          onZoomLevelChanged: handleZoomLevelChange,
+          onPreviewPaneWidthChanged: _updatePreviewPaneWidth,
+          onPreviewPaneWidthCommitted: _commitPreviewPaneWidth,
+          onPreviewPaneToggled: _togglePreviewPane,
         );
       },
     );
@@ -870,7 +1073,10 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
       onColumnSettingsPressed: () {
         showColumnVisibilityDialog(context);
       },
-      onGalleryResult: _handleGalleryResult,
+      onGalleryResult: null,
+      onPreviewPaneToggled: _togglePreviewPane,
+      isPreviewPaneVisible: isPreviewPaneVisible,
+      showPreviewModeOption: isDesktopPlatform,
     );
   }
 }

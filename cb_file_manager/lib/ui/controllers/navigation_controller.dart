@@ -6,6 +6,7 @@ import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
 import 'package:cb_file_manager/ui/tab_manager/core/tab_data.dart';
+import 'package:cb_file_manager/helpers/core/uri_utils.dart';
 
 /// Controller for handling navigation operations in tabbed folder screens
 class NavigationController {
@@ -136,6 +137,10 @@ class NavigationController {
       // First check if we're currently showing search results
       final folderListState = folderListBloc.state;
       if (folderListState.isSearchActive) {
+        if (currentPath.startsWith('#search?tag=')) {
+          tabManagerBloc.add(CloseTab(tabId));
+          return false;
+        }
         // Clear search results and reload current directory
         folderListBloc.add(const ClearSearchAndFilters());
         folderListBloc.add(FolderListLoad(currentPath));
@@ -176,7 +181,13 @@ class NavigationController {
             debugPrint('Successfully navigating back to: $newPath');
             onPathChanged(newPath);
             pathController.text = newPath;
-            folderListBloc.add(FolderListLoad(newPath));
+            if (newPath.startsWith('#search?tag=')) {
+              final tag = UriUtils.extractTagFromSearchPath(newPath) ??
+                  newPath.substring('#search?tag='.length);
+              folderListBloc.add(SearchByTagGlobally(tag));
+            } else {
+              folderListBloc.add(FolderListLoad(newPath));
+            }
             debugPrint('=== Back navigation completed successfully ===');
             return false; // Don't exit app, we navigated back
           } else {
@@ -252,9 +263,14 @@ class NavigationController {
 
     pathController.text = newPath;
 
-    // If navigating to a hash-based tag search, don't clear search
-    // and don't try to load it as a directory. The screen handles it.
     if (newPath.startsWith('#search?tag=')) {
+      final tag = UriUtils.extractTagFromSearchPath(newPath) ??
+          newPath.substring('#search?tag='.length);
+      if (folderListBloc.state.currentSearchTag != tag ||
+          folderListBloc.state.searchResults.isEmpty) {
+        folderListBloc.add(SearchByTagGlobally(tag));
+      }
+      onPathChanged(newPath);
       return;
     }
 
@@ -302,6 +318,10 @@ class NavigationController {
     // First check if we're currently showing search results
     final folderListState = folderListBloc.state;
     if (folderListState.isSearchActive) {
+      if (currentPath.startsWith('#search?tag=')) {
+        tabManagerBloc.add(CloseTab(tabId));
+        return;
+      }
       // Clear search results and reload current directory
       folderListBloc.add(const ClearSearchAndFilters());
       folderListBloc.add(FolderListLoad(currentPath));
@@ -309,28 +329,25 @@ class NavigationController {
     }
 
     if (tabManagerBloc.canTabNavigateBack(tabId)) {
-      // Get previous path
-      final previousPath = tabManagerBloc.getTabPreviousPath(tabId);
+      final actualPath = tabManagerBloc.backNavigationToPath(tabId);
+      if (actualPath == null) return;
 
-      if (previousPath != null) {
-        // Handle empty path case for Windows drive view
-        if (previousPath.isEmpty && Platform.isWindows) {
-          onPathChanged('');
-          pathController.text = '';
-          // Update the tab name to indicate we're showing drives
-          tabManagerBloc.add(
-              UpdateTabName(tabId, AppLocalizations.of(context)!.drivesTab));
-        } else {
-          // Regular path navigation
-          onPathChanged(previousPath);
-          pathController.text = previousPath;
-        }
+      if (actualPath.isEmpty && Platform.isWindows) {
+        onPathChanged('');
+        pathController.text = '';
+        tabManagerBloc
+            .add(UpdateTabName(tabId, AppLocalizations.of(context)!.drivesTab));
+      } else {
+        onPathChanged(actualPath);
+        pathController.text = actualPath;
+      }
 
-        // Use direct method call instead of BLoC event
-        tabManagerBloc.backNavigationToPath(tabId);
-
-        // Load the folder content
-        folderListBloc.add(FolderListLoad(previousPath));
+      if (actualPath.startsWith('#search?tag=')) {
+        final tag = UriUtils.extractTagFromSearchPath(actualPath) ??
+            actualPath.substring('#search?tag='.length);
+        folderListBloc.add(SearchByTagGlobally(tag));
+      } else {
+        folderListBloc.add(FolderListLoad(actualPath));
       }
     }
   }
@@ -342,32 +359,26 @@ class NavigationController {
     TextEditingController pathController,
   ) {
     if (tabManagerBloc.canTabNavigateForward(tabId)) {
-      // Get next path
-      final nextPath = tabManagerBloc.getTabNextPath(tabId);
+      final String? actualPath = tabManagerBloc.forwardNavigationToPath(tabId);
+      if (actualPath == null) return;
 
-      if (nextPath != null) {
-        // Handle empty path case for Windows drive view
-        if (nextPath.isEmpty && Platform.isWindows) {
-          onPathChanged('');
-          pathController.text = '';
-          // Update the tab name to indicate we're showing drives
-          tabManagerBloc.add(
-              UpdateTabName(tabId, AppLocalizations.of(context)!.drivesTab));
-        } else {
-          // Regular path navigation
-          onPathChanged(nextPath);
-          pathController.text = nextPath;
-        }
+      if (actualPath.isEmpty && Platform.isWindows) {
+        onPathChanged('');
+        pathController.text = '';
+        tabManagerBloc
+            .add(UpdateTabName(tabId, AppLocalizations.of(context)!.drivesTab));
+        return;
+      }
 
-        // Instead of using GoForwardInTabHistory, directly use the forwardNavigationToPath method
-        // This will avoid the unregistered event handler error
-        final String? actualPath =
-            tabManagerBloc.forwardNavigationToPath(tabId);
+      onPathChanged(actualPath);
+      pathController.text = actualPath;
 
-        // If navigation was successful, load the folder content
-        if (actualPath != null) {
-          folderListBloc.add(FolderListLoad(actualPath));
-        }
+      if (actualPath.startsWith('#search?tag=')) {
+        final tag = UriUtils.extractTagFromSearchPath(actualPath) ??
+            actualPath.substring('#search?tag='.length);
+        folderListBloc.add(SearchByTagGlobally(tag));
+      } else {
+        folderListBloc.add(FolderListLoad(actualPath));
       }
     }
   }

@@ -6,6 +6,7 @@ import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/ui/widgets/chips_input.dart';
 import 'package:cb_file_manager/helpers/tags/batch_tag_manager.dart';
+import 'package:cb_file_manager/helpers/core/uri_utils.dart';
 import 'dart:ui' as ui; // Import for ImageFilter
 import 'package:cb_file_manager/ui/widgets/tag_management_section.dart';
 import 'package:cb_file_manager/helpers/tags/tag_color_manager.dart';
@@ -16,7 +17,7 @@ import '../core/tab_data.dart';
 /// Opens a new tab with search results for the selected tag
 void _openTagSearchTab(BuildContext context, String tag) {
   // Create a unique system ID for this tag search
-  final searchSystemId = '#tag:$tag';
+  final searchSystemId = UriUtils.buildTagSearchPath(tag);
   final tabName = 'Tag: $tag';
 
   // Get tab manager

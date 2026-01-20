@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cb_file_manager/helpers/core/io_extensions.dart';
 import '../../../components/common/shared_file_context_menu.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../bloc/selection/selection_bloc.dart';
+import '../../../../bloc/selection/selection_event.dart';
 import 'package:remixicon/remixicon.dart' as remix;
 import '../../../components/common/optimized_interaction_handler.dart';
 
@@ -102,6 +105,27 @@ class _FolderItemState extends State<FolderItem> {
   }
 
   void _showFolderContextMenu(BuildContext context, Offset? globalPosition) {
+    // Check for multiple selection
+    try {
+      final selectionBloc = context.read<SelectionBloc>();
+      final selectionState = selectionBloc.state;
+
+      if (selectionState.allSelectedPaths.length > 1 &&
+          selectionState.allSelectedPaths.contains(widget.folder.path)) {
+        showMultipleFilesContextMenu(
+          context: context,
+          selectedPaths: selectionState.allSelectedPaths,
+          globalPosition: globalPosition ?? Offset.zero,
+          onClearSelection: () {
+            selectionBloc.add(ClearSelection());
+          },
+        );
+        return;
+      }
+    } catch (e) {
+      debugPrint('Error showing context menu: $e');
+    }
+
     // Use the shared folder context menu
     showFolderContextMenu(
       context: context,

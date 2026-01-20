@@ -300,7 +300,9 @@ class MobileFileActionsController {
               },
             ),
 
-            if (onGridSizePressed != null && currentViewMode == ViewMode.grid)
+            if (onGridSizePressed != null &&
+                (currentViewMode == ViewMode.grid ||
+                    currentViewMode == ViewMode.gridPreview))
               ListTile(
                 leading: const Icon(Icons.photo_size_select_large),
                 title: Text(localizations.gridSize ?? 'Kích thước lưới'),
@@ -339,26 +341,6 @@ class MobileFileActionsController {
               },
             ),
 
-            if (onGallerySelected != null && currentPath != null) ...[
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.photo_library),
-                title: Text(localizations.imageGallery),
-                onTap: () {
-                  Navigator.pop(context);
-                  onGallerySelected?.call('image_gallery');
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.video_library),
-                title: Text(localizations.videoGallery),
-                onTap: () {
-                  Navigator.pop(context);
-                  onGallerySelected?.call('video_gallery');
-                },
-              ),
-            ],
-
             const SizedBox(height: 16),
           ],
         ),
@@ -377,6 +359,8 @@ class MobileFileActionsController {
     var effectiveViewMode = viewMode ?? currentViewMode ?? ViewMode.grid;
     if (effectiveViewMode == ViewMode.details) {
       effectiveViewMode = ViewMode.list;
+    } else if (effectiveViewMode == ViewMode.gridPreview) {
+      effectiveViewMode = ViewMode.grid;
     }
 
     return Container(

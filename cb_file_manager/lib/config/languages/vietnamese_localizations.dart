@@ -22,6 +22,8 @@ class VietnameseLocalizations implements AppLocalizations {
   @override
   String get search => 'Tìm kiếm';
   @override
+  String get all => 'Tất cả';
+  @override
   String get settings => 'Cài đặt';
 
   @override
@@ -74,7 +76,7 @@ class VietnameseLocalizations implements AppLocalizations {
   String get moreOptionsTooltip => 'Thêm tùy chọn';
 
   @override
-  String get adjustGridSizeTooltip => 'Điều chỉnh kích thước lưới';
+  String get adjustGridSizeTooltip => 'Điều chỉnh kích thước item';
 
   @override
   String get columnSettingsTooltip => 'Thiết lập hiển thị cột';
@@ -84,7 +86,7 @@ class VietnameseLocalizations implements AppLocalizations {
 
   // Dialog titles
   @override
-  String get adjustGridSizeTitle => 'Điều chỉnh kích thước lưới';
+  String get adjustGridSizeTitle => 'Điều chỉnh kích thước item';
 
   @override
   String get columnVisibilityTitle => 'Tùy chỉnh hiển thị cột';
@@ -146,6 +148,27 @@ class VietnameseLocalizations implements AppLocalizations {
   @override
   String get viewModeDetails => 'Chi tiết';
 
+  @override
+  String get viewModeGridPreview => 'Lưới + Xem trước';
+
+  @override
+  String get previewPaneTitle => 'Xem trước';
+
+  @override
+  String get previewSelectFile => 'Chọn tệp để xem trước';
+
+  @override
+  String get previewNotSupported => 'Chưa hỗ trợ xem trước loại tệp này';
+
+  @override
+  String get previewUnavailable => 'Không thể xem trước';
+
+  @override
+  String get showPreview => 'Hiện xem trước';
+
+  @override
+  String get hidePreview => 'Ẩn xem trước';
+
   // Column names
   @override
   String get columnSize => 'Kích thước';
@@ -189,11 +212,11 @@ class VietnameseLocalizations implements AppLocalizations {
 
   // Grid size dialog
   @override
-  String gridSizeLabel(int count) => '$count ô trên mỗi hàng';
+  String gridSizeLabel(int count) => 'Mức kích thước item: $count';
 
   @override
   String get gridSizeInstructions =>
-      'Di chuyển thanh trượt để chọn số lượng ô hiển thị trên mỗi hàng';
+      'Di chuyển thanh trượt để điều chỉnh kích thước item';
 
   // More options menu
   @override
@@ -704,6 +727,25 @@ class VietnameseLocalizations implements AppLocalizations {
   @override
   String get deleteFile => 'Xóa tệp';
 
+  // Folder thumbnails
+  @override
+  String get folderThumbnail => 'Thumbnail thư mục';
+  @override
+  String get chooseThumbnail => 'Chọn thumbnail';
+  @override
+  String get clearThumbnail => 'Xóa thumbnail';
+  @override
+  String get thumbnailAuto => 'Tự động (video/ảnh đầu tiên)';
+  @override
+  String get folderThumbnailSet => 'Đã cập nhật thumbnail thư mục';
+  @override
+  String get folderThumbnailCleared => 'Đã xóa thumbnail thư mục';
+  @override
+  String get invalidThumbnailFile => 'Vui lòng chọn file ảnh hoặc video';
+  @override
+  String get noMediaFilesFound => 'Không tìm thấy ảnh hoặc video trong thư mục này';
+
+
   // Video actions
   @override
   String get share => 'Chia sẻ';
@@ -1185,6 +1227,20 @@ class VietnameseLocalizations implements AppLocalizations {
 
   @override
   String get files => 'tệp';
+
+  @override
+  String get deleteTitle => 'Xóa';
+
+  @override
+  String get permanentDeleteTitle => 'Xóa vĩnh viễn';
+
+  @override
+  String confirmDeletePermanent(String name) =>
+      'Bạn có chắc chắn muốn xóa vĩnh viễn "$name"? Hành động này không thể hoàn tác.';
+
+  @override
+  String confirmDeletePermanentMultiple(int count) =>
+      'Bạn có chắc chắn muốn xóa vĩnh viễn $count mục? Hành động này không thể hoàn tác.';
 
   @override
   String movedToTrash(String name) => '$name đã được chuyển vào thùng rác';

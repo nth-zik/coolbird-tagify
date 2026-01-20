@@ -57,11 +57,14 @@ class UserPreferences {
   static const String _useObjectBoxKey = 'use_objectbox_storage';
   static const String _columnVisibilityKey = 'column_visibility';
   static const String _showFileTagsKey = 'show_file_tags';
+  static const String _previewPaneVisibleKey = 'preview_pane_visible';
+  static const String _previewPaneWidthKey = 'preview_pane_width';
 
   // Constants for grid zoom level
   static const int minGridZoomLevel = 2; // Largest thumbnails (2 per row)
   static const int maxGridZoomLevel = 15; // Smallest thumbnails (15 per row)
   static const int defaultGridZoomLevel = 4; // Default (4 per row)
+  static const double defaultPreviewPaneWidth = 360.0;
 
   // Constants for thumbnail sizes
   static const double minThumbnailSize = 2.0;
@@ -201,6 +204,14 @@ class UserPreferences {
         final showFileTags = await getShowFileTags();
         await _databaseManager!
             .saveBoolPreference(_showFileTagsKey, showFileTags);
+
+        // Preview pane settings
+        final previewPaneVisible = await getPreviewPaneVisible();
+        await _databaseManager!.saveBoolPreference(
+            _previewPaneVisibleKey, previewPaneVisible);
+        final previewPaneWidth = await getPreviewPaneWidth();
+        await _databaseManager!
+            .saveDoublePreference(_previewPaneWidthKey, previewPaneWidth);
 
         // Mark migration as done
         await _databaseManager!.saveBoolPreference('migration_done', true);
@@ -438,6 +449,9 @@ class UserPreferences {
           defaultValue: 0,
         ) ??
         0;
+    if (viewModeIndex < 0 || viewModeIndex >= ViewMode.values.length) {
+      return ViewMode.list;
+    }
     return ViewMode.values[viewModeIndex];
   }
 
@@ -926,5 +940,33 @@ class UserPreferences {
   /// Save show file tags setting
   Future<bool> setShowFileTags(bool showTags) async {
     return await _savePreference<bool>(_showFileTagsKey, showTags);
+  }
+
+  /// Get preview pane visibility
+  Future<bool> getPreviewPaneVisible() async {
+    return await _getPreference<bool>(
+          _previewPaneVisibleKey,
+          defaultValue: true,
+        ) ??
+        true;
+  }
+
+  /// Save preview pane visibility
+  Future<bool> setPreviewPaneVisible(bool visible) async {
+    return await _savePreference<bool>(_previewPaneVisibleKey, visible);
+  }
+
+  /// Get preview pane width
+  Future<double> getPreviewPaneWidth() async {
+    return await _getPreference<double>(
+          _previewPaneWidthKey,
+          defaultValue: defaultPreviewPaneWidth,
+        ) ??
+        defaultPreviewPaneWidth;
+  }
+
+  /// Save preview pane width
+  Future<bool> setPreviewPaneWidth(double width) async {
+    return await _savePreference<double>(_previewPaneWidthKey, width);
   }
 }

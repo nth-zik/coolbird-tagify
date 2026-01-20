@@ -105,12 +105,11 @@ class _VideoHubScreenState extends State<VideoHubScreen> {
   }
 
   void _navigateToLibrary(VideoLibrary library) {
-    // Navigate to video gallery within the current tab using system path
+    // Navigate within current tab to keep tab history
     final tabManager = context.read<TabManagerBloc>();
     final activeTab = tabManager.state.activeTab;
-    
+
     if (activeTab != null) {
-      // Use a system path with library ID
       final path = '#video-library/${library.id}';
       TabNavigator.updateTabPath(context, activeTab.id, path);
       tabManager.add(UpdateTabName(activeTab.id, library.name));
