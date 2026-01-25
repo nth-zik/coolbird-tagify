@@ -45,6 +45,14 @@ class EnglishLocalizations implements AppLocalizations {
   @override
   String get openWith => 'Open with';
   @override
+  String get chooseDefaultApp => 'Choose default app';
+  @override
+  String get setCoolBirdAsDefaultForVideos =>
+      'Set CoolBird as default for video files';
+  @override
+  String get setCoolBirdAsDefaultForVideosAndroidHint =>
+      'Opening Settings. In "Open by default", enable CoolBird for video files.';
+  @override
   String get openFolder => 'Open Folder';
   @override
   String get openFile => 'Open File';
@@ -618,6 +626,17 @@ class EnglishLocalizations implements AppLocalizations {
   String get thumbnailDescription =>
       'Set the position in the video (as a percentage of total duration) where thumbnails will be extracted';
   @override
+  String get useSystemDefaultForVideo => 'Use system default app for video';
+  @override
+  String get useSystemDefaultForVideoDescription =>
+      'When on, tapping a video opens it with the system default app (e.g. VLC). When off, uses the in-app player.';
+  @override
+  String get useSystemDefaultForVideoEnabled =>
+      'Videos will open with the system default app';
+  @override
+  String get useSystemDefaultForVideoDisabled =>
+      'Videos will open in the in-app player';
+  @override
   String get thumbnailCache => 'Thumbnail Cache';
   @override
   String get thumbnailCacheDescription =>
@@ -641,6 +660,13 @@ class EnglishLocalizations implements AppLocalizations {
   @override
   String get adminAccessRequired =>
       'This drive requires administrator privileges to access';
+  @override
+  String get requiresAdminPrivileges => 'Requires administrator privileges';
+  @override
+  String driveRequiresAdmin(String path) =>
+      'The drive $path requires administrator privileges to access.';
+  @override
+  String get trashBin => 'Trash Bin';
 
   // File system
   @override
@@ -709,6 +735,18 @@ class EnglishLocalizations implements AppLocalizations {
   String get loadingVideo => 'Loading video...';
   @override
   String get errorLoadingImage => 'Error loading image';
+  @override
+  String errorLoadingImageWithError(String error) => 'Error loading image: $error';
+  @override
+  String get failedToDisplayImage => 'Failed to display image';
+  @override
+  String get noImageDataAvailable => 'No image data available';
+  @override
+  String get urlLoadingNotImplemented => 'URL loading not implemented yet';
+  @override
+  String get duration => 'Duration';
+  @override
+  String get resolution => 'Resolution';
   @override
   String get createCopy => 'Create copy';
   @override
@@ -1254,6 +1292,91 @@ class EnglishLocalizations implements AppLocalizations {
   String noFilesMatchFilter(String filter) =>
       'No files match the filter "$filter"';
 
+  // Trash / Recycle Bin screen
+  @override
+  String get emptyTrash => 'Empty Trash';
+  @override
+  String get emptyTrashConfirm =>
+      'Are you sure you want to permanently delete all items in the trash? This action cannot be undone.';
+  @override
+  String get emptyTrashButton => 'EMPTY TRASH';
+  @override
+  String permanentlyDeleteItemsTitle(int count) =>
+      'Permanently Delete $count items?';
+  @override
+  String get confirmPermanentlyDeleteThese =>
+      'This action cannot be undone. Are you sure you want to permanently delete these items?';
+  @override
+  String itemRestoredSuccess(String name) => '$name restored successfully';
+  @override
+  String failedToRestore(String name) => 'Failed to restore $name';
+  @override
+  String errorRestoringItemWithError(String error) =>
+      'Error restoring item: $error';
+  @override
+  String itemPermanentlyDeleted(String name) => '$name permanently deleted';
+  @override
+  String failedToDelete(String name) => 'Failed to delete $name';
+  @override
+  String errorDeletingItemWithError(String error) =>
+      'Error deleting item: $error';
+  @override
+  String get trashEmptiedSuccess => 'Trash emptied successfully';
+  @override
+  String get failedToEmptyTrash => 'Failed to empty trash';
+  @override
+  String errorEmptyingTrashWithError(String error) =>
+      'Error emptying trash: $error';
+  @override
+  String itemsRestoredSuccess(int count) =>
+      '$count items restored successfully';
+  @override
+  String itemsRestoredWithFailures(int success, int failed) =>
+      '$success items restored successfully, $failed failed';
+  @override
+  String itemsPermanentlyDeletedCount(int count) =>
+      '$count items permanently deleted';
+  @override
+  String itemsDeletedWithFailures(int success, int failed) =>
+      '$success items permanently deleted, $failed failed';
+  @override
+  String errorRestoringItemsWithError(String error) =>
+      'Error restoring items: $error';
+  @override
+  String errorDeletingItemsWithError(String error) =>
+      'Error deleting items: $error';
+  @override
+  String errorOpeningRecycleBinWithError(String error) =>
+      'Error opening Recycle Bin: $error';
+  @override
+  String get restoreSelected => 'Restore Selected';
+  @override
+  String get deleteSelected => 'Delete Selected';
+  @override
+  String get selectItems => 'Select Items';
+  @override
+  String get openRecycleBin => 'Open Recycle Bin';
+  @override
+  String get emptyTrashTooltip => 'Empty Trash';
+  @override
+  String get trashIsEmpty => 'Trash is empty';
+  @override
+  String get itemsDeletedWillAppearHere =>
+      'Items you delete will appear here';
+  @override
+  String originalLocation(String path) => 'Original location: $path';
+  @override
+  String deletedAt(String date, String size) => 'Deleted: $date • $size';
+  @override
+  String get systemLabel => 'System';
+  @override
+  String errorLoadingTrashItemsWithError(String error) =>
+      'Error loading trash items: $error';
+  @override
+  String get restoreTooltip => 'Restore';
+  @override
+  String get deletePermanentlyTooltip => 'Delete permanently';
+
   // Misc helper labels
   @override
   String get networkFile => 'Network file';
@@ -1471,6 +1594,146 @@ class EnglishLocalizations implements AppLocalizations {
 
   @override
   String get netbios => 'NetBIOS';
+
+  // Network - additional
+  @override
+  String get selectAll => 'Select All';
+  @override
+  String get unknownError => 'An unknown error occurred.';
+  @override
+  String get networkConnections => 'Network Connections';
+  @override
+  String get availableServices => 'Available Services';
+  @override
+  String get noActiveNetworkConnections => 'No active network connections';
+  @override
+  String get useAddButtonToAddConnection =>
+      'Use the (+) button to add a new connection';
+  @override
+  String get unknownConnection => 'Unknown Connection';
+  @override
+  String serviceTypeConnection(String serviceName) =>
+      '$serviceName Connection';
+  @override
+  String get noServicesAvailable => 'No services available';
+  @override
+  String get webdavConnections => 'WebDAV Connections';
+  @override
+  String errorOpeningTab(String tabName, String error) =>
+      'Error opening tab for $tabName: $error';
+  @override
+  String connectToServiceServer(String serviceName) =>
+      'Connect to $serviceName Server';
+  @override
+  String get serviceType => 'Service Type';
+  @override
+  String get host => 'Host';
+  @override
+  String get deleteSavedConnection => 'Delete Saved Connection';
+  @override
+  String get username => 'Username';
+  @override
+  String get password => 'Password';
+  @override
+  String get portOptional => 'Port (optional)';
+  @override
+  String get useSslTls => 'Use SSL/TLS';
+  @override
+  String get basePathOptional => 'Base Path (optional)';
+  @override
+  String get basePathHint => 'e.g., /webdav';
+  @override
+  String get domainOptional => 'Domain (optional)';
+  @override
+  String get saveCredentials => 'Save credentials';
+  @override
+  String get saveCredentialsDescription =>
+      'Store login details for future connections';
+  @override
+  String get deleteSavedConnectionTitle => 'Delete Saved Connection?';
+  @override
+  String deleteSavedConnectionConfirm(String host) =>
+      'Are you sure you want to delete the saved connection for "$host"?';
+  @override
+  String connectionDeleted(String host) => 'Connection for "$host" deleted.';
+  @override
+  String connectionNotFoundToDelete(String host) =>
+      'Could not find connection for "$host" to delete.';
+  @override
+  String get errorDeletingConnection => 'Error deleting connection';
+  @override
+  String connectionFailed(String error) => 'Connection failed: $error';
+  @override
+  String get networkConnection => 'Network Connection';
+  @override
+  String get notConnected => 'Not connected';
+  @override
+  String get refreshSmbVersionInfo => 'Refresh SMB version info';
+  @override
+  String shareLabel(String sharePath) => 'Share: $sharePath';
+  @override
+  String get rootShare => 'Root share';
+  @override
+  String foundDevicesCount(int count) =>
+      'Found $count device${count == 1 ? '' : 's'}';
+  @override
+  String get noWebdavConnections => 'No WebDAV connections.';
+  @override
+  String get addConnectionOrSampleToStart =>
+      'Add a new connection or sample to get started.';
+  @override
+  String get addSample => 'Add Sample';
+  @override
+  String get editWebdavConnection => 'Edit WebDAV Connection';
+  @override
+  String get update => 'Update';
+  @override
+  String get connectionUpdatedSuccess => 'Connection updated successfully';
+  @override
+  String get failedToUpdateConnection => 'Failed to update connection';
+  @override
+  String get deleteConnection => 'Delete Connection';
+  @override
+  String deleteConnectionConfirm(String host) =>
+      'Are you sure you want to delete the connection to "$host"?';
+  @override
+  String get connectionDeletedSuccess => 'Connection deleted successfully';
+  @override
+  String get failedToDeleteConnection => 'Failed to delete connection';
+  @override
+  String get addSampleWebdavConnection => 'Add Sample WebDAV Connection';
+  @override
+  String get sampleConnectionAddedSuccess =>
+      'Sample connection added successfully';
+  @override
+  String get failedToAddSampleConnection => 'Failed to add sample connection';
+  @override
+  String lastConnected(String dateStr) => 'Last connected: $dateStr';
+  @override
+  String get editConnection => 'Edit Connection';
+  @override
+  String get closeConnection => 'Close Connection';
+  @override
+  String get retry => 'Retry';
+  @override
+  String get networkErrorPersistsHint =>
+      'If this error persists, check your network connection and the server status.';
+  @override
+  String get pleaseEnterHost => 'Please enter a host';
+  @override
+  String get pleaseEnterPort => 'Please enter a port';
+  @override
+  String get pleaseEnterValidPort => 'Please enter a valid port number';
+  @override
+  String get connectionMode => 'Connection Mode:';
+  @override
+  String get passive => 'Passive';
+  @override
+  String get active => 'Active';
+  @override
+  String get port => 'Port';
+  @override
+  String get basePath => 'Base Path';
 
   // Drawer menu items
   @override
@@ -1812,5 +2075,50 @@ class EnglishLocalizations implements AppLocalizations {
   @override
   String videoLibraryCount(int count) => '$count libraries';
 
-  // Search errors
+  // Streaming and download dialogs
+  @override
+  String openFileTypeFile(String fileType) => 'Open $fileType File';
+  @override
+  String streamDownloadPrompt(String fileType) =>
+      '$fileType file type is not directly supported for streaming. Do you want to download it to your device?';
+  @override
+  String get downloadingFile => 'Downloading file...';
+  @override
+  String get fileDownloadedSuccess => 'File downloaded successfully';
+  @override
+  String get errorDownloadingFile => 'Error downloading file';
+  @override
+  String get errorTitle => 'Error';
+  @override
+  String get mediaPlaybackError => 'Media playback error';
+  @override
+  String mediaPlaybackErrorVlcContent(String error) =>
+      'Cannot play file with VLC Direct SMB:\n\n$error\n\nPlease check:\n• SMB connection\n• File path\n• File access permission';
+  @override
+  String mediaPlaybackErrorNativeContent(String error) =>
+      'Cannot play file with Native VLC Direct SMB:\n\n$error\n\nPlease check:\n• SMB connection\n• File path\n• File access permission\n• Native SMB client availability';
+  @override
+  String get chooseAnotherApp => 'Choose another app...';
+  @override
+  String get folderProperties => 'Folder Properties';
+  @override
+  String get createNewFolder => 'Create New Folder';
+  @override
+  String get createNewFile => 'Create New File';
+  @override
+  String get folderPropertyPath => 'Path';
+  @override
+  String get folderPropertyCreated => 'Created';
+  @override
+  String get folderPropertyContent => 'Content';
+  @override
+  String get folderPropertySizeDirectChildren => 'Size (direct children)';
+  @override
+  String get networkServiceNotAvailable => 'Network service not available';
+  @override
+  String get folderNameLabel => 'Folder Name';
+  @override
+  String get fileNameLabel => 'File Name';
+  @override
+  String errorCreatingFile(String error) => 'Error creating file: $error';
 }

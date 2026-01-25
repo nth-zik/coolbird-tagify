@@ -81,7 +81,7 @@ class _StorageSectionWidgetState extends State<StorageSectionWidget> {
                   else if (state.storageLocations.isEmpty)
                     ListTile(
                       contentPadding: const EdgeInsets.only(left: 56, right: 16),
-                      title: const Text('No storage locations found'),
+                      title: Text(context.tr.noStorageLocationsFound),
                       trailing: IconButton(
                         icon: const Icon(remix.Remix.refresh_line),
                         onPressed: () {
@@ -98,7 +98,7 @@ class _StorageSectionWidgetState extends State<StorageSectionWidget> {
                   _buildItem(
                     context,
                     icon: remix.Remix.delete_bin_2_line,
-                    title: 'Trash Bin',
+                    title: context.tr.trashBin,
                     iconColor: Colors.red[400],
                     onTap: widget.onTrashTap,
                   ),
@@ -120,7 +120,7 @@ class _StorageSectionWidgetState extends State<StorageSectionWidget> {
       context,
       icon: icon,
       title: displayName,
-      subtitle: requiresAdmin ? 'Requires administrator privileges' : null,
+      subtitle: requiresAdmin ? context.tr.requiresAdminPrivileges : null,
       iconColor: requiresAdmin ? Colors.orange : null,
       onTap: () {
         if (requiresAdmin) {
@@ -174,10 +174,8 @@ class _StorageSectionWidgetState extends State<StorageSectionWidget> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Admin Access Required'),
-        content: Text(
-          'The drive ${drive.path} requires administrator privileges to access.',
-        ),
+        title: Text(context.tr.adminAccessRequired),
+        content: Text(context.tr.driveRequiresAdmin(drive.path)),
         actions: [
           TextButton(
             onPressed: () => RouteUtils.safePopDialog(context),

@@ -5,19 +5,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as pathlib;
 
+import 'package:cb_file_manager/ui/components/video/video_player/video_info_dialog.dart';
 import 'package:cb_file_manager/ui/components/video/video_player/video_player.dart';
 import 'package:cb_file_manager/ui/components/video/video_player/video_player_app_bar.dart';
 
 class VideoPlayerFullScreen extends StatefulWidget {
-  final File file;
+  /// Local file (use when path is available, e.g. file:// on Android).
+  final File? file;
+  /// Android content:// URI when opened via "Open with" / default app.
+  final String? contentUri;
 
-  const VideoPlayerFullScreen({
+  VideoPlayerFullScreen({
     Key? key,
-    required this.file,
-  }) : super(key: key);
+    this.file,
+    this.contentUri,
+  }) : assert(file != null || (contentUri != null && contentUri.isNotEmpty)),
+       super(key: key);
 
   @override
   _VideoPlayerFullScreenState createState() => _VideoPlayerFullScreenState();
+}
+
+String _shortName(String? contentUri) {
+  if (contentUri == null || contentUri.isEmpty) return 'Video';
+  final u = contentUri.split('/').last;
+  return u.isNotEmpty ? u : 'Video';
 }
 
 class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
@@ -94,13 +106,16 @@ class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
           : ((_isFullScreen && !_showAppBar) || _inAndroidPip
               ? null // Hide app bar completely when in fullscreen and _showAppBar is false
               : VideoPlayerAppBar(
-                  title: pathlib.basename(widget.file.path),
+                  title: widget.file != null
+                      ? pathlib.basename(widget.file!.path)
+                      : _shortName(widget.contentUri),
                   actions: [
-                    IconButton(
-                      icon:
-                          const Icon(Icons.info_outline, color: Colors.white70),
-                      onPressed: () => _showVideoInfo(context),
-                    ),
+                    if (widget.file != null)
+                      IconButton(
+                        icon:
+                            const Icon(Icons.info_outline, color: Colors.white70),
+                        onPressed: () => _showVideoInfo(context),
+                      ),
                   ],
                   onClose: () {
                     // Close the app completely when close button is pressed
@@ -115,80 +130,7 @@ class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
       resizeToAvoidBottomInset: false,
       backgroundColor: Colors.black,
       body: Center(
-        child: VideoPlayer.file(
-          file: widget.file,
-          autoPlay: true,
-          showControls: true,
-          allowFullScreen: true,
-          onVideoInitialized: (metadata) {
-            setState(() {
-              _videoMetadata = metadata;
-            });
-            // Ensure status bar is visible after player initializes (some plugins toggle UI)
-            if (Platform.isAndroid || Platform.isIOS) {
-              SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
-                  overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom]);
-              SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
-            }
-          },
-          onError: (errorMessage) {
-            // Optional: Show a snackbar or other notification
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('L?i: $errorMessage')),
-            );
-          },
-          // Add callbacks to synchronize fullscreen state and control visibility
-          onFullScreenChanged: () {
-            setState(() {
-              _isFullScreen = !_isFullScreen;
-              // When entering fullscreen, start with controls/appbar visible then hide after delay
-              _showAppBar = true;
-              if (_isFullScreen) {
-                // Auto-hide after a delay
-                Future.delayed(const Duration(seconds: 3), () {
-                  if (mounted && _isFullScreen) {
-                    setState(() {
-                      _showAppBar = false;
-                    });
-                  }
-                });
-              }
-            });
-          },
-          onControlVisibilityChanged: () {
-            // Sync app bar visibility with video controls visibility
-            if (_isFullScreen) {
-              setState(() {
-                _showAppBar = true;
-              });
-              // Auto-hide after a delay
-              Future.delayed(const Duration(seconds: 3), () {
-                if (mounted && _isFullScreen) {
-                  setState(() {
-                    _showAppBar = false;
-                  });
-                }
-              });
-            }
-          },
-          onOpenFolder: (folderPath, highlightedFileName) {
-            debugPrint(
-                '========== VIDEO_GALLERY onOpenFolder CALLBACK ==========');
-            debugPrint('Folder path: $folderPath');
-            debugPrint('Highlighted file: $highlightedFileName');
-
-            // Pop back to parent screen with result containing folder info
-            // The parent (tabbed_folder_list_screen) will handle opening the tab
-            Navigator.of(context).pop({
-              'action': 'openFolder',
-              'folderPath': folderPath,
-              'highlightedFileName': highlightedFileName,
-            });
-
-            debugPrint('Popped with folder open request');
-            debugPrint('========== END VIDEO_GALLERY onOpenFolder ==========');
-          },
-        ),
+        child: _buildPlayer(context),
       ),
     );
     return isMobile
@@ -197,11 +139,77 @@ class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
         : scaffold;
   }
 
+  Widget _buildPlayer(BuildContext context) {
+    final onInit = (Map<String, dynamic> metadata) {
+      setState(() => _videoMetadata = metadata);
+      if (Platform.isAndroid || Platform.isIOS) {
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
+            overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom]);
+        SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
+      }
+    };
+    final onErr = (String errorMessage) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('L?i: $errorMessage')),
+      );
+    };
+    final onFs = () {
+      setState(() {
+        _isFullScreen = !_isFullScreen;
+        _showAppBar = true;
+        if (_isFullScreen) {
+          Future.delayed(const Duration(seconds: 3), () {
+            if (mounted && _isFullScreen) setState(() => _showAppBar = false);
+          });
+        }
+      });
+    };
+    final onCtrl = () {
+      if (_isFullScreen) {
+        setState(() => _showAppBar = true);
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted && _isFullScreen) setState(() => _showAppBar = false);
+        });
+      }
+    };
+    if (widget.file != null) {
+      return VideoPlayer.file(
+        file: widget.file!,
+        autoPlay: true,
+        showControls: true,
+        allowFullScreen: true,
+        onVideoInitialized: onInit,
+        onError: onErr,
+        onFullScreenChanged: onFs,
+        onControlVisibilityChanged: onCtrl,
+        onOpenFolder: (folderPath, highlightedFileName) {
+          Navigator.of(context).pop({
+            'action': 'openFolder',
+            'folderPath': folderPath,
+            'highlightedFileName': highlightedFileName,
+          });
+        },
+      );
+    }
+    return VideoPlayer.url(
+      streamingUrl: widget.contentUri!,
+      fileName: _shortName(widget.contentUri),
+      autoPlay: true,
+      showControls: true,
+      allowFullScreen: true,
+      onVideoInitialized: onInit,
+      onError: onErr,
+      onFullScreenChanged: onFs,
+      onControlVisibilityChanged: onCtrl,
+    );
+  }
+
   void _showVideoInfo(BuildContext context) {
+    if (widget.file == null) return;
     showDialog(
       context: context,
       builder: (context) => VideoInfoDialog(
-        file: widget.file,
+        file: widget.file!,
         videoMetadata: _videoMetadata,
       ),
     );

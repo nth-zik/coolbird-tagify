@@ -34,12 +34,51 @@ import 'services/streaming_service_manager.dart'; // Import streaming service ma
 import 'ui/utils/safe_navigation_wrapper.dart'; // Import safe navigation wrapper
 import 'core/service_locator.dart'; // Import service locator
 import 'package:cb_file_manager/services/album_service.dart'; // Import AlbumService
+import 'package:cb_file_manager/ui/screens/media_gallery/video_player_full_screen.dart';
+import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
+import 'package:cb_file_manager/helpers/files/external_app_helper.dart';
 // Permission explainer is pushed from TabMainScreen; no direct import needed here
 
 // Global access to test the video thumbnail screen (for development)
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-void main() async {
+/// Launch file path from OS (e.g. double-click when app is default for video)
+List<String> _launchPaths = [];
+
+void _handleLaunchFiles() {
+  if (_launchPaths.isEmpty) return;
+  final p = _launchPaths.removeAt(0);
+  if (p.isEmpty) return;
+  try {
+    final f = File(p);
+    if (f.existsSync() && FileTypeUtils.isVideoFile(p)) {
+      navigatorKey.currentState?.push(MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => VideoPlayerFullScreen(file: f),
+      ));
+    }
+  } catch (_) {}
+}
+
+/// On Android: open video from launch intent (Open with / default app).
+Future<void> _handleAndroidLaunchVideo() async {
+  if (!Platform.isAndroid) return;
+  try {
+    final m = await ExternalAppHelper.getLaunchVideoPath();
+    final path = m['path'] ?? '';
+    final contentUri = m['contentUri'] ?? '';
+    if (path.isEmpty && contentUri.isEmpty) return;
+    navigatorKey.currentState?.push(MaterialPageRoute(
+      fullscreenDialog: true,
+      builder: (_) => path.isNotEmpty
+          ? VideoPlayerFullScreen(file: File(path))
+          : VideoPlayerFullScreen(contentUri: contentUri),
+    ));
+  } catch (_) {}
+}
+
+void main(List<String> args) async {
+  _launchPaths = List.from(args);
   // Catch any errors during app initialization
   runZonedGuarded(() async {
     // Ensure Flutter is initialized before using platform plugins
@@ -291,11 +330,31 @@ class _CBFileAppState extends State<CBFileApp> with WidgetsBindingObserver {
       FrameTimingOptimizer().optimizeBeforeHeavyOperation();
     });
 
+    // If launched with a video file (e.g. set as default on Windows), open it
+    if (Platform.isWindows) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        _handleLaunchFiles();
+      });
+    }
+    // On Android: open video from intent (Open with / default app)
+    if (Platform.isAndroid) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        _handleAndroidLaunchVideo();
+      });
+    }
+
     // Initialize locale notifier
     _localeNotifier = _languageController.languageNotifier;
     _localeNotifier?.addListener(() {
       setState(() {});
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && Platform.isAndroid) {
+      _handleAndroidLaunchVideo();
+    }
   }
 
   @override

@@ -200,6 +200,14 @@ class ExternalAppHelper {
   /// Get Android apps that can handle this file type
   static Future<List<AppInfo>> _getAndroidAppsForFile(String filePath) async {
     try {
+      final List<AppInfo> apps = [];
+      if (Platform.isAndroid && FileTypeUtils.isVideoFile(filePath)) {
+        apps.add(AppInfo(
+          packageName: '__cb_video_player__',
+          appName: 'CoolBird Video Player',
+          icon: const Icon(Icons.play_circle_outline, size: 36),
+        ));
+      }
       final extension = filePath.split('.').last.toLowerCase();
       final List<dynamic> result =
           await _channel.invokeMethod('getInstalledAppsForFile', {
@@ -207,7 +215,7 @@ class ExternalAppHelper {
         'extension': extension,
       });
 
-      return result.map((app) {
+      apps.addAll(result.map<AppInfo>((app) {
         return AppInfo(
           packageName: app['packageName'],
           appName: app['appName'],
@@ -215,26 +223,62 @@ class ExternalAppHelper {
               ? Image.memory(app['iconBytes'], width: 36, height: 36)
               : const Icon(Icons.android, size: 36),
         );
-      }).toList();
+      }));
+      return apps;
     } catch (e) {
       // debugPrint('Error getting Android apps: $e');
       return [];
     }
   }
 
-  /// Get Windows apps that can handle this file type
+  /// Get Windows apps that can handle this file type.
+  /// Scans registry (OpenWithList, App Paths) by file extension, then falls
+  /// back to associated app + hardcoded list when registry returns nothing.
   static Future<List<AppInfo>> _getWindowsAppsForFile(String filePath) async {
     try {
       final List<AppInfo> apps = [];
       final extension = filePath.split('.').last.toLowerCase();
 
-      // First, get the officially associated app
+      // On Windows, offer CoolBird Video Player as an option for video files
+      if (Platform.isWindows && FileTypeUtils.isVideoFile(filePath)) {
+        apps.add(AppInfo(
+          packageName: '__cb_video_player__',
+          appName: 'CoolBird Video Player',
+          icon: const Icon(Icons.play_circle_outline, size: 36),
+        ));
+      }
+
+      // Prefer: scan registry by file format (OpenWithList + App Paths)
+      final scanned =
+          await WindowsAppIcon.getAppsForExtension(extension);
+      if (scanned.isNotEmpty) {
+        for (final e in scanned) {
+          final path = e['path'] ?? '';
+          final name = e['name'] ?? _getAppNameFromPath(path);
+          if (path.isEmpty) continue;
+          if (File(path).existsSync()) {
+            apps.add(AppInfo(
+              packageName: path,
+              appName: name,
+              icon: await _getWindowsAppIcon(path),
+            ));
+          }
+        }
+        apps.add(AppInfo(
+          packageName: 'shell_open',
+          appName: 'Default Program',
+          icon: const Icon(Icons.open_in_new, size: 36),
+        ));
+        return apps;
+      }
+
+      // Fallback: associated app when getAppsForExtension returns empty.
+      // Other apps are fetched from Windows (OpenWithList, App Paths) via getAppsForExtension.
       String? associatedAppPath =
           await WindowsAppIcon.getAssociatedAppPath(extension);
       if (associatedAppPath != null && associatedAppPath.isNotEmpty) {
         final String appName = _getAppNameFromPath(associatedAppPath);
         final Widget appIcon = await _getWindowsAppIcon(associatedAppPath);
-
         apps.add(AppInfo(
           packageName: associatedAppPath,
           appName: appName,
@@ -242,103 +286,6 @@ class ExternalAppHelper {
         ));
       }
 
-      // Add common applications based on file type using FileTypeUtils
-      List<Map<String, String>> appPaths = [];
-
-      if (FileTypeUtils.isImageFile('dummy.$extension')) {
-        appPaths = [
-          {'path': 'C:\\Windows\\system32\\mspaint.exe', 'name': 'Paint'},
-          {
-            'path':
-                'C:\\Program Files\\Microsoft Office\\root\\Office16\\OfficeLens.exe',
-            'name': 'Office Lens'
-          },
-          {
-            'path': 'C:\\Program Files\\Windows Photo Viewer\\PhotoViewer.dll',
-            'name': 'Photo Viewer'
-          },
-        ];
-      } else if (FileTypeUtils.isVideoFile('dummy.$extension')) {
-        appPaths = [
-          {
-            'path': 'C:\\Program Files\\Windows Media Player\\wmplayer.exe',
-            'name': 'Windows Media Player'
-          },
-          {
-            'path': 'C:\\Program Files\\VideoLAN\\VLC\\vlc.exe',
-            'name': 'VLC Media Player'
-          },
-          {
-            'path': 'C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe',
-            'name': 'VLC Media Player'
-          },
-        ];
-      } else if (FileTypeUtils.isDocumentFile('dummy.$extension') &&
-          extension == 'pdf') {
-        appPaths = [
-          {
-            'path':
-                'C:\\Program Files\\Adobe\\Acrobat DC\\Acrobat\\Acrobat.exe',
-            'name': 'Adobe Acrobat'
-          },
-          {
-            'path':
-                'C:\\Program Files (x86)\\Adobe\\Acrobat Reader DC\\Reader\\AcroRd32.exe',
-            'name': 'Adobe Reader'
-          },
-          {
-            'path':
-                'C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE',
-            'name': 'Microsoft Word'
-          },
-        ];
-      } else if (FileTypeUtils.isDocumentFile('dummy.$extension')) {
-        appPaths = [
-          {
-            'path':
-                'C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE',
-            'name': 'Microsoft Word'
-          },
-          {
-            'path':
-                'C:\\Program Files (x86)\\Microsoft Office\\root\\Office16\\WINWORD.EXE',
-            'name': 'Microsoft Word'
-          },
-        ];
-      } else if (FileTypeUtils.isSpreadsheetFile('dummy.$extension')) {
-        appPaths = [
-          {
-            'path':
-                'C:\\Program Files\\Microsoft Office\\root\\Office16\\EXCEL.EXE',
-            'name': 'Microsoft Excel'
-          },
-          {
-            'path':
-                'C:\\Program Files (x86)\\Microsoft Office\\root\\Office16\\EXCEL.EXE',
-            'name': 'Microsoft Excel'
-          },
-        ];
-      } else if (FileTypeUtils.isPresentationFile('dummy.$extension')) {
-        appPaths = [
-          {
-            'path':
-                'C:\\Program Files\\Microsoft Office\\root\\Office16\\POWERPNT.EXE',
-            'name': 'Microsoft PowerPoint'
-          },
-          {
-            'path':
-                'C:\\Program Files (x86)\\Microsoft Office\\root\\Office16\\POWERPNT.EXE',
-            'name': 'Microsoft PowerPoint'
-          },
-        ];
-      }
-
-      // Add applications if they exist on the system
-      for (final appInfo in appPaths) {
-        await _addWindowsAppIfExists(apps, appInfo['path']!, appInfo['name']!);
-      }
-
-      // Add default "Open with" option that uses shell execution
       apps.add(AppInfo(
         packageName: 'shell_open',
         appName: 'Default Program',
@@ -347,20 +294,7 @@ class ExternalAppHelper {
 
       return apps;
     } catch (e) {
-      // debugPrint('Error getting Windows apps: $e');
       return [];
-    }
-  }
-
-  /// Add a Windows app to the list if it exists
-  static Future<void> _addWindowsAppIfExists(
-      List<AppInfo> apps, String execPath, String appName) async {
-    if (File(execPath).existsSync()) {
-      apps.add(AppInfo(
-        packageName: execPath,
-        appName: appName,
-        icon: await _getWindowsAppIcon(execPath),
-      ));
     }
   }
 
@@ -453,6 +387,52 @@ class ExternalAppHelper {
       return result ?? false;
     } catch (e) {
       // ...existing code...
+      return false;
+    }
+  }
+
+  /// Open file with system default app (no chooser). Windows: explorer; Android: ACTION_VIEW.
+  static Future<bool> openWithSystemDefault(String filePath) async {
+    try {
+      if (Platform.isWindows) {
+        final process = await Process.start('explorer', [filePath]);
+        await process.exitCode;
+        return true;
+      }
+      if (Platform.isAndroid) {
+        final r = await _channel.invokeMethod('openWithSystemDefault', {'filePath': filePath});
+        return r == true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// On Android: get video path/URI from launch intent (Open with / default app).
+  /// Returns map with 'path' and/or 'contentUri'; both empty if none.
+  static Future<Map<String, String>> getLaunchVideoPath() async {
+    if (!Platform.isAndroid) return {'path': '', 'contentUri': ''};
+    try {
+      final r = await _channel.invokeMethod('getLaunchVideoPath');
+      if (r == null || r is! Map) return {'path': '', 'contentUri': ''};
+      final m = Map<String, dynamic>.from(r);
+      return {
+        'path': '${m['path'] ?? ''}',
+        'contentUri': '${m['contentUri'] ?? ''}',
+      };
+    } catch (_) {
+      return {'path': '', 'contentUri': ''};
+    }
+  }
+
+  /// On Android: open app's Settings (Open by default). No-op on other platforms.
+  static Future<bool> openDefaultAppSettings() async {
+    if (!Platform.isAndroid) return false;
+    try {
+      final r = await _channel.invokeMethod('openDefaultAppSettings');
+      return r == true;
+    } catch (_) {
       return false;
     }
   }

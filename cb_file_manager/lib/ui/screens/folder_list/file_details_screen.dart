@@ -239,6 +239,14 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
                         ),
                         const Divider(height: 1),
                         ListTile(
+                          leading: Icon(remix.Remix.apps_line,
+                              color: textColor),
+                          title: Text(localizations.chooseDefaultApp,
+                              style: TextStyle(color: textColor)),
+                          onTap: _showOpenWithDialog,
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
                           leading: Icon(remix.Remix.file_text_line,
                               color: textColor),
                           title: Text(localizations.createCopy,

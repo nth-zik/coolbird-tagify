@@ -18,6 +18,7 @@ extension _TabbedFolderListMobileActions on _TabbedFolderListScreenState {
           context,
           currentGridSize: _folderListBloc.state.gridZoomLevel,
           onApply: handleGridZoomChange,
+          sizeMode: GridSizeMode.referenceWidth,
         );
     controller.onSelectionModeToggled = _toggleSelectionMode;
     controller.onManageTagsPressed = () {

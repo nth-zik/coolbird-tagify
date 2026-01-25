@@ -322,13 +322,14 @@ class TrashManager {
       try {
         final isDir = await Directory(filePath).exists();
         final method = isDir ? 'DeleteDirectory' : 'DeleteFile';
+        final escapedPath = filePath.replaceAll("'", "''");
 
         // Use PowerShell's recycle bin functionality
         final result = await Process.run('powershell.exe', [
           '-Command',
           '''
           Add-Type -AssemblyName Microsoft.VisualBasic
-          [Microsoft.VisualBasic.FileIO.FileSystem]::$method('$filePath', 'OnlyErrorDialogs', 'SendToRecycleBin', 'ThrowIfFails')
+          [Microsoft.VisualBasic.FileIO.FileSystem]::$method('$escapedPath', [Microsoft.VisualBasic.FileIO.UIOption]::OnlyErrorDialogs, [Microsoft.VisualBasic.FileIO.RecycleOption]::SendToRecycleBin, [Microsoft.VisualBasic.FileIO.UICancelOption]::ThrowException)
           '''
         ]);
 

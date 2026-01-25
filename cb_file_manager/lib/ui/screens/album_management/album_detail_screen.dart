@@ -22,6 +22,7 @@ import 'package:intl/intl.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/components/file_grid_item.dart';
 import 'package:cb_file_manager/helpers/media/video_thumbnail_helper.dart';
 import 'package:cb_file_manager/helpers/files/file_type_registry.dart';
+import 'package:cb_file_manager/ui/utils/grid_zoom_constraints.dart';
 
 class AlbumDetailScreen extends StatefulWidget {
   final Album album;
@@ -730,8 +731,21 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
     }
   }
 
+  int _resolveGridColumns() {
+    final maxColumns = GridZoomConstraints.maxGridSizeForContext(
+      context,
+      mode: GridSizeMode.columns,
+      minValue: UserPreferences.minThumbnailSize.round(),
+      maxValue: UserPreferences.maxThumbnailSize.round(),
+    );
+    return _thumbnailSize
+        .round()
+        .clamp(UserPreferences.minThumbnailSize.round(), maxColumns)
+        .toInt();
+  }
+
   Widget _buildGridView() {
-    final columns = _thumbnailSize.round();
+    final columns = _resolveGridColumns();
 
     return GridView.builder(
       padding: const EdgeInsets.all(8.0),
@@ -859,23 +873,26 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
           onPressed: _showSearchDialog,
         ),
         // Grid size control
-        IconButton(
-          icon: const Icon(Icons.grid_view),
-          tooltip: 'Grid Size',
-          onPressed: () => SharedActionBar.showGridSizeDialog(
-            context,
-            currentGridSize: _thumbnailSize.round(),
-            onApply: (size) async {
-              setState(() {
-                _thumbnailSize = size.toDouble();
-              });
-              try {
-                await _preferences
-                    .setImageGalleryThumbnailSize(size.toDouble());
-              } catch (_) {}
-            },
+          IconButton(
+            icon: const Icon(Icons.grid_view),
+            tooltip: 'Grid Size',
+            onPressed: () => SharedActionBar.showGridSizeDialog(
+              context,
+              currentGridSize: _thumbnailSize.round(),
+              onApply: (size) async {
+                setState(() {
+                  _thumbnailSize = size.toDouble();
+                });
+                try {
+                  await _preferences
+                      .setImageGalleryThumbnailSize(size.toDouble());
+                } catch (_) {}
+              },
+              sizeMode: GridSizeMode.columns,
+              minGridSize: UserPreferences.minThumbnailSize.round(),
+              maxGridSize: UserPreferences.maxThumbnailSize.round(),
+            ),
           ),
-        ),
         // Shuffle toggle
         IconButton(
           icon: const Icon(Icons.shuffle),
@@ -1168,7 +1185,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                 : GridView.builder(
                     padding: const EdgeInsets.all(8.0),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: _thumbnailSize.round(),
+                      crossAxisCount: _resolveGridColumns(),
                       crossAxisSpacing: 8,
                       mainAxisSpacing: 8,
                     ),

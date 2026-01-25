@@ -45,6 +45,14 @@ class VietnameseLocalizations implements AppLocalizations {
   @override
   String get openWith => 'Mở bằng';
   @override
+  String get chooseDefaultApp => 'Chọn ứng dụng mặc định';
+  @override
+  String get setCoolBirdAsDefaultForVideos =>
+      'Đặt CoolBird làm mặc định cho file video';
+  @override
+  String get setCoolBirdAsDefaultForVideosAndroidHint =>
+      'Đang mở Cài đặt. Trong "Mở theo mặc định", bật CoolBird cho file video.';
+  @override
   String get openFolder => 'Mở thư mục';
   @override
   String get openFile => 'Mở tệp';
@@ -643,6 +651,17 @@ class VietnameseLocalizations implements AppLocalizations {
   String get thumbnailDescription =>
       'Đặt vị trí trong video (tính bằng phần trăm tổng thời lượng) nơi hình thu nhỏ sẽ được trích xuất';
   @override
+  String get useSystemDefaultForVideo => 'Dùng ứng dụng mặc định của hệ thống cho video';
+  @override
+  String get useSystemDefaultForVideoDescription =>
+      'Bật: chạm video mở bằng app mặc định (vd. VLC). Tắt: dùng trình phát trong app.';
+  @override
+  String get useSystemDefaultForVideoEnabled =>
+      'Video sẽ mở bằng ứng dụng mặc định của hệ thống';
+  @override
+  String get useSystemDefaultForVideoDisabled =>
+      'Video sẽ mở bằng trình phát trong app';
+  @override
   String get thumbnailCache => 'Bộ nhớ đệm hình thu nhỏ';
   @override
   String get thumbnailCacheDescription =>
@@ -666,6 +685,13 @@ class VietnameseLocalizations implements AppLocalizations {
   @override
   String get adminAccessRequired =>
       'Ổ đĩa này yêu cầu quyền quản trị để truy cập';
+  @override
+  String get requiresAdminPrivileges => 'Yêu cầu quyền quản trị';
+  @override
+  String driveRequiresAdmin(String path) =>
+      'Ổ đĩa $path yêu cầu quyền quản trị để truy cập.';
+  @override
+  String get trashBin => 'Thùng rác';
 
   // File system
   @override
@@ -722,6 +748,18 @@ class VietnameseLocalizations implements AppLocalizations {
   String get loadingVideo => 'Đang tải video...';
   @override
   String get errorLoadingImage => 'Lỗi khi tải hình ảnh';
+  @override
+  String errorLoadingImageWithError(String error) => 'Lỗi khi tải hình ảnh: $error';
+  @override
+  String get failedToDisplayImage => 'Không thể hiển thị hình ảnh';
+  @override
+  String get noImageDataAvailable => 'Không có dữ liệu hình ảnh';
+  @override
+  String get urlLoadingNotImplemented => 'Tải hình ảnh từ URL chưa được hỗ trợ';
+  @override
+  String get duration => 'Thời lượng';
+  @override
+  String get resolution => 'Độ phân giải';
   @override
   String get createCopy => 'Tạo bản sao';
   @override
@@ -1258,6 +1296,91 @@ class VietnameseLocalizations implements AppLocalizations {
   String noFilesMatchFilter(String filter) =>
       'Không có tệp phù hợp với bộ lọc "$filter"';
 
+  // Trash / Recycle Bin screen
+  @override
+  String get emptyTrash => 'Làm trống thùng rác';
+  @override
+  String get emptyTrashConfirm =>
+      'Bạn có chắc chắn muốn xóa vĩnh viễn tất cả mục trong thùng rác? Hành động này không thể hoàn tác.';
+  @override
+  String get emptyTrashButton => 'LÀM TRỐNG THÙNG RÁC';
+  @override
+  String permanentlyDeleteItemsTitle(int count) =>
+      'Xóa vĩnh viễn $count mục?';
+  @override
+  String get confirmPermanentlyDeleteThese =>
+      'Hành động này không thể hoàn tác. Bạn có chắc chắn muốn xóa vĩnh viễn các mục này?';
+  @override
+  String itemRestoredSuccess(String name) => 'Đã khôi phục $name thành công';
+  @override
+  String failedToRestore(String name) => 'Không thể khôi phục $name';
+  @override
+  String errorRestoringItemWithError(String error) =>
+      'Lỗi khi khôi phục mục: $error';
+  @override
+  String itemPermanentlyDeleted(String name) => 'Đã xóa vĩnh viễn $name';
+  @override
+  String failedToDelete(String name) => 'Không thể xóa $name';
+  @override
+  String errorDeletingItemWithError(String error) =>
+      'Lỗi khi xóa mục: $error';
+  @override
+  String get trashEmptiedSuccess => 'Đã làm trống thùng rác thành công';
+  @override
+  String get failedToEmptyTrash => 'Không thể làm trống thùng rác';
+  @override
+  String errorEmptyingTrashWithError(String error) =>
+      'Lỗi khi làm trống thùng rác: $error';
+  @override
+  String itemsRestoredSuccess(int count) =>
+      'Đã khôi phục thành công $count mục';
+  @override
+  String itemsRestoredWithFailures(int success, int failed) =>
+      'Đã khôi phục $success mục, $failed thất bại';
+  @override
+  String itemsPermanentlyDeletedCount(int count) =>
+      'Đã xóa vĩnh viễn $count mục';
+  @override
+  String itemsDeletedWithFailures(int success, int failed) =>
+      'Đã xóa vĩnh viễn $success mục, $failed thất bại';
+  @override
+  String errorRestoringItemsWithError(String error) =>
+      'Lỗi khi khôi phục các mục: $error';
+  @override
+  String errorDeletingItemsWithError(String error) =>
+      'Lỗi khi xóa các mục: $error';
+  @override
+  String errorOpeningRecycleBinWithError(String error) =>
+      'Lỗi khi mở Thùng rác: $error';
+  @override
+  String get restoreSelected => 'Khôi phục đã chọn';
+  @override
+  String get deleteSelected => 'Xóa đã chọn';
+  @override
+  String get selectItems => 'Chọn mục';
+  @override
+  String get openRecycleBin => 'Mở Thùng rác';
+  @override
+  String get emptyTrashTooltip => 'Làm trống thùng rác';
+  @override
+  String get trashIsEmpty => 'Thùng rác trống';
+  @override
+  String get itemsDeletedWillAppearHere =>
+      'Các mục bạn xóa sẽ hiển thị ở đây';
+  @override
+  String originalLocation(String path) => 'Vị trí gốc: $path';
+  @override
+  String deletedAt(String date, String size) => 'Đã xóa: $date • $size';
+  @override
+  String get systemLabel => 'Hệ thống';
+  @override
+  String errorLoadingTrashItemsWithError(String error) =>
+      'Lỗi khi tải mục trong thùng rác: $error';
+  @override
+  String get restoreTooltip => 'Khôi phục';
+  @override
+  String get deletePermanentlyTooltip => 'Xóa vĩnh viễn';
+
   // Misc helper labels
   @override
   String get networkFile => 'Tệp mạng';
@@ -1475,6 +1598,146 @@ class VietnameseLocalizations implements AppLocalizations {
 
   @override
   String get netbios => 'NetBIOS';
+
+  // Network - additional
+  @override
+  String get selectAll => 'Chọn tất cả';
+  @override
+  String get unknownError => 'Đã xảy ra lỗi không xác định.';
+  @override
+  String get networkConnections => 'Kết nối mạng';
+  @override
+  String get availableServices => 'Dịch vụ có sẵn';
+  @override
+  String get noActiveNetworkConnections => 'Không có kết nối mạng đang hoạt động';
+  @override
+  String get useAddButtonToAddConnection =>
+      'Dùng nút (+) để thêm kết nối mới';
+  @override
+  String get unknownConnection => 'Kết nối không xác định';
+  @override
+  String serviceTypeConnection(String serviceName) =>
+      'Kết nối $serviceName';
+  @override
+  String get noServicesAvailable => 'Không có dịch vụ nào';
+  @override
+  String get webdavConnections => 'Kết nối WebDAV';
+  @override
+  String errorOpeningTab(String tabName, String error) =>
+      'Lỗi khi mở thẻ cho $tabName: $error';
+  @override
+  String connectToServiceServer(String serviceName) =>
+      'Kết nối đến máy chủ $serviceName';
+  @override
+  String get serviceType => 'Loại dịch vụ';
+  @override
+  String get host => 'Máy chủ';
+  @override
+  String get deleteSavedConnection => 'Xóa kết nối đã lưu';
+  @override
+  String get username => 'Tên đăng nhập';
+  @override
+  String get password => 'Mật khẩu';
+  @override
+  String get portOptional => 'Cổng (tùy chọn)';
+  @override
+  String get useSslTls => 'Dùng SSL/TLS';
+  @override
+  String get basePathOptional => 'Đường dẫn gốc (tùy chọn)';
+  @override
+  String get basePathHint => 'vd: /webdav';
+  @override
+  String get domainOptional => 'Tên miền (tùy chọn)';
+  @override
+  String get saveCredentials => 'Lưu thông tin đăng nhập';
+  @override
+  String get saveCredentialsDescription =>
+      'Lưu thông tin đăng nhập cho các lần kết nối sau';
+  @override
+  String get deleteSavedConnectionTitle => 'Xóa kết nối đã lưu?';
+  @override
+  String deleteSavedConnectionConfirm(String host) =>
+      'Bạn có chắc muốn xóa kết nối đã lưu cho "$host"?';
+  @override
+  String connectionDeleted(String host) => 'Đã xóa kết nối cho "$host".';
+  @override
+  String connectionNotFoundToDelete(String host) =>
+      'Không tìm thấy kết nối cho "$host" để xóa.';
+  @override
+  String get errorDeletingConnection => 'Lỗi khi xóa kết nối';
+  @override
+  String connectionFailed(String error) => 'Kết nối thất bại: $error';
+  @override
+  String get networkConnection => 'Kết nối mạng';
+  @override
+  String get notConnected => 'Chưa kết nối';
+  @override
+  String get refreshSmbVersionInfo => 'Làm mới thông tin phiên bản SMB';
+  @override
+  String shareLabel(String sharePath) => 'Chia sẻ: $sharePath';
+  @override
+  String get rootShare => 'Chia sẻ gốc';
+  @override
+  String foundDevicesCount(int count) =>
+      'Tìm thấy $count thiết bị';
+  @override
+  String get noWebdavConnections => 'Không có kết nối WebDAV.';
+  @override
+  String get addConnectionOrSampleToStart =>
+      'Thêm kết nối mới hoặc kết nối mẫu để bắt đầu.';
+  @override
+  String get addSample => 'Thêm mẫu';
+  @override
+  String get editWebdavConnection => 'Chỉnh sửa kết nối WebDAV';
+  @override
+  String get update => 'Cập nhật';
+  @override
+  String get connectionUpdatedSuccess => 'Đã cập nhật kết nối thành công';
+  @override
+  String get failedToUpdateConnection => 'Cập nhật kết nối thất bại';
+  @override
+  String get deleteConnection => 'Xóa kết nối';
+  @override
+  String deleteConnectionConfirm(String host) =>
+      'Bạn có chắc muốn xóa kết nối đến "$host"?';
+  @override
+  String get connectionDeletedSuccess => 'Đã xóa kết nối thành công';
+  @override
+  String get failedToDeleteConnection => 'Xóa kết nối thất bại';
+  @override
+  String get addSampleWebdavConnection => 'Thêm kết nối WebDAV mẫu';
+  @override
+  String get sampleConnectionAddedSuccess =>
+      'Đã thêm kết nối mẫu thành công';
+  @override
+  String get failedToAddSampleConnection => 'Thêm kết nối mẫu thất bại';
+  @override
+  String lastConnected(String dateStr) => 'Kết nối lần cuối: $dateStr';
+  @override
+  String get editConnection => 'Chỉnh sửa kết nối';
+  @override
+  String get closeConnection => 'Đóng kết nối';
+  @override
+  String get retry => 'Thử lại';
+  @override
+  String get networkErrorPersistsHint =>
+      'Nếu lỗi vẫn xảy ra, hãy kiểm tra kết nối mạng và trạng thái máy chủ.';
+  @override
+  String get pleaseEnterHost => 'Vui lòng nhập máy chủ';
+  @override
+  String get pleaseEnterPort => 'Vui lòng nhập cổng';
+  @override
+  String get pleaseEnterValidPort => 'Vui lòng nhập số cổng hợp lệ';
+  @override
+  String get connectionMode => 'Chế độ kết nối:';
+  @override
+  String get passive => 'Thụ động';
+  @override
+  String get active => 'Chủ động';
+  @override
+  String get port => 'Cổng';
+  @override
+  String get basePath => 'Đường dẫn gốc';
 
   // Drawer menu items
   @override
@@ -1815,4 +2078,51 @@ class VietnameseLocalizations implements AppLocalizations {
 
   @override
   String videoLibraryCount(int count) => '$count thư viện';
+
+  // Streaming and download dialogs
+  @override
+  String openFileTypeFile(String fileType) => 'Mở tệp $fileType';
+  @override
+  String streamDownloadPrompt(String fileType) =>
+      'Loại tệp $fileType không hỗ trợ phát trực tuyến. Bạn có muốn tải xuống thiết bị không?';
+  @override
+  String get downloadingFile => 'Đang tải tệp...';
+  @override
+  String get fileDownloadedSuccess => 'Đã tải tệp thành công';
+  @override
+  String get errorDownloadingFile => 'Lỗi khi tải tệp';
+  @override
+  String get errorTitle => 'Lỗi';
+  @override
+  String get mediaPlaybackError => 'Lỗi phát media';
+  @override
+  String mediaPlaybackErrorVlcContent(String error) =>
+      'Không thể phát file với VLC Direct SMB:\n\n$error\n\nVui lòng kiểm tra:\n• Kết nối SMB\n• Đường dẫn file\n• Quyền truy cập file';
+  @override
+  String mediaPlaybackErrorNativeContent(String error) =>
+      'Không thể phát file với Native VLC Direct SMB:\n\n$error\n\nVui lòng kiểm tra:\n• Kết nối SMB\n• Đường dẫn file\n• Quyền truy cập file\n• Tính khả dụng của Native SMB client';
+  @override
+  String get chooseAnotherApp => 'Chọn ứng dụng khác...';
+  @override
+  String get folderProperties => 'Thuộc tính thư mục';
+  @override
+  String get createNewFolder => 'Tạo thư mục mới';
+  @override
+  String get createNewFile => 'Tạo tệp mới';
+  @override
+  String get folderPropertyPath => 'Đường dẫn';
+  @override
+  String get folderPropertyCreated => 'Tạo lúc';
+  @override
+  String get folderPropertyContent => 'Nội dung';
+  @override
+  String get folderPropertySizeDirectChildren => 'Kích thước (thư mục con trực tiếp)';
+  @override
+  String get networkServiceNotAvailable => 'Dịch vụ mạng không khả dụng';
+  @override
+  String get folderNameLabel => 'Tên thư mục';
+  @override
+  String get fileNameLabel => 'Tên tệp';
+  @override
+  String errorCreatingFile(String error) => 'Lỗi tạo tệp: $error';
 }

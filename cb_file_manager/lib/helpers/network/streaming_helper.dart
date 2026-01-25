@@ -5,6 +5,7 @@ import 'dart:async';
 import '../../services/network_browsing/network_service_base.dart';
 import '../../services/network_browsing/mobile_smb_service.dart';
 import '../../services/network_browsing/i_smb_service.dart';
+import '../../ui/components/video/video_player/streaming_image_viewer.dart';
 import '../../ui/components/video/video_player/video_player.dart';
 import 'package:path/path.dart' as p;
 import '../files/file_type_registry.dart';
@@ -13,6 +14,7 @@ import 'network_file_cache_service.dart';
 import 'vlc_direct_smb_helper.dart';
 // import '../helpers/libsmb2_streaming_helper.dart';
 import 'native_vlc_direct_helper.dart';
+import '../../config/languages/app_localizations.dart';
 import '../../ui/utils/route.dart';
 import '../../services/network_browsing/webdav_service.dart';
 
@@ -756,25 +758,24 @@ class StreamingHelper {
         : "This";
 
     if (context.mounted) {
+      final l10n = AppLocalizations.of(context)!;
       await showDialog(
         context: context,
         barrierDismissible: true,
-        builder: (context) => AlertDialog(
-          title: Text('Open $fileTypeString File'),
-          content: Text(
-            '$fileTypeString file type is not directly supported for streaming. Do you want to download it to your device?',
-          ),
+        builder: (ctx) => AlertDialog(
+          title: Text(l10n.openFileTypeFile(fileTypeString)),
+          content: Text(l10n.streamDownloadPrompt(fileTypeString)),
           actions: [
             TextButton(
-              onPressed: () => RouteUtils.safePopDialog(context),
-              child: const Text('Cancel'),
+              onPressed: () => RouteUtils.safePopDialog(ctx),
+              child: Text(l10n.cancel),
             ),
             TextButton(
               onPressed: () async {
-                RouteUtils.safePopDialog(context);
+                RouteUtils.safePopDialog(ctx);
                 await _downloadAndOpen(context, fileName);
               },
-              child: const Text('Download'),
+              child: Text(l10n.download),
             ),
           ],
         ),
@@ -784,9 +785,10 @@ class StreamingHelper {
 
   /// Tải file về
   Future<void> _downloadAndOpen(BuildContext context, String remotePath) async {
-    if (_currentNetworkService == null) {
+      if (_currentNetworkService == null) {
       if (context.mounted) {
-        await _handleOpenError(context, 'Network service not available');
+        await _handleOpenError(
+            context, AppLocalizations.of(context)!.networkServiceNotAvailable);
       }
       return;
     }
@@ -797,12 +799,12 @@ class StreamingHelper {
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (context) => const AlertDialog(
+          builder: (ctx) => AlertDialog(
             content: Row(
               children: [
-                CircularProgressIndicator(),
-                SizedBox(width: 16),
-                Text('Downloading file...'),
+                const CircularProgressIndicator(),
+                const SizedBox(width: 16),
+                Text(AppLocalizations.of(context)!.downloadingFile),
               ],
             ),
           ),
@@ -828,14 +830,16 @@ class StreamingHelper {
       }
 
       if (context.mounted) {
-        _showSuccessMessage(context, 'File downloaded successfully');
+        _showSuccessMessage(
+            context, AppLocalizations.of(context)!.fileDownloadedSuccess);
       }
     } catch (e) {
       if (context.mounted) {
         RouteUtils.safePopDialog(context); // Đóng loading
       }
       if (context.mounted) {
-        await _handleOpenError(context, 'Error downloading file: $e');
+        await _handleOpenError(context,
+            '${AppLocalizations.of(context)!.errorDownloadingFile}: $e');
       }
     }
   }
@@ -848,15 +852,16 @@ class StreamingHelper {
     if (!context.mounted) return;
 
     if (context.mounted) {
+      final l10n = AppLocalizations.of(context)!;
       await showDialog(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Error'),
+        builder: (ctx) => AlertDialog(
+          title: Text(l10n.errorTitle),
           content: Text(errorMessage),
           actions: [
             TextButton(
-              onPressed: () => RouteUtils.safePopDialog(context),
-              child: const Text('OK'),
+              onPressed: () => RouteUtils.safePopDialog(ctx),
+              child: Text(l10n.ok),
             ),
           ],
         ),

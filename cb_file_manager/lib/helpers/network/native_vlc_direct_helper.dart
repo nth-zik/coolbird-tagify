@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_smb_native/mobile_smb_native.dart';
 import '../files/file_type_registry.dart';
 import '../../services/network_browsing/i_smb_service.dart';
+import '../../config/languages/app_localizations.dart';
 import '../../ui/components/video/video_player/video_player.dart';
 import 'vlc_direct_smb_helper.dart';
 import '../../ui/utils/route.dart';
@@ -84,24 +85,17 @@ class NativeVlcDirectHelper {
     } catch (e) {
       debugPrint('NativeVlcDirectHelper: Error opening media: $e');
 
-      // Hiển thị error dialog
       if (context.mounted) {
+        final l10n = AppLocalizations.of(context)!;
         showDialog(
           context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Lỗi phát media'),
-            content: Text(
-              'Không thể phát file với Native VLC Direct SMB:\n\n$e\n\n'
-              'Vui lòng kiểm tra:\n'
-              '• Kết nối SMB\n'
-              '• Đường dẫn file\n'
-              '• Quyền truy cập file\n'
-              '• Native SMB client availability',
-            ),
+          builder: (ctx) => AlertDialog(
+            title: Text(l10n.mediaPlaybackError),
+            content: Text(l10n.mediaPlaybackErrorNativeContent(e.toString())),
             actions: [
               TextButton(
-                onPressed: () => RouteUtils.safePopDialog(context),
-                child: const Text('OK'),
+                onPressed: () => RouteUtils.safePopDialog(ctx),
+                child: Text(l10n.ok),
               ),
             ],
           ),

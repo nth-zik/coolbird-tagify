@@ -3,6 +3,8 @@ import 'dart:async'; // Thêm import cho StreamSubscription
 // For lerpDouble
 // For more responsive animations
 
+import 'package:cb_file_manager/core/service_locator.dart';
+import 'package:cb_file_manager/helpers/core/user_preferences.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/image_viewer_screen.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/video_player_full_screen.dart';
@@ -249,12 +251,29 @@ class _FileItemState extends State<FileItem> {
     if (widget.onFileTap != null) {
       widget.onFileTap!(widget.file, isVideo);
     } else {
-      // Open directly using default apps
+      // Video: default in-app player; only system default when user enabled in Settings
       if (isVideo) {
-        if (!context.mounted) return;
-        Navigator.of(context, rootNavigator: true).push(MaterialPageRoute(
-            fullscreenDialog: true,
-            builder: (context) => VideoPlayerFullScreen(file: widget.file)));
+        locator<UserPreferences>().getUseSystemDefaultForVideo().then((useSystem) {
+          if (useSystem) {
+            ExternalAppHelper.openWithSystemDefault(widget.file.path).then((success) {
+              if (!success && mounted) {
+                showDialog(
+                    context: context,
+                    builder: (dialogContext) =>
+                        OpenWithDialog(filePath: widget.file.path));
+              }
+            });
+          } else {
+            if (mounted) {
+              Navigator.of(context, rootNavigator: true).push(
+                MaterialPageRoute(
+                  fullscreenDialog: true,
+                  builder: (_) => VideoPlayerFullScreen(file: widget.file),
+                ),
+              );
+            }
+          }
+        });
       } else if (isImage) {
         if (!context.mounted) return;
         Navigator.of(context, rootNavigator: true).push(MaterialPageRoute(
@@ -420,8 +439,7 @@ class _FileItemState extends State<FileItem> {
                         top: 0,
                         right: 0,
                         bottom: 0,
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
+                        child: OptimizedInteractionLayer(
                           onTap: () {
                             if (widget.isDesktopMode && isVideo) {
                               _handleSelection();
@@ -429,12 +447,20 @@ class _FileItemState extends State<FileItem> {
                             }
                             _openFile(isVideo, isImage);
                           },
-                          onDoubleTap: () {
-                            _openFile(isVideo, isImage);
-                          },
+                          onDoubleTap: widget.isDesktopMode && isVideo
+                              ? () {
+                                  _openFile(isVideo, isImage);
+                                }
+                              : null,
                           onSecondaryTapUp: (details) {
                             _showContextMenu(context, details.globalPosition);
                           },
+                          onLongPressStart: !widget.isDesktopMode
+                              ? (d) {
+                                  HapticFeedback.mediumImpact();
+                                  _showContextMenu(context, d.globalPosition);
+                                }
+                              : null,
                         ),
                       ),
                       // Selection indicator - only rebuilds when selection changes

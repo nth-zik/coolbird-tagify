@@ -259,7 +259,7 @@ class _FTPBrowserScreenState extends State<FTPBrowserScreen>
         onPressed: isConnecting
             ? null
             : () => _connectWithSavedCredentials(credentials),
-        tooltip: 'Kết nối',
+        tooltip: context.tr.connect,
       ),
       onTap:
           isConnecting ? null : () => _connectWithSavedCredentials(credentials),

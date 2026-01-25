@@ -59,6 +59,7 @@ class UserPreferences {
   static const String _showFileTagsKey = 'show_file_tags';
   static const String _previewPaneVisibleKey = 'preview_pane_visible';
   static const String _previewPaneWidthKey = 'preview_pane_width';
+  static const String _useSystemDefaultForVideoKey = 'use_system_default_for_video';
 
   // Constants for grid zoom level
   static const int minGridZoomLevel = 2; // Largest thumbnails (2 per row)
@@ -940,6 +941,19 @@ class UserPreferences {
   /// Save show file tags setting
   Future<bool> setShowFileTags(bool showTags) async {
     return await _savePreference<bool>(_showFileTagsKey, showTags);
+  }
+
+  /// Use system default app for video (when true). Default false = use in-app player.
+  Future<bool> getUseSystemDefaultForVideo() async {
+    return await _getPreference<bool>(
+          _useSystemDefaultForVideoKey,
+          defaultValue: false,
+        ) ??
+        false;
+  }
+
+  Future<bool> setUseSystemDefaultForVideo(bool value) async {
+    return await _savePreference<bool>(_useSystemDefaultForVideoKey, value);
   }
 
   /// Get preview pane visibility

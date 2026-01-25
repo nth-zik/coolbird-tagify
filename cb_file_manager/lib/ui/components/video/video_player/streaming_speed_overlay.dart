@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+
 import '../../../../services/streaming/streaming_speed_monitor.dart';
+import 'video_player_utils.dart';
 
 /// Widget overlay hiển thị thông tin tốc độ stream trên video player
 class StreamingSpeedOverlay extends StatefulWidget {
@@ -217,58 +219,33 @@ class _StreamingSpeedOverlayState extends State<StreamingSpeedOverlay>
           ),
           const SizedBox(height: 8),
           if (_currentSpeedInfo != null) ...[
-            _buildSpeedRow('Hiện tại:',
-                _currentSpeedInfo!.formattedCurrentSpeed, textColor),
+            VideoPlayerUtils.buildLabelValueRow(
+                'Hiện tại:', _currentSpeedInfo!.formattedCurrentSpeed,
+                textColor: textColor),
             const SizedBox(height: 4),
-            _buildSpeedRow('Trung bình:',
-                _currentSpeedInfo!.formattedAverageSpeed, textColor),
+            VideoPlayerUtils.buildLabelValueRow(
+                'Trung bình:', _currentSpeedInfo!.formattedAverageSpeed,
+                textColor: textColor),
             const SizedBox(height: 4),
-            _buildSpeedRow(
-                'Đã tải:', _currentSpeedInfo!.formattedTotalBytes, textColor),
+            VideoPlayerUtils.buildLabelValueRow(
+                'Đã tải:', _currentSpeedInfo!.formattedTotalBytes,
+                textColor: textColor),
             const SizedBox(height: 4),
-            _buildSpeedRow('Thời gian:',
-                _formatDuration(_currentSpeedInfo!.elapsedTime), textColor),
+            VideoPlayerUtils.buildLabelValueRow('Thời gian:',
+                VideoPlayerUtils.formatDurationMmSs(_currentSpeedInfo!.elapsedTime),
+                textColor: textColor),
           ] else ...[
-            _buildSpeedRow('Trạng thái:', 'Đang tải...', textColor),
+            VideoPlayerUtils.buildLabelValueRow(
+                'Trạng thái:', 'Đang tải...', textColor: textColor),
             const SizedBox(height: 4),
-            _buildSpeedRow('Tốc độ:', 'Chờ dữ liệu...', textColor),
+            VideoPlayerUtils.buildLabelValueRow(
+                'Tốc độ:', 'Chờ dữ liệu...', textColor: textColor),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildSpeedRow(String label, String value, Color textColor) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          width: 60,
-          child: Text(
-            label,
-            style: TextStyle(
-              color: textColor.withValues(alpha: 0.8),
-              fontSize: 10,
-            ),
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            color: textColor,
-            fontSize: 10,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-
-  String _formatDuration(Duration duration) {
-    final minutes = duration.inMinutes;
-    final seconds = duration.inSeconds % 60;
-    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-  }
 }
 
 /// Widget button để toggle hiển thị thông tin tốc độ

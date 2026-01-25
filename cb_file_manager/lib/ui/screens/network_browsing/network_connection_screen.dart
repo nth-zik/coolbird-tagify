@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:remixicon/remixicon.dart' as remix;
 
+import '../../../config/languages/app_localizations.dart';
 import '../../../bloc/network_browsing/network_browsing_bloc.dart';
 import '../../../bloc/network_browsing/network_browsing_event.dart';
 import '../../../bloc/network_browsing/network_browsing_state.dart';
@@ -33,8 +34,9 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: const Text('Network Connections')),
+      appBar: AppBar(title: Text(l10n.networkConnections)),
       body: BlocBuilder<NetworkBrowsingBloc, NetworkBrowsingState>(
         builder: (context, state) {
           if (state.isLoading && state.connections.isEmpty) {
@@ -49,14 +51,13 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
                   const Icon(remix.Remix.alert_line,
                       size: 48, color: Colors.red),
                   const SizedBox(height: 16),
-                  Text('Error: ${state.errorMessage}',
-                      textAlign: TextAlign.center),
+                  Text(l10n.errorWithMessage(state.errorMessage ?? l10n.unknownError)),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () => context
                         .read<NetworkBrowsingBloc>()
                         .add(const NetworkServicesListRequested()),
-                    child: const Text('Retry'),
+                    child: Text(l10n.tryAgain),
                   ),
                 ],
               ),
@@ -75,7 +76,7 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16.0, 24.0, 16.0, 8.0),
                   child: Text(
-                    'Active Connections',
+                    l10n.activeConnectionsTitle,
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
@@ -87,7 +88,7 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 8.0),
                   child: Text(
-                    'Available Services',
+                    l10n.availableServices,
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
@@ -99,30 +100,31 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showConnectionDialog(context),
-        tooltip: 'Add Connection',
+        tooltip: l10n.addConnection,
         child: const Icon(remix.Remix.add_line),
       ),
     );
   }
 
   Widget _buildActiveConnections(Map<String, NetworkServiceBase> connections) {
+    final l10n = AppLocalizations.of(context)!;
     if (connections.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(remix.Remix.wifi_off_line, size: 48, color: Colors.grey),
-              SizedBox(height: 16),
+              const Icon(remix.Remix.wifi_off_line, size: 48, color: Colors.grey),
+              const SizedBox(height: 16),
               Text(
-                'No active network connections',
-                style: TextStyle(color: Colors.grey),
+                l10n.noActiveNetworkConnections,
+                style: const TextStyle(color: Colors.grey),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text(
-                'Use the (+) button to add a new connection',
-                style: TextStyle(color: Colors.grey, fontSize: 12),
+                l10n.useAddButtonToAddConnection,
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
               ),
             ],
           ),
@@ -139,7 +141,7 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
         final path = entry.key;
         final service = entry.value;
 
-        String displayName = 'Unknown Connection';
+        String displayName = l10n.unknownConnection;
         String subtitle = service.serviceName;
 
         if (path.startsWith('#network/')) {
@@ -148,7 +150,7 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
             final serviceName = parts[0];
             final host = Uri.decodeComponent(parts[1]);
             displayName = host;
-            subtitle = '$serviceName Connection';
+            subtitle = l10n.serviceTypeConnection(serviceName);
           }
         }
 
@@ -162,7 +164,7 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
           trailing: IconButton(
             icon: const Icon(remix.Remix.close_circle_line, color: Colors.red),
             onPressed: () => _disconnectService(path),
-            tooltip: 'Disconnect',
+            tooltip: l10n.disconnect,
           ),
           onTap: () => _openConnection(path),
         );
@@ -171,10 +173,11 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
   }
 
   Widget _buildAvailableServices(List<NetworkServiceBase> services) {
+    final l10n = AppLocalizations.of(context)!;
     if (services.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Center(child: Text('No services available')),
+      return Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Center(child: Text(l10n.noServicesAvailable)),
       );
     }
 
@@ -194,11 +197,11 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
           subtitle: Text(service.serviceDescription),
           onTap: () {
             if (service.serviceName == 'SMB') {
-              _openBrowserInTab(context, '#smb', 'SMB Network');
+              _openBrowserInTab(context, '#smb', l10n.smbNetwork);
             } else if (service.serviceName == 'FTP') {
-              _openBrowserInTab(context, '#ftp', 'FTP Connections');
+              _openBrowserInTab(context, '#ftp', l10n.ftpConnections);
             } else if (service.serviceName == 'WebDAV') {
-              _openBrowserInTab(context, '#webdav', 'WebDAV Connections');
+              _openBrowserInTab(context, '#webdav', l10n.webdavConnections);
             } else {
               _showConnectionDialog(
                 context,
@@ -231,8 +234,9 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
 
     if (path.startsWith('#network/')) {
       final tabBloc = BlocProvider.of<TabManagerBloc>(context, listen: false);
+      final l10n = AppLocalizations.of(context)!;
 
-      String tabName = 'Network';
+      String tabName = l10n.networkTab;
       try {
         final parts = path.substring('#network/'.length).split('/');
         if (parts.length >= 2) {
@@ -269,7 +273,9 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
       debugPrint('Error opening tab for $tabName: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error opening tab for $tabName: $e')),
+          SnackBar(
+              content: Text(
+                  AppLocalizations.of(context)!.errorOpeningTab(tabName, e.toString()))),
         );
       }
     }

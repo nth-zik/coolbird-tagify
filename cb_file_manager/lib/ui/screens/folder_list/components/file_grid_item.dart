@@ -180,13 +180,21 @@ class FileGridItem extends StatelessWidget {
                       onSecondaryTapUp: (details) {
                         _showContextMenu(context, details.globalPosition);
                       },
-                      onLongPress: () {
-                        HapticFeedback.mediumImpact();
-                        toggleFileSelection(file.path);
-                        if (!isSelectionMode) {
-                          toggleSelectionMode();
-                        }
-                      },
+                      onLongPress: isDesktopMode
+                          ? () {
+                              HapticFeedback.mediumImpact();
+                              toggleFileSelection(file.path);
+                              if (!isSelectionMode) {
+                                toggleSelectionMode();
+                              }
+                            }
+                          : null,
+                      onLongPressStart: !isDesktopMode
+                          ? (d) {
+                              HapticFeedback.mediumImpact();
+                              _showContextMenu(context, d.globalPosition);
+                            }
+                          : null,
                     ),
                   ),
 

@@ -12,6 +12,8 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
+import android.provider.Settings
 import android.util.Rational
 import android.app.PictureInPictureParams
 import androidx.core.content.FileProvider
@@ -40,6 +42,47 @@ class MainActivity : FlutterActivity() {
     private var pipPlayer: ExoPlayer? = null
     private var pipPlayerView: PlayerView? = null
     private var pipPrepared: Boolean = false
+
+    // Pending video from intent (Open with / default app)
+    @Volatile
+    private var pendingLaunchVideoPath: String? = null
+    @Volatile
+    private var pendingLaunchVideoContentUri: String? = null
+
+    private val videoExts = listOf(".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm", ".m4v", ".mpeg", ".mpg", ".ogv", ".3gp", ".ts", ".m2ts", ".divx")
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        handleIncomingIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIncomingIntent(intent)
+    }
+
+    private fun handleIncomingIntent(i: Intent?) {
+        val uri = i?.data ?: return
+        if (!isVideoMimeOrUri(uri)) return
+        when (uri.scheme?.lowercase()) {
+            "file" -> {
+                pendingLaunchVideoPath = uri.path
+                pendingLaunchVideoContentUri = null
+            }
+            else -> {
+                pendingLaunchVideoPath = null
+                pendingLaunchVideoContentUri = uri.toString()
+            }
+        }
+    }
+
+    private fun isVideoMimeOrUri(uri: Uri): Boolean {
+        val mime = contentResolver.getType(uri)
+        if (mime?.startsWith("video/") == true) return true
+        val p = uri.path ?: return false
+        return videoExts.any { p.lowercase().endsWith(it) }
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -70,6 +113,30 @@ class MainActivity : FlutterActivity() {
                 "openWithSystemChooser" -> {
                     val filePath = call.argument<String>("filePath") ?: ""
                     result.success(openWithSystemChooser(filePath))
+                }
+                "openWithSystemDefault" -> {
+                    val filePath = call.argument<String>("filePath") ?: ""
+                    result.success(openWithSystemDefault(filePath))
+                }
+                "getLaunchVideoPath" -> {
+                    val path = pendingLaunchVideoPath
+                    val contentUri = pendingLaunchVideoContentUri
+                    pendingLaunchVideoPath = null
+                    pendingLaunchVideoContentUri = null
+                    result.success(mapOf(
+                        "path" to (path ?: ""),
+                        "contentUri" to (contentUri ?: "")
+                    ))
+                }
+                "openDefaultAppSettings" -> {
+                    try {
+                        startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = Uri.parse("package:$packageName")
+                        })
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.success(false)
+                    }
                 }
                 else -> {
                     result.notImplemented()
@@ -358,6 +425,25 @@ class MainActivity : FlutterActivity() {
             // Create chooser dialog with title
             val chooserIntent = Intent.createChooser(intent, "Open with")
             startActivity(chooserIntent)
+            return true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return false
+        }
+    }
+
+    private fun openWithSystemDefault(filePath: String): Boolean {
+        try {
+            val file = File(filePath)
+            val uri = FileProvider.getUriForFile(
+                this,
+                "${applicationContext.packageName}.provider",
+                file
+            )
+            val intent = Intent(Intent.ACTION_VIEW)
+            intent.setDataAndType(uri, getMimeType(filePath.split(".").last()))
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            startActivity(intent)
             return true
         } catch (e: Exception) {
             e.printStackTrace()

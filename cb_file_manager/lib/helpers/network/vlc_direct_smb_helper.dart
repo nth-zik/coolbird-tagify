@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../files/file_type_registry.dart';
 import '../../services/network_browsing/i_smb_service.dart';
+import '../../config/languages/app_localizations.dart';
 import '../../ui/components/video/video_player/video_player.dart';
 // Unified player is StreamingMediaPlayer; this file only builds URLs.
 import '../../ui/utils/route.dart';
@@ -83,23 +84,17 @@ class VlcDirectSmbHelper {
     } catch (e) {
       debugPrint('VlcDirectSmbHelper: Error opening media: $e');
 
-      // Hiển thị error dialog
       if (context.mounted) {
+        final l10n = AppLocalizations.of(context)!;
         showDialog(
           context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Lỗi phát media'),
-            content: Text(
-              'Không thể phát file với VLC Direct SMB:\n\n$e\n\n'
-              'Vui lòng kiểm tra:\n'
-              '• Kết nối SMB\n'
-              '• Đường dẫn file\n'
-              '• Quyền truy cập file',
-            ),
+          builder: (ctx) => AlertDialog(
+            title: Text(l10n.mediaPlaybackError),
+            content: Text(l10n.mediaPlaybackErrorVlcContent(e.toString())),
             actions: [
               TextButton(
-                onPressed: () => RouteUtils.safePopDialog(context),
-                child: const Text('OK'),
+                onPressed: () => RouteUtils.safePopDialog(ctx),
+                child: Text(l10n.ok),
               ),
             ],
           ),

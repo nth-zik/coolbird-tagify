@@ -14,6 +14,7 @@ import 'package:cb_file_manager/helpers/media/folder_thumbnail_service.dart';
 import 'package:cb_file_manager/helpers/media/video_thumbnail_helper.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 import 'package:cb_file_manager/ui/dialogs/folder_thumbnail_picker_dialog.dart';
+import 'package:cb_file_manager/config/languages/app_localizations.dart';
 
 /// Displays a context menu for empty areas in folder view
 class FolderContextMenu {
@@ -40,6 +41,7 @@ class FolderContextMenu {
     required Future<void> Function(SortOption)
         onSortOptionSaved, // Keep for future use or remove if not needed by caller
   }) async {
+    final l10n = AppLocalizations.of(context)!;
     final RenderBox overlay =
         Overlay.of(context).context.findRenderObject() as RenderBox;
     final RelativeRect position = RelativeRect.fromRect(
@@ -54,28 +56,28 @@ class FolderContextMenu {
         _buildSubmenuPopupMenuItem(
           context: context,
           value: 'view',
-          title: 'View',
+          title: l10n.viewModeTooltip,
           icon: Icons.visibility_outlined,
           builder: (BuildContext context) {
             return <PopupMenuEntry<ViewMode>>[
               _buildCheckedPopupMenuItem(
-                title: 'List View',
+                title: l10n.viewModeList,
                 value: ViewMode.list,
                 isChecked: currentViewMode == ViewMode.list,
               ),
               _buildCheckedPopupMenuItem(
-                title: 'Grid View',
+                title: l10n.viewModeGrid,
                 value: ViewMode.grid,
                 isChecked: currentViewMode == ViewMode.grid,
               ),
               if (!Platform.isAndroid && !Platform.isIOS)
                 _buildCheckedPopupMenuItem(
-                  title: 'Grid + Preview',
+                  title: l10n.viewModeGridPreview,
                   value: ViewMode.gridPreview,
                   isChecked: currentViewMode == ViewMode.gridPreview,
                 ),
               _buildCheckedPopupMenuItem(
-                title: 'Details View',
+                title: l10n.viewModeDetails,
                 value: ViewMode.details,
                 isChecked: currentViewMode == ViewMode.details,
               ),
@@ -88,40 +90,41 @@ class FolderContextMenu {
         _buildSubmenuPopupMenuItem(
           context: context,
           value: 'sort',
-          title: 'Sort by',
+          title: l10n.sortByTooltip,
           icon: Icons.sort_outlined,
           builder: (BuildContext context) {
+            final l10n = AppLocalizations.of(context)!;
             return <PopupMenuEntry<SortOption>>[
               _buildCheckedPopupMenuItem(
-                  title: 'Name (A to Z)',
+                  title: l10n.sortNameAsc,
                   value: SortOption.nameAsc,
                   isChecked: currentSortOption == SortOption.nameAsc),
               _buildCheckedPopupMenuItem(
-                  title: 'Name (Z to A)',
+                  title: l10n.sortNameDesc,
                   value: SortOption.nameDesc,
                   isChecked: currentSortOption == SortOption.nameDesc),
               _buildCheckedPopupMenuItem(
-                  title: 'Date (Newest first)',
+                  title: l10n.sortDateModifiedNewest,
                   value: SortOption.dateDesc,
                   isChecked: currentSortOption == SortOption.dateDesc),
               _buildCheckedPopupMenuItem(
-                  title: 'Date (Oldest first)',
+                  title: l10n.sortDateModifiedOldest,
                   value: SortOption.dateAsc,
                   isChecked: currentSortOption == SortOption.dateAsc),
               _buildCheckedPopupMenuItem(
-                  title: 'Size (Largest first)',
+                  title: l10n.sortSizeLargest,
                   value: SortOption.sizeDesc,
                   isChecked: currentSortOption == SortOption.sizeDesc),
               _buildCheckedPopupMenuItem(
-                  title: 'Size (Smallest first)',
+                  title: l10n.sortSizeSmallest,
                   value: SortOption.sizeAsc,
                   isChecked: currentSortOption == SortOption.sizeAsc),
               _buildCheckedPopupMenuItem(
-                  title: 'Type (A to Z)',
+                  title: l10n.sortTypeAsc,
                   value: SortOption.typeAsc,
                   isChecked: currentSortOption == SortOption.typeAsc),
               _buildCheckedPopupMenuItem(
-                  title: 'Type (Z to A)',
+                  title: l10n.sortTypeDesc,
                   value: SortOption.typeDesc,
                   isChecked: currentSortOption == SortOption.typeDesc),
             ];
@@ -135,12 +138,12 @@ class FolderContextMenu {
         PopupMenuItem<String>(
           value: 'refresh',
           child: _buildIconMenuItemContent(
-              title: 'Refresh', icon: remix.Remix.refresh_line),
+              title: l10n.refresh, icon: remix.Remix.refresh_line),
         ),
         PopupMenuItem<String>(
           value: 'new_folder',
           child: _buildIconMenuItemContent(
-              title: 'New Folder', icon: remix.Remix.folder_add_line),
+              title: l10n.newFolder, icon: remix.Remix.folder_add_line),
         ),
         PopupMenuItem<String>(
           value: 'new_file',
@@ -150,13 +153,13 @@ class FolderContextMenu {
         PopupMenuItem<String>(
           value: 'paste',
           child: _buildIconMenuItemContent(
-              title: 'Paste', icon: Icons.content_paste_outlined),
+              title: l10n.pasteHere, icon: Icons.content_paste_outlined),
         ),
         const PopupMenuDivider(),
         PopupMenuItem<String>(
           value: 'properties',
           child: _buildIconMenuItemContent(
-              title: 'Properties', icon: Icons.info_outline),
+              title: l10n.properties, icon: Icons.info_outline),
         ),
       ],
     ).then((String? value) async {
@@ -353,15 +356,16 @@ class FolderContextMenu {
     final TextEditingController nameController = TextEditingController();
     if (!context.mounted) return;
 
+    final l10n = AppLocalizations.of(context)!;
     return showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Create New Folder'),
+        title: Text(l10n.createNewFolder),
         content: TextField(
           controller: nameController,
-          decoration: const InputDecoration(
-            labelText: 'Folder Name',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.folderNameLabel,
+            border: const OutlineInputBorder(),
           ),
           autofocus: true,
         ),
@@ -370,7 +374,7 @@ class FolderContextMenu {
             onPressed: () {
               if (dialogContext.mounted) Navigator.pop(dialogContext);
             },
-            child: const Text('CANCEL'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () async {
@@ -380,7 +384,7 @@ class FolderContextMenu {
                 await onCreateFolder(folderName);
               }
             },
-            child: const Text('CREATE'),
+            child: Text(l10n.create),
           ),
         ],
       ),
@@ -399,15 +403,16 @@ class FolderContextMenu {
 
     final TextEditingController nameController = TextEditingController();
 
+    final l10n = AppLocalizations.of(context)!;
     return showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Create New File'),
+        title: Text(l10n.createNewFile),
         content: TextField(
           controller: nameController,
-          decoration: const InputDecoration(
-            labelText: 'File Name',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.fileNameLabel,
+            border: const OutlineInputBorder(),
           ),
           autofocus: true,
         ),
@@ -416,7 +421,7 @@ class FolderContextMenu {
             onPressed: () {
               if (dialogContext.mounted) Navigator.pop(dialogContext);
             },
-            child: const Text('CANCEL'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () {
@@ -432,7 +437,7 @@ class FolderContextMenu {
                 } catch (error) {
                   scaffoldMessenger.showSnackBar(
                     SnackBar(
-                      content: Text('Error creating file: $error'),
+                      content: Text(l10n.errorCreatingFile(error.toString())),
                       backgroundColor: Colors.red,
                     ),
                   );
@@ -440,7 +445,7 @@ class FolderContextMenu {
                 }
               }
             },
-            child: const Text('CREATE'),
+            child: Text(l10n.create),
           ),
         ],
       ),
@@ -482,47 +487,48 @@ class FolderContextMenu {
       Future<String?> customThumbnailFuture =
           thumbnailService.getCustomThumbnailPath(path);
 
+      final l10n = AppLocalizations.of(context)!;
       showDialog(
         context: context,
         builder: (dialogContext) => StatefulBuilder(
           builder: (dialogContext, setState) => AlertDialog(
-            title: const Text('Folder Properties'),
+            title: Text(l10n.folderProperties),
             content: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   ListTile(
-                    title: const Text('Path'),
+                    title: Text(l10n.folderPropertyPath),
                     subtitle: Text(path),
                   ),
                   ListTile(
-                    title: const Text('Created'),
+                    title: Text(l10n.folderPropertyCreated),
                     subtitle: Text(stat.modified.toLocal().toString()),
                   ),
                   ListTile(
-                    title: const Text('Content'),
+                    title: Text(l10n.folderPropertyContent),
                     subtitle: Text('$fileCount files, $folderCount folders'),
                   ),
                   ListTile(
-                    title: const Text('Size (direct children)'),
+                    title: Text(l10n.folderPropertySizeDirectChildren),
                     subtitle: Text(_formatFileSize(totalSize)),
                   ),
                   const Divider(),
-                  const Text(
-                    'Folder Thumbnail',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  Text(
+                    l10n.folderThumbnail,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 6),
                   FutureBuilder<String?>(
                     future: customThumbnailFuture,
-                    builder: (context, snapshot) {
+                    builder: (ctx, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Text('Loading...');
+                        return Text(l10n.loading);
                       }
                       final value = snapshot.data;
                       if (value == null || value.isEmpty) {
-                        return const Text('Auto (first video/image)');
+                        return Text(l10n.thumbnailAuto);
                       }
                       final displayValue =
                           value.startsWith('video::') ? value.substring(7) : value;
@@ -548,11 +554,11 @@ class FolderContextMenu {
                           final isVideo = VideoThumbnailHelper
                               .isSupportedVideoFormat(selectedPath);
                           if (!isImage && !isVideo) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
                                   content: Text(
-                                      'Please select an image or video file.'),
+                                      AppLocalizations.of(context)!.invalidThumbnailFile),
                                 ),
                               );
                             }
@@ -572,7 +578,7 @@ class FolderContextMenu {
                             });
                           }
                         },
-                        child: const Text('CHOOSE'),
+                        child: Text(l10n.chooseThumbnail),
                       ),
                       const SizedBox(width: 8),
                       TextButton(
@@ -584,7 +590,7 @@ class FolderContextMenu {
                             });
                           }
                         },
-                        child: const Text('CLEAR'),
+                        child: Text(l10n.clearThumbnail),
                       ),
                     ],
                   ),
@@ -596,7 +602,7 @@ class FolderContextMenu {
                 onPressed: () {
                   if (dialogContext.mounted) Navigator.pop(dialogContext);
                 },
-                child: const Text('CLOSE'),
+                child: Text(l10n.close),
               ),
             ],
           ),
@@ -606,7 +612,7 @@ class FolderContextMenu {
       if (scaffoldMessenger.mounted) {
         scaffoldMessenger.showSnackBar(
           SnackBar(
-            content: Text('Error retrieving folder properties: $e'),
+            content: Text(AppLocalizations.of(context)!.errorGettingFolderProperties(e.toString())),
             backgroundColor: Colors.red,
           ),
         );

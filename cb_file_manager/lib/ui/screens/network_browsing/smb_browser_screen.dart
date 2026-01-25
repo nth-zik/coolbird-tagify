@@ -6,6 +6,7 @@ import 'package:remixicon/remixicon.dart' as remix;
 // Aliased to avoid conflict with 'path' in _openSavedConnection
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../config/languages/app_localizations.dart';
 import '../../../bloc/network_browsing/network_browsing_bloc.dart';
 import '../../../bloc/network_browsing/network_browsing_event.dart';
 import '../../../bloc/network_browsing/network_browsing_state.dart';
@@ -195,7 +196,9 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
           _updateCacheFromState();
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Network scan failed: $e')),
+          SnackBar(
+              content: Text(
+                  '${AppLocalizations.of(context)!.networkScanFailed}: $e')),
         );
       }
     } finally {
@@ -239,12 +242,12 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
       }
     } catch (e) {
       debugPrint('Failed to get SMB version info: $e');
-      if (mounted) {
-        setState(() {
-          _smbVersion = 'Unknown';
-          _connectionInfo = 'Connection info unavailable';
-        });
-      }
+        if (mounted) {
+          setState(() {
+            _smbVersion = AppLocalizations.of(context)!.smbVersionUnknown;
+            _connectionInfo = AppLocalizations.of(context)!.connectionInfoUnavailable;
+          });
+        }
     } finally {
       if (mounted) {
         setState(() {
@@ -326,19 +329,21 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
           }
         }
 
-        // Thông báo cho người dùng
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(opened
-                ? 'Đã mở cài đặt mạng'
-                : 'Không thể mở cài đặt mạng, vui lòng mở thủ công'),
+                ? l10n.networkSettingsOpened
+                : l10n.cannotOpenNetworkSettings),
             duration: const Duration(seconds: 2),
           ),
         );
       } catch (e) {
         debugPrint('Error opening network settings: $e');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Không thể mở cài đặt mạng: $e')),
+          SnackBar(
+              content: Text(
+                  AppLocalizations.of(context)!.errorWithMessage(e.toString()))),
         );
       }
     }
@@ -406,13 +411,13 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context); // Call super.build to ensure keepAlive is managed
+    final l10n = AppLocalizations.of(context)!;
     return SystemScreen(
-      title: 'SMB Network',
+      title: l10n.smbNetwork,
       systemId: '#smb',
       icon: remix.Remix.computer_line,
       showAppBar: true,
       actions: [
-        // Nút làm mới
         IconButton(
           icon: _isScanning
               ? const SizedBox(
@@ -425,9 +430,8 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                 )
               : const Icon(remix.Remix.refresh_line),
           onPressed: _isScanning ? null : _resetAndScan,
-          tooltip: 'Refresh',
+          tooltip: l10n.refresh,
         ),
-        // Nút kết nối mới
         IconButton(
           icon: const Icon(remix.Remix.add_line),
           onPressed: () {
@@ -454,7 +458,7 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
               ),
             );
           },
-          tooltip: 'Add Connection',
+          tooltip: l10n.addConnection,
         ),
       ],
       child: BlocProvider.value(
@@ -479,25 +483,25 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                           const Icon(remix.Remix.error_warning_line,
                               color: Colors.orange),
                           const SizedBox(width: 8),
-                          const Expanded(
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  'Network discovery may not be enabled',
-                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                  l10n.networkDiscoveryDisabled,
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
                                 ),
                                 Text(
-                                  'Enable network discovery in Windows settings to scan for SMB servers',
-                                  style: TextStyle(fontSize: 12),
+                                  l10n.networkDiscoveryDescription,
+                                  style: const TextStyle(fontSize: 12),
                                 ),
                               ],
                             ),
                           ),
                           OutlinedButton(
                             onPressed: _openWindowsNetworkSettings,
-                            child: const Text('Open Settings'),
+                            child: Text(l10n.openSettings),
                           ),
                         ],
                       ),
@@ -507,17 +511,17 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                 // Connections Section
                 Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Active Connections',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      Text(
-                        'SMB servers you are connected to',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.activeConnectionsTitle,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        Text(
+                          l10n.activeConnectionsDescription,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
                       const SizedBox(height: 8),
                       // SMB Version Info
                       Container(
@@ -549,7 +553,7 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    'SMB Version: $_smbVersion',
+                                    '${l10n.smbVersion}: $_smbVersion',
                                     style: Theme.of(context)
                                         .textTheme
                                         .bodyMedium
@@ -557,7 +561,7 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                                           fontWeight: FontWeight.w500,
                                         ),
                                   ),
-                                  if (_connectionInfo != 'Not connected')
+                                  if (_connectionInfo != l10n.notConnected)
                                     Text(
                                       _connectionInfo,
                                       style: Theme.of(context)
@@ -586,7 +590,7 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                                 icon: const Icon(remix.Remix.refresh_line,
                                     size: 16),
                                 onPressed: _updateSmbVersionInfo,
-                                tooltip: 'Refresh SMB version info',
+                                tooltip: l10n.refreshSmbVersionInfo,
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(),
                               ),
@@ -609,11 +613,11 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Discovered SMB Servers',
+                        l10n.discoveredSmbServers,
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                       Text(
-                        'Servers discovered on your local network',
+                        l10n.discoveredSmbServersDescription,
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
@@ -631,14 +635,12 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
   }
 
   Widget _buildActiveConnections(Map<String, dynamic>? connections) {
-    // Lấy active connections trực tiếp từ registry thay vì từ state
+    final l10n = AppLocalizations.of(context)!;
     final activeConnections = _registry.activeConnections;
 
-    // Debug: Log connections để kiểm tra
     debugPrint(
         'SMBBrowserScreen: Active connections from registry: ${activeConnections.keys}');
 
-    // Filter only SMB connections
     final smbConnections = activeConnections.entries
         .where((entry) => entry.key.startsWith('smb://'))
         .toList();
@@ -665,14 +667,14 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'No active SMB connections',
+                      l10n.noActiveSmbConnections,
                       style: TextStyle(
                         fontWeight: FontWeight.w500,
                         color: Colors.grey[700],
                       ),
                     ),
                     Text(
-                      'Connect to an SMB server to see it here',
+                      l10n.connectToSmbServer,
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey[600],
@@ -718,7 +720,9 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  sharePath.isNotEmpty ? 'Share: $sharePath' : 'Root share',
+                  sharePath.isNotEmpty
+                      ? l10n.shareLabel(sharePath)
+                      : l10n.rootShare,
                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
                 Container(
@@ -729,9 +733,9 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                     color: Colors.green.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Text(
-                    'Connected',
-                    style: TextStyle(fontSize: 10, color: Colors.green),
+                  child: Text(
+                    l10n.connected,
+                    style: const TextStyle(fontSize: 10, color: Colors.green),
                   ),
                 ),
               ],
@@ -742,15 +746,14 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                 IconButton(
                   icon: const Icon(remix.Remix.arrow_right_line, color: Colors.blue),
                   onPressed: () => _openSavedConnection(path),
-                  tooltip: 'Open Connection',
+                  tooltip: l10n.openConnection,
                 ),
                 IconButton(
                   icon: const Icon(remix.Remix.close_circle_line, color: Colors.red),
                   onPressed: () {
-                    // Disconnect from this server
                     _networkBloc.add(NetworkDisconnectRequested(path));
                   },
-                  tooltip: 'Disconnect',
+                  tooltip: l10n.disconnect,
                 ),
               ],
             ),
@@ -762,35 +765,36 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
   }
 
   Widget _buildDiscoveredDevices() {
+    final l10n = AppLocalizations.of(context)!;
     if (_discoveredDevices.isEmpty) {
       if (_isScanning) {
-        return const Expanded(
+        return Expanded(
           child: Center(
             child: Padding(
-              padding: EdgeInsets.all(24.0),
+              padding: const EdgeInsets.all(24.0),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SizedBox(
+                  const SizedBox(
                     width: 32,
                     height: 32,
                     child: CircularProgressIndicator(strokeWidth: 3),
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   Text(
-                    'Scanning for SMB servers...',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                    l10n.scanningForSmbServers,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
-                    'Devices will appear here as they are discovered',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                    l10n.devicesWillAppear,
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
                     textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
-                    'This may take a few moments',
-                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                    l10n.scanningMayTakeTime,
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -800,7 +804,6 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
         );
       }
 
-      // Nếu đã scan nhưng không tìm thấy gì
       if (_hasScanned) {
         return Expanded(
           child: Center(
@@ -811,18 +814,18 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                 children: [
                   const Icon(remix.Remix.wifi_off_line, size: 48, color: Colors.grey),
                   const SizedBox(height: 16),
-                  const Text('No SMB servers found'),
+                  Text(l10n.noSmbServersFound),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Try scanning again or check your network settings',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  Text(
+                    l10n.tryScanningAgain,
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
                     onPressed: _resetAndScan,
                     icon: const Icon(remix.Remix.refresh_line, size: 16),
-                    label: const Text('Scan Again'),
+                    label: Text(l10n.scanAgain),
                   ),
                 ],
               ),
@@ -831,7 +834,6 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
         );
       }
 
-      // Nếu chưa scan bao giờ
       return Expanded(
         child: Center(
           child: Padding(
@@ -841,18 +843,18 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
               children: [
                 const Icon(remix.Remix.search_line, size: 48, color: Colors.grey),
                 const SizedBox(height: 16),
-                const Text('Ready to scan'),
+                Text(l10n.readyToScan),
                 const SizedBox(height: 8),
-                const Text(
-                  'Click the refresh button to start scanning for SMB servers',
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                Text(
+                  l10n.clickRefreshToScan,
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: _resetAndScan,
                   icon: const Icon(remix.Remix.refresh_line, size: 16),
-                  label: const Text('Start Scan'),
+                  label: Text(l10n.startScan),
                 ),
               ],
             ),
@@ -864,32 +866,31 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
     return Expanded(
       child: Column(
         children: [
-          // Header with device count and scan status
           Padding(
             padding:
                 const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: Row(
               children: [
                 Text(
-                  'Found ${_discoveredDevices.length} device${_discoveredDevices.length == 1 ? '' : 's'}',
+                  l10n.foundDevicesCount(_discoveredDevices.length),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Colors.grey[600],
                       ),
                 ),
                 const Spacer(),
                 if (_isScanning)
-                  const Row(
+                  Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      SizedBox(
+                      const SizedBox(
                         width: 12,
                         height: 12,
                         child: CircularProgressIndicator(strokeWidth: 1),
                       ),
-                      SizedBox(width: 8),
+                      const SizedBox(width: 8),
                       Text(
-                        'Scanning...',
-                        style: TextStyle(fontSize: 12, color: Colors.blue),
+                        l10n.scanning,
+                        style: const TextStyle(fontSize: 12, color: Colors.blue),
                       ),
                     ],
                   )
@@ -901,9 +902,9 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                       color: Colors.green.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: const Text(
-                      'Scan Complete',
-                      style: TextStyle(fontSize: 10, color: Colors.green),
+                    child: Text(
+                      l10n.scanComplete,
+                      style: const TextStyle(fontSize: 10, color: Colors.green),
                     ),
                   ),
               ],

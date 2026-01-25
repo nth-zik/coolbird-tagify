@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:math';
 
 import 'package:cb_file_manager/bloc/selection/selection.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
@@ -44,6 +43,7 @@ class TabbedFolderKeyboardController {
     required FolderListState folderListState,
     required SelectionState selectionState,
     required String? currentFilter,
+    int? gridCrossAxisCount,
     required VoidCallback onBackInTabHistory,
     required void Function(String folderPath) focusFolderPath,
     required void Function(String filePath) focusFilePath,
@@ -140,8 +140,9 @@ class TabbedFolderKeyboardController {
     final bool isGridLayout =
         folderListState.viewMode == ViewMode.grid ||
             folderListState.viewMode == ViewMode.gridPreview;
-    final int crossAxisCount =
-        isGridLayout ? max(1, folderListState.gridZoomLevel) : 1;
+    final int crossAxisCount = isGridLayout
+        ? (gridCrossAxisCount ?? folderListState.gridZoomLevel).clamp(1, 999)
+        : 1;
 
     int currentIndex = -1;
     if (focusedPath != null) {
@@ -161,9 +162,9 @@ class TabbedFolderKeyboardController {
     int targetIndex;
 
     if (key == LogicalKeyboardKey.arrowDown) {
-      targetIndex = currentIndex + (isGridLayout ? crossAxisCount : 1);
+      targetIndex = currentIndex + crossAxisCount;
     } else if (key == LogicalKeyboardKey.arrowUp) {
-      targetIndex = currentIndex - (isGridLayout ? crossAxisCount : 1);
+      targetIndex = currentIndex - crossAxisCount;
     } else if (key == LogicalKeyboardKey.arrowRight) {
       targetIndex = currentIndex + 1;
     } else if (key == LogicalKeyboardKey.arrowLeft) {

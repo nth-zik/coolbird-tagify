@@ -7,6 +7,10 @@ class NetworkBrowsingState extends Equatable {
   /// Flag to indicate if the state is in a loading condition
   final bool isLoading;
 
+  /// Flag to indicate if more content is being loaded (partial loading)
+  /// When true, UI should show existing content while loading more
+  final bool isLoadingMore;
+
   /// Flag to indicate if we're currently connecting to a service
   final bool isConnecting;
 
@@ -54,6 +58,7 @@ class NetworkBrowsingState extends Equatable {
 
   const NetworkBrowsingState({
     this.isLoading = false,
+    this.isLoadingMore = false,
     this.isConnecting = false,
     this.errorMessage,
     this.services,
@@ -71,6 +76,7 @@ class NetworkBrowsingState extends Equatable {
   /// Initial state of the bloc
   const NetworkBrowsingState.initial()
       : isLoading = false,
+        isLoadingMore = false,
         isConnecting = false,
         errorMessage = null,
         services = null,
@@ -98,6 +104,7 @@ class NetworkBrowsingState extends Equatable {
     this.transferPath,
     this.isTransferring = false,
   })  : isLoading = true,
+        isLoadingMore = false,
         isConnecting = false,
         connections = connections ?? const {};
 
@@ -115,6 +122,7 @@ class NetworkBrowsingState extends Equatable {
     this.transferPath,
     this.isTransferring = false,
   })  : isLoading = false,
+        isLoadingMore = false,
         isConnecting = true,
         connections = connections ?? const {};
 
@@ -131,6 +139,7 @@ class NetworkBrowsingState extends Equatable {
     this.transferPath,
     this.isTransferring = false,
   })  : isLoading = false,
+        isLoadingMore = false,
         isConnecting = false,
         errorMessage = null,
         connections = connections ?? const {};
@@ -147,6 +156,7 @@ class NetworkBrowsingState extends Equatable {
     this.transferPath,
     this.isTransferring = false,
   })  : isLoading = false,
+        isLoadingMore = false,
         isConnecting = false,
         errorMessage = null,
         services = null,
@@ -161,6 +171,7 @@ class NetworkBrowsingState extends Equatable {
     this.transferPath,
     this.isTransferring = false,
   })  : isLoading = false,
+        isLoadingMore = false,
         isConnecting = false,
         errorMessage = null,
         connections = connections ?? const {},
@@ -169,7 +180,7 @@ class NetworkBrowsingState extends Equatable {
         directories = null,
         files = null;
 
-  /// State when a directory is loaded
+  /// State when a directory is loaded (supports partial loading)
   const NetworkBrowsingState.directoryLoaded({
     required this.currentService,
     required this.currentPath,
@@ -180,6 +191,7 @@ class NetworkBrowsingState extends Equatable {
     this.transferProgress,
     this.transferPath,
     this.isTransferring = false,
+    this.isLoadingMore = false,
   })  : isLoading = false,
         isConnecting = false,
         errorMessage = null,
@@ -200,6 +212,7 @@ class NetworkBrowsingState extends Equatable {
     this.transferPath,
     this.isTransferring = false,
   })  : isLoading = false,
+        isLoadingMore = false,
         isConnecting = false,
         connections = connections ?? const {};
 
@@ -215,6 +228,7 @@ class NetworkBrowsingState extends Equatable {
     this.directories,
     this.files,
   })  : isLoading = false,
+        isLoadingMore = false,
         isConnecting = false,
         errorMessage = null,
         connections = connections ?? const {},
@@ -224,6 +238,7 @@ class NetworkBrowsingState extends Equatable {
   /// This is often preferred over many named constructors for state updates.
   NetworkBrowsingState copyWith({
     bool? isLoading,
+    bool? isLoadingMore,
     bool? isConnecting,
     String? errorMessage,
     bool clearErrorMessage = false,
@@ -244,6 +259,7 @@ class NetworkBrowsingState extends Equatable {
   }) {
     return NetworkBrowsingState(
       isLoading: isLoading ?? this.isLoading,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       isConnecting: isConnecting ?? this.isConnecting,
       errorMessage:
           clearErrorMessage ? null : errorMessage ?? this.errorMessage,
@@ -265,6 +281,7 @@ class NetworkBrowsingState extends Equatable {
   @override
   List<Object?> get props => [
         isLoading,
+        isLoadingMore,
         isConnecting,
         errorMessage,
         services,
@@ -283,6 +300,7 @@ class NetworkBrowsingState extends Equatable {
   String toString() {
     return 'NetworkBrowsingState{'
         'isLoading: $isLoading, '
+        'isLoadingMore: $isLoadingMore, '
         'isConnecting: $isConnecting, '
         'errorMessage: $errorMessage, '
         'servicesCount: ${services?.length ?? 0}, '

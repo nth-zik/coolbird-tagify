@@ -6,6 +6,7 @@ import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/helpers/files/folder_sort_manager.dart';
 import 'package:cb_file_manager/ui/components/common/shared_action_bar.dart';
 import 'package:cb_file_manager/ui/utils/platform_utils.dart';
+import 'package:cb_file_manager/ui/utils/grid_zoom_constraints.dart';
 
 /// Mixin for managing user preferences related to folder list display
 ///
@@ -70,9 +71,16 @@ mixin PreferencesManagerMixin<T extends StatefulWidget> on State<T> {
               : loadedViewMode;
 
       if (mounted) {
+        final maxZoom = GridZoomConstraints.maxGridSizeForContext(
+          context,
+          mode: GridSizeMode.referenceWidth,
+        );
+        final resolvedGridZoom = loadedGridZoomLevel
+            .clamp(UserPreferences.minGridZoomLevel, maxZoom)
+            .toInt();
         setState(() {
           viewMode = effectiveViewMode;
-          gridZoomLevel = loadedGridZoomLevel;
+          gridZoomLevel = resolvedGridZoom;
           columnVisibility = loadedColumnVisibility;
           showFileTags = loadedShowFileTags;
           isPreviewPaneVisible = loadedPreviewPaneVisible;
@@ -81,7 +89,7 @@ mixin PreferencesManagerMixin<T extends StatefulWidget> on State<T> {
 
         folderListBloc.add(SetViewMode(effectiveViewMode));
         folderListBloc.add(SetSortOption(sortOption));
-        folderListBloc.add(SetGridZoom(loadedGridZoomLevel));
+        folderListBloc.add(SetGridZoom(resolvedGridZoom));
       }
     } catch (e) {
       debugPrint('Error loading preferences: $e');
@@ -161,8 +169,14 @@ mixin PreferencesManagerMixin<T extends StatefulWidget> on State<T> {
 
   /// Handle grid zoom level change
   void handleGridZoomChange(int zoomLevel) {
-    folderListBloc.add(SetGridZoom(zoomLevel));
-    saveGridZoomSetting(zoomLevel);
+    final maxZoom = GridZoomConstraints.maxGridSizeForContext(
+      context,
+      mode: GridSizeMode.referenceWidth,
+    );
+    final clamped =
+        zoomLevel.clamp(UserPreferences.minGridZoomLevel, maxZoom).toInt();
+    folderListBloc.add(SetGridZoom(clamped));
+    saveGridZoomSetting(clamped);
   }
 
   /// Handle zoom level change via mouse wheel or other input
@@ -171,10 +185,13 @@ mixin PreferencesManagerMixin<T extends StatefulWidget> on State<T> {
   void handleZoomLevelChange(int direction) {
     // Reverse direction: increase zoom when scrolling down (direction > 0), decrease when scrolling up (direction < 0)
     final currentZoom = gridZoomLevel;
-    final newZoom = (currentZoom + direction).clamp(
-      UserPreferences.minGridZoomLevel,
-      UserPreferences.maxGridZoomLevel,
+    final maxZoom = GridZoomConstraints.maxGridSizeForContext(
+      context,
+      mode: GridSizeMode.referenceWidth,
     );
+    final newZoom = (currentZoom + direction)
+        .clamp(UserPreferences.minGridZoomLevel, maxZoom)
+        .toInt();
 
     if (newZoom != currentZoom) {
       folderListBloc.add(SetGridZoom(newZoom));

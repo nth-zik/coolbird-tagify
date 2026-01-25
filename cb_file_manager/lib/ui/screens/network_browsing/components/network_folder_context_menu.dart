@@ -1,6 +1,8 @@
 import 'package:remixicon/remixicon.dart' as remix;
 import 'package:flutter/material.dart';
 
+import 'package:cb_file_manager/config/languages/app_localizations.dart';
+
 class NetworkFolderContextMenu {
   static void show({
     required BuildContext context,
@@ -9,6 +11,7 @@ class NetworkFolderContextMenu {
     required VoidCallback onCreateFolder,
     required VoidCallback onUploadFile,
   }) {
+    final l10n = AppLocalizations.of(context)!;
     final RenderObject? renderObject = Overlay.of(
       context,
     ).context.findRenderObject();
@@ -23,24 +26,24 @@ class NetworkFolderContextMenu {
       items: <PopupMenuEntry<dynamic>>[
         PopupMenuItem(
           onTap: onRefresh,
-          child: const ListTile(
-            leading: Icon(remix.Remix.refresh_line),
-            title: Text('Refresh'),
+          child: ListTile(
+            leading: const Icon(remix.Remix.refresh_line),
+            title: Text(l10n.refresh),
           ),
         ),
         const PopupMenuDivider(),
         PopupMenuItem(
           onTap: onCreateFolder,
-          child: const ListTile(
-            leading: Icon(remix.Remix.folder_add_line),
-            title: Text('Create Folder'),
+          child: ListTile(
+            leading: const Icon(remix.Remix.folder_add_line),
+            title: Text(l10n.newFolder),
           ),
         ),
         PopupMenuItem(
           onTap: onUploadFile,
-          child: const ListTile(
-            leading: Icon(remix.Remix.upload_line),
-            title: Text('Upload File'),
+          child: ListTile(
+            leading: const Icon(remix.Remix.upload_line),
+            title: Text(l10n.uploadFile),
           ),
         ),
       ],

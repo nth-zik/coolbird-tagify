@@ -9,6 +9,7 @@ import 'package:remixicon/remixicon.dart' as remix;
 import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart';
 import 'package:cb_file_manager/ui/widgets/app_progress_indicator.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
+import 'package:cb_file_manager/ui/components/common/skeleton_helper.dart';
 import '../tab_manager.dart';
 import 'package:cb_file_manager/ui/utils/fluent_background.dart';
 import 'package:path/path.dart' as path;
@@ -44,6 +45,7 @@ import 'package:cb_file_manager/ui/controllers/selection_coordinator.dart';
 import 'package:cb_file_manager/ui/controllers/tab_lifecycle_manager.dart';
 import 'package:cb_file_manager/ui/controllers/tag_search_initializer.dart';
 import 'package:cb_file_manager/ui/controllers/app_bar_actions_builder.dart';
+import 'package:cb_file_manager/ui/utils/grid_zoom_constraints.dart';
 
 // Import extracted view layer components
 import 'package:cb_file_manager/ui/widgets/file_list_view_builder.dart';
@@ -128,6 +130,9 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
   late final TabbedFolderDragSelectionController _dragSelectionController;
   late final TabbedFolderKeyboardController _keyboardController;
   late final ValueNotifier<double> _previewPaneWidthNotifier;
+
+  /// Actual grid crossAxisCount from the file list (for arrow up/down in grid).
+  int? _gridCrossAxisCount;
 
   // Flag to track if there are background thumbnail tasks
   bool _hasPendingThumbnails = false;
@@ -679,6 +684,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
             folderListState: _folderListBloc.state,
             selectionState: _selectionBloc.state,
             currentFilter: _currentFilter,
+            gridCrossAxisCount: _gridCrossAxisCount,
             onBackInTabHistory: () {
               final tabManagerBloc = context.read<TabManagerBloc>();
               if (tabManagerBloc.canTabNavigateBack(widget.tabId)) {
@@ -852,12 +858,25 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
             context: context,
             enableBlur: isDesktopPlatform,
             child: shouldShowSkeleton
-                ? const SizedBox.shrink() // Show an empty space while loading
+                ? _buildSkeletonLoader(state) // Show skeleton while loading
                 : _buildMainContent(
                     context, state, selectionState, isNetworkPath),
           ),
         ),
       ],
+    );
+  }
+
+  /// Build skeleton loader while initial content loads
+  /// Uses unified skeleton system with automatic mobile/desktop adaptation
+  Widget _buildSkeletonLoader(FolderListState state) {
+    final isGridView = state.viewMode == ViewMode.grid;
+    return SkeletonHelper.responsive(
+      isGridView: isGridView,
+      isAlbum: false,
+      crossAxisCount: state.gridZoomLevel,
+      itemCount: 12,
+      wrapInCardOnDesktop: true,
     );
   }
 
@@ -951,6 +970,14 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
           onPreviewPaneWidthChanged: _updatePreviewPaneWidth,
           onPreviewPaneWidthCommitted: _commitPreviewPaneWidth,
           onPreviewPaneToggled: _togglePreviewPane,
+          onGridCrossAxisCountChanged: (c) {
+            // Defer setState to after build — this callback runs from LayoutBuilder during build.
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && _gridCrossAxisCount != c) {
+                setState(() => _gridCrossAxisCount = c);
+              }
+            });
+          },
         );
       },
     );

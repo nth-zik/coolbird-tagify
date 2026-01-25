@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cb_file_manager/config/languages/app_localizations.dart';
 
 class GalleryControls extends StatelessWidget {
   final String? searchQuery;
@@ -16,6 +17,7 @@ class GalleryControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Stack(
       children: [
         if (searchQuery != null && searchQuery!.isNotEmpty)
@@ -31,7 +33,7 @@ class GalleryControls extends StatelessWidget {
                 children: [
                   const Icon(Icons.search, size: 20),
                   const SizedBox(width: 8),
-                  Text('Tìm kiếm: "$searchQuery"'),
+                  Text('${l10n.search}: "$searchQuery"'),
                   const Spacer(),
                   IconButton(
                     icon: const Icon(Icons.clear, size: 20),
@@ -68,7 +70,7 @@ class GalleryControls extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      isMasonry ? 'Masonry' : 'Grid',
+                      isMasonry ? l10n.masonryLayoutName : l10n.viewModeGrid,
                       style: const TextStyle(color: Colors.white, fontSize: 12),
                     ),
                   ],

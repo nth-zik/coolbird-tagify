@@ -40,6 +40,8 @@ import 'package:cb_file_manager/ui/components/common/skeleton_helper.dart';
 import 'package:cb_file_manager/helpers/network/streaming_helper.dart';
 import 'package:cb_file_manager/ui/utils/platform_utils.dart';
 import 'package:cb_file_manager/ui/widgets/value_listenable_builders.dart';
+import 'package:cb_file_manager/ui/tab_manager/mobile/mobile_file_actions_controller.dart';
+import 'package:cb_file_manager/ui/utils/grid_zoom_constraints.dart';
 
 /// A screen for browsing network locations, with a UI consistent with TabbedFolderListScreen
 class NetworkBrowserScreen extends StatefulWidget {
@@ -173,6 +175,16 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
         // Removed debug print to reduce logging
       }
     });
+
+    // Register mobile file actions controller for mobile UI
+    // Defer registration until after first frame to ensure context is ready
+    if (!isDesktopPlatform) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _registerMobileActionsController();
+        }
+      });
+    }
   }
 
   @override
@@ -213,10 +225,76 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
     _thumbnailLoadingSubscription?.cancel();
     _networkBrowsingSubscription?.cancel();
 
+    // Remove mobile actions controller
+    if (!isDesktopPlatform) {
+      MobileFileActionsController.removeTab(widget.tabId);
+    }
+
     // Restore default settings
     WidgetsBinding.instance.renderView.automaticSystemUiAdjustment = true;
 
     super.dispose();
+  }
+
+  /// Register mobile actions controller to connect mobile action buttons with this screen
+  void _registerMobileActionsController() {
+    if (!mounted) return;
+
+    final controller = MobileFileActionsController.forTab(widget.tabId);
+
+    // Register callbacks (avoid capturing context directly)
+    controller.onSearchPressed = () {
+      if (mounted) _showSearchTip(context);
+    };
+
+    controller.onSortOptionSelected = (option) {
+      if (!mounted) return;
+      if (_sortOption == option) return; // No change needed
+
+      setState(() {
+        _sortOption = option;
+      });
+      _saveSortSetting(option);
+
+      // Update mobile controller
+      controller.currentSortOption = option;
+
+      debugPrint('NetworkBrowserScreen: Sort option changed to $option');
+
+      // Refresh to apply new sort order
+      _refreshFileList();
+    };
+
+    controller.onViewModeToggled = (mode) {
+      if (!mounted) return;
+      _setViewMode(mode);
+    };
+
+    controller.onRefresh = () {
+      if (mounted) _refreshFileList();
+    };
+
+    controller.onGridSizePressed = () {
+      if (!mounted) return;
+      SharedActionBar.showGridSizeDialog(
+        context,
+        currentGridSize: _gridZoomLevel,
+        onApply: _handleGridZoomChange,
+        sizeMode: GridSizeMode.columns,
+      );
+    };
+
+    controller.onSelectionModeToggled = () {
+      if (mounted) _toggleSelectionMode();
+    };
+
+    // Set initial state
+    controller.currentSortOption = _sortOption;
+    controller.currentViewMode = _viewMode;
+    controller.currentGridSize = _gridZoomLevel;
+    controller.currentPath = _currentPath;
+
+    debugPrint('NetworkBrowserScreen: Mobile actions controller registered for tab ${widget.tabId}');
   }
 
   // Helper methods
@@ -231,12 +309,18 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
       final sortOption = await prefs.getSortOption();
       final gridZoomLevel = await prefs.getGridZoomLevel();
       final columnVisibility = await prefs.getColumnVisibility();
+      final maxZoom = GridZoomConstraints.maxGridSizeForContext(
+        context,
+        mode: GridSizeMode.columns,
+      );
 
       if (mounted) {
         setState(() {
           _viewMode = effectiveViewMode;
           _sortOption = sortOption;
-          _gridZoomLevel = gridZoomLevel;
+          _gridZoomLevel = gridZoomLevel
+              .clamp(UserPreferences.minGridZoomLevel, maxZoom)
+              .toInt();
           _columnVisibility = columnVisibility;
           _arePreferencesLoading = false;
         });
@@ -279,6 +363,11 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
       setState(() {
         _gridZoomLevel = zoomLevel;
       });
+
+      // Update mobile controller
+      if (!isDesktopPlatform) {
+        MobileFileActionsController.forTab(widget.tabId).currentGridSize = zoomLevel;
+      }
     } catch (e) {
       // Reduced debug logging
     }
@@ -325,13 +414,27 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
       }
     });
     _saveViewModeSetting(_viewMode);
+
+    // Update mobile controller
+    if (!isDesktopPlatform) {
+      MobileFileActionsController.forTab(widget.tabId).currentViewMode = _viewMode;
+    }
   }
 
   void _setViewMode(ViewMode mode) {
+    if (_viewMode == mode) return; // No change needed
+
     setState(() {
       _viewMode = mode;
     });
     _saveViewModeSetting(_viewMode);
+
+    // Update mobile controller
+    if (!isDesktopPlatform) {
+      MobileFileActionsController.forTab(widget.tabId).currentViewMode = _viewMode;
+    }
+
+    debugPrint('NetworkBrowserScreen: View mode changed to $_viewMode');
   }
 
   void _refreshFileList() {
@@ -395,8 +498,8 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
 
     final pathParts = path.split('/');
     final lastPart =
-        pathParts.lastWhere((part) => part.isNotEmpty, orElse: () => 'Network');
-    final tabName = lastPart.isEmpty ? 'Network' : lastPart;
+        pathParts.lastWhere((part) => part.isNotEmpty, orElse: () => AppLocalizations.of(context)!.networkTab);
+    final tabName = lastPart.isEmpty ? AppLocalizations.of(context)!.networkTab : lastPart;
 
     context.read<TabManagerBloc>().add(UpdateTabName(widget.tabId, tabName));
   }
@@ -536,6 +639,7 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
                     context,
                     currentGridSize: _gridZoomLevel,
                     onApply: _handleGridZoomChange,
+                    sizeMode: GridSizeMode.columns,
                   )
               : null,
           onColumnSettingsPressed: _viewMode == ViewMode.details
@@ -552,11 +656,11 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
             icon: const Icon(Icons.close),
             onPressed: _clearSelection,
           ),
-          Text('${selectionState.selectedCount} selected'),
+          Text(AppLocalizations.of(context)!.itemsSelected(selectionState.selectedCount)),
           const Spacer(),
           IconButton(
             icon: const Icon(Icons.select_all),
-            tooltip: 'Select All',
+            tooltip: AppLocalizations.of(context)!.selectAll,
             onPressed: () {
               // Implement select all logic
             },
@@ -659,8 +763,11 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
       debugPrint("NetworkBrowserScreen: Error - ${state.errorMessage}");
     }
 
-    final bool shouldShowSkeleton = state.isLoading ||
-        (!_hasAnyContentLoaded && !state.hasError && !state.hasContent);
+    // Show skeleton only when:
+    // 1. isLoading is true AND we don't have any content yet
+    // 2. When isLoadingMore is true, we already have content - show it with a loading indicator
+    final bool shouldShowSkeleton = state.isLoading && !state.hasContent &&
+        !_hasAnyContentLoaded && !state.hasError;
     if (shouldShowSkeleton) {
       // Show skeleton placeholders while loading to avoid empty-state flicker
       // Reuse the same grid/list logic as the main file view where possible
@@ -680,7 +787,7 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
         padding: const EdgeInsets.all(24.0),
         blurAmount: 5.0,
         child: tab_components.ErrorView(
-          errorMessage: state.errorMessage ?? "An unknown error occurred.",
+          errorMessage: state.errorMessage ?? AppLocalizations.of(context)!.unknownError,
           isNetworkPath: true,
           onRetry: () {
             _loadNetworkDirectory();
@@ -712,7 +819,7 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 icon: const Icon(Icons.refresh),
-                label: const Text("Refresh"),
+                label: Text(AppLocalizations.of(context)!.refresh),
                 onPressed: _refreshFileList,
               ),
             ],
@@ -723,6 +830,13 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
 
     // Mark that we have content at least once to prevent flicker
     _hasAnyContentLoaded = true;
+
+    // Build the main content view
+    final contentView = _viewMode == ViewMode.grid
+        ? _buildGridView(folders, files, selectionState)
+        : _viewMode == ViewMode.details
+            ? _buildDetailsView(folders, files, selectionState)
+            : _buildListView(folders, files, selectionState);
 
     // Determine view mode based on user preference
     return Stack(
@@ -758,11 +872,32 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
                   }
                 : null,
             behavior: HitTestBehavior.translucent,
-            child: _viewMode == ViewMode.grid
-                ? _buildGridView(folders, files, selectionState)
-                : _viewMode == ViewMode.details
-                    ? _buildDetailsView(folders, files, selectionState)
-                    : _buildListView(folders, files, selectionState),
+            // Show content with loading indicator when isLoadingMore is true
+            child: Column(
+              children: [
+                Expanded(child: contentView),
+                // Show loading indicator at bottom when loading more content
+                if (state.isLoadingMore)
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          AppLocalizations.of(context)!.loading,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
         _buildDragSelectionOverlay(),
@@ -776,12 +911,20 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
   // Build grid view
   Widget _buildGridView(List<FileSystemEntity> folders,
       List<FileSystemEntity> files, SelectionState selectionState) {
+    final maxZoom = GridZoomConstraints.maxGridSizeForContext(
+      context,
+      mode: GridSizeMode.columns,
+    );
+    final crossAxisCount = _gridZoomLevel.clamp(
+      UserPreferences.minGridZoomLevel,
+      maxZoom,
+    ).toInt();
     return GridView.builder(
       padding: const EdgeInsets.all(8.0),
       physics: const ClampingScrollPhysics(),
       cacheExtent: 1500,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: _gridZoomLevel,
+        crossAxisCount: crossAxisCount,
         crossAxisSpacing: 8,
         mainAxisSpacing: 8,
         childAspectRatio: 0.8,
@@ -935,7 +1078,14 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
   }
 
   void _handleGridZoomChange(int newZoomLevel) {
-    _saveGridZoomSetting(newZoomLevel);
+    final maxZoom = GridZoomConstraints.maxGridSizeForContext(
+      context,
+      mode: GridSizeMode.columns,
+    );
+    final clamped = newZoomLevel
+        .clamp(UserPreferences.minGridZoomLevel, maxZoom)
+        .toInt();
+    _saveGridZoomSetting(clamped);
   }
 
   void _showColumnVisibilityDialog(BuildContext context) {

@@ -2,14 +2,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:media_kit/media_kit.dart';
+import 'package:media_kit/media_kit.dart' hide SubtitleTrack;
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:video_player/video_player.dart' as exo;
 import 'package:flutter_vlc_player/flutter_vlc_player.dart';
@@ -36,41 +35,14 @@ import '../../streaming/buffer_info_widget.dart';
 import '../../../utils/route.dart';
 import '../../../../config/languages/app_localizations.dart';
 import '../../../tab_manager/core/tab_manager.dart';
-
-// Enums for new features
-enum LoopMode { none, single, all }
-
-enum VideoFilter { none, brightness, contrast, saturation }
-
-// Subtitle track model
-class SubtitleTrack {
-  final int id;
-  final String language;
-  final String? title;
-  final bool isEnabled;
-
-  const SubtitleTrack({
-    required this.id,
-    required this.language,
-    this.title,
-    this.isEnabled = false,
-  });
-}
-
-// Audio track model
-class AudioTrack {
-  final int id;
-  final String language;
-  final String? title;
-  final bool isEnabled;
-
-  const AudioTrack({
-    required this.id,
-    required this.language,
-    this.title,
-    this.isEnabled = false,
-  });
-}
+import 'video_player_advanced_menu.dart';
+import 'video_player_control_buttons.dart';
+import 'video_player_dialogs.dart';
+import 'video_player_fast_seek.dart';
+import 'video_player_loading.dart';
+import 'video_player_models.dart';
+import 'video_player_seek_slider.dart';
+import 'video_player_utils.dart';
 
 /// Unified video player component supporting multiple media sources
 /// Consolidates functionality from CustomVideoPlayer and StreamingMediaPlayer
@@ -148,13 +120,6 @@ class VideoPlayer extends StatefulWidget {
         ),
         super(key: key);
 
-  static String _extensionFromPath(String path) {
-    final name = pathlib.basename(path);
-    final dotIndex = name.lastIndexOf('.');
-    if (dotIndex == -1) return '';
-    return name.substring(dotIndex).toLowerCase();
-  }
-
   /// Constructor for local file playback
   VideoPlayer.file({
     Key? key,
@@ -181,7 +146,7 @@ class VideoPlayer extends StatefulWidget {
           key: key,
           file: file,
           fileName: pathlib.basename(file.path),
-          fileType: FileTypeRegistry.getCategory(_extensionFromPath(file.path)),
+          fileType: FileTypeRegistry.getCategory(VideoPlayerUtils.extensionFromPath(file.path)),
           autoPlay: autoPlay,
           looping: looping,
           showControls: showControls,
@@ -227,7 +192,7 @@ class VideoPlayer extends StatefulWidget {
           streamingUrl: streamingUrl,
           fileName: fileName,
           fileType: fileType ??
-              FileTypeRegistry.getCategory(_extensionFromPath(fileName)),
+              FileTypeRegistry.getCategory(VideoPlayerUtils.extensionFromPath(fileName)),
           autoPlay: autoPlay,
           looping: looping,
           showControls: showControls,
@@ -269,7 +234,7 @@ class VideoPlayer extends StatefulWidget {
           smbMrl: smbMrl,
           fileName: fileName,
           fileType: fileType ??
-              FileTypeRegistry.getCategory(_extensionFromPath(fileName)),
+              FileTypeRegistry.getCategory(VideoPlayerUtils.extensionFromPath(fileName)),
           autoPlay: autoPlay,
           looping: looping,
           showControls: showControls,
@@ -311,7 +276,7 @@ class VideoPlayer extends StatefulWidget {
           fileStream: fileStream,
           fileName: fileName,
           fileType: fileType ??
-              FileTypeRegistry.getCategory(_extensionFromPath(fileName)),
+              FileTypeRegistry.getCategory(VideoPlayerUtils.extensionFromPath(fileName)),
           autoPlay: autoPlay,
           looping: looping,
           showControls: showControls,
@@ -436,27 +401,12 @@ class _VideoPlayerState extends State<VideoPlayer> {
 
   Map<String, dynamic>? _videoMetadata;
 
-  // Helper method to convert string to BoxFit
-  BoxFit _getBoxFitFromString(String scaleMode) {
-    switch (scaleMode) {
-      case 'cover':
-        return BoxFit.cover;
-      case 'contain':
-        return BoxFit.contain;
-      case 'fill':
-        return BoxFit.fill;
-      case 'fitWidth':
-        return BoxFit.fitWidth;
-      case 'fitHeight':
-        return BoxFit.fitHeight;
-      case 'none':
-        return BoxFit.none;
-      case 'scaleDown':
-        return BoxFit.scaleDown;
-      default:
-        return BoxFit.cover;
-    }
-  }
+  // Fast forward/rewind state (long press on mobile, hold arrow on desktop)
+  bool _isFastSeeking = false;
+  bool _fastSeekingForward = true; // true = forward, false = backward
+  Timer? _fastSeekTimer;
+  int _fastSeekSeconds = 5; // Current seek amount, increases over time
+  int _fastSeekTicks = 0; // Count of seek ticks to accelerate
 
   @override
   void initState() {
@@ -563,6 +513,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
       _sleepTimer?.cancel();
       _statsUpdateTimer?.cancel();
       _seekingTimer?.cancel();
+      _fastSeekTimer?.cancel();
       _tempRaf?.close();
       _tempFile?.delete();
       // Clear video controller reference before disposing the player
@@ -1388,13 +1339,15 @@ class _VideoPlayerState extends State<VideoPlayer> {
             _buildCustomControls(),
           if (_showSpeedIndicator && _currentStream != null)
             _buildSpeedIndicatorOverlay(),
+          _buildFastSeekGestureOverlay(),
+          _buildFastSeekIndicator(),
         ],
       ),
     );
   }
 
   Widget _buildVideoWidget() {
-    final boxFit = _getBoxFitFromString(_videoScaleMode);
+    final boxFit = VideoPlayerUtils.getBoxFitFromString(_videoScaleMode);
 
     // If suspended (e.g., navigating to image viewer on Android), hide the texture surface
     if (_suspendVideoSurface) {
@@ -1612,6 +1565,8 @@ class _VideoPlayerState extends State<VideoPlayer> {
           ),
           if (widget.showControls && (!_isFullScreen || _showControls))
             _buildCustomControls(),
+          _buildFastSeekGestureOverlay(),
+          _buildFastSeekIndicator(),
         ],
       );
     } else if (_isAndroidPip) {
@@ -1648,7 +1603,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
                     }
 
                     return FittedBox(
-                      fit: _getBoxFitFromString(_videoScaleMode),
+                      fit: VideoPlayerUtils.getBoxFitFromString(_videoScaleMode),
                       child: SizedBox(
                         width: constraints.maxWidth,
                         height: constraints.maxHeight,
@@ -1669,6 +1624,8 @@ class _VideoPlayerState extends State<VideoPlayer> {
             !_isAndroidPip &&
             (!_isFullScreen || _showControls))
           _buildCustomControls(),
+        _buildFastSeekGestureOverlay(),
+        _buildFastSeekIndicator(),
       ],
     );
   }
@@ -1715,278 +1672,43 @@ class _VideoPlayerState extends State<VideoPlayer> {
 
   // UI Helper Methods
   Widget _buildErrorWidget(String message) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline, color: Colors.red, size: 64),
-          const SizedBox(height: 16),
-          Text(
-            'Error playing media',
-            style: Theme.of(context)
-                .textTheme
-                .headlineSmall
-                ?.copyWith(color: Colors.white),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              message,
-              textAlign: TextAlign.center,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: Colors.white70),
-            ),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _hasError = false;
-                _isLoading = true;
-              });
-              _initializePlayer();
-            },
-            child: const Text('Retry'),
-          ),
-        ],
-      ),
+    return VideoPlayerErrorWidget(
+      message: message,
+      onRetry: () {
+        setState(() {
+          _hasError = false;
+          _isLoading = true;
+        });
+        _initializePlayer();
+      },
     );
   }
 
   Widget _buildLoadingWidget() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Custom animated loading indicator
-          _buildAnimatedLoadingIndicator(),
-          const SizedBox(height: 24),
-          Text(
-            _loadingMessage,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w500,
-                ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            widget.fileName,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Colors.white70,
-                  fontWeight: FontWeight.w400,
-                ),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 16),
-          // Loading progress dots
-          _buildLoadingDots(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAnimatedLoadingIndicator() {
-    // Simple white color for all loading states
-    Color primaryColor = Colors.white;
-    Color secondaryColor = Colors.white.withValues(alpha: 0.3);
-
-    return Container(
-      width: 80,
-      height: 80,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(
-          colors: [
-            primaryColor.withValues(alpha: 0.1),
-            primaryColor.withValues(alpha: 0.05),
-          ],
-        ),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Outer rotating ring
-          SizedBox(
-            width: 80,
-            height: 80,
-            child: CircularProgressIndicator(
-              strokeWidth: 3,
-              valueColor: AlwaysStoppedAnimation<Color>(secondaryColor),
-            ),
-          ),
-          // Inner pulsing circle
-          TweenAnimationBuilder<double>(
-            duration: const Duration(milliseconds: 1500),
-            tween: Tween(begin: 0.0, end: 1.0),
-            builder: (context, value, child) {
-              return Transform.scale(
-                scale:
-                    0.5 + (0.5 * (0.5 + 0.5 * math.sin(value * 2 * math.pi))),
-                child: Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: primaryColor.withValues(alpha: 0.8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: primaryColor.withValues(alpha: 0.3),
-                        blurRadius: 10,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-            onEnd: () {
-              if (mounted) {
-                setState(() {});
-              }
-            },
-          ),
-          // Play icon in center
-          Icon(
-            Icons.play_arrow,
-            color: primaryColor.withValues(alpha: 0.9),
-            size: 24,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLoadingDots() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(3, (index) {
-        return TweenAnimationBuilder<double>(
-          duration: const Duration(milliseconds: 600),
-          tween: Tween(begin: 0.0, end: 1.0),
-          builder: (context, value, child) {
-            final delay = index * 0.2;
-            final animationValue = (value - delay).clamp(0.0, 1.0);
-            final scale = 0.5 +
-                (0.5 * (0.5 + 0.5 * math.sin(animationValue * 2 * math.pi)));
-            final opacity = 0.3 +
-                (0.7 * (0.5 + 0.5 * math.sin(animationValue * 2 * math.pi)));
-
-            return Transform.scale(
-              scale: scale,
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: opacity),
-                ),
-              ),
-            );
-          },
-          onEnd: () {
-            if (mounted) {
-              setState(() {});
-            }
-          },
-        );
-      }),
+    return VideoPlayerLoadingWidget(
+      loadingMessage: _loadingMessage,
+      fileName: widget.fileName,
     );
   }
 
   Widget _buildVlcPlaceholder() {
-    return Container(
-      color: Colors.black,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // VLC-specific loading indicator
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    Colors.orange.withValues(alpha: 0.2),
-                    Colors.orange.withValues(alpha: 0.1),
-                  ],
-                ),
-              ),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // VLC-style loading ring
-                  SizedBox(
-                    width: 60,
-                    height: 60,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Colors.orange.withValues(alpha: 0.6),
-                      ),
-                    ),
-                  ),
-                  // VLC cone icon
-                  Icon(
-                    Icons.play_circle_outline,
-                    color: Colors.orange.withValues(alpha: 0.8),
-                    size: 20,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Loading...',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.white70,
-                    fontWeight: FontWeight.w400,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            // Simple loading dots for VLC
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(3, (index) {
-                return TweenAnimationBuilder<double>(
-                  duration: const Duration(milliseconds: 800),
-                  tween: Tween(begin: 0.0, end: 1.0),
-                  builder: (context, value, child) {
-                    final delay = index * 0.3;
-                    final animationValue = (value - delay).clamp(0.0, 1.0);
-                    final opacity = 0.2 +
-                        (0.8 *
-                            (0.5 +
-                                0.5 * math.sin(animationValue * 2 * math.pi)));
+    return const VideoPlayerVlcPlaceholder();
+  }
 
-                    return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.orange.withValues(alpha: opacity),
-                      ),
-                    );
-                  },
-                  onEnd: () {
-                    if (mounted) {
-                      setState(() {});
-                    }
-                  },
-                );
-              }),
-            ),
-          ],
-        ),
-      ),
+  Widget _buildFastSeekGestureOverlay() {
+    return FastSeekGestureOverlay(
+      onRewindStart: () => _startFastSeeking(forward: false),
+      onRewindEnd: _stopFastSeeking,
+      onForwardStart: () => _startFastSeeking(forward: true),
+      onForwardEnd: _stopFastSeeking,
+    );
+  }
+
+  Widget _buildFastSeekIndicator() {
+    return FastSeekIndicator(
+      isFastSeeking: _isFastSeeking,
+      fastSeekSeconds: _fastSeekSeconds,
+      fastSeekingForward: _fastSeekingForward,
     );
   }
 
@@ -2149,18 +1871,31 @@ class _VideoPlayerState extends State<VideoPlayer> {
 
   // Event Handlers
   KeyEventResult _handleKeyEvent(KeyEvent event) {
+    final isCtrlPressed = HardwareKeyboard.instance.isControlPressed;
+
     if (event is KeyDownEvent) {
+      // Ctrl+Left/Right for 1 minute seek (desktop)
+      // Ctrl+Arrow for fast seeking with higher initial speed (starts at 60s)
+      if (isCtrlPressed &&
+          event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+        _startFastSeeking(forward: false, withCtrl: true);
+        return KeyEventResult.handled;
+      } else if (isCtrlPressed &&
+          event.logicalKey == LogicalKeyboardKey.arrowRight) {
+        _startFastSeeking(forward: true, withCtrl: true);
+        return KeyEventResult.handled;
+      }
       // Spacebar for pause/play
-      if (event.logicalKey == LogicalKeyboardKey.space) {
+      else if (event.logicalKey == LogicalKeyboardKey.space) {
         _togglePlayPause();
         return KeyEventResult.handled;
       }
-      // Arrow keys for seeking
+      // Arrow keys for seeking (hold for continuous seek)
       else if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-        _seekBackward();
+        _startFastSeeking(forward: false, withCtrl: false);
         return KeyEventResult.handled;
       } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
-        _seekForward();
+        _startFastSeeking(forward: true, withCtrl: false);
         return KeyEventResult.handled;
       }
       // Arrow up/down for volume
@@ -2187,6 +1922,14 @@ class _VideoPlayerState extends State<VideoPlayer> {
           _toggleFullScreen();
           return KeyEventResult.handled;
         }
+      }
+    } else if (event is KeyUpEvent) {
+      // Stop fast seeking when arrow key is released
+      if ((event.logicalKey == LogicalKeyboardKey.arrowLeft ||
+              event.logicalKey == LogicalKeyboardKey.arrowRight) &&
+          _isFastSeeking) {
+        _stopFastSeeking();
+        return KeyEventResult.handled;
       }
     }
     return KeyEventResult.ignored;
@@ -2348,6 +2091,101 @@ class _VideoPlayerState extends State<VideoPlayer> {
     }
   }
 
+  // Fast seeking methods (hold arrow on desktop, long press on mobile)
+  // Speed increases the longer you hold
+  // Normal: 5s -> 10s -> 15s -> 30s -> 60s -> 2m -> 5m
+  // With Ctrl: starts at 60s -> 2m -> 5m -> 10m
+  void _startFastSeeking({required bool forward, bool withCtrl = false}) {
+    if (_isFastSeeking) return;
+
+    _fastSeekTicks = 0;
+    // Ctrl starts at 60s, normal starts at 5s
+    _fastSeekSeconds = withCtrl ? 60 : 5;
+
+    setState(() {
+      _isFastSeeking = true;
+      _fastSeekingForward = forward;
+    });
+
+    // Perform initial seek
+    if (forward) {
+      _seekForward(_fastSeekSeconds);
+    } else {
+      _seekBackward(_fastSeekSeconds);
+    }
+
+    // Continue seeking every 200ms while held, speed increases over time
+    _fastSeekTimer = Timer.periodic(const Duration(milliseconds: 200), (_) {
+      if (!mounted || !_isFastSeeking) {
+        _fastSeekTimer?.cancel();
+        return;
+      }
+
+      _fastSeekTicks++;
+
+      if (withCtrl) {
+        // Ctrl+Arrow: faster progression
+        // 0-10 ticks (0-2s): 60s, 11-20 ticks (2-4s): 2m
+        // 21-30 ticks (4-6s): 5m, 31+ ticks (6s+): 10m
+        if (_fastSeekTicks > 30) {
+          _fastSeekSeconds = 600; // 10 minutes
+        } else if (_fastSeekTicks > 20) {
+          _fastSeekSeconds = 300; // 5 minutes
+        } else if (_fastSeekTicks > 10) {
+          _fastSeekSeconds = 120; // 2 minutes
+        } else {
+          _fastSeekSeconds = 60; // 1 minute
+        }
+      } else {
+        // Normal arrow: gradual progression
+        // 0-5 ticks (0-1s): 5s, 6-15 ticks (1-3s): 10s, 16-25 ticks (3-5s): 15s
+        // 26-35 ticks (5-7s): 30s, 36-50 ticks (7-10s): 60s
+        // 51-70 ticks (10-14s): 2m, 71+ ticks (14s+): 5m
+        if (_fastSeekTicks > 70) {
+          _fastSeekSeconds = 300; // 5 minutes
+        } else if (_fastSeekTicks > 50) {
+          _fastSeekSeconds = 120; // 2 minutes
+        } else if (_fastSeekTicks > 35) {
+          _fastSeekSeconds = 60;
+        } else if (_fastSeekTicks > 25) {
+          _fastSeekSeconds = 30;
+        } else if (_fastSeekTicks > 15) {
+          _fastSeekSeconds = 15;
+        } else if (_fastSeekTicks > 5) {
+          _fastSeekSeconds = 10;
+        } else {
+          _fastSeekSeconds = 5;
+        }
+      }
+
+      if (_fastSeekingForward) {
+        _seekForward(_fastSeekSeconds);
+      } else {
+        _seekBackward(_fastSeekSeconds);
+      }
+
+      // Update UI to show current speed
+      if (mounted) setState(() {});
+    });
+
+    if (_isFullScreen) {
+      _showControlsWithTimer();
+    }
+  }
+
+  void _stopFastSeeking() {
+    _fastSeekTimer?.cancel();
+    _fastSeekTimer = null;
+
+    if (_isFastSeeking) {
+      setState(() {
+        _isFastSeeking = false;
+        _fastSeekSeconds = 5;
+        _fastSeekTicks = 0;
+      });
+    }
+  }
+
   void _increaseVolume() async {
     if (_player != null) {
       final currentVolume = _player!.state.volume;
@@ -2479,7 +2317,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
                             builder: (context, snap) {
                               final pos = snap.data ?? Duration.zero;
                               return Text(
-                                _formatDuration(pos),
+                                VideoPlayerUtils.formatDuration(pos),
                                 style: const TextStyle(
                                     color: Colors.white70, fontSize: 12),
                               );
@@ -2490,7 +2328,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
                                 valueListenable: _exoController!,
                                 builder: (context, v, _) {
                                   return Text(
-                                    _formatDuration(v.position),
+                                    VideoPlayerUtils.formatDuration(v.position),
                                     style: const TextStyle(
                                         color: Colors.white70, fontSize: 12),
                                   );
@@ -2500,7 +2338,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
                                 valueListenable: _vlcController!,
                                 builder: (context, v, _) {
                                   return Text(
-                                    _formatDuration(v.position),
+                                    VideoPlayerUtils.formatDuration(v.position),
                                     style: const TextStyle(
                                         color: Colors.white70, fontSize: 12),
                                   );
@@ -2517,7 +2355,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
                     // Duration
                     _player != null
                         ? Text(
-                            _formatDuration(_player!.state.duration),
+                            VideoPlayerUtils.formatDuration(_player!.state.duration),
                             style: const TextStyle(
                                 color: Colors.white70, fontSize: 12),
                           )
@@ -2526,7 +2364,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
                                 valueListenable: _exoController!,
                                 builder: (context, v, _) {
                                   return Text(
-                                    _formatDuration(v.duration),
+                                    VideoPlayerUtils.formatDuration(v.duration),
                                     style: const TextStyle(
                                         color: Colors.white70, fontSize: 12),
                                   );
@@ -2536,7 +2374,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
                                 valueListenable: _vlcController!,
                                 builder: (context, v, _) {
                                   return Text(
-                                    _formatDuration(v.duration),
+                                    VideoPlayerUtils.formatDuration(v.duration),
                                     style: const TextStyle(
                                         color: Colors.white70, fontSize: 12),
                                   );
@@ -2547,7 +2385,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    _buildControlButton(
+                    VideoPlayerControlButton(
                       icon: Icons.replay_10,
                       onPressed: () => _seekBackward(10),
                       tooltip: 'Rewind 10s',
@@ -2555,7 +2393,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
                     const SizedBox(width: 4),
                     _buildPlayPauseButton(),
                     const SizedBox(width: 4),
-                    _buildControlButton(
+                    VideoPlayerControlButton(
                       icon: Icons.forward_10,
                       onPressed: () => _seekForward(10),
                       tooltip: 'Forward 10s',
@@ -2566,7 +2404,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
                     _buildAdvancedControlsMenu(),
                     if (widget.allowFullScreen) ...[
                       const SizedBox(width: 6),
-                      _buildControlButton(
+                      VideoPlayerControlButton(
                         icon: _isFullScreen
                             ? Icons.fullscreen_exit
                             : Icons.fullscreen,
@@ -2589,6 +2427,13 @@ class _VideoPlayerState extends State<VideoPlayer> {
 
   // Slider used by mobile controls with support for VLC/Exo/MediaKit
   Widget _buildMobileSeekSlider() {
+    void onSeekEnd() {
+      _seekingTimer?.cancel();
+      _seekingTimer = Timer(const Duration(milliseconds: 200), () {
+        if (mounted) setState(() => _isSeeking = false);
+      });
+    }
+
     if (_player != null) {
       return StreamBuilder<Duration>(
         stream: _player!.stream.position,
@@ -2598,29 +2443,13 @@ class _VideoPlayerState extends State<VideoPlayer> {
           final maxMs =
               duration.inMilliseconds <= 0 ? 1 : duration.inMilliseconds;
           final value = position.inMilliseconds.clamp(0, maxMs).toDouble();
-          return SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              trackHeight: 3,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-            ),
-            child: Slider(
-              value: value,
-              min: 0,
-              max: maxMs.toDouble(),
-              activeColor: Colors.white,
-              inactiveColor: Colors.white24,
-              onChangeStart: (_) => _isSeeking = true,
-              onChanged: (v) async {
-                final target = Duration(milliseconds: v.toInt());
-                await _player!.seek(target);
-              },
-              onChangeEnd: (_) {
-                _seekingTimer?.cancel();
-                _seekingTimer = Timer(const Duration(milliseconds: 200), () {
-                  if (mounted) _isSeeking = false;
-                });
-              },
-            ),
+          return VideoPlayerSeekSlider(
+            value: value,
+            min: 0,
+            max: maxMs.toDouble(),
+            onChangeStart: () => setState(() => _isSeeking = true),
+            onChanged: (v) => _player!.seek(Duration(milliseconds: v.toInt())),
+            onChangeEnd: onSeekEnd,
           );
         },
       );
@@ -2631,22 +2460,14 @@ class _VideoPlayerState extends State<VideoPlayer> {
           final maxMs =
               v.duration.inMilliseconds <= 0 ? 1 : v.duration.inMilliseconds;
           final value = v.position.inMilliseconds.clamp(0, maxMs).toDouble();
-          return Slider(
+          return VideoPlayerSeekSlider(
             value: value,
             min: 0,
             max: maxMs.toDouble(),
-            activeColor: Colors.white,
-            inactiveColor: Colors.white24,
-            onChangeStart: (_) => _isSeeking = true,
-            onChanged: (vv) async {
-              await _exoController!.seekTo(Duration(milliseconds: vv.toInt()));
-            },
-            onChangeEnd: (_) {
-              _seekingTimer?.cancel();
-              _seekingTimer = Timer(const Duration(milliseconds: 200), () {
-                if (mounted) _isSeeking = false;
-              });
-            },
+            onChangeStart: () => setState(() => _isSeeking = true),
+            onChanged: (vv) =>
+                _exoController!.seekTo(Duration(milliseconds: vv.toInt())),
+            onChangeEnd: onSeekEnd,
           );
         },
       );
@@ -2657,22 +2478,14 @@ class _VideoPlayerState extends State<VideoPlayer> {
           final maxMs =
               v.duration.inMilliseconds == 0 ? 1 : v.duration.inMilliseconds;
           final value = v.position.inMilliseconds.clamp(0, maxMs).toDouble();
-          return Slider(
+          return VideoPlayerSeekSlider(
             value: value,
             min: 0,
             max: maxMs.toDouble(),
-            activeColor: Colors.white,
-            inactiveColor: Colors.white24,
-            onChangeStart: (_) => _isSeeking = true,
-            onChanged: (vv) async {
-              await _vlcController?.seekTo(Duration(milliseconds: vv.toInt()));
-            },
-            onChangeEnd: (_) {
-              _seekingTimer?.cancel();
-              _seekingTimer = Timer(const Duration(milliseconds: 200), () {
-                if (mounted) _isSeeking = false;
-              });
-            },
+            onChangeStart: () => setState(() => _isSeeking = true),
+            onChanged: (vv) =>
+                _vlcController?.seekTo(Duration(milliseconds: vv.toInt())),
+            onChangeEnd: onSeekEnd,
           );
         },
       );
@@ -2688,7 +2501,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
         builder: (context, snapshot) {
           final volume = snapshot.data ?? _savedVolume;
           final isMuted = volume <= 0.1;
-          return _buildControlButton(
+          return VideoPlayerControlButton(
             icon: isMuted
                 ? Icons.volume_off
                 : volume < 50
@@ -2706,7 +2519,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
         builder: (context, v, _) {
           final vol = v.volume; // 0..1
           final isMuted = vol <= 0.001;
-          return _buildControlButton(
+          return VideoPlayerControlButton(
             icon: isMuted
                 ? Icons.volume_off
                 : (vol < 0.5 ? Icons.volume_down : Icons.volume_up),
@@ -2722,7 +2535,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
         builder: (context, v, _) {
           final vol = v.volume; // 0..100
           final isMuted = vol <= 0;
-          return _buildControlButton(
+          return VideoPlayerControlButton(
             icon: isMuted
                 ? Icons.volume_off
                 : (vol < 50 ? Icons.volume_down : Icons.volume_up),
@@ -2765,7 +2578,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
                     builder: (context, snapshot) {
                       final p = snapshot.data ?? Duration.zero;
                       return Text(
-                        _formatDuration(p),
+                        VideoPlayerUtils.formatDuration(p),
                         style: const TextStyle(
                             color: Colors.white70, fontSize: 12),
                       );
@@ -2776,7 +2589,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
                     valueListenable: _vlcController!,
                     builder: (context, v, _) {
                       return Text(
-                        _formatDuration(v.position),
+                        VideoPlayerUtils.formatDuration(v.position),
                         style: const TextStyle(
                             color: Colors.white70, fontSize: 12),
                       );
@@ -2865,7 +2678,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
                 // Duration
                 _player != null
                     ? Text(
-                        _formatDuration(_player!.state.duration),
+                        VideoPlayerUtils.formatDuration(_player!.state.duration),
                         style: const TextStyle(
                             color: Colors.white70, fontSize: 12),
                       )
@@ -2873,7 +2686,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
                         valueListenable: _vlcController!,
                         builder: (context, v, _) {
                           return Text(
-                            _formatDuration(v.duration),
+                            VideoPlayerUtils.formatDuration(v.duration),
                             style: const TextStyle(
                                 color: Colors.white70, fontSize: 12),
                           );
@@ -2885,7 +2698,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
                 const SizedBox(width: 4),
                 _buildAdvancedControlsMenu(),
                 if (widget.allowFullScreen)
-                  _buildControlButton(
+                  VideoPlayerControlButton(
                     icon: _isFullScreen
                         ? Icons.fullscreen_exit
                         : Icons.fullscreen,
@@ -2909,7 +2722,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
         initialData: _isPlaying,
         builder: (context, snapshot) {
           final isPlaying = snapshot.data ?? _player!.state.playing;
-          return _buildControlButton(
+          return VideoPlayerControlButton(
             icon: isPlaying ? Icons.pause : Icons.play_arrow,
             onPressed: _togglePlayPause,
             size: 40,
@@ -2922,7 +2735,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
       return ValueListenableBuilder<exo.VideoPlayerValue>(
         valueListenable: _exoController!,
         builder: (context, v, _) {
-          return _buildControlButton(
+          return VideoPlayerControlButton(
             icon: v.isPlaying ? Icons.pause : Icons.play_arrow,
             onPressed: _togglePlayPause,
             size: 40,
@@ -2935,7 +2748,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
       return ValueListenableBuilder<VlcPlayerValue>(
         valueListenable: _vlcController!,
         builder: (context, v, _) {
-          return _buildControlButton(
+          return VideoPlayerControlButton(
             icon: v.isPlaying ? Icons.pause : Icons.play_arrow,
             onPressed: _togglePlayPause,
             size: 40,
@@ -2946,7 +2759,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
       );
     } else {
       // Fallback: No player initialized yet, show loading state
-      return _buildControlButton(
+      return const VideoPlayerControlButton(
         icon: Icons.play_arrow,
         onPressed: null, // Disabled
         size: 40,
@@ -2954,34 +2767,6 @@ class _VideoPlayerState extends State<VideoPlayer> {
         enabled: false,
       );
     }
-  }
-
-  Widget _buildControlButton({
-    required IconData icon,
-    required VoidCallback? onPressed,
-    bool enabled = true,
-    double size = 24,
-    double padding = 8,
-    String? tooltip,
-  }) {
-    final button = IconButton(
-      icon: Icon(
-        icon,
-        size: size,
-        color: enabled ? Colors.white : Colors.grey,
-      ),
-      onPressed: enabled ? onPressed : null,
-      padding: EdgeInsets.all(padding),
-      constraints: const BoxConstraints(),
-      splashRadius: size + 4,
-    );
-
-    return tooltip != null
-        ? Tooltip(
-            message: tooltip,
-            child: button,
-          )
-        : button;
   }
 
   Widget _buildVolumeControl() {
@@ -2995,7 +2780,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
             builder: (context, snapshot) {
               final volume = snapshot.data ?? _savedVolume;
               final isMuted = volume <= 0.1;
-              return _buildControlButton(
+              return VideoPlayerControlButton(
                 icon: isMuted
                     ? Icons.volume_off
                     : volume < 50
@@ -3013,7 +2798,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
             builder: (context, v, _) {
               final vol = v.volume; // 0..1
               final isMuted = vol <= 0.001;
-              return _buildControlButton(
+              return VideoPlayerControlButton(
                 icon: isMuted
                     ? Icons.volume_off
                     : (vol < 0.5 ? Icons.volume_down : Icons.volume_up),
@@ -3029,7 +2814,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
             builder: (context, v, _) {
               final vol = v.volume; // 0..100
               final isMuted = vol <= 0;
-              return _buildControlButton(
+              return VideoPlayerControlButton(
                 icon: isMuted
                     ? Icons.volume_off
                     : (vol < 50 ? Icons.volume_down : Icons.volume_up),
@@ -3049,24 +2834,9 @@ class _VideoPlayerState extends State<VideoPlayer> {
                     initialData: _savedVolume,
                     builder: (context, snapshot) {
                       final volume = snapshot.data ?? _savedVolume;
-                      return SliderTheme(
-                        data: SliderTheme.of(context).copyWith(
-                          trackHeight: 2,
-                          thumbShape: const RoundSliderThumbShape(
-                              enabledThumbRadius: 4),
-                          overlayShape:
-                              const RoundSliderOverlayShape(overlayRadius: 8),
-                        ),
-                        child: Slider(
-                          value: volume.clamp(0.0, 100.0),
-                          min: 0.0,
-                          max: 100.0,
-                          onChanged: (value) {
-                            _player!.setVolume(value);
-                          },
-                          activeColor: Colors.white,
-                          inactiveColor: Colors.white.withValues(alpha: 0.3),
-                        ),
+                      return VideoPlayerVolumeSlider(
+                        value: volume,
+                        onChanged: (v) => _player!.setVolume(v),
                       );
                     },
                   )
@@ -3074,30 +2844,20 @@ class _VideoPlayerState extends State<VideoPlayer> {
                     ? ValueListenableBuilder<exo.VideoPlayerValue>(
                         valueListenable: _exoController!,
                         builder: (context, v, _) {
-                          return Slider(
-                            value: (v.volume * 100).clamp(0.0, 100.0),
-                            min: 0.0,
-                            max: 100.0,
-                            onChanged: (value) {
-                              _exoController!.setVolume((value / 100.0));
-                            },
-                            activeColor: Colors.white,
-                            inactiveColor: Colors.white.withValues(alpha: 0.3),
+                          return VideoPlayerVolumeSlider(
+                            value: v.volume * 100,
+                            onChanged: (val) =>
+                                _exoController!.setVolume(val / 100.0),
                           );
                         },
                       )
                     : ValueListenableBuilder<VlcPlayerValue>(
                         valueListenable: _vlcController!,
                         builder: (context, v, _) {
-                          return Slider(
-                            value: (v.volume.toDouble()).clamp(0.0, 100.0),
-                            min: 0.0,
-                            max: 100.0,
-                            onChanged: (value) {
-                              _vlcController!.setVolume(value.toInt());
-                            },
-                            activeColor: Colors.white,
-                            inactiveColor: Colors.white.withValues(alpha: 0.3),
+                          return VideoPlayerVolumeSlider(
+                            value: v.volume.toDouble(),
+                            onChanged: (val) =>
+                                _vlcController!.setVolume(val.toInt()),
                           );
                         },
                       ),
@@ -3793,202 +3553,33 @@ class _VideoPlayerState extends State<VideoPlayer> {
     }
   }
 
-  String _formatDuration(Duration duration) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes.remainder(60);
-    final seconds = duration.inSeconds.remainder(60);
-
-    if (hours > 0) {
-      return '$hours:${twoDigits(minutes)}:${twoDigits(seconds)}';
-    } else {
-      return '${twoDigits(minutes)}:${twoDigits(seconds)}';
-    }
-  }
-
   /// Advanced controls menu với popup menu để giảm số nút trên thanh điều khiển
   Widget _buildAdvancedControlsMenu() {
-    return PopupMenuButton<String>(
-      icon: const Icon(
-        Icons.more_vert,
-        color: Colors.white,
-        size: 24,
-      ),
-      color: Colors.black.withValues(alpha: 0.9),
-      tooltip: 'Advanced Controls',
-      onSelected: (String value) {
-        switch (value) {
-          case 'screenshot':
-            _takeScreenshot();
-            break;
-          case 'audio_tracks':
-            if (Platform.isWindows) _showAudioTrackDialog();
-            break;
-          case 'subtitles':
-            _showSubtitleDialog();
-            break;
-          case 'speed':
-            _showPlaybackSpeedDialog();
-            break;
-          case 'pip':
-            _togglePictureInPicture();
-            break;
-          case 'filters':
-            _showVideoFiltersDialog();
-            break;
-          case 'sleep_timer':
-            _showSleepTimerDialog();
-            break;
-          case 'settings':
-            _showSettingsDialog();
-            break;
-        }
-      },
-      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-        PopupMenuItem<String>(
-          value: 'screenshot',
-          child: ListTile(
-            leading:
-                const Icon(Icons.photo_camera, color: Colors.white, size: 20),
-            title: Text(
-              AppLocalizations.of(context)!.takeScreenshot,
-              style: const TextStyle(color: Colors.white),
-            ),
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-        if (Platform.isWindows)
-          const PopupMenuItem<String>(
-            value: 'audio_tracks',
-            child: ListTile(
-              leading: Icon(Icons.audiotrack, color: Colors.white, size: 20),
-              title:
-                  Text('Audio Tracks', style: TextStyle(color: Colors.white)),
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-            ),
-          ),
-        PopupMenuItem<String>(
-          value: 'subtitles',
-          enabled: _subtitleTracks.isNotEmpty,
-          child: ListTile(
-            leading: Icon(Icons.subtitles,
-                color: _subtitleTracks.isNotEmpty ? Colors.white : Colors.grey,
-                size: 20),
-            title: Text('Subtitles',
-                style: TextStyle(
-                    color: _subtitleTracks.isNotEmpty
-                        ? Colors.white
-                        : Colors.grey)),
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-        PopupMenuItem<String>(
-          value: 'speed',
-          child: ListTile(
-            leading: const Icon(Icons.speed, color: Colors.white, size: 20),
-            title: Text('Playback Speed (${_playbackSpeed}x)',
-                style: const TextStyle(color: Colors.white)),
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-        PopupMenuItem<String>(
-          value: 'pip',
-          child: ListTile(
-            leading: Icon(
-                _isPictureInPicture
-                    ? Icons.picture_in_picture_alt
-                    : Icons.picture_in_picture,
-                color: Colors.white,
-                size: 20),
-            title: Text(_isPictureInPicture ? 'Exit PiP' : 'Picture in Picture',
-                style: const TextStyle(color: Colors.white)),
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'filters',
-          child: ListTile(
-            leading: Icon(Icons.tune, color: Colors.white, size: 20),
-            title: Text('Video Filters', style: TextStyle(color: Colors.white)),
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-        PopupMenuItem<String>(
-          value: 'sleep_timer',
-          child: ListTile(
-            leading: Icon(Icons.bedtime,
-                color: _sleepDuration != null ? Colors.orange : Colors.white,
-                size: 20),
-            title: Text(
-                _sleepDuration != null ? 'Sleep Timer (Active)' : 'Sleep Timer',
-                style: TextStyle(
-                    color:
-                        _sleepDuration != null ? Colors.orange : Colors.white)),
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-        const PopupMenuDivider(),
-        const PopupMenuItem<String>(
-          value: 'settings',
-          child: ListTile(
-            leading: Icon(Icons.settings, color: Colors.white, size: 20),
-            title:
-                Text('Video Settings', style: TextStyle(color: Colors.white)),
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-      ],
+    return VideoPlayerAdvancedMenu(
+      onScreenshot: _takeScreenshot,
+      onAudioTracks: _showAudioTrackDialog,
+      onSubtitles: _showSubtitleDialog,
+      onSpeed: _showPlaybackSpeedDialog,
+      onPip: _togglePictureInPicture,
+      onFilters: _showVideoFiltersDialog,
+      onSleepTimer: _showSleepTimerDialog,
+      onSettings: _showSettingsDialog,
+      hasSubtitles: _subtitleTracks.isNotEmpty,
+      playbackSpeed: _playbackSpeed,
+      isPictureInPicture: _isPictureInPicture,
+      sleepDuration: _sleepDuration,
     );
   }
 
-  // Dialog methods
   void _showSubtitleDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Subtitles'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: const Text('Off'),
-              leading: Radio<int?>(
-                value: null,
-                groupValue: _selectedSubtitleTrack,
-                onChanged: (int? value) {
-                  setState(() {
-                    _selectedSubtitleTrack = value;
-                  });
-                  RouteUtils.safePopDialog(context);
-                },
-              ),
-            ),
-            ..._subtitleTracks.asMap().entries.map((entry) {
-              final index = entry.key;
-              final track = entry.value;
-              return ListTile(
-                title: Text(track.language),
-                leading: Radio<int?>(
-                  value: index,
-                  groupValue: _selectedSubtitleTrack,
-                  onChanged: (int? value) {
-                    setState(() {
-                      _selectedSubtitleTrack = value;
-                    });
-                    RouteUtils.safePopDialog(context);
-                  },
-                ),
-              );
-            }).toList(),
-          ],
+        content: SubtitleDialogContent(
+          tracks: _subtitleTracks,
+          selected: _selectedSubtitleTrack,
+          onSelect: (v) => setState(() => _selectedSubtitleTrack = v),
         ),
         actions: [
           TextButton(
@@ -4001,31 +3592,16 @@ class _VideoPlayerState extends State<VideoPlayer> {
   }
 
   void _showPlaybackSpeedDialog() {
-    final speeds = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Playback Speed'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: speeds.map((speed) {
-            return ListTile(
-              title: Text('${speed}x'),
-              leading: Radio<double>(
-                value: speed,
-                groupValue: _playbackSpeed,
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _playbackSpeed = value;
-                    });
-                    _setPlaybackSpeed(value);
-                    RouteUtils.safePopDialog(context);
-                  }
-                },
-              ),
-            );
-          }).toList(),
+        content: PlaybackSpeedDialogContent(
+          current: _playbackSpeed,
+          onSelect: (v) {
+            setState(() => _playbackSpeed = v);
+            _setPlaybackSpeed(v);
+          },
         ),
         actions: [
           TextButton(
@@ -4043,55 +3619,22 @@ class _VideoPlayerState extends State<VideoPlayer> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: const Text('Video Filters'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Brightness: ${(_brightness * 100).round()}%'),
-              Slider(
-                value: _brightness,
-                min: 0.0,
-                max: 2.0,
-                divisions: 20,
-                onChanged: (value) {
-                  setDialogState(() {
-                    _brightness = value;
-                  });
-                  setState(() {
-                    _brightness = value;
-                  });
-                },
-              ),
-              Text('Contrast: ${(_contrast * 100).round()}%'),
-              Slider(
-                value: _contrast,
-                min: 0.0,
-                max: 2.0,
-                divisions: 20,
-                onChanged: (value) {
-                  setDialogState(() {
-                    _contrast = value;
-                  });
-                  setState(() {
-                    _contrast = value;
-                  });
-                },
-              ),
-              Text('Saturation: ${(_saturation * 100).round()}%'),
-              Slider(
-                value: _saturation,
-                min: 0.0,
-                max: 2.0,
-                divisions: 20,
-                onChanged: (value) {
-                  setDialogState(() {
-                    _saturation = value;
-                  });
-                  setState(() {
-                    _saturation = value;
-                  });
-                },
-              ),
-            ],
+          content: VideoFiltersDialogContent(
+            brightness: _brightness,
+            contrast: _contrast,
+            saturation: _saturation,
+            onBrightnessChanged: (v) {
+              setState(() => _brightness = v);
+              setDialogState(() {});
+            },
+            onContrastChanged: (v) {
+              setState(() => _contrast = v);
+              setDialogState(() {});
+            },
+            onSaturationChanged: (v) {
+              setState(() => _saturation = v);
+              setDialogState(() {});
+            },
           ),
           actions: [
             TextButton(
@@ -4101,11 +3644,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
                   _contrast = 1.0;
                   _saturation = 1.0;
                 });
-                setDialogState(() {
-                  _brightness = 1.0;
-                  _contrast = 1.0;
-                  _saturation = 1.0;
-                });
+                setDialogState(() {});
               },
               child: const Text('Reset'),
             ),
@@ -4120,55 +3659,19 @@ class _VideoPlayerState extends State<VideoPlayer> {
   }
 
   void _showSleepTimerDialog() {
-    final durations = [
-      const Duration(minutes: 15),
-      const Duration(minutes: 30),
-      const Duration(hours: 1),
-      const Duration(hours: 2),
-    ];
-
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Sleep Timer'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: const Text('Off'),
-              leading: Radio<Duration?>(
-                value: null,
-                groupValue: _sleepDuration,
-                onChanged: (value) {
-                  _cancelSleepTimer();
-                  RouteUtils.safePopDialog(context);
-                },
-              ),
-            ),
-            ...durations.map((duration) {
-              String label;
-              if (duration.inHours > 0) {
-                label =
-                    '${duration.inHours} hour${duration.inHours > 1 ? 's' : ''}';
-              } else {
-                label = '${duration.inMinutes} minutes';
-              }
-
-              return ListTile(
-                title: Text(label),
-                leading: Radio<Duration?>(
-                  value: duration,
-                  groupValue: _sleepDuration,
-                  onChanged: (value) {
-                    if (value != null) {
-                      _setSleepTimer(value);
-                      RouteUtils.safePopDialog(context);
-                    }
-                  },
-                ),
-              );
-            }).toList(),
-          ],
+        content: SleepTimerDialogContent(
+          selected: _sleepDuration,
+          onSelect: (v) {
+            if (v == null) {
+              _cancelSleepTimer();
+            } else {
+              _setSleepTimer(v);
+            }
+          },
         ),
         actions: [
           TextButton(
@@ -4354,14 +3857,12 @@ class _VideoPlayerState extends State<VideoPlayer> {
                 const SizedBox(height: 16),
 
                 // Buffer Size
-                Text('Buffer Size: ${_bufferSize}MB',
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                Slider(
+                VideoPlayerLabeledSlider(
+                  label: 'Buffer Size: ${_bufferSize}MB',
                   value: _bufferSize.toDouble(),
                   min: 1,
                   max: 100,
                   divisions: 99,
-                  label: '${_bufferSize}MB',
                   onChanged: (value) {
                     setDialogState(() {
                       _bufferSize = value.round();
@@ -4374,14 +3875,12 @@ class _VideoPlayerState extends State<VideoPlayer> {
                 ),
 
                 // Network Timeout
-                Text('Network Timeout: ${_networkTimeout}s',
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                Slider(
+                VideoPlayerLabeledSlider(
+                  label: 'Network Timeout: ${_networkTimeout}s',
                   value: _networkTimeout.toDouble(),
                   min: 5,
                   max: 120,
                   divisions: 23,
-                  label: '${_networkTimeout}s',
                   onChanged: (value) {
                     setDialogState(() {
                       _networkTimeout = value.round();
@@ -5138,277 +4637,5 @@ class _VideoPlayerState extends State<VideoPlayer> {
         }
       } catch (_) {}
     }
-  }
-}
-
-// A component that displays video information
-class VideoInfoDialog extends StatelessWidget {
-  final File file;
-  final Map<String, dynamic>? videoMetadata;
-
-  const VideoInfoDialog({
-    Key? key,
-    required this.file,
-    this.videoMetadata,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Video Information'),
-      content: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _infoRow('File Name', file.path.split('/').last),
-            const Divider(),
-            _infoRow('Path', file.path),
-            const Divider(),
-            _infoRow('Type', file.path.split('.').last.toUpperCase()),
-            if (videoMetadata != null) ...[
-              const Divider(),
-              _infoRow('Duration', 'Unknown'),
-              const Divider(),
-              _infoRow('Resolution', 'Unknown'),
-            ],
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => RouteUtils.safePopDialog(context),
-          child: const Text('Close'),
-        ),
-      ],
-    );
-  }
-
-  Widget _infoRow(String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '$title: ',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontSize: 14),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Widget để hiển thị ảnh từ streaming URL hoặc file stream
-class StreamingImageViewer extends StatefulWidget {
-  final String? streamingUrl;
-  final Stream<List<int>>? fileStream;
-  final String fileName;
-  final VoidCallback? onClose;
-
-  const StreamingImageViewer({
-    Key? key,
-    this.streamingUrl,
-    this.fileStream,
-    required this.fileName,
-    this.onClose,
-  })  : assert(
-          streamingUrl != null || fileStream != null,
-          'Either streamingUrl or fileStream must be provided',
-        ),
-        super(key: key);
-
-  /// Constructor for streaming URL
-  const StreamingImageViewer.fromUrl({
-    Key? key,
-    required String streamingUrl,
-    required String fileName,
-    VoidCallback? onClose,
-  }) : this(
-          key: key,
-          streamingUrl: streamingUrl,
-          fileName: fileName,
-          onClose: onClose,
-        );
-
-  /// Constructor for file stream
-  const StreamingImageViewer.fromStream({
-    Key? key,
-    required Stream<List<int>> fileStream,
-    required String fileName,
-    VoidCallback? onClose,
-  }) : this(
-          key: key,
-          fileStream: fileStream,
-          fileName: fileName,
-          onClose: onClose,
-        );
-
-  @override
-  State<StreamingImageViewer> createState() => _StreamingImageViewerState();
-}
-
-class _StreamingImageViewerState extends State<StreamingImageViewer> {
-  bool _isLoading = true;
-  String? _errorMessage;
-  Uint8List? _imageData;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadImage();
-  }
-
-  Future<void> _loadImage() async {
-    try {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
-
-      if (widget.streamingUrl != null) {
-        await _loadFromUrl();
-      } else if (widget.fileStream != null) {
-        await _loadFromStream();
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = 'Error loading image: $e';
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _loadFromUrl() async {
-    // Implementation for loading from URL would go here
-    // For now, just show an error
-    setState(() {
-      _errorMessage = 'URL loading not implemented yet';
-      _isLoading = false;
-    });
-  }
-
-  Future<void> _loadFromStream() async {
-    final chunks = <int>[];
-    await for (final chunk in widget.fileStream!) {
-      chunks.addAll(chunk);
-    }
-
-    if (mounted) {
-      setState(() {
-        _imageData = Uint8List.fromList(chunks);
-        _isLoading = false;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black.withValues(alpha: 0.7),
-        title: Text(
-          widget.fileName,
-          style: const TextStyle(color: Colors.white),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.close),
-            onPressed:
-                widget.onClose ?? () => RouteUtils.safePopDialog(context),
-          ),
-        ],
-      ),
-      body: _buildBody(),
-    );
-  }
-
-  Widget _buildBody() {
-    if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: Colors.white),
-      );
-    }
-
-    if (_errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.red, size: 64),
-            const SizedBox(height: 16),
-            Text(
-              'Error loading image',
-              style: Theme.of(context)
-                  .textTheme
-                  .headlineSmall
-                  ?.copyWith(color: Colors.white),
-            ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: Colors.white70),
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _loadImage,
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_imageData != null) {
-      return Center(
-        child: InteractiveViewer(
-          child: Image.memory(
-            _imageData!,
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.high,
-            errorBuilder: (context, error, stackTrace) {
-              return const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.broken_image, color: Colors.red, size: 64),
-                    SizedBox(height: 16),
-                    Text(
-                      'Failed to display image',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      );
-    }
-
-    return const Center(
-      child: Text(
-        'No image data available',
-        style: TextStyle(color: Colors.white),
-      ),
-    );
   }
 }

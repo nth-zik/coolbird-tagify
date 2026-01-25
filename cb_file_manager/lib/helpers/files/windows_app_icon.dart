@@ -85,4 +85,47 @@ class WindowsAppIcon {
 
     return extractIconFromFile(appPath);
   }
+
+  /// Get all apps that can handle a file extension (from Windows registry
+  /// OpenWithList and App Paths). Returns list of maps: [{'path': '...', 'name': '...'}]
+  static Future<List<Map<String, String>>> getAppsForExtension(
+      String extension) async {
+    if (!Platform.isWindows) return [];
+
+    try {
+      final List<dynamic>? result =
+          await _channel.invokeMethod<List<dynamic>>('getAppsForExtension', {
+        'extension': extension,
+      });
+      if (result == null) return [];
+      final List<Map<String, String>> apps = [];
+      for (final e in result) {
+        if (e is Map) {
+          final path = e['path'] as String?;
+          final name = e['name'] as String?;
+          if (path != null && path.isNotEmpty) {
+            apps.add({'path': path, 'name': name ?? path});
+          }
+        }
+      }
+      return apps;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Register this app as the default for video files on Windows.
+  /// [exePath] should be Platform.resolvedExecutable.
+  static Future<bool> setSelfAsDefaultForVideo(String exePath) async {
+    if (!Platform.isWindows) return false;
+    try {
+      final result = await _channel.invokeMethod<bool>(
+        'setSelfAsDefaultForVideo',
+        {'exePath': exePath},
+      );
+      return result ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
 }

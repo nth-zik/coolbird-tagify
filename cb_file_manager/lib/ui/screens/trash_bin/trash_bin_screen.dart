@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:remixicon/remixicon.dart' as remix;
 import 'package:cb_file_manager/helpers/files/trash_manager.dart';
-import 'package:intl/intl.dart';
+import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 import '../../utils/format_utils.dart';
 import '../mixins/selection_mixin.dart';
@@ -18,7 +18,8 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
   final TrashManager _trashManager = TrashManager();
   List<TrashItem> _trashItems = [];
   bool _isLoading = true;
-  String? _errorMessage;
+  String? _errorCode;
+  List<String> _errorArgs = [];
   bool _showSystemOptions = false;
 
   @override
@@ -30,7 +31,8 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
   Future<void> _loadTrashItems() async {
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
+      _errorCode = null;
+      _errorArgs = [];
     });
 
     try {
@@ -45,7 +47,8 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Error loading trash items: $e';
+        _errorCode = 'load';
+        _errorArgs = [e.toString()];
         _isLoading = false;
       });
     }
@@ -70,10 +73,10 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
 
       if (success) {
         if (mounted) {
+          final l10n = AppLocalizations.of(context)!;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content:
-                    Text('${item.displayNameValue} restored successfully')),
+                content: Text(l10n.itemRestoredSuccess(item.displayNameValue))),
           );
         }
         // Refresh the trash items
@@ -81,34 +84,34 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
       } else {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Failed to restore ${item.displayNameValue}';
+          _errorCode = 'restore_failed';
+          _errorArgs = [item.displayNameValue];
         });
       }
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Error restoring item: $e';
+        _errorCode = 'restore_error';
+        _errorArgs = [e.toString()];
       });
     }
   }
 
   Future<void> _deleteItem(TrashItem item) async {
-    final bool confirm = await showDialog(
+    final l10n = AppLocalizations.of(context)!;
+    final bool confirm = await showDialog<bool>(
           context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Permanently Delete'),
-            content: Text(
-              'Are you sure you want to permanently delete "${item.displayNameValue}"? This action cannot be undone.',
-            ),
+          builder: (ctx) => AlertDialog(
+            title: Text(l10n.permanentDeleteTitle),
+            content: Text(l10n.confirmDeletePermanent(item.displayNameValue)),
             actions: [
               TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('CANCEL'),
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: Text(l10n.cancel),
               ),
               TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child:
-                    const Text('DELETE', style: TextStyle(color: Colors.red)),
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: Text(l10n.delete, style: const TextStyle(color: Colors.red)),
               ),
             ],
           ),
@@ -134,10 +137,10 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
 
         if (success) {
           if (mounted) {
+            final l10n = AppLocalizations.of(context)!;
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                  content:
-                      Text('${item.displayNameValue} permanently deleted')),
+                  content: Text(l10n.itemPermanentlyDeleted(item.displayNameValue))),
             );
           }
           // Refresh the trash items
@@ -145,35 +148,36 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
         } else {
           setState(() {
             _isLoading = false;
-            _errorMessage = 'Failed to delete ${item.displayNameValue}';
+            _errorCode = 'delete_failed';
+            _errorArgs = [item.displayNameValue];
           });
         }
       } catch (e) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Error deleting item: $e';
+          _errorCode = 'delete_error';
+          _errorArgs = [e.toString()];
         });
       }
     }
   }
 
   Future<void> _emptyTrash() async {
-    final bool confirm = await showDialog(
+    final l10n = AppLocalizations.of(context)!;
+    final bool confirm = await showDialog<bool>(
           context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Empty Trash'),
-            content: const Text(
-              'Are you sure you want to permanently delete all items in the trash? This action cannot be undone.',
-            ),
+          builder: (ctx) => AlertDialog(
+            title: Text(l10n.emptyTrash),
+            content: Text(l10n.emptyTrashConfirm),
             actions: [
               TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('CANCEL'),
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: Text(l10n.cancel),
               ),
               TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('EMPTY TRASH',
-                    style: TextStyle(color: Colors.red)),
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: Text(l10n.emptyTrashButton,
+                    style: const TextStyle(color: Colors.red)),
               ),
             ],
           ),
@@ -190,8 +194,9 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
 
         if (success) {
           if (mounted) {
+            final l10n = AppLocalizations.of(context)!;
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Trash emptied successfully')),
+              SnackBar(content: Text(l10n.trashEmptiedSuccess)),
             );
           }
           // Refresh the trash items
@@ -199,13 +204,15 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
         } else {
           setState(() {
             _isLoading = false;
-            _errorMessage = 'Failed to empty trash';
+            _errorCode = 'empty_failed';
+            _errorArgs = [];
           });
         }
       } catch (e) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Error emptying trash: $e';
+          _errorCode = 'empty_error';
+          _errorArgs = [e.toString()];
         });
       }
     }
@@ -217,8 +224,9 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
         await _trashManager.openWindowsRecycleBin();
       } catch (e) {
         if (mounted) {
+          final l10n = AppLocalizations.of(context)!;
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error opening Recycle Bin: $e')),
+            SnackBar(content: Text(l10n.errorOpeningRecycleBinWithError(e.toString()))),
           );
         }
       }
@@ -255,12 +263,12 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
         }
       }
 
-      String message = '$successCount items restored successfully';
-      if (failedCount > 0) {
-        message += ', $failedCount failed';
-      }
-
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
+        final String message = failedCount > 0
+            ? l10n.itemsRestoredWithFailures(successCount, failedCount)
+            : l10n.itemsRestoredSuccess(successCount);
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(message)),
         );
@@ -273,28 +281,27 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Error restoring items: $e';
+        _errorCode = 'restore_items_error';
+        _errorArgs = [e.toString()];
       });
     }
   }
 
   Future<void> _deleteSelectedItems() async {
-    final bool confirm = await showDialog(
+    final l10n = AppLocalizations.of(context)!;
+    final bool confirm = await showDialog<bool>(
           context: context,
-          builder: (context) => AlertDialog(
-            title: Text('Permanently Delete ${selectedPaths.length} items?'),
-            content: const Text(
-              'This action cannot be undone. Are you sure you want to permanently delete these items?',
-            ),
+          builder: (ctx) => AlertDialog(
+            title: Text(l10n.permanentlyDeleteItemsTitle(selectedPaths.length)),
+            content: Text(l10n.confirmPermanentlyDeleteThese),
             actions: [
               TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('CANCEL'),
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: Text(l10n.cancel),
               ),
               TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child:
-                    const Text('DELETE', style: TextStyle(color: Colors.red)),
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: Text(l10n.delete, style: const TextStyle(color: Colors.red)),
               ),
             ],
           ),
@@ -331,12 +338,12 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
           }
         }
 
-        String message = '$successCount items permanently deleted';
-        if (failedCount > 0) {
-          message += ', $failedCount failed';
-        }
-
         if (mounted) {
+          final l10n = AppLocalizations.of(context)!;
+          final String message = failedCount > 0
+              ? l10n.itemsDeletedWithFailures(successCount, failedCount)
+              : l10n.itemsPermanentlyDeletedCount(successCount);
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(message)),
           );
@@ -349,7 +356,8 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
       } catch (e) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Error deleting items: $e';
+          _errorCode = 'delete_items_error';
+          _errorArgs = [e.toString()];
         });
       }
     }
@@ -390,41 +398,42 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Trash Bin'),
+        title: Text(l10n.trashBin),
         actions: [
           if (isSelectionMode) ...[
             IconButton(
               icon: const Icon(remix.Remix.checkbox_line),
-              tooltip: 'Select All',
+              tooltip: l10n.selectAll,
               onPressed: _selectAll,
             ),
             IconButton(
               icon: const Icon(remix.Remix.refresh_line),
-              tooltip: 'Restore Selected',
+              tooltip: l10n.restoreSelected,
               onPressed: selectedPaths.isEmpty ? null : _restoreSelectedItems,
             ),
             IconButton(
               icon: const Icon(remix.Remix.delete_bin_2_line),
-              tooltip: 'Delete Selected',
+              tooltip: l10n.deleteSelected,
               onPressed: selectedPaths.isEmpty ? null : _deleteSelectedItems,
             ),
           ] else ...[
             IconButton(
               icon: const Icon(remix.Remix.checkbox_line),
-              tooltip: 'Select Items',
+              tooltip: l10n.selectItems,
               onPressed: _trashItems.isEmpty ? null : _toggleSelectionMode,
             ),
             if (Platform.isWindows && _showSystemOptions)
               IconButton(
                 icon: const Icon(remix.Remix.external_link_line),
-                tooltip: 'Open Recycle Bin',
+                tooltip: l10n.openRecycleBin,
                 onPressed: _openSystemRecycleBin,
               ),
             IconButton(
               icon: const Icon(remix.Remix.delete_bin_line),
-              tooltip: 'Empty Trash',
+              tooltip: l10n.emptyTrashTooltip,
               onPressed: _trashItems.isEmpty ? null : _emptyTrash,
             ),
           ],
@@ -434,14 +443,43 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
     );
   }
 
+  String _getErrorMessage(AppLocalizations l10n) {
+    if (_errorCode == null) return '';
+    final a = _errorArgs;
+    switch (_errorCode!) {
+      case 'load':
+        return l10n.errorLoadingTrashItemsWithError(a.isEmpty ? '' : a[0]);
+      case 'restore_failed':
+        return l10n.failedToRestore(a.isEmpty ? '' : a[0]);
+      case 'restore_error':
+        return l10n.errorRestoringItemWithError(a.isEmpty ? '' : a[0]);
+      case 'delete_failed':
+        return l10n.failedToDelete(a.isEmpty ? '' : a[0]);
+      case 'delete_error':
+        return l10n.errorDeletingItemWithError(a.isEmpty ? '' : a[0]);
+      case 'empty_failed':
+        return l10n.failedToEmptyTrash;
+      case 'empty_error':
+        return l10n.errorEmptyingTrashWithError(a.isEmpty ? '' : a[0]);
+      case 'restore_items_error':
+        return l10n.errorRestoringItemsWithError(a.isEmpty ? '' : a[0]);
+      case 'delete_items_error':
+        return l10n.errorDeletingItemsWithError(a.isEmpty ? '' : a[0]);
+      default:
+        return a.join(' ');
+    }
+  }
+
   Widget _buildBody() {
+    final l10n = AppLocalizations.of(context)!;
+
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(),
       );
     }
 
-    if (_errorMessage != null) {
+    if (_errorCode != null) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -455,7 +493,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
               ),
               const SizedBox(height: 16),
               Text(
-                _errorMessage!,
+                _getErrorMessage(l10n),
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.red),
               ),
@@ -463,7 +501,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
               ElevatedButton.icon(
                 onPressed: _loadTrashItems,
                 icon: const Icon(remix.Remix.refresh_line),
-                label: const Text('Try Again'),
+                label: Text(l10n.tryAgain),
               ),
             ],
           ),
@@ -482,17 +520,17 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
               color: Colors.grey,
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Trash is empty',
-              style: TextStyle(
+            Text(
+              l10n.trashIsEmpty,
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Items you delete will appear here',
-              style: TextStyle(
+            Text(
+              l10n.itemsDeletedWillAppearHere,
+              style: const TextStyle(
                 color: Colors.grey,
               ),
             ),
@@ -500,7 +538,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
             ElevatedButton.icon(
               onPressed: _loadTrashItems,
               icon: const Icon(remix.Remix.refresh_line),
-              label: const Text('Refresh'),
+              label: Text(l10n.refresh),
             ),
           ],
         ),
@@ -526,44 +564,51 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
                     )
                   : null,
             ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Original location: ${item.originalPath}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Row(
+            subtitle: Builder(
+              builder: (context) {
+                final l10n = AppLocalizations.of(context)!;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Deleted: ${_formatDate(item.trashedDate)} • ${_formatFileSize(item.size)}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
+                      l10n.originalLocation(item.originalPath),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    if (item.isSystemTrashItem) ...[
-                      const SizedBox(width: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 4, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          'System',
+                    Row(
+                      children: [
+                        Text(
+                          l10n.deletedAt(
+                              _formatDate(item.trashedDate),
+                              _formatFileSize(item.size)),
                           style: TextStyle(
-                            fontSize: 10,
-                            color: Theme.of(context).colorScheme.primary,
+                            fontSize: 12,
+                            color: Colors.grey[600],
                           ),
                         ),
-                      ),
-                    ],
+                        if (item.isSystemTrashItem) ...[
+                          const SizedBox(width: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 4, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              l10n.systemLabel,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ],
-                ),
-              ],
+                );
+              },
             ),
             isThreeLine: true,
             selected: isSelected,
@@ -573,21 +618,25 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
                     onChanged: (value) =>
                         _toggleItemSelection(item.trashFileName),
                   )
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(remix.Remix.refresh_line, size: 20),
-                        tooltip: 'Restore',
-                        onPressed: () => _restoreItem(item),
-                      ),
-                      IconButton(
-                        icon:
-                            const Icon(remix.Remix.delete_bin_2_line, size: 20),
-                        tooltip: 'Delete permanently',
-                        onPressed: () => _deleteItem(item),
-                      ),
-                    ],
+                : Builder(
+                    builder: (context) {
+                      final l10n = AppLocalizations.of(context)!;
+                      return Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(remix.Remix.refresh_line, size: 20),
+                            tooltip: l10n.restoreTooltip,
+                            onPressed: () => _restoreItem(item),
+                          ),
+                          IconButton(
+                            icon: const Icon(remix.Remix.delete_bin_2_line, size: 20),
+                            tooltip: l10n.deletePermanentlyTooltip,
+                            onPressed: () => _deleteItem(item),
+                          ),
+                        ],
+                      );
+                    },
                   ),
             onTap: isSelectionMode
                 ? () => _toggleItemSelection(item.trashFileName)

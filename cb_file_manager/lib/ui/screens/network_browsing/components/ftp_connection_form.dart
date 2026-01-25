@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/services/network_browsing/ftp_client/ftp_client.dart';
 import 'package:cb_file_manager/bloc/network_browsing/network_browsing_bloc.dart';
 import 'package:cb_file_manager/bloc/network_browsing/network_browsing_event.dart';
@@ -106,7 +107,7 @@ class _FtpConnectionFormState extends State<FtpConnectionForm> {
       }
     } catch (e) {
       setState(() {
-        _connectionError = 'Connection failed: ${e.toString()}';
+        _connectionError = AppLocalizations.of(context)!.connectionFailed(e.toString());
       });
     } finally {
       if (mounted) {
@@ -119,6 +120,7 @@ class _FtpConnectionFormState extends State<FtpConnectionForm> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Form(
       key: _formKey,
       child: Column(
@@ -126,13 +128,13 @@ class _FtpConnectionFormState extends State<FtpConnectionForm> {
         children: [
           TextFormField(
             controller: _hostController,
-            decoration: const InputDecoration(
-              labelText: 'Host',
+            decoration: InputDecoration(
+              labelText: l10n.host,
               hintText: 'ftp.example.com',
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
-                return 'Please enter a host';
+                return l10n.pleaseEnterHost;
               }
               return null;
             },
@@ -140,18 +142,18 @@ class _FtpConnectionFormState extends State<FtpConnectionForm> {
           const SizedBox(height: 8),
           TextFormField(
             controller: _portController,
-            decoration: const InputDecoration(
-              labelText: 'Port',
+            decoration: InputDecoration(
+              labelText: l10n.port,
               hintText: '21',
             ),
             keyboardType: TextInputType.number,
             validator: (value) {
               if (value == null || value.isEmpty) {
-                return 'Please enter a port';
+                return l10n.pleaseEnterPort;
               }
               final port = int.tryParse(value);
               if (port == null || port <= 0 || port > 65535) {
-                return 'Please enter a valid port number';
+                return l10n.pleaseEnterValidPort;
               }
               return null;
             },
@@ -159,16 +161,16 @@ class _FtpConnectionFormState extends State<FtpConnectionForm> {
           const SizedBox(height: 8),
           TextFormField(
             controller: _usernameController,
-            decoration: const InputDecoration(
-              labelText: 'Username',
+            decoration: InputDecoration(
+              labelText: l10n.username,
               hintText: 'anonymous',
             ),
           ),
           const SizedBox(height: 8),
           TextFormField(
             controller: _passwordController,
-            decoration: const InputDecoration(
-              labelText: 'Password',
+            decoration: InputDecoration(
+              labelText: l10n.password,
               hintText: 'anonymous@',
             ),
             obscureText: true,
@@ -176,20 +178,20 @@ class _FtpConnectionFormState extends State<FtpConnectionForm> {
           const SizedBox(height: 16),
           Row(
             children: [
-              const Text('Connection Mode:'),
+              Text(l10n.connectionMode),
               const SizedBox(width: 8),
               Expanded(
                 child: SegmentedButton<bool>(
-                  segments: const [
+                  segments: [
                     ButtonSegment(
                       value: true,
-                      label: Text('Passive'),
-                      icon: Icon(Icons.security),
+                      label: Text(l10n.passive),
+                      icon: const Icon(Icons.security),
                     ),
                     ButtonSegment(
                       value: false,
-                      label: Text('Active'),
-                      icon: Icon(Icons.settings_ethernet),
+                      label: Text(l10n.active),
+                      icon: const Icon(Icons.settings_ethernet),
                     ),
                   ],
                   selected: {_usePassiveMode},
@@ -235,7 +237,7 @@ class _FtpConnectionFormState extends State<FtpConnectionForm> {
               TextButton(
                 onPressed:
                     _isLoading ? null : () => RouteUtils.safePopDialog(context),
-                child: const Text('Cancel'),
+                child: Text(l10n.cancel),
               ),
               const SizedBox(width: 8),
               FilledButton(
@@ -248,7 +250,7 @@ class _FtpConnectionFormState extends State<FtpConnectionForm> {
                           strokeWidth: 2,
                         ),
                       )
-                    : const Text('Connect'),
+                    : Text(l10n.connect),
               ),
             ],
           ),

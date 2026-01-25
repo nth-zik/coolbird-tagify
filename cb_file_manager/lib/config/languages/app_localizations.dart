@@ -29,6 +29,9 @@ abstract class AppLocalizations {
   String get newFolder;
   String get properties;
   String get openWith;
+  String get chooseDefaultApp;
+  String get setCoolBirdAsDefaultForVideos;
+  String get setCoolBirdAsDefaultForVideosAndroidHint;
   String get openFolder;
   String get openFile;
   String get viewImage;
@@ -376,6 +379,10 @@ abstract class AppLocalizations {
   String get thumbnailPosition;
   String get percentOfVideo;
   String get thumbnailDescription;
+  String get useSystemDefaultForVideo;
+  String get useSystemDefaultForVideoDescription;
+  String get useSystemDefaultForVideoEnabled;
+  String get useSystemDefaultForVideoDisabled;
   String get thumbnailCache;
   String get thumbnailCacheDescription;
   String get clearThumbnailCache;
@@ -389,6 +396,9 @@ abstract class AppLocalizations {
   // Admin access
   String get adminAccess;
   String get adminAccessRequired;
+  String get requiresAdminPrivileges;
+  String driveRequiresAdmin(String path);
+  String get trashBin;
 
   // File system
   String get drives;
@@ -410,6 +420,12 @@ abstract class AppLocalizations {
   String get fileAccessed;
   String get loadingVideo;
   String get errorLoadingImage;
+  String errorLoadingImageWithError(String error);
+  String get failedToDisplayImage;
+  String get noImageDataAvailable;
+  String get urlLoadingNotImplemented;
+  String get duration;
+  String get resolution;
   String get createCopy;
   String get deleteFile;
 
@@ -473,6 +489,42 @@ abstract class AppLocalizations {
   String get clearFilter;
   String filteredBy(String filter);
   String noFilesMatchFilter(String filter);
+
+  // Trash / Recycle Bin screen
+  String get emptyTrash;
+  String get emptyTrashConfirm;
+  String get emptyTrashButton;
+  String permanentlyDeleteItemsTitle(int count);
+  String get confirmPermanentlyDeleteThese;
+  String itemRestoredSuccess(String name);
+  String failedToRestore(String name);
+  String errorRestoringItemWithError(String error);
+  String itemPermanentlyDeleted(String name);
+  String failedToDelete(String name);
+  String errorDeletingItemWithError(String error);
+  String get trashEmptiedSuccess;
+  String get failedToEmptyTrash;
+  String errorEmptyingTrashWithError(String error);
+  String itemsRestoredSuccess(int count);
+  String itemsRestoredWithFailures(int success, int failed);
+  String itemsPermanentlyDeletedCount(int count);
+  String itemsDeletedWithFailures(int success, int failed);
+  String errorRestoringItemsWithError(String error);
+  String errorDeletingItemsWithError(String error);
+  String errorOpeningRecycleBinWithError(String error);
+  String get restoreSelected;
+  String get deleteSelected;
+  String get selectItems;
+  String get openRecycleBin;
+  String get emptyTrashTooltip;
+  String get trashIsEmpty;
+  String get itemsDeletedWillAppearHere;
+  String originalLocation(String path);
+  String deletedAt(String date, String size);
+  String get systemLabel;
+  String errorLoadingTrashItemsWithError(String error);
+  String get restoreTooltip;
+  String get deletePermanentlyTooltip;
 
   // Misc helper labels
   String get networkFile;
@@ -702,6 +754,71 @@ abstract class AppLocalizations {
   String get smbVersion;
   String get netbios;
 
+  // Network - additional
+  String get selectAll;
+  String get unknownError;
+  String get networkConnections;
+  String get availableServices;
+  String get noActiveNetworkConnections;
+  String get useAddButtonToAddConnection;
+  String get unknownConnection;
+  String serviceTypeConnection(String serviceName);
+  String get noServicesAvailable;
+  String get webdavConnections;
+  String errorOpeningTab(String tabName, String error);
+  String connectToServiceServer(String serviceName);
+  String get serviceType;
+  String get host;
+  String get deleteSavedConnection;
+  String get username;
+  String get password;
+  String get portOptional;
+  String get useSslTls;
+  String get basePathOptional;
+  String get basePathHint;
+  String get domainOptional;
+  String get saveCredentials;
+  String get saveCredentialsDescription;
+  String get deleteSavedConnectionTitle;
+  String deleteSavedConnectionConfirm(String host);
+  String connectionDeleted(String host);
+  String connectionNotFoundToDelete(String host);
+  String get errorDeletingConnection;
+  String connectionFailed(String error);
+  String get networkConnection;
+  String get notConnected;
+  String get refreshSmbVersionInfo;
+  String shareLabel(String sharePath);
+  String get rootShare;
+  String foundDevicesCount(int count);
+  String get noWebdavConnections;
+  String get addConnectionOrSampleToStart;
+  String get addSample;
+  String get editWebdavConnection;
+  String get update;
+  String get connectionUpdatedSuccess;
+  String get failedToUpdateConnection;
+  String get deleteConnection;
+  String deleteConnectionConfirm(String host);
+  String get connectionDeletedSuccess;
+  String get failedToDeleteConnection;
+  String get addSampleWebdavConnection;
+  String get sampleConnectionAddedSuccess;
+  String get failedToAddSampleConnection;
+  String lastConnected(String dateStr);
+  String get editConnection;
+  String get closeConnection;
+  String get retry;
+  String get networkErrorPersistsHint;
+  String get pleaseEnterHost;
+  String get pleaseEnterPort;
+  String get pleaseEnterValidPort;
+  String get connectionMode;
+  String get passive;
+  String get active;
+  String get port;
+  String get basePath;
+
   // Drawer menu items
   String get networksMenu;
   String get networkTab;
@@ -781,4 +898,27 @@ abstract class AppLocalizations {
   String get noVideosInLibrary;
   String get libraryCreatedSuccessfully;
   String videoLibraryCount(int count);
+
+  // Streaming and download dialogs
+  String openFileTypeFile(String fileType);
+  String streamDownloadPrompt(String fileType);
+  String get downloadingFile;
+  String get fileDownloadedSuccess;
+  String get errorDownloadingFile;
+  String get errorTitle;
+  String get mediaPlaybackError;
+  String mediaPlaybackErrorVlcContent(String error);
+  String mediaPlaybackErrorNativeContent(String error);
+  String get chooseAnotherApp;
+  String get folderProperties;
+  String get createNewFolder;
+  String get createNewFile;
+  String get folderPropertyPath;
+  String get folderPropertyCreated;
+  String get folderPropertyContent;
+  String get folderPropertySizeDirectChildren;
+  String get networkServiceNotAvailable;
+  String get folderNameLabel;
+  String get fileNameLabel;
+  String errorCreatingFile(String error);
 }

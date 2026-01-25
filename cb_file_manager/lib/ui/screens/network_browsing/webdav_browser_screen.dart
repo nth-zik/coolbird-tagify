@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:remixicon/remixicon.dart' as remix;
 
+import '../../../config/languages/app_localizations.dart';
 import '../../../bloc/network_browsing/network_browsing_bloc.dart';
 import '../../../bloc/network_browsing/network_browsing_event.dart';
 import '../../../bloc/network_browsing/network_browsing_state.dart';
@@ -89,7 +90,9 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
       if (state.errorMessage != null && _connectingCredentialIds.isNotEmpty) {
         hadError = true;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi kết nối: ${state.errorMessage}')),
+          SnackBar(
+              content: Text(
+                  '${AppLocalizations.of(context)!.connectionError}: ${state.errorMessage}')),
         );
       }
 
@@ -179,13 +182,11 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
   }
 
   void _editConnection(NetworkCredentials credentials) {
-    // Pre-fill the form with existing credentials
     _hostController.text = credentials.host;
     _usernameController.text = credentials.username;
     _passwordController.text = credentials.password;
     _portController.text = credentials.port?.toString() ?? '443';
 
-    // Parse additional options for base path
     if (credentials.additionalOptions != null) {
       try {
         final options = jsonDecode(credentials.additionalOptions!);
@@ -197,53 +198,54 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
       _basePathController.text = '/webdav';
     }
 
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit WebDAV Connection'),
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.editWebdavConnection),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: _hostController,
-                decoration: const InputDecoration(
-                  labelText: 'Host',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.host,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _usernameController,
-                decoration: const InputDecoration(
-                  labelText: 'Username',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.username,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _passwordController,
-                decoration: const InputDecoration(
-                  labelText: 'Password',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.password,
+                  border: const OutlineInputBorder(),
                 ),
                 obscureText: true,
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _portController,
-                decoration: const InputDecoration(
-                  labelText: 'Port',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.port,
+                  border: const OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _basePathController,
-                decoration: const InputDecoration(
-                  labelText: 'Base Path',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.basePath,
+                  border: const OutlineInputBorder(),
                 ),
               ),
             ],
@@ -251,15 +253,15 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(ctx);
               _updateConnection(credentials);
             },
-            child: const Text('Update'),
+            child: Text(l10n.update),
           ),
         ],
       ),
@@ -284,15 +286,16 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
 
       _refreshData();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Connection updated successfully'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.connectionUpdatedSuccess),
           backgroundColor: Colors.green,
         ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to update connection: $e'),
+          content: Text(
+              '${AppLocalizations.of(context)!.failedToUpdateConnection}: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -300,39 +303,40 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
   }
 
   void _deleteConnection(NetworkCredentials credentials) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Connection'),
-        content: Text(
-            'Are you sure you want to delete the connection to "${credentials.host}"?'),
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.deleteConnection),
+        content: Text(l10n.deleteConnectionConfirm(credentials.host)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(ctx);
               try {
                 _credentialsService.deleteCredentials(credentials.id);
                 _refreshData();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Connection deleted successfully'),
+                  SnackBar(
+                    content: Text(l10n.connectionDeletedSuccess),
                     backgroundColor: Colors.green,
                   ),
                 );
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Failed to delete connection: $e'),
+                    content: Text(
+                        '${l10n.failedToDeleteConnection}: $e'),
                     backgroundColor: Colors.red,
                   ),
                 );
               }
             },
-            child: const Text('Delete'),
+            child: Text(l10n.delete),
           ),
         ],
       ),
@@ -340,10 +344,11 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
   }
 
   void _addSampleConnection() {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Sample WebDAV Connection'),
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.addSampleWebdavConnection),
         content: const Text(
           'This will add a sample connection to the DLP Test Site WebDAV server:\n\n'
           'Host: www.dlp-test.com\n'
@@ -355,15 +360,15 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(ctx);
               _addDLPTestConnection();
             },
-            child: const Text('Add Sample'),
+            child: Text(l10n.addSample),
           ),
         ],
       ),
@@ -388,15 +393,16 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
 
       _refreshData();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Sample connection added successfully'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.sampleConnectionAddedSuccess),
           backgroundColor: Colors.green,
         ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to add sample connection: $e'),
+          content: Text(
+              '${AppLocalizations.of(context)!.failedToAddSampleConnection}: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -405,8 +411,9 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return SystemScreen(
-      title: 'WebDAV Connections',
+      title: l10n.webdavConnections,
       systemId: '#webdav',
       icon: remix.Remix.global_line,
       showAppBar: true,
@@ -414,12 +421,12 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
         IconButton(
           icon: const Icon(remix.Remix.refresh_line),
           onPressed: _refreshData,
-          tooltip: 'Làm mới',
+          tooltip: l10n.refresh,
         ),
         IconButton(
           icon: const Icon(remix.Remix.add_line),
           onPressed: _connectToWebDAVServer,
-          tooltip: 'Add Connection',
+          tooltip: l10n.addConnection,
         ),
       ],
       child: BlocBuilder<NetworkBrowsingBloc, NetworkBrowsingState>(
@@ -441,14 +448,14 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Không có kết nối WebDAV nào.',
+                    l10n.noWebdavConnections,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           color: Colors.grey.shade600,
                         ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Thêm kết nối mới hoặc kết nối mẫu để bắt đầu.',
+                    l10n.addConnectionOrSampleToStart,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Colors.grey.shade500,
                         ),
@@ -460,13 +467,13 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
                       ElevatedButton.icon(
                         onPressed: _connectToWebDAVServer,
                         icon: const Icon(Icons.add),
-                        label: const Text('Add Connection'),
+                        label: Text(l10n.addConnection),
                       ),
                       const SizedBox(width: 16),
                       ElevatedButton.icon(
                         onPressed: _addSampleConnection,
                         icon: const Icon(Icons.add_circle_outline),
-                        label: const Text('Add Sample'),
+                        label: Text(l10n.addSample),
                       ),
                     ],
                   ),
@@ -482,7 +489,7 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
                 Padding(
                   padding: const EdgeInsets.symmetric(
                       vertical: 8.0, horizontal: 8.0),
-                  child: Text('Kết nối đang hoạt động',
+                  child: Text(l10n.activeConnections,
                       style: Theme.of(context).textTheme.titleSmall),
                 ),
                 ...activeConnections.map(_buildActiveConnectionItem),
@@ -492,7 +499,7 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
                 Padding(
                   padding: const EdgeInsets.symmetric(
                       vertical: 8.0, horizontal: 8.0),
-                  child: Text('Kết nối đã lưu',
+                  child: Text(l10n.savedConnections,
                       style: Theme.of(context).textTheme.titleSmall),
                 ),
                 ..._savedCredentials.map(_buildSavedConnectionItem),
@@ -506,7 +513,8 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
 
   Widget _buildActiveConnectionItem(
       MapEntry<String, NetworkServiceBase> entry) {
-    String host = 'Unknown';
+    final l10n = AppLocalizations.of(context)!;
+    String host = l10n.unknown;
     try {
       host = Uri.parse(entry.value.basePath).host;
     } catch (_) {}
@@ -514,7 +522,7 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
     return ListTile(
       leading: const Icon(remix.Remix.global_line, color: Colors.green),
       title: Text(host),
-      subtitle: const Text('Đang kết nối'),
+      subtitle: Text(l10n.connecting),
       onTap: () => _openTabForConnection(entry.key, host),
     );
   }
@@ -525,41 +533,53 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
     return ListTile(
       leading: const Icon(remix.Remix.global_line, color: Colors.blue),
       title: Text(credentials.host),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(credentials.username),
-          if (credentials.port != null) Text('Port: ${credentials.port}'),
-          Text('Last connected: ${_formatDate(credentials.lastConnected)}'),
-        ],
+      subtitle: Builder(
+        builder: (ctx) {
+          final loc = AppLocalizations.of(ctx)!;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(credentials.username),
+              if (credentials.port != null)
+                Text('${loc.port}: ${credentials.port}'),
+              Text(loc.lastConnected(_formatDate(credentials.lastConnected))),
+            ],
+          );
+        },
       ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (isConnecting)
-            const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2.0),
-            )
-          else ...[
-            IconButton(
-              icon: const Icon(Icons.edit, color: Colors.orange),
-              onPressed: () => _editConnection(credentials),
-              tooltip: 'Edit Connection',
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () => _deleteConnection(credentials),
-              tooltip: 'Delete Connection',
-            ),
-            IconButton(
-              icon: const Icon(remix.Remix.arrow_right_circle_line, color: Colors.green),
-              onPressed: () => _connectWithSavedCredentials(credentials),
-              tooltip: 'Kết nối',
-            ),
-          ],
-        ],
+      trailing: Builder(
+        builder: (ctx) {
+          final loc = AppLocalizations.of(ctx)!;
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isConnecting)
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2.0),
+                )
+              else ...[
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.orange),
+                  onPressed: () => _editConnection(credentials),
+                  tooltip: loc.editConnection,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  onPressed: () => _deleteConnection(credentials),
+                  tooltip: loc.deleteConnection,
+                ),
+                IconButton(
+                  icon: const Icon(remix.Remix.arrow_right_circle_line,
+                      color: Colors.green),
+                  onPressed: () => _connectWithSavedCredentials(credentials),
+                  tooltip: loc.connect,
+                ),
+              ],
+            ],
+          );
+        },
       ),
       onTap:
           isConnecting ? null : () => _connectWithSavedCredentials(credentials),

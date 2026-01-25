@@ -32,6 +32,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Show file tags setting
   late bool _showFileTags;
 
+  // Use system default app for video (false = in-app player by default)
+  late bool _useSystemDefaultForVideo;
+
   // Cache clearing states
   final bool _isClearingVideoCache = false;
   bool _isClearingNetworkCache = false;
@@ -51,6 +54,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final theme = await _preferences.getThemePreference();
       final percentage = await _preferences.getVideoThumbnailPercentage();
       final showFileTags = await _preferences.getShowFileTags();
+      final useSystemDefaultForVideo = await _preferences.getUseSystemDefaultForVideo();
       _preferences.isUsingObjectBox();
 
       if (mounted) {
@@ -59,6 +63,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _currentLanguageCode = _languageController.currentLocale.languageCode;
           _videoThumbnailPercentage = percentage;
           _showFileTags = showFileTags;
+          _useSystemDefaultForVideo = useSystemDefaultForVideo;
           _isLoading = false;
         });
       }
@@ -138,6 +143,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
           duration: const Duration(seconds: 1),
           behavior: SnackBarBehavior.floating,
           width: 200,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
+  }
+
+  Future<void> _updateUseSystemDefaultForVideo(bool value) async {
+    await _preferences.setUseSystemDefaultForVideo(value);
+    setState(() => _useSystemDefaultForVideo = value);
+    if (mounted) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(value
+              ? AppLocalizations.of(context)!.useSystemDefaultForVideoEnabled
+              : AppLocalizations.of(context)!.useSystemDefaultForVideoDisabled),
+          duration: const Duration(seconds: 1),
+          behavior: SnackBarBehavior.floating,
+          width: 280,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
@@ -274,6 +298,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       title: AppLocalizations.of(context)!.videoThumbnails,
       icon: remix.Remix.video_line,
       children: [
+        _buildCompactSettingTile(
+          title: AppLocalizations.of(context)!.useSystemDefaultForVideo,
+          subtitle: AppLocalizations.of(context)!.useSystemDefaultForVideoDescription,
+          icon: remix.Remix.external_link_line,
+          trailing: Switch(
+            value: _useSystemDefaultForVideo,
+            onChanged: _updateUseSystemDefaultForVideo,
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.all(16),
           child: Column(

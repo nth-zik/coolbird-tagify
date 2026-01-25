@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:cb_file_manager/core/service_locator.dart';
+import 'package:cb_file_manager/helpers/core/user_preferences.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/image_viewer_screen.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/video_player_full_screen.dart';
 import 'package:cb_file_manager/ui/dialogs/open_with_dialog.dart';
@@ -259,13 +261,28 @@ class FileOperationsHandler {
 
     // Open file based on file type
     if (isVideo) {
-      // Open video in video player (fullscreen route on root navigator)
-      Navigator.of(context, rootNavigator: true).push(
-        MaterialPageRoute(
-          fullscreenDialog: true,
-          builder: (context) => VideoPlayerFullScreen(file: file),
-        ),
-      );
+      // Default: use in-app player. Only use system default when user enabled it in Settings.
+      locator<UserPreferences>().getUseSystemDefaultForVideo().then((useSystem) {
+        if (useSystem) {
+          ExternalAppHelper.openWithSystemDefault(file.path).then((success) {
+            if (!success && context.mounted) {
+              showDialog(
+                context: context,
+                builder: (context) => OpenWithDialog(filePath: file.path),
+              );
+            }
+          });
+        } else {
+          if (context.mounted) {
+            Navigator.of(context, rootNavigator: true).push(
+              MaterialPageRoute(
+                fullscreenDialog: true,
+                builder: (_) => VideoPlayerFullScreen(file: file),
+              ),
+            );
+          }
+        }
+      });
     } else if (isImage) {
       // Get all image files in the same directory for gallery navigation
       List<File> imageFiles = [];

@@ -16,6 +16,7 @@ import 'package:cb_file_manager/bloc/selection/selection.dart';
 import 'package:cb_file_manager/ui/tab_manager/core/tabbed_folder/tabbed_folder_drag_selection_controller.dart';
 import 'package:cb_file_manager/ui/utils/fluent_background.dart';
 import 'package:cb_file_manager/ui/widgets/file_preview_pane.dart';
+import 'package:cb_file_manager/ui/utils/grid_zoom_constraints.dart';
 
 /// Static factory class for building file list views in different modes
 class FileListViewBuilder {
@@ -64,6 +65,7 @@ class FileListViewBuilder {
     required ValueChanged<double> onPreviewPaneWidthChanged,
     required ValueChanged<double> onPreviewPaneWidthCommitted,
     required VoidCallback onPreviewPaneToggled,
+    ValueChanged<int?>? onGridCrossAxisCountChanged,
   }) {
     // Apply frame timing optimizations before heavy list/grid operations
     FrameTimingOptimizer().optimizeBeforeHeavyOperation();
@@ -91,6 +93,7 @@ class FileListViewBuilder {
         onPreviewPaneWidthChanged: onPreviewPaneWidthChanged,
         onPreviewPaneWidthCommitted: onPreviewPaneWidthCommitted,
         onPreviewPaneToggled: onPreviewPaneToggled,
+        onGridCrossAxisCountChanged: onGridCrossAxisCountChanged,
       );
     }
 
@@ -110,6 +113,7 @@ class FileListViewBuilder {
         showContextMenu: showContextMenu,
         toggleSelectionMode: toggleSelectionMode,
         onZoomLevelChanged: onZoomLevelChanged,
+        onGridCrossAxisCountChanged: onGridCrossAxisCountChanged,
       );
     } else if (state.viewMode == ViewMode.details) {
       return _buildDetailsView(
@@ -161,6 +165,7 @@ class FileListViewBuilder {
     required Function(BuildContext, Offset) showContextMenu,
     required VoidCallback toggleSelectionMode,
     required ValueChanged<int> onZoomLevelChanged,
+    ValueChanged<int?>? onGridCrossAxisCountChanged,
   }) {
     return Stack(
       clipBehavior: Clip.none,
@@ -217,8 +222,19 @@ class FileListViewBuilder {
                   child: RepaintBoundary(
                     child: LayoutBuilder(
                       builder: (context, constraints) {
+                        final maxZoom = GridZoomConstraints.maxGridSize(
+                          availableWidth: constraints.maxWidth,
+                          mode: GridSizeMode.referenceWidth,
+                          spacing: _gridSpacing,
+                          referenceWidth: _gridReferenceWidth,
+                          minValue: UserPreferences.minGridZoomLevel,
+                          maxValue: UserPreferences.maxGridZoomLevel,
+                        );
+                        final effectiveZoom = state.gridZoomLevel
+                            .clamp(UserPreferences.minGridZoomLevel, maxZoom)
+                            .toInt();
                         final itemWidth =
-                            _gridItemWidthForZoom(state.gridZoomLevel);
+                            _gridItemWidthForZoom(effectiveZoom);
                         final availableWidth = math.max(
                           0.0,
                           constraints.maxWidth - (_gridSpacing * 2),
@@ -227,7 +243,16 @@ class FileListViewBuilder {
                           availableWidth,
                           itemWidth,
                         );
+                        onGridCrossAxisCountChanged?.call(crossAxisCount);
                         final itemHeight = itemWidth / _gridAspectRatio;
+                        final folderIndexByPath = <String, int>{
+                          for (var i = 0; i < state.folders.length; i++)
+                            state.folders[i].path: i,
+                        };
+                        final fileIndexByPath = <String, int>{
+                          for (var i = 0; i < state.files.length; i++)
+                            state.files[i].path: i,
+                        };
 
                         return GridView.builder(
                           padding: const EdgeInsets.all(8.0),
@@ -236,6 +261,24 @@ class FileListViewBuilder {
                           addAutomaticKeepAlives: false,
                           addRepaintBoundaries: true,
                           addSemanticIndexes: false,
+                          findChildIndexCallback: (Key key) {
+                            if (key is! ValueKey<String>) return null;
+                            final value = key.value;
+                            if (value.startsWith('folder-grid-')) {
+                              final folderPath =
+                                  value.substring('folder-grid-'.length);
+                              final index = folderIndexByPath[folderPath];
+                              return index;
+                            }
+                            if (value.startsWith('file-grid-')) {
+                              final filePath =
+                                  value.substring('file-grid-'.length);
+                              final index = fileIndexByPath[filePath];
+                              if (index == null) return null;
+                              return state.folders.length + index;
+                            }
+                            return null;
+                          },
                           gridDelegate:
                               SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: crossAxisCount,
@@ -249,136 +292,138 @@ class FileListViewBuilder {
                                 ? state.folders[index].path
                                 : state
                                     .files[index - state.folders.length].path;
+                            final String itemKey = index < state.folders.length
+                                ? 'folder-grid-$itemPath'
+                                : 'file-grid-$itemPath';
 
                             final bool isSelected =
                                 selectionState.isPathSelected(itemPath);
 
-                            return LayoutBuilder(builder:
-                                (BuildContext context,
+                            return KeyedSubtree(
+                              key: ValueKey(itemKey),
+                              child: LayoutBuilder(
+                                builder: (BuildContext context,
                                     BoxConstraints constraints) {
-                              if (isDesktopPlatform) {
-                                WidgetsBinding.instance
-                                    .addPostFrameCallback((_) {
-                                  try {
-                                    final RenderBox? renderBox = context
-                                        .findRenderObject() as RenderBox?;
-                                    if (renderBox != null &&
-                                        renderBox.hasSize &&
-                                        renderBox.attached) {
-                                      final position =
-                                          renderBox.localToGlobal(Offset.zero);
-                                      dragSelectionController
-                                          .registerItemPosition(
-                                              itemPath,
-                                              Rect.fromLTWH(
-                                                  position.dx,
-                                                  position.dy,
-                                                  renderBox.size.width,
-                                                  renderBox.size.height));
-                                    }
-                                  } catch (e) {
-                                    debugPrint(
-                                        'Layout error in grid view: $e');
+                                  if (isDesktopPlatform) {
+                                    WidgetsBinding.instance
+                                        .addPostFrameCallback((_) {
+                                      try {
+                                        final RenderBox? renderBox = context
+                                            .findRenderObject() as RenderBox?;
+                                        if (renderBox != null &&
+                                            renderBox.hasSize &&
+                                            renderBox.attached) {
+                                          final position = renderBox
+                                              .localToGlobal(Offset.zero);
+                                          dragSelectionController
+                                              .registerItemPosition(
+                                                  itemPath,
+                                                  Rect.fromLTWH(
+                                                      position.dx,
+                                                      position.dy,
+                                                      renderBox.size.width,
+                                                      renderBox.size.height));
+                                        }
+                                      } catch (e) {
+                                        debugPrint(
+                                            'Layout error in grid view: $e');
+                                      }
+                                    });
                                   }
-                                });
-                              }
 
-                              if (index < state.folders.length) {
-                                final folder =
-                                    state.folders[index] as Directory;
-                                return KeyedSubtree(
-                                  key: ValueKey('folder-grid-${folder.path}'),
-                                  child: Align(
-                                    alignment: Alignment.topCenter,
-                                    child: SizedBox(
-                                      width: itemWidth,
-                                      height: itemHeight,
-                                      child: RepaintBoundary(
-                                        child: FluentBackground.container(
-                                          context: context,
-                                          enableBlur: isDesktopPlatform,
-                                          padding: EdgeInsets.zero,
-                                          blurAmount: 5.0,
-                                          opacity: isSelected ? 0.8 : 0.6,
-                                          backgroundColor: isSelected
-                                              ? Theme.of(context)
-                                                  .colorScheme
-                                                  .primaryContainer
-                                                  .withValues(alpha: 0.6)
-                                              : Theme.of(context)
-                                                  .cardColor
-                                                  .withValues(alpha: 0.4),
-                                          child: folder_list_components
-                                              .FolderGridItem(
-                                            key: ValueKey(
-                                                'folder-grid-item-${folder.path}'),
-                                            folder: folder,
-                                            onNavigate: onNavigateToPath,
-                                            isSelected: isSelected,
-                                            toggleFolderSelection:
-                                                toggleFolderSelection,
-                                            isDesktopMode: isDesktopPlatform,
-                                            lastSelectedPath:
-                                                selectionState.lastSelectedPath,
-                                            clearSelectionMode: clearSelection,
+                                  if (index < state.folders.length) {
+                                    final folder =
+                                        state.folders[index] as Directory;
+                                    return Align(
+                                      alignment: Alignment.topCenter,
+                                      child: SizedBox(
+                                        width: itemWidth,
+                                        height: itemHeight,
+                                        child: RepaintBoundary(
+                                          child: FluentBackground.container(
+                                            context: context,
+                                            enableBlur: isDesktopPlatform,
+                                            padding: EdgeInsets.zero,
+                                            blurAmount: 5.0,
+                                            opacity: isSelected ? 0.8 : 0.6,
+                                            backgroundColor: isSelected
+                                                ? Theme.of(context)
+                                                    .colorScheme
+                                                    .primaryContainer
+                                                    .withValues(alpha: 0.6)
+                                                : Theme.of(context)
+                                                    .cardColor
+                                                    .withValues(alpha: 0.4),
+                                            child: folder_list_components
+                                                .FolderGridItem(
+                                              key: ValueKey(
+                                                  'folder-grid-item-${folder.path}'),
+                                              folder: folder,
+                                              onNavigate: onNavigateToPath,
+                                              isSelected: isSelected,
+                                              toggleFolderSelection:
+                                                  toggleFolderSelection,
+                                              isDesktopMode: isDesktopPlatform,
+                                              lastSelectedPath: selectionState
+                                                  .lastSelectedPath,
+                                              clearSelectionMode:
+                                                  clearSelection,
+                                            ),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                  ),
-                                );
-                              } else {
-                                final file = state
-                                    .files[index - state.folders.length]
-                                        as File;
-                                return KeyedSubtree(
-                                  key: ValueKey('file-grid-${file.path}'),
-                                  child: Align(
-                                    alignment: Alignment.topCenter,
-                                    child: SizedBox(
-                                      width: itemWidth,
-                                      height: itemHeight,
-                                      child: RepaintBoundary(
-                                        child: FluentBackground.container(
-                                          context: context,
-                                          enableBlur: isDesktopPlatform,
-                                          padding: EdgeInsets.zero,
-                                          blurAmount: 5.0,
-                                          opacity: isSelected ? 0.8 : 0.6,
-                                          backgroundColor: isSelected
-                                              ? Theme.of(context)
-                                                  .colorScheme
-                                                  .primaryContainer
-                                                  .withValues(alpha: 0.6)
-                                              : Theme.of(context)
-                                                  .cardColor
-                                                  .withValues(alpha: 0.4),
-                                          child: folder_list_components
-                                              .FileGridItem(
-                                            key: ValueKey(
-                                                'file-grid-item-${file.path}'),
-                                            file: file,
-                                            state: state,
-                                            isSelectionMode:
-                                                selectionState.isSelectionMode,
-                                            isSelected: isSelected,
-                                            toggleFileSelection:
-                                                toggleFileSelection,
-                                            toggleSelectionMode:
-                                                toggleSelectionMode,
-                                            onFileTap: onFileTap,
-                                            isDesktopMode: isDesktopPlatform,
-                                            lastSelectedPath:
-                                                selectionState.lastSelectedPath,
-                                            showFileTags: showFileTags,
+                                    );
+                                  } else {
+                                    final file = state
+                                        .files[index - state.folders.length]
+                                            as File;
+                                    return Align(
+                                      alignment: Alignment.topCenter,
+                                      child: SizedBox(
+                                        width: itemWidth,
+                                        height: itemHeight,
+                                        child: RepaintBoundary(
+                                          child: FluentBackground.container(
+                                            context: context,
+                                            enableBlur: isDesktopPlatform,
+                                            padding: EdgeInsets.zero,
+                                            blurAmount: 5.0,
+                                            opacity: isSelected ? 0.8 : 0.6,
+                                            backgroundColor: isSelected
+                                                ? Theme.of(context)
+                                                    .colorScheme
+                                                    .primaryContainer
+                                                    .withValues(alpha: 0.6)
+                                                : Theme.of(context)
+                                                    .cardColor
+                                                    .withValues(alpha: 0.4),
+                                            child: folder_list_components
+                                                .FileGridItem(
+                                              key: ValueKey(
+                                                  'file-grid-item-${file.path}'),
+                                              file: file,
+                                              state: state,
+                                              isSelectionMode: selectionState
+                                                  .isSelectionMode,
+                                              isSelected: isSelected,
+                                              toggleFileSelection:
+                                                  toggleFileSelection,
+                                              toggleSelectionMode:
+                                                  toggleSelectionMode,
+                                              onFileTap: onFileTap,
+                                              isDesktopMode: isDesktopPlatform,
+                                              lastSelectedPath: selectionState
+                                                  .lastSelectedPath,
+                                              showFileTags: showFileTags,
+                                            ),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                  ),
-                                );
-                              }
-                            });
+                                    );
+                                  }
+                                },
+                              ),
+                            );
                           },
                         );
                       },
@@ -669,6 +714,7 @@ class FileListViewBuilder {
     required ValueChanged<double> onPreviewPaneWidthChanged,
     required ValueChanged<double> onPreviewPaneWidthCommitted,
     required VoidCallback onPreviewPaneToggled,
+    ValueChanged<int?>? onGridCrossAxisCountChanged,
   }) {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -687,6 +733,7 @@ class FileListViewBuilder {
             showContextMenu: showContextMenu,
             toggleSelectionMode: toggleSelectionMode,
             onZoomLevelChanged: onZoomLevelChanged,
+            onGridCrossAxisCountChanged: onGridCrossAxisCountChanged,
           );
         }
 
@@ -713,6 +760,7 @@ class FileListViewBuilder {
             showContextMenu: showContextMenu,
             toggleSelectionMode: toggleSelectionMode,
             onZoomLevelChanged: onZoomLevelChanged,
+            onGridCrossAxisCountChanged: onGridCrossAxisCountChanged,
           );
         }
         final double effectiveMinPreviewWidth =
@@ -731,6 +779,7 @@ class FileListViewBuilder {
           showContextMenu: showContextMenu,
           toggleSelectionMode: toggleSelectionMode,
           onZoomLevelChanged: onZoomLevelChanged,
+          onGridCrossAxisCountChanged: onGridCrossAxisCountChanged,
         );
 
         return _GridPreviewLayout(

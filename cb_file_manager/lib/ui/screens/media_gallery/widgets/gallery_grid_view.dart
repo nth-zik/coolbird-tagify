@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/widgets/gallery_tile.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/widgets/gallery_masonry_tile.dart';
+import 'package:cb_file_manager/helpers/core/user_preferences.dart';
+import 'package:cb_file_manager/ui/utils/grid_zoom_constraints.dart';
 
 class GalleryGridView extends StatelessWidget {
   final List<File> imageFiles;
@@ -30,7 +32,17 @@ class GalleryGridView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gridCols = thumbnailSize.round();
+    final maxCols = GridZoomConstraints.maxGridSizeForContext(
+      context,
+      mode: GridSizeMode.columns,
+      minValue: UserPreferences.minThumbnailSize.round(),
+      maxValue: UserPreferences.maxThumbnailSize.round(),
+      spacing: 6.0,
+    );
+    final gridCols = thumbnailSize
+        .round()
+        .clamp(UserPreferences.minThumbnailSize.round(), maxCols)
+        .toInt();
 
     if (isMasonry) {
       return MasonryGridView.count(

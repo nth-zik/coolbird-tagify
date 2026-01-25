@@ -292,17 +292,6 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
           debugPrint(
               'DEBUG: Final result - ${folders.length} folders, ${files.length} files');
 
-          // Load tags for all files
-          Map<String, List<String>> fileTags = {};
-          for (var file in files) {
-            if (file is File) {
-              final tags = await TagManager.getTags(file.path);
-              if (tags.isNotEmpty) {
-                fileTags[file.path] = tags;
-              }
-            }
-          }
-
           // Get folder-specific sort option if available (with defensive error handling)
           final folderSortManager = FolderSortManager();
           SortOption? folderSortOption;
@@ -335,25 +324,40 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
                   ? _filterFilesByType(files, activeFilter)
                   : [];
 
-          // Emit state with files and folders (sorting will be handled later)
-          final newState = state.copyWith(
+          // PROGRESSIVE LOADING: Emit content immediately with isLoading: false
+          // Tags will be loaded asynchronously and updated later
+          emit(state.copyWith(
             isLoading: false,
             folders: folders,
             files: files,
             currentFilter: activeFilter,
             filteredFiles: filteredFiles,
-            fileTags: fileTags,
-            error: null, // Clear any previous errors
-            sortOption: folderSortOption ??
-                state.sortOption, // Update the sort option if folder-specific
-          );
+            fileTags: {}, // Empty tags initially - will be updated async
+            error: null,
+            sortOption: folderSortOption ?? state.sortOption,
+          ));
 
           debugPrint(
-              'DEBUG: Emitting state with ${newState.files.length} files');
-          debugPrint('DEBUG: Current filter: ${newState.currentFilter}');
-          debugPrint('DEBUG: Filtered files: ${newState.filteredFiles.length}');
+              'DEBUG: Emitting state with ${files.length} files (tags loading async)');
 
-          emit(newState);
+          // Load tags asynchronously AFTER showing content
+          // This prevents blocking the UI while tags are being loaded
+          Map<String, List<String>> fileTags = {};
+          for (var file in files) {
+            if (file is File) {
+              final tags = await TagManager.getTags(file.path);
+              if (tags.isNotEmpty) {
+                fileTags[file.path] = tags;
+              }
+            }
+          }
+
+          // Update state with loaded tags if any were found
+          if (fileTags.isNotEmpty) {
+            emit(state.copyWith(
+              fileTags: fileTags,
+            ));
+          }
 
           // Load all unique tags in this directory (async)
           add(LoadAllTags(event.path));
@@ -526,41 +530,21 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
           }
         }
 
-        // Important: Clear the tag cache to ensure fresh data
-        TagManager.clearCache();
-
-        // Load tags for all files
-        Map<String, List<String>> fileTags = {};
-        for (var file in files) {
-          if (file is File) {
-            // Always fetch fresh data from storage
-            final tags = await TagManager.getTags(file.path);
-            if (tags.isNotEmpty) {
-              fileTags[file.path] = tags;
-            }
-          }
-        } // Get all unique tags for this directory
-        final allUniqueTags = await TagManager.getAllUniqueTags(event.path);
-
         // Get folder-specific sort option if available (with defensive error handling)
         final folderSortManager = FolderSortManager();
         SortOption? folderSortOption;
         try {
-          // Remove timeout - let it run quickly with cache
           folderSortOption =
               await folderSortManager.getFolderSortOption(event.path);
         } catch (e) {
           debugPrint('Error getting folder sort option for ${event.path}: $e');
-          folderSortOption = null; // Use default sort option if error occurs
+          folderSortOption = null;
         }
 
         // Use folder-specific sort option if available, otherwise use the current sort option
         SortOption sortOptionToUse = folderSortOption ?? state.sortOption;
 
-        // Apply sorting FIRST, then emit final state with isLoading: false
-        // This ensures UI shows complete, sorted content without gaps
-
-        // Use FileSystemSorter to sort folders and files
+        // Apply sorting
         final sortedFolders = await FileSystemSorter.sortDirectories(
           folders.cast<Directory>(),
           sortOptionToUse,
@@ -571,25 +555,14 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
           sortOptionToUse,
         );
 
-        // Build file stats cache for the sorted entities
-        Map<String, FileStat> fileStatsCache = {};
-        final allEntities = [...sortedFolders, ...sortedFiles];
-        for (var entity in allEntities) {
-          try {
-            fileStatsCache[entity.path] = await entity.stat();
-          } catch (e) {
-            // Skip entities that can't be stat'd
-            continue;
-          }
-        }
-
         final activeFilter = state.currentFilter;
         final List<FileSystemEntity> filteredFiles =
             activeFilter != null && activeFilter.isNotEmpty
                 ? _filterFilesByType(sortedFiles, activeFilter)
                 : [];
 
-        // Now emit the final state with sorted content and isLoading: false
+        // PROGRESSIVE LOADING: Emit content immediately
+        // Tags and stats will be loaded asynchronously
         emit(
           state.copyWith(
             isLoading: false,
@@ -597,23 +570,53 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
             files: sortedFiles,
             currentFilter: activeFilter,
             filteredFiles: filteredFiles,
-            fileTags: fileTags,
-            allUniqueTags: allUniqueTags,
+            fileTags: {}, // Empty tags initially - will be updated async
             error: null,
             currentPath: Directory(event.path),
             sortOption: folderSortOption ?? state.sortOption,
           ),
         );
 
+        // Load tags asynchronously AFTER showing content
+        TagManager.clearCache();
+        Map<String, List<String>> fileTags = {};
+        for (final file in sortedFiles) {
+          final tags = await TagManager.getTags(file.path);
+          if (tags.isNotEmpty) {
+            fileTags[file.path] = tags;
+          }
+        }
+
+        // Update state with loaded tags
+        if (fileTags.isNotEmpty) {
+          final allUniqueTags = await TagManager.getAllUniqueTags(event.path);
+          emit(state.copyWith(
+            fileTags: fileTags,
+            allUniqueTags: allUniqueTags,
+          ));
+        }
+
+        // Build file stats cache asynchronously
+        Map<String, FileStat> fileStatsCache = {};
+        final allEntities = [...sortedFolders, ...sortedFiles];
+        for (var entity in allEntities) {
+          try {
+            fileStatsCache[entity.path] = await entity.stat();
+          } catch (e) {
+            continue;
+          }
+        }
+        if (fileStatsCache.isNotEmpty) {
+          emit(state.copyWith(fileStatsCache: fileStatsCache));
+        }
+
         // Start thumbnail generation in background AFTER updating UI
         if (event.forceRegenerateThumbnails) {
-          // Regenerate all thumbnails explicitly when requested
           unawaited(
             VideoThumbnailHelper.regenerateThumbnailsForDirectory(event.path),
           );
         } else {
-          // Default: prefetch thumbnails for the current directory (non-blocking)
-          _prefetchThumbnailsForDirectory(files, event.path);
+          _prefetchThumbnailsForDirectory(sortedFiles, event.path);
         }
       } else {
         emit(

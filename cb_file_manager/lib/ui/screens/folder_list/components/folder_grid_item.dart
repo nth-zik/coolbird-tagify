@@ -86,7 +86,7 @@ class _FolderGridItemState extends State<FolderGridItem> {
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    // Flat on mobile (no elevation/border). Keep card/elevation on desktop only.
+    // Flat layout for mobile without a label background.
     if (!widget.isDesktopMode) {
       return GestureDetector(
         onSecondaryTapDown: (details) =>
@@ -103,23 +103,25 @@ class _FolderGridItemState extends State<FolderGridItem> {
                     child: FolderThumbnail(folder: widget.folder),
                   ),
                   // Text section
-                  Container(
+                  SizedBox(
                     height: 40,
                     width: double.infinity,
-                    padding: const EdgeInsets.all(4),
-                    color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
-                    alignment: Alignment.center,
-                    child: Text(
-                      widget.folder.basename(),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDarkMode ? Colors.white : Colors.black87,
-                        fontWeight: _visuallySelected
-                            ? FontWeight.bold
-                            : FontWeight.w500,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Text(
+                          widget.folder.basename(),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDarkMode ? Colors.white : Colors.black87,
+                            fontWeight: _visuallySelected
+                                ? FontWeight.bold
+                                : FontWeight.w500,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -160,24 +162,18 @@ class _FolderGridItemState extends State<FolderGridItem> {
       );
     }
 
-    // Desktop: keep subtle elevation/hover behavior
+    // Desktop: flat container with hover/selection cues
     final Color backgroundColor = _visuallySelected
-        ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.7)
+        ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.25)
         : _isHovering
-            ? Theme.of(context).hoverColor
-            : Theme.of(context).cardColor;
-
-    final Color borderColor = _visuallySelected
-        ? Theme.of(context).primaryColor
-        : _isHovering
-            ? Theme.of(context).primaryColor.withValues(alpha: 0.5)
+            ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.08)
             : Colors.transparent;
 
-    final double elevation = _visuallySelected
-        ? 3
+    final Color borderColor = _visuallySelected
+        ? Theme.of(context).primaryColor.withValues(alpha: 0.7)
         : _isHovering
-            ? 2
-            : 1;
+            ? Theme.of(context).dividerColor.withValues(alpha: 0.6)
+            : Colors.transparent;
 
     return GestureDetector(
       onSecondaryTapDown: (details) =>
@@ -186,13 +182,11 @@ class _FolderGridItemState extends State<FolderGridItem> {
         onEnter: (_) => setState(() => _isHovering = true),
         onExit: (_) => setState(() => _isHovering = false),
         cursor: SystemMouseCursors.click,
-        child: Card(
-          clipBehavior: Clip.antiAlias,
-          elevation: elevation,
-          color: backgroundColor,
-          shape: RoundedRectangleBorder(
+        child: Container(
+          decoration: BoxDecoration(
+            color: backgroundColor,
             borderRadius: BorderRadius.circular(8.0),
-            side: BorderSide(
+            border: Border.all(
               color: borderColor,
               width: 1.0,
             ),
@@ -207,23 +201,25 @@ class _FolderGridItemState extends State<FolderGridItem> {
                     child: FolderThumbnail(folder: widget.folder),
                   ),
                   // Text section
-                  Container(
+                  SizedBox(
                     height: 40,
                     width: double.infinity,
-                    padding: const EdgeInsets.all(4),
-                    color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
-                    alignment: Alignment.center,
-                    child: Text(
-                      widget.folder.basename(),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDarkMode ? Colors.white : Colors.black87,
-                        fontWeight: _visuallySelected
-                            ? FontWeight.bold
-                            : FontWeight.w500,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Text(
+                          widget.folder.basename(),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDarkMode ? Colors.white : Colors.black87,
+                            fontWeight: _visuallySelected
+                                ? FontWeight.bold
+                                : FontWeight.w500,
+                          ),
+                        ),
                       ),
                     ),
                   ),

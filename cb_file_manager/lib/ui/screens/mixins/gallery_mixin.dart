@@ -5,6 +5,7 @@ import 'package:cb_file_manager/helpers/files/folder_sort_manager.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/ui/tab_manager/mobile/mobile_file_actions_controller.dart';
 import 'package:cb_file_manager/ui/components/common/shared_action_bar.dart';
+import 'package:cb_file_manager/ui/utils/grid_zoom_constraints.dart';
 
 /// Mixin providing common gallery screen functionality
 /// Includes mobile controller, search, and grid size management
@@ -155,6 +156,10 @@ mixin GalleryMixin<T extends StatefulWidget> on State<T> {
         // Save to preferences - override in subclass
         await onGridSizeChanged(size);
       },
+      sizeMode: GridSizeMode.columns,
+      minGridSize: UserPreferences.minThumbnailSize.round(),
+      maxGridSize: UserPreferences.maxThumbnailSize.round(),
+      gridSpacing: 6.0,
     );
   }
 

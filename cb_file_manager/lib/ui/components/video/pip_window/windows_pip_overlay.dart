@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
+import '../video_player/video_player_utils.dart';
+
 /// Modeless, draggable PiP overlay for Windows (in‑process), using media_kit.
 ///
 /// This avoids launching a second process and behaves like a floating dialog
@@ -272,7 +274,7 @@ class _WindowsPipOverlayWidgetState extends State<_WindowsPipOverlayWidget> {
           color: Colors.black.withValues(alpha: 0.45),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           child: Row(children: [
-            Text(_fmt(_position),
+            Text(VideoPlayerUtils.formatDuration(_position),
                 style: const TextStyle(color: Colors.white70, fontSize: 11)),
             const SizedBox(width: 6),
             Expanded(
@@ -301,7 +303,7 @@ class _WindowsPipOverlayWidgetState extends State<_WindowsPipOverlayWidget> {
               ),
             ),
             const SizedBox(width: 6),
-            Text(_fmt(_duration),
+            Text(VideoPlayerUtils.formatDuration(_duration),
                 style: const TextStyle(color: Colors.white70, fontSize: 11)),
             const SizedBox(width: 8),
             const Icon(Icons.volume_up, color: Colors.white70, size: 14),
@@ -377,13 +379,6 @@ class _WindowsPipOverlayWidgetState extends State<_WindowsPipOverlayWidget> {
         ),
       ]),
     );
-  }
-
-  String _fmt(Duration d) {
-    final h = d.inHours;
-    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return h > 0 ? '$h:$m:$s' : '$m:$s';
   }
 
   String _smbToUnc(String smbUrl) {

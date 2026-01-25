@@ -8,6 +8,7 @@ import 'package:flutter/gestures.dart'; // Import for PointerSignalEvent
 import 'package:flutter/services.dart'; // Import for HardwareKeyboard
 import 'package:remixicon/remixicon.dart' as remix;
 import 'package:cb_file_manager/helpers/core/user_preferences.dart';
+import 'package:cb_file_manager/ui/utils/grid_zoom_constraints.dart';
 
 import 'file_item.dart';
 import 'file_grid_item.dart';
@@ -412,12 +413,29 @@ class FileView extends StatelessWidget {
       },
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final itemWidth = _gridItemWidthForZoom(state.gridZoomLevel);
+          final maxZoom = GridZoomConstraints.maxGridSize(
+            availableWidth: constraints.maxWidth,
+            mode: GridSizeMode.referenceWidth,
+            spacing: _gridSpacing,
+            referenceWidth: _gridReferenceWidth,
+            minValue: UserPreferences.minGridZoomLevel,
+            maxValue: UserPreferences.maxGridZoomLevel,
+          );
+          final effectiveZoom = state.gridZoomLevel
+              .clamp(UserPreferences.minGridZoomLevel, maxZoom)
+              .toInt();
+          final itemWidth = _gridItemWidthForZoom(effectiveZoom);
           final availableWidth =
               math.max(0.0, constraints.maxWidth - (_gridSpacing * 2));
           final crossAxisCount =
               _gridCrossAxisCount(availableWidth, itemWidth);
           final itemHeight = itemWidth / _gridAspectRatio;
+          final folderIndexByPath = <String, int>{
+            for (var i = 0; i < folders.length; i++) folders[i].path: i,
+          };
+          final fileIndexByPath = <String, int>{
+            for (var i = 0; i < files.length; i++) files[i].path: i,
+          };
 
           return GridView.builder(
             physics: isDesktop
@@ -433,6 +451,22 @@ class FileView extends StatelessWidget {
             addAutomaticKeepAlives: false,
             addRepaintBoundaries: true,
             addSemanticIndexes: false,
+            findChildIndexCallback: (Key key) {
+              if (key is! ValueKey<String>) return null;
+              final value = key.value;
+              if (value.startsWith('folder-grid-')) {
+                final folderPath = value.substring('folder-grid-'.length);
+                final index = folderIndexByPath[folderPath];
+                return index;
+              }
+              if (value.startsWith('file-grid-')) {
+                final filePath = value.substring('file-grid-'.length);
+                final index = fileIndexByPath[filePath];
+                if (index == null) return null;
+                return folders.length + index;
+              }
+              return null;
+            },
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: crossAxisCount,
               crossAxisSpacing: _gridSpacing,

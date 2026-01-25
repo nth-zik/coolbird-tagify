@@ -11,10 +11,19 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <set>
+#include <winreg.h>
 
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(lib, "shlwapi.lib")
+#pragma comment(lib, "advapi32.lib")
+
+static std::string ParseExeFromCommand(const wchar_t* cmd);
+static std::string ResolveExeViaApplicationsKey(const std::string& exeName);
+static std::string ResolveProgIdToExe(const std::wstring& progId);
+
+static bool SetSelfAsDefaultForVideo(const std::string& exePath);
 
 // static
 void AppIconPlugin::RegisterWithRegistrar(flutter::PluginRegistrarWindows* registrar) {
@@ -93,6 +102,39 @@ void AppIconPlugin::HandleMethodCall(
     }
     
     result->Error("INVALID_ARGUMENTS", "Invalid or missing arguments");
+    return;
+  } else if (method_call.method_name().compare("getAppsForExtension") == 0) {
+    const auto* arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
+    if (arguments) {
+      auto ext_it = arguments->find(flutter::EncodableValue("extension"));
+      if (ext_it != arguments->end()) {
+        std::string extension = std::get<std::string>(ext_it->second);
+        auto apps = GetAppsForExtension(extension);
+        flutter::EncodableList list;
+        for (const auto& p : apps) {
+          flutter::EncodableMap m;
+          m[flutter::EncodableValue("path")] = flutter::EncodableValue(p.first);
+          m[flutter::EncodableValue("name")] = flutter::EncodableValue(p.second);
+          list.push_back(flutter::EncodableValue(m));
+        }
+        result->Success(flutter::EncodableValue(list));
+        return;
+      }
+    }
+    result->Error("INVALID_ARGUMENTS", "Invalid or missing extension");
+    return;
+  } else if (method_call.method_name().compare("setSelfAsDefaultForVideo") == 0) {
+    const auto* arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
+    if (arguments) {
+      auto it = arguments->find(flutter::EncodableValue("exePath"));
+      if (it != arguments->end()) {
+        std::string exePath = std::get<std::string>(it->second);
+        bool ok = SetSelfAsDefaultForVideo(exePath);
+        result->Success(flutter::EncodableValue(ok));
+        return;
+      }
+    }
+    result->Error("INVALID_ARGUMENTS", "Invalid or missing exePath");
     return;
   } else {
     result->NotImplemented();
@@ -246,4 +288,272 @@ std::string AppIconPlugin::GetAssociatedAppPath(const std::string& extension) {
   }
   
   return std::string(utf8Path.data());
+}
+
+static std::string GetDisplayNameFromPath(const std::string& path) {
+  if (path.empty()) return "";
+  size_t last = path.find_last_of("/\\");
+  std::string name = (last != std::string::npos) ? path.substr(last + 1) : path;
+  size_t dot = name.find_last_of('.');
+  if (dot != std::string::npos && (name.size() - dot <= 5)) {
+    name = name.substr(0, dot);
+  }
+  return name.empty() ? path : name;
+}
+
+static std::string ParseExeFromCommand(const wchar_t* cmd) {
+  if (!cmd || !*cmd) return "";
+  const wchar_t* p = cmd;
+  while (*p == L' ' || *p == L'\t') p++;
+  if (!*p) return "";
+  std::wstring exe;
+  if (*p == L'"') {
+    p++;
+    const wchar_t* end = wcschr(p, L'"');
+    if (!end) return "";
+    exe.assign(p, end - p);
+    p = end + 1;
+  } else {
+    const wchar_t* start = p;
+    while (*p && *p != L' ' && *p != L'\t' && *p != L'%') p++;
+    exe.assign(start, p - start);
+  }
+  if (exe.empty()) return "";
+  std::vector<wchar_t> expanded(32768, 0);
+  DWORD n = ExpandEnvironmentStringsW(exe.c_str(), expanded.data(), (DWORD)expanded.size());
+  if (n == 0 || n > expanded.size()) return "";
+  int u8 = WideCharToMultiByte(CP_UTF8, 0, expanded.data(), -1, nullptr, 0, NULL, NULL);
+  if (u8 <= 0) return "";
+  std::vector<char> out(u8);
+  if (WideCharToMultiByte(CP_UTF8, 0, expanded.data(), -1, out.data(), u8, NULL, NULL) <= 0) return "";
+  return std::string(out.data());
+}
+
+static std::string ResolveExeViaApplicationsKey(const std::string& exeName) {
+  if (exeName.empty()) return "";
+  int wlen = MultiByteToWideChar(CP_UTF8, 0, exeName.c_str(), -1, nullptr, 0);
+  if (wlen <= 0) return "";
+  std::vector<wchar_t> wExe(wlen);
+  if (MultiByteToWideChar(CP_UTF8, 0, exeName.c_str(), -1, wExe.data(), wlen) == 0) return "";
+  std::wstring keyPath = L"SOFTWARE\\Classes\\Applications\\";
+  keyPath += wExe.data();
+  keyPath += L"\\shell\\open\\command";
+  wchar_t cmdBuf[2048] = { 0 };
+  DWORD cmdSize = (DWORD)(sizeof(cmdBuf));
+  for (HKEY root : { HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER }) {
+    HKEY hKey = NULL;
+    if (RegOpenKeyExW(root, keyPath.c_str(), 0, KEY_READ, &hKey) != ERROR_SUCCESS) continue;
+    cmdSize = (DWORD)(sizeof(cmdBuf));
+    if (RegQueryValueExW(hKey, NULL, NULL, NULL, (LPBYTE)cmdBuf, &cmdSize) == ERROR_SUCCESS) {
+      RegCloseKey(hKey);
+      std::string exe = ParseExeFromCommand(cmdBuf);
+      if (!exe.empty()) return exe;
+    } else {
+      RegCloseKey(hKey);
+    }
+  }
+  return "";
+}
+
+static std::string ResolveProgIdToExe(const std::wstring& progId) {
+  if (progId.empty()) return "";
+  std::wstring keyPath = L"SOFTWARE\\Classes\\";
+  keyPath += progId;
+  keyPath += L"\\shell\\open\\command";
+  wchar_t cmdBuf[2048] = { 0 };
+  DWORD cmdSize = (DWORD)(sizeof(cmdBuf));
+  for (HKEY root : { HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER }) {
+    HKEY hKey = NULL;
+    if (RegOpenKeyExW(root, keyPath.c_str(), 0, KEY_READ, &hKey) != ERROR_SUCCESS) continue;
+    cmdSize = (DWORD)(sizeof(cmdBuf));
+    if (RegQueryValueExW(hKey, NULL, NULL, NULL, (LPBYTE)cmdBuf, &cmdSize) == ERROR_SUCCESS) {
+      RegCloseKey(hKey);
+      std::string exe = ParseExeFromCommand(cmdBuf);
+      if (exe.empty()) return "";
+      if (exe.find("explorer.exe") != std::string::npos && exe.find("shell:") != std::string::npos)
+        return "";
+      return exe;
+    }
+    RegCloseKey(hKey);
+  }
+  return "";
+}
+
+static std::string ResolveExeViaAppPaths(const std::string& exeName) {
+  if (exeName.empty()) return "";
+  int wideSize = MultiByteToWideChar(CP_UTF8, 0, exeName.c_str(), -1, nullptr, 0);
+  if (wideSize == 0) return "";
+  std::vector<wchar_t> wExe(wideSize);
+  if (MultiByteToWideChar(CP_UTF8, 0, exeName.c_str(), -1, wExe.data(), wideSize) == 0) {
+    return "";
+  }
+  wchar_t pathBuf[MAX_PATH] = { 0 };
+  DWORD pathSize = MAX_PATH;
+  std::wstring appPathsKey = L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\";
+  appPathsKey += wExe.data();
+  HKEY hKey = NULL;
+  if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, appPathsKey.c_str(), 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
+    if (RegQueryValueExW(hKey, NULL, NULL, NULL, (LPBYTE)pathBuf, &pathSize) == ERROR_SUCCESS) {
+      RegCloseKey(hKey);
+      int u8 = WideCharToMultiByte(CP_UTF8, 0, pathBuf, -1, nullptr, 0, NULL, NULL);
+      if (u8 > 0) {
+        std::vector<char> out(u8);
+        if (WideCharToMultiByte(CP_UTF8, 0, pathBuf, -1, out.data(), u8, NULL, NULL) > 0) {
+          return std::string(out.data());
+        }
+      }
+      return "";
+    }
+    RegCloseKey(hKey);
+  }
+  if (RegOpenKeyExW(HKEY_CURRENT_USER, appPathsKey.c_str(), 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
+    pathSize = MAX_PATH;
+    if (RegQueryValueExW(hKey, NULL, NULL, NULL, (LPBYTE)pathBuf, &pathSize) == ERROR_SUCCESS) {
+      RegCloseKey(hKey);
+      int u8 = WideCharToMultiByte(CP_UTF8, 0, pathBuf, -1, nullptr, 0, NULL, NULL);
+      if (u8 > 0) {
+        std::vector<char> out(u8);
+        if (WideCharToMultiByte(CP_UTF8, 0, pathBuf, -1, out.data(), u8, NULL, NULL) > 0) {
+          return std::string(out.data());
+        }
+      }
+    } else {
+      RegCloseKey(hKey);
+    }
+  }
+  std::string viaApps = ResolveExeViaApplicationsKey(exeName);
+  if (!viaApps.empty()) return viaApps;
+  wchar_t pathBuf2[MAX_PATH] = { 0 };
+  if (SearchPathW(NULL, wExe.data(), NULL, MAX_PATH, pathBuf2, NULL) > 0) {
+    int u8 = WideCharToMultiByte(CP_UTF8, 0, pathBuf2, -1, nullptr, 0, NULL, NULL);
+    if (u8 > 0) {
+      std::vector<char> out(u8);
+      if (WideCharToMultiByte(CP_UTF8, 0, pathBuf2, -1, out.data(), u8, NULL, NULL) > 0) {
+        return std::string(out.data());
+      }
+    }
+  }
+  return "";
+}
+
+std::vector<std::pair<std::string, std::string>> AppIconPlugin::GetAppsForExtension(
+    const std::string& extension) {
+  std::vector<std::pair<std::string, std::string>> results;
+  std::set<std::string> seenPaths;
+  std::string ext = extension;
+  if (!ext.empty() && ext[0] != '.') {
+    ext = "." + ext;
+  }
+  std::string defaultPath = GetAssociatedAppPath(ext);
+  if (!defaultPath.empty() && seenPaths.find(defaultPath) == seenPaths.end()) {
+    seenPaths.insert(defaultPath);
+    results.push_back({ defaultPath, GetDisplayNameFromPath(defaultPath) });
+  }
+  std::wstring keyPath = L"SOFTWARE\\Classes\\";
+  int extWide = MultiByteToWideChar(CP_UTF8, 0, ext.c_str(), -1, nullptr, 0);
+  if (extWide == 0) return results;
+  std::vector<wchar_t> wExt(extWide);
+  if (MultiByteToWideChar(CP_UTF8, 0, ext.c_str(), -1, wExt.data(), extWide) == 0) {
+    return results;
+  }
+  keyPath += wExt.data();
+  keyPath += L"\\OpenWithList";
+
+  auto enumOpenWithList = [&](HKEY root) {
+    HKEY hKey = NULL;
+    if (RegOpenKeyExW(root, keyPath.c_str(), 0, KEY_READ, &hKey) != ERROR_SUCCESS)
+      return;
+    wchar_t valueName[256];
+    wchar_t valueData[256];
+    DWORD valueNameLen, valueDataLen, type;
+    for (DWORD i = 0; ; i++) {
+      valueNameLen = 256;
+      valueDataLen = sizeof(valueData);
+      if (RegEnumValueW(hKey, i, valueName, &valueNameLen, NULL, &type, (LPBYTE)valueData, &valueDataLen) != ERROR_SUCCESS)
+        break;
+      if (_wcsicmp(valueName, L"MRUList") == 0) continue;
+      if (type != REG_SZ && type != REG_EXPAND_SZ) continue;
+      int u8len = WideCharToMultiByte(CP_UTF8, 0, valueData, -1, nullptr, 0, NULL, NULL);
+      if (u8len == 0) continue;
+      std::vector<char> exeName(u8len);
+      if (WideCharToMultiByte(CP_UTF8, 0, valueData, -1, exeName.data(), u8len, NULL, NULL) == 0) continue;
+      std::string exeStr(exeName.data());
+      std::string path = ResolveExeViaAppPaths(exeStr);
+      if (path.empty()) continue;
+      if (seenPaths.find(path) != seenPaths.end()) continue;
+      seenPaths.insert(path);
+      results.push_back({ path, GetDisplayNameFromPath(path) });
+    }
+    RegCloseKey(hKey);
+  };
+
+  enumOpenWithList(HKEY_LOCAL_MACHINE);
+  enumOpenWithList(HKEY_CURRENT_USER);
+
+  std::wstring keyPathProgids = L"SOFTWARE\\Classes\\";
+  keyPathProgids += wExt.data();
+  keyPathProgids += L"\\OpenWithProgids";
+  auto enumOpenWithProgids = [&](HKEY root) {
+    HKEY hKey = NULL;
+    if (RegOpenKeyExW(root, keyPathProgids.c_str(), 0, KEY_READ, &hKey) != ERROR_SUCCESS) return;
+    wchar_t valueName[256];
+    DWORD valueNameLen, type;
+    for (DWORD i = 0; ; i++) {
+      valueNameLen = 256;
+      if (RegEnumValueW(hKey, i, valueName, &valueNameLen, NULL, &type, NULL, NULL) != ERROR_SUCCESS) break;
+      std::wstring progId(valueName);
+      std::string path = ResolveProgIdToExe(progId);
+      if (path.empty()) continue;
+      if (seenPaths.find(path) != seenPaths.end()) continue;
+      seenPaths.insert(path);
+      results.push_back({ path, GetDisplayNameFromPath(path) });
+    }
+    RegCloseKey(hKey);
+  };
+  enumOpenWithProgids(HKEY_LOCAL_MACHINE);
+  enumOpenWithProgids(HKEY_CURRENT_USER);
+
+  return results;
+}
+
+static bool SetSelfAsDefaultForVideo(const std::string& exePath) {
+  if (exePath.empty()) return false;
+  size_t last = exePath.find_last_of("/\\");
+  std::string exeName = (last != std::string::npos) ? exePath.substr(last + 1) : exePath;
+  if (exeName.empty()) return false;
+
+  int exeWide = MultiByteToWideChar(CP_UTF8, 0, exePath.c_str(), -1, nullptr, 0);
+  if (exeWide == 0) return false;
+  std::vector<wchar_t> wExe(exeWide);
+  if (MultiByteToWideChar(CP_UTF8, 0, exePath.c_str(), -1, wExe.data(), exeWide) == 0) return false;
+
+  int nameWide = MultiByteToWideChar(CP_UTF8, 0, exeName.c_str(), -1, nullptr, 0);
+  if (nameWide == 0) return false;
+  std::vector<wchar_t> wName(nameWide);
+  if (MultiByteToWideChar(CP_UTF8, 0, exeName.c_str(), -1, wName.data(), nameWide) == 0) return false;
+
+  std::wstring cmdVal = L"\"" + std::wstring(wExe.data()) + L"\" \"%1\"";
+  std::wstring appProgId = L"Applications\\" + std::wstring(wName.data());
+
+  std::wstring cmdKey = L"SOFTWARE\\Classes\\" + appProgId + L"\\shell\\open\\command";
+  HKEY hCmd = NULL;
+  if (RegCreateKeyExW(HKEY_CURRENT_USER, cmdKey.c_str(), 0, NULL, REG_OPTION_NON_VOLATILE, KEY_WRITE, NULL, &hCmd, NULL) != ERROR_SUCCESS)
+    return false;
+  bool ok = (RegSetValueExW(hCmd, NULL, 0, REG_SZ, (const BYTE*)cmdVal.c_str(), (DWORD)((cmdVal.size() + 1) * sizeof(wchar_t))) == ERROR_SUCCESS);
+  RegCloseKey(hCmd);
+  if (!ok) return false;
+
+  static const wchar_t* videoExts[] = {
+    L".mp4", L".mkv", L".avi", L".mov", L".wmv", L".flv", L".webm", L".m4v",
+    L".mpeg", L".mpg", L".ogv", L".3gp", L".ts", L".m2ts", L".divx"
+  };
+  for (const wchar_t* ext : videoExts) {
+    std::wstring extKey = std::wstring(L"SOFTWARE\\Classes\\") + ext;
+    HKEY hExt = NULL;
+    if (RegCreateKeyExW(HKEY_CURRENT_USER, extKey.c_str(), 0, NULL, REG_OPTION_NON_VOLATILE, KEY_WRITE, NULL, &hExt, NULL) == ERROR_SUCCESS) {
+      RegSetValueExW(hExt, NULL, 0, REG_SZ, (const BYTE*)appProgId.c_str(), (DWORD)((appProgId.size() + 1) * sizeof(wchar_t)));
+      RegCloseKey(hExt);
+    }
+  }
+  return true;
 } 

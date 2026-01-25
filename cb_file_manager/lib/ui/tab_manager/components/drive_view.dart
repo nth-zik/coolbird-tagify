@@ -11,6 +11,7 @@ import '../core/tab_manager.dart';
 import '../../screens/folder_list/folder_list_bloc.dart';
 import '../../screens/folder_list/folder_list_event.dart';
 import '../../screens/folder_list/folder_list_state.dart';
+import '../../components/common/skeleton_helper.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 
 /// Component for displaying the drive list view with storage information
@@ -52,67 +53,12 @@ class DriveView extends StatelessWidget {
     );
   }
 
-  // Skeleton UI for lazy loading
+  // Skeleton UI for lazy loading - Uses unified skeleton system
   Widget _buildSkeletonDriveList(BuildContext context) {
-    // Create a list of skeleton drive items (usually 3-5 is enough for visual effect)
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      child: ListView.builder(
-        itemCount: 5, // Show 5 skeleton items
-        itemBuilder: (context, index) {
-          return Card(
-            margin: const EdgeInsets.only(bottom: 16.0),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Drive title and icon skeleton
-                  Row(
-                    children: [
-                      _buildSkeletonBox(36, 36), // Icon placeholder
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildSkeletonBox(
-                            double.infinity, 20), // Title placeholder
-                      ),
-                      const SizedBox(width: 8),
-                      _buildSkeletonBox(16, 16), // Arrow icon placeholder
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Progress bar skeleton
-                  _buildSkeletonBox(double.infinity, 10),
-                  const SizedBox(height: 12),
-
-                  // Storage info skeleton
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildSkeletonBox(80, 14), // Used text
-                      _buildSkeletonBox(80, 14), // Free text
-                      _buildSkeletonBox(80, 14), // Total text
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  // Helper to build skeleton placeholder boxes
-  Widget _buildSkeletonBox(double width, double height) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(4),
-      ),
+    // Use unified skeleton list with desktop Card wrapper
+    return SkeletonHelper.fileList(
+      itemCount: 5, // Show 5 skeleton items for drives
+      wrapInCardOnDesktop: true, // Desktop gets Card wrapper automatically
     );
   }
 

@@ -1,9 +1,12 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import '../../screens/folder_list/folder_list_state.dart';
 import '../../../helpers/core/user_preferences.dart';
 import 'package:remixicon/remixicon.dart' as remix;
 import '../../../config/app_theme.dart';
 import '../../../config/languages/app_localizations.dart';
+import '../../utils/grid_zoom_constraints.dart';
 
 class SharedActionBar {
   /// Tạo popup menu item cho các tùy chọn sắp xếp
@@ -44,14 +47,36 @@ class SharedActionBar {
     BuildContext context, {
     required int currentGridSize,
     required Function(int) onApply,
+    GridSizeMode sizeMode = GridSizeMode.referenceWidth,
+    int minGridSize = UserPreferences.minGridZoomLevel,
+    int maxGridSize = UserPreferences.maxGridZoomLevel,
+    double minItemWidth = GridZoomConstraints.defaultMinItemWidth,
+    double gridSpacing = GridZoomConstraints.defaultGridSpacing,
+    double referenceWidth = GridZoomConstraints.defaultReferenceWidth,
+    double gridMinWidth = GridZoomConstraints.defaultGridMinWidth,
   }) {
-    int size = currentGridSize;
+    final int dynamicMax = GridZoomConstraints.maxGridSizeForContext(
+      context,
+      mode: sizeMode,
+      minItemWidth: minItemWidth,
+      spacing: gridSpacing,
+      referenceWidth: referenceWidth,
+      gridMinWidth: gridMinWidth,
+      minValue: minGridSize,
+      maxValue: maxGridSize,
+    );
+    int size = currentGridSize
+        .clamp(minGridSize, dynamicMax)
+        .toInt();
     final l10n = AppLocalizations.of(context)!;
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return StatefulBuilder(builder: (context, setState) {
+          final sliderMax = math.max(minGridSize, dynamicMax).toInt();
+          final sliderDivisions =
+              math.max(1, sliderMax - minGridSize).toInt();
           return AlertDialog(
             title: Text(l10n.adjustGridSizeTitle),
             content: Column(
@@ -59,14 +84,16 @@ class SharedActionBar {
               children: [
                 Slider(
                   value: size.toDouble(),
-                  min: UserPreferences.minGridZoomLevel.toDouble(),
-                  max: UserPreferences.maxGridZoomLevel.toDouble(),
-                  divisions: UserPreferences.maxGridZoomLevel -
-                      UserPreferences.minGridZoomLevel,
+                  min: minGridSize.toDouble(),
+                  max: sliderMax.toDouble(),
+                  divisions: sliderDivisions,
                   label: l10n.gridSizeLabel(size.round()),
                   onChanged: (double value) {
                     setState(() {
-                      size = value.round();
+                      size = value
+                          .round()
+                          .clamp(minGridSize, sliderMax)
+                          .toInt();
                     });
                   },
                 ),

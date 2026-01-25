@@ -11,6 +11,7 @@ class OptimizedInteractionLayer extends StatefulWidget {
   final VoidCallback onTap;
   final VoidCallback? onDoubleTap;
   final VoidCallback? onLongPress;
+  final void Function(LongPressStartDetails)? onLongPressStart;
   final VoidCallback? onSecondaryTap;
   final void Function(TapUpDetails)? onSecondaryTapUp;
 
@@ -19,6 +20,7 @@ class OptimizedInteractionLayer extends StatefulWidget {
     required this.onTap,
     this.onDoubleTap,
     this.onLongPress,
+    this.onLongPressStart,
     this.onSecondaryTap,
     this.onSecondaryTapUp,
   }) : super(key: key);
@@ -31,6 +33,7 @@ class OptimizedInteractionLayer extends StatefulWidget {
 class OptimizedInteractionLayerState extends State<OptimizedInteractionLayer> {
   int _lastTapTime = 0;
   Offset? _lastTapPosition;
+  bool _skipNextTap = false;
   static const int _doubleTapTimeout = 300; // milliseconds
   static const double _doubleTapMaxDistance = 40.0; // pixels
 
@@ -38,16 +41,8 @@ class OptimizedInteractionLayerState extends State<OptimizedInteractionLayer> {
     final now = DateTime.now().millisecondsSinceEpoch;
     final position = details.globalPosition;
 
-    // Always trigger onTap immediately
-    widget.onTap();
-
-    // Skip double-tap checks if no double-tap handler
-    if (widget.onDoubleTap == null) {
-      return;
-    }
-
     // Check if this could be a double tap
-    if (_lastTapTime > 0) {
+    if (widget.onDoubleTap != null && _lastTapTime > 0) {
       final timeDiff = now - _lastTapTime;
       final distance = _lastTapPosition != null
           ? (position - _lastTapPosition!).distance
@@ -59,13 +54,41 @@ class OptimizedInteractionLayerState extends State<OptimizedInteractionLayer> {
         // Reset to prevent triple tap
         _lastTapTime = 0;
         _lastTapPosition = null;
+        _skipNextTap = true;
         return;
       }
     }
 
+    final hasLongPressHandler = widget.onLongPress != null || widget.onLongPressStart != null;
+    if (!hasLongPressHandler) {
+      widget.onTap();
+      _skipNextTap = true;
+    } else {
+      _skipNextTap = false;
+    }
+
     // Store info for potential next tap
-    _lastTapTime = now;
-    _lastTapPosition = position;
+    if (widget.onDoubleTap != null) {
+      _lastTapTime = now;
+      _lastTapPosition = position;
+    }
+  }
+
+  void _handleTap() {
+    if (_skipNextTap) {
+      _skipNextTap = false;
+      return;
+    }
+    widget.onTap();
+  }
+
+  void _handleTapCancel() {
+    _skipNextTap = false;
+  }
+
+  void _handleLongPressStart(LongPressStartDetails d) {
+    _skipNextTap = true;
+    widget.onLongPressStart?.call(d);
   }
 
   @override
@@ -73,10 +96,10 @@ class OptimizedInteractionLayerState extends State<OptimizedInteractionLayer> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: _handleTapDown,
-      // If onLongPress is provided, we must use standard onTap (onUp)
-      // to allow GestureDetector to distinguish between Tap and LongPress
-      onTap: widget.onLongPress != null ? widget.onTap : null,
+      onTap: _handleTap,
+      onTapCancel: _handleTapCancel,
       onLongPress: widget.onLongPress,
+      onLongPressStart: widget.onLongPressStart != null ? _handleLongPressStart : null,
       onSecondaryTap: widget.onSecondaryTap,
       onSecondaryTapUp: widget.onSecondaryTapUp,
     );

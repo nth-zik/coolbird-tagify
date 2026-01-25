@@ -6,6 +6,8 @@
 #include <windows.h>
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 class AppIconPlugin : public flutter::Plugin {
  public:
@@ -34,6 +36,11 @@ class AppIconPlugin : public flutter::Plugin {
       
   // Get the associated application executable path for a file extension
   std::string GetAssociatedAppPath(const std::string& extension);
+
+  // Get all apps that can handle a file extension (from registry OpenWithList).
+  // Returns vector of (path, displayName).
+  std::vector<std::pair<std::string, std::string>> GetAppsForExtension(
+      const std::string& extension);
 
   // Plugin registrar
   flutter::PluginRegistrarWindows* registrar_;

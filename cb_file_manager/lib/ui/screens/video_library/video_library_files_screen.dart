@@ -13,9 +13,12 @@ import 'package:cb_file_manager/services/video_library_service.dart';
 import 'package:cb_file_manager/ui/components/common/shared_action_bar.dart';
 import 'package:cb_file_manager/ui/components/common/screen_scaffold.dart';
 import 'package:cb_file_manager/ui/dialogs/delete_confirmation_dialog.dart';
+import 'package:cb_file_manager/helpers/files/external_app_helper.dart';
+import 'package:cb_file_manager/ui/dialogs/open_with_dialog.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/components/file_view.dart';
-import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/video_player_full_screen.dart';
+import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
+import 'package:cb_file_manager/ui/utils/grid_zoom_constraints.dart';
 import 'package:cb_file_manager/ui/screens/mixins/selection_mixin.dart';
 import 'package:cb_file_manager/ui/tab_manager/components/index.dart'
     as tab_components;
@@ -93,16 +96,17 @@ class _VideoLibraryFilesScreenState extends State<VideoLibraryFilesScreen>
       final sortOption = await _preferences.getSortOption();
       final gridZoomLevel = await _preferences.getGridZoomLevel();
       final columnVisibility = await _preferences.getColumnVisibility();
+      final maxZoom = GridZoomConstraints.maxGridSizeForContext(
+        context,
+        mode: GridSizeMode.referenceWidth,
+      );
 
       if (!mounted) return;
       setState(() {
         _viewMode = effectiveViewMode;
         _sortOption = sortOption;
         _gridZoomLevel = gridZoomLevel
-            .clamp(
-              UserPreferences.minGridZoomLevel,
-              UserPreferences.maxGridZoomLevel,
-            )
+            .clamp(UserPreferences.minGridZoomLevel, maxZoom)
             .toInt();
         _columnVisibility = columnVisibility;
       });
@@ -228,11 +232,12 @@ class _VideoLibraryFilesScreenState extends State<VideoLibraryFilesScreen>
   }
 
   void _handleGridZoomDelta(int delta) {
+    final maxZoom = GridZoomConstraints.maxGridSizeForContext(
+      context,
+      mode: GridSizeMode.referenceWidth,
+    );
     final nextLevel = (_gridZoomLevel + delta)
-        .clamp(
-          UserPreferences.minGridZoomLevel,
-          UserPreferences.maxGridZoomLevel,
-        )
+        .clamp(UserPreferences.minGridZoomLevel, maxZoom)
         .toInt();
     if (nextLevel == _gridZoomLevel) return;
     setState(() {
@@ -242,12 +247,12 @@ class _VideoLibraryFilesScreenState extends State<VideoLibraryFilesScreen>
   }
 
   void _setGridZoomLevel(int level) {
-    final nextLevel = level
-        .clamp(
-          UserPreferences.minGridZoomLevel,
-          UserPreferences.maxGridZoomLevel,
-        )
-        .toInt();
+    final maxZoom = GridZoomConstraints.maxGridSizeForContext(
+      context,
+      mode: GridSizeMode.referenceWidth,
+    );
+    final nextLevel =
+        level.clamp(UserPreferences.minGridZoomLevel, maxZoom).toInt();
     setState(() {
       _gridZoomLevel = nextLevel;
     });
@@ -484,12 +489,28 @@ class _VideoLibraryFilesScreenState extends State<VideoLibraryFilesScreen>
   }
 
   void _openVideo(File file) {
-    Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (context) => VideoPlayerFullScreen(file: file),
-      ),
-    );
+    // Default: in-app player. Only system default when user enabled in Settings.
+    _preferences.getUseSystemDefaultForVideo().then((useSystem) {
+      if (useSystem) {
+        ExternalAppHelper.openWithSystemDefault(file.path).then((success) {
+          if (!success && mounted) {
+            showDialog(
+              context: context,
+              builder: (context) => OpenWithDialog(filePath: file.path),
+            );
+          }
+        });
+      } else {
+        if (mounted) {
+          Navigator.of(context, rootNavigator: true).push(
+            MaterialPageRoute(
+              fullscreenDialog: true,
+              builder: (_) => VideoPlayerFullScreen(file: file),
+            ),
+          );
+        }
+      }
+    });
   }
 
   @override
@@ -528,6 +549,7 @@ class _VideoLibraryFilesScreenState extends State<VideoLibraryFilesScreen>
                   context,
                   currentGridSize: _gridZoomLevel,
                   onApply: _setGridZoomLevel,
+                  sizeMode: GridSizeMode.referenceWidth,
                 )
             : null,
         onColumnSettingsPressed:

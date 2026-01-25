@@ -207,6 +207,10 @@ class NetworkBrowsingBloc
         final List<Directory> directories = [];
         final List<File> files = [];
 
+        // Batch size for progressive loading - emit partial results every N items
+        const int batchSize = 30;
+        int processedCount = 0;
+
         // Instead of blindly casting, ensure we create proper Directory and File objects
         for (var item in validContents) {
           // _log("Processing item: ${item.runtimeType} - ${item.path}");
@@ -229,6 +233,23 @@ class NetworkBrowsingBloc
               files.add(file);
               _log("Created new File from path: ${item.path}");
             }
+          }
+
+          processedCount++;
+
+          // Emit partial state every batchSize items for progressive/lazy loading
+          // This allows UI to display items as they are processed
+          if (processedCount % batchSize == 0 && processedCount < validContents.length) {
+            emit(NetworkBrowsingState.directoryLoaded(
+              currentService: service,
+              currentPath: event.path,
+              directories: List.from(directories),
+              files: List.from(files),
+              connections: state.connections,
+              lastSuccessfullyConnectedPath: state.lastSuccessfullyConnectedPath,
+              isLoadingMore: true, // Indicate more content is coming
+            ));
+            _log("NetworkBrowsingBloc: Emitted partial state with ${directories.length} dirs, ${files.length} files");
           }
         }
 
@@ -255,6 +276,7 @@ class NetworkBrowsingBloc
         }
 
         // Create a fresh state with directoryLoaded constructor for clarity
+        // isLoadingMore: false indicates loading is complete
         final newState = NetworkBrowsingState.directoryLoaded(
           currentService: service,
           currentPath: event.path,
@@ -262,6 +284,7 @@ class NetworkBrowsingBloc
           files: files,
           connections: state.connections,
           lastSuccessfullyConnectedPath: state.lastSuccessfullyConnectedPath,
+          isLoadingMore: false,
         );
 
         emit(newState);

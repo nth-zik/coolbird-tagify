@@ -1,6 +1,9 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
-/// Unified skeleton component for file and album loading
+/// Unified skeleton component for file, album, and media loading across all platforms
+/// Automatically adapts to mobile/desktop with consistent design
 class Skeleton extends StatefulWidget {
   final double? width;
   final double? height;
@@ -10,6 +13,9 @@ class Skeleton extends StatefulWidget {
   final int? itemCount;
   final int? crossAxisCount;
   final bool isAlbum;
+
+  /// Whether to wrap list items in Card on desktop (default: true)
+  final bool wrapInCardOnDesktop;
 
   const Skeleton({
     Key? key,
@@ -21,6 +27,7 @@ class Skeleton extends StatefulWidget {
     this.itemCount = 12,
     this.crossAxisCount = 3,
     this.isAlbum = false,
+    this.wrapInCardOnDesktop = true,
   }) : super(key: key);
 
   @override
@@ -28,11 +35,26 @@ class Skeleton extends StatefulWidget {
 }
 
 enum SkeletonType {
+  /// Single skeleton box for thumbnails, images, etc.
   single,
+
+  /// List view skeleton for files/albums
   list,
+
+  /// Grid view skeleton for files/albums
   grid,
+
+  /// Album grid layout
   albumGrid,
+
+  /// Album list layout
   albumList,
+
+  /// Video thumbnail skeleton (optimized for video previews)
+  videoThumbnail,
+
+  /// Masonry grid layout (Pinterest-style with varying heights)
+  masonry,
 }
 
 class _SkeletonState extends State<Skeleton>
@@ -61,7 +83,17 @@ class _SkeletonState extends State<Skeleton>
         return _buildAlbumGridSkeleton(context);
       case SkeletonType.albumList:
         return _buildAlbumListSkeleton(context);
+      case SkeletonType.videoThumbnail:
+        return _buildVideoThumbnailSkeleton(context);
+      case SkeletonType.masonry:
+        return _buildMasonrySkeleton(context);
     }
+  }
+
+  /// Detect if current platform is mobile (Android/iOS)
+  bool get _isMobile {
+    if (kIsWeb) return false;
+    return Platform.isAndroid || Platform.isIOS;
   }
 
   Widget _buildSingleSkeleton(BuildContext context) {
@@ -113,6 +145,7 @@ class _SkeletonState extends State<Skeleton>
       itemBuilder: (context, index) => _SkeletonListItem(
         index: index,
         controller: _controller,
+        wrapInCard: !_isMobile && widget.wrapInCardOnDesktop,
       ),
     );
   }
@@ -143,83 +176,139 @@ class _SkeletonState extends State<Skeleton>
   Widget _buildAlbumListSkeleton(BuildContext context) {
     return _buildListSkeleton(context);
   }
+
+  Widget _buildVideoThumbnailSkeleton(BuildContext context) {
+    // Video thumbnail skeleton - optimized for video previews
+    return ShimmerBox(
+      width: widget.width ?? double.infinity,
+      height: widget.height ?? double.infinity,
+      borderRadius: widget.borderRadius ?? BorderRadius.circular(8),
+    );
+  }
+
+  Widget _buildMasonrySkeleton(BuildContext context) {
+    // Masonry skeleton for Pinterest-style layout with varying heights
+    // Note: Using standard GridView with varying aspect ratios to simulate masonry
+    // For true masonry in production, the parent should use MasonryGridView
+    return GridView.builder(
+      physics: const ClampingScrollPhysics(),
+      padding: const EdgeInsets.all(8.0),
+      cacheExtent: 800,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: widget.crossAxisCount ?? 3,
+        crossAxisSpacing: 6,
+        mainAxisSpacing: 6,
+        childAspectRatio: 0.75, // Slightly taller for masonry effect
+      ),
+      itemCount: widget.itemCount ?? 12,
+      itemBuilder: (context, index) {
+        // Vary heights for masonry effect (pattern: tall, medium, short)
+        final heightVariation = index % 3;
+        final aspectRatio = heightVariation == 0
+            ? 0.65 // Tall
+            : heightVariation == 1
+                ? 0.75 // Medium
+                : 0.85; // Short
+
+        return _SkeletonMasonryItem(
+          index: index,
+          controller: _controller,
+          aspectRatio: aspectRatio,
+        );
+      },
+    );
+  }
 }
 
 /// Skeleton list item with album design
+/// Automatically wraps in Card on desktop if wrapInCard is true
 class _SkeletonListItem extends StatelessWidget {
   final int index;
   final AnimationController controller;
+  final bool wrapInCard;
 
   const _SkeletonListItem({
     required this.index,
     required this.controller,
+    this.wrapInCard = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return RepaintBoundary(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-        padding: const EdgeInsets.all(12.0),
-        decoration: BoxDecoration(
+    final content = Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+      padding: const EdgeInsets.all(12.0),
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Colors.grey[800]?.withValues(alpha: 0.3)
+            : Colors.grey[100]?.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
           color: Theme.of(context).brightness == Brightness.dark
-              ? Colors.grey[800]?.withValues(alpha: 0.3)
-              : Colors.grey[100]?.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white.withValues(alpha: 0.05)
-                : Colors.black.withValues(alpha: 0.05),
-            width: 0.5,
-          ),
-        ),
-        child: Row(
-          children: [
-            ShimmerBox(
-              width: 56, // Always use album size for consistency
-              height: 56,
-              borderRadius: BorderRadius.circular(16),
-              controller: controller,
-              delay: Duration(milliseconds: (index * 80).clamp(0, 800)),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ShimmerBox(
-                    width: double.infinity,
-                    height: 18, // Always use album size
-                    borderRadius: BorderRadius.circular(8),
-                    controller: controller,
-                    delay:
-                        Duration(milliseconds: (index * 80 + 40).clamp(0, 840)),
-                  ),
-                  const SizedBox(height: 12),
-                  ShimmerBox(
-                    width: MediaQuery.of(context).size.width * 0.6,
-                    height: 16, // Always use album size
-                    borderRadius: BorderRadius.circular(8),
-                    controller: controller,
-                    delay:
-                        Duration(milliseconds: (index * 80 + 80).clamp(0, 880)),
-                  ),
-                  const SizedBox(height: 8),
-                  ShimmerBox(
-                    width: 120,
-                    height: 12,
-                    borderRadius: BorderRadius.circular(6),
-                    controller: controller,
-                    delay: Duration(
-                        milliseconds: (index * 80 + 120).clamp(0, 920)),
-                  ),
-                ],
-              ),
-            ),
-          ],
+              ? Colors.white.withValues(alpha: 0.05)
+              : Colors.black.withValues(alpha: 0.05),
+          width: 0.5,
         ),
       ),
+      child: Row(
+        children: [
+          ShimmerBox(
+            width: 56, // Always use album size for consistency
+            height: 56,
+            borderRadius: BorderRadius.circular(16),
+            controller: controller,
+            delay: Duration(milliseconds: (index * 80).clamp(0, 800)),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ShimmerBox(
+                  width: double.infinity,
+                  height: 18, // Always use album size
+                  borderRadius: BorderRadius.circular(8),
+                  controller: controller,
+                  delay:
+                      Duration(milliseconds: (index * 80 + 40).clamp(0, 840)),
+                ),
+                const SizedBox(height: 12),
+                ShimmerBox(
+                  width: MediaQuery.of(context).size.width * 0.6,
+                  height: 16, // Always use album size
+                  borderRadius: BorderRadius.circular(8),
+                  controller: controller,
+                  delay:
+                      Duration(milliseconds: (index * 80 + 80).clamp(0, 880)),
+                ),
+                const SizedBox(height: 8),
+                ShimmerBox(
+                  width: 120,
+                  height: 12,
+                  borderRadius: BorderRadius.circular(6),
+                  controller: controller,
+                  delay: Duration(
+                      milliseconds: (index * 80 + 120).clamp(0, 920)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
+
+    // Wrap in Card on desktop for elevated appearance
+    if (wrapInCard) {
+      return RepaintBoundary(
+        child: Card(
+          margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+          elevation: 1,
+          child: content,
+        ),
+      );
+    }
+
+    return RepaintBoundary(child: content);
   }
 }
 
@@ -282,6 +371,51 @@ class _SkeletonGridItem extends StatelessWidget {
               delay: Duration(milliseconds: (index * 60 + 60).clamp(0, 660)),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Skeleton masonry item with varying heights for Pinterest-style layout
+class _SkeletonMasonryItem extends StatelessWidget {
+  final int index;
+  final AnimationController controller;
+  final double aspectRatio;
+
+  const _SkeletonMasonryItem({
+    required this.index,
+    required this.controller,
+    required this.aspectRatio,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: AspectRatio(
+        aspectRatio: aspectRatio,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.grey[800]?.withValues(alpha: 0.2)
+                : Colors.grey[50]?.withValues(alpha: 0.8),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.black.withValues(alpha: 0.05),
+              width: 0.5,
+            ),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: ShimmerBox(
+              width: double.infinity,
+              height: double.infinity,
+              controller: controller,
+              delay: Duration(milliseconds: (index * 60).clamp(0, 600)),
+            ),
+          ),
         ),
       ),
     );

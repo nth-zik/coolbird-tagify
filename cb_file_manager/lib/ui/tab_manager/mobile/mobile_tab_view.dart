@@ -12,6 +12,7 @@ import '../../screens/network_browsing/network_connection_screen.dart';
 import '../../screens/network_browsing/network_browser_screen.dart';
 import '../../screens/network_browsing/smb_browser_screen.dart'; // Added import for SMBBrowserScreen
 import '../../../bloc/network_browsing/network_browsing_bloc.dart';
+import 'package:cb_file_manager/services/network_browsing/network_service_registry.dart';
 import 'package:cb_file_manager/ui/state/video_ui_state.dart';
 import '../../screens/system_screen_router.dart'; // Import SystemScreenRouter for system paths
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
@@ -64,10 +65,10 @@ class MobileTabView extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _buildEmptyOrNormalChromeBar(context, state),
-                        // Add action buttons row for file management (only for local file browsing)
+                        // Add action buttons row for file management (local and network browsing)
                         if (state.tabs.isNotEmpty &&
                             state.activeTab != null &&
-                            !state.activeTab!.path.startsWith('#'))
+                            _shouldShowMobileActionBar(state.activeTab!.path))
                           _buildMobileActionButtons(
                               context, state.activeTab!.id),
                       ],
@@ -690,6 +691,15 @@ class MobileTabView extends StatelessWidget {
           return BlocProvider<NetworkBrowsingBloc>.value(
             key: ValueKey(
                 '${activeTab.id}_network_connection_fallback_incomplete_path'),
+              value: context.read<NetworkBrowsingBloc>(),
+              child: const NetworkConnectionScreen(),
+            );
+        }
+
+        if (NetworkServiceRegistry().getServiceForPath(activeTab.path) == null) {
+          return BlocProvider<NetworkBrowsingBloc>.value(
+            key: ValueKey(
+                '${activeTab.id}_network_connection_fallback_no_service'),
             value: context.read<NetworkBrowsingBloc>(),
             child: const NetworkConnectionScreen(),
           );
@@ -1012,6 +1022,24 @@ extension MobileTabViewDynamicMenu on MobileTabView {
   Widget _buildMobileActionButtons(BuildContext context, String tabId) {
     final controller = MobileFileActionsController.forTab(tabId);
     return controller.buildMobileActionBar(context);
+  }
+
+  /// Check if mobile action bar should be shown for the given path
+  /// Returns true for local paths and network paths (#network/, smb://, ftp://, etc.)
+  /// Returns false for other system paths (#home, #gallery, #video, #tags, etc.)
+  bool _shouldShowMobileActionBar(String path) {
+    // Allow network browsing paths
+    if (path.startsWith('#network/')) {
+      return true;
+    }
+
+    // Block other system paths that start with #
+    if (path.startsWith('#')) {
+      return false;
+    }
+
+    // Allow local file paths and direct network paths (smb://, ftp://, etc.)
+    return true;
   }
 }
 

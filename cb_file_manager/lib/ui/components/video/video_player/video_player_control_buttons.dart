@@ -1,0 +1,74 @@
+import 'package:flutter/material.dart';
+
+/// Compact volume slider (0–100) for video player. Reuses SliderTheme across player backends.
+class VideoPlayerVolumeSlider extends StatelessWidget {
+  final double value;
+  final ValueChanged<double> onChanged;
+
+  const VideoPlayerVolumeSlider({
+    Key? key,
+    required this.value,
+    required this.onChanged,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return SliderTheme(
+      data: SliderTheme.of(context).copyWith(
+        trackHeight: 2,
+        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 4),
+        overlayShape: const RoundSliderOverlayShape(overlayRadius: 8),
+      ),
+      child: Slider(
+        value: value.clamp(0.0, 100.0),
+        min: 0.0,
+        max: 100.0,
+        onChanged: onChanged,
+        activeColor: Colors.white,
+        inactiveColor: Colors.white.withValues(alpha: 0.3),
+      ),
+    );
+  }
+}
+
+/// Reusable icon button for video player controls (play, pause, volume, etc.).
+class VideoPlayerControlButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final bool enabled;
+  final double size;
+  final double padding;
+  final String? tooltip;
+
+  const VideoPlayerControlButton({
+    Key? key,
+    required this.icon,
+    required this.onPressed,
+    this.enabled = true,
+    this.size = 24,
+    this.padding = 8,
+    this.tooltip,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final button = IconButton(
+      icon: Icon(
+        icon,
+        size: size,
+        color: enabled ? Colors.white : Colors.grey,
+      ),
+      onPressed: enabled ? onPressed : null,
+      padding: EdgeInsets.all(padding),
+      constraints: const BoxConstraints(),
+      splashRadius: size + 4,
+    );
+
+    return tooltip != null
+        ? Tooltip(
+            message: tooltip!,
+            child: button,
+          )
+        : button;
+  }
+}

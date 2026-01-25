@@ -1,6 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cb_file_manager/helpers/files/external_app_helper.dart';
+import 'package:cb_file_manager/helpers/files/windows_app_icon.dart';
+import 'package:cb_file_manager/ui/screens/media_gallery/video_player_full_screen.dart';
+import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
+import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:remixicon/remixicon.dart' as remix;
 import 'package:file_picker/file_picker.dart';
 
@@ -26,10 +30,14 @@ class _OpenWithDialogState extends State<OpenWithDialog> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final screen = MediaQuery.of(context).size;
+    final isNarrow = screen.width < 500;
+    final dialogWidth = isNarrow ? (screen.width * 0.92).clamp(280.0, 400.0) : 420.0;
+    final listMaxH = (screen.height * 0.48).clamp(320.0, 560.0);
 
     return Dialog(
       child: Container(
-        width: 400,
+        width: dialogWidth,
         padding: const EdgeInsets.all(16.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -103,7 +111,7 @@ class _OpenWithDialogState extends State<OpenWithDialog> {
                 }
 
                 return Container(
-                  constraints: const BoxConstraints(maxHeight: 300),
+                  constraints: BoxConstraints(maxHeight: listMaxH),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -123,8 +131,16 @@ class _OpenWithDialogState extends State<OpenWithDialog> {
 
                                 Navigator.pop(context);
 
-                                if (app.packageName == 'shell_open') {
-                                  // Use Process.start for Windows shell execution
+                                if (app.packageName == '__cb_video_player__') {
+                                  Navigator.of(context, rootNavigator: true)
+                                      .push(
+                                    MaterialPageRoute(
+                                      fullscreenDialog: true,
+                                      builder: (_) => VideoPlayerFullScreen(
+                                          file: File(widget.filePath)),
+                                    ),
+                                  );
+                                } else if (app.packageName == 'shell_open') {
                                   if (Platform.isWindows) {
                                     final process = await Process.start(
                                         'explorer', [widget.filePath]);
@@ -146,9 +162,53 @@ class _OpenWithDialogState extends State<OpenWithDialog> {
                         ),
                       ),
                       const Divider(),
+                      if ((Platform.isWindows || Platform.isAndroid) &&
+                          FileTypeUtils.isVideoFile(widget.filePath))
+                        ListTile(
+                          leading: const Icon(remix.Remix.video_line),
+                          title: Text(
+                              AppLocalizations.of(context)!
+                                  .setCoolBirdAsDefaultForVideos,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: isDarkMode ? Colors.blue[200] : Colors.blue[700],
+                            ),
+                          ),
+                          onTap: () async {
+                            if (Platform.isWindows) {
+                              final exe = Platform.resolvedExecutable;
+                              final ok = await WindowsAppIcon
+                                  .setSelfAsDefaultForVideo(exe);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(ok
+                                        ? 'CoolBird is now the default for video files.'
+                                        : 'Could not set as default.'),
+                                  ),
+                                );
+                                Navigator.pop(context);
+                              }
+                            } else if (Platform.isAndroid) {
+                              await ExternalAppHelper.openDefaultAppSettings();
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(AppLocalizations.of(context)!
+                                        .setCoolBirdAsDefaultForVideosAndroidHint),
+                                  ),
+                                );
+                                Navigator.pop(context);
+                              }
+                            }
+                          },
+                        ),
+                      if ((Platform.isWindows || Platform.isAndroid) &&
+                          FileTypeUtils.isVideoFile(widget.filePath))
+                        const Divider(),
                       ListTile(
                         leading: const Icon(remix.Remix.more_line),
-                        title: const Text('Choose another app...'),
+                        title: Text(AppLocalizations.of(context)!.chooseAnotherApp),
                         onTap: () async {
                           // Close the dialog
                           Navigator.pop(context);
@@ -188,7 +248,7 @@ class _OpenWithDialogState extends State<OpenWithDialog> {
                 onPressed: () {
                   Navigator.pop(context);
                 },
-                child: const Text('Cancel'),
+                child: Text(AppLocalizations.of(context)!.cancel),
               ),
             ),
           ],

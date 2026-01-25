@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'video_player_utils.dart';
+
 class CommonVideoControlsOverlay extends StatelessWidget {
   final Duration position;
   final Duration duration;
@@ -32,11 +34,6 @@ class CommonVideoControlsOverlay extends StatelessWidget {
     this.onScreenshot,
   }) : super(key: key);
 
-  String _fmt(Duration d) {
-    String two(int n) => n.toString().padLeft(2, '0');
-    return '${two(d.inHours)}:${two(d.inMinutes.remainder(60))}:${two(d.inSeconds.remainder(60))}';
-  }
-
   @override
   Widget build(BuildContext context) {
     final safeDuration =
@@ -62,7 +59,7 @@ class CommonVideoControlsOverlay extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text(_fmt(position),
+              Text(VideoPlayerUtils.formatDurationAlwaysHms(position),
                   style: const TextStyle(color: Colors.white, fontSize: 12)),
               Expanded(
                 child: Slider(
@@ -72,7 +69,7 @@ class CommonVideoControlsOverlay extends StatelessWidget {
                   inactiveColor: Colors.white30,
                 ),
               ),
-              Text(_fmt(duration),
+              Text(VideoPlayerUtils.formatDurationAlwaysHms(duration),
                   style: const TextStyle(color: Colors.white, fontSize: 12)),
             ],
           ),

@@ -91,8 +91,11 @@ class FolderContentBuilder {
       );
     }
 
-    // Handle empty directory
-    if (folderListState.folders.isEmpty && folderListState.files.isEmpty) {
+    // Handle empty directory - only show empty state when not loading
+    // During progressive loading, folders/files may temporarily be empty
+    if (folderListState.folders.isEmpty &&
+        folderListState.files.isEmpty &&
+        !folderListState.isLoading) {
       return _buildEmptyFolder(context, isDesktopPlatform);
     }
 

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:remixicon/remixicon.dart' as remix;
 
+import '../../../config/languages/app_localizations.dart';
+
 /// Component to display error messages with appropriate styling and actions
 class ErrorView extends StatelessWidget {
   final String errorMessage;
@@ -18,6 +20,7 @@ class ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -42,21 +45,21 @@ class ErrorView extends StatelessWidget {
             children: [
               OutlinedButton(
                 onPressed: onGoBack,
-                child: Text(isNetworkPath ? 'Close Connection' : 'Go Back'),
+                child: Text(isNetworkPath ? l10n.closeConnection : l10n.goBack),
               ),
               const SizedBox(width: 8),
               ElevatedButton(
                 onPressed: onRetry,
-                child: Text(isNetworkPath ? 'Try Again' : 'Retry'),
+                child: Text(isNetworkPath ? l10n.tryAgain : l10n.retry),
               ),
             ],
           ),
           if (isNetworkPath) ...[
             const SizedBox(height: 16),
-            const Text(
-              'If this error persists, check your network connection and the server status.',
+            Text(
+              l10n.networkErrorPersistsHint,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey),
+              style: const TextStyle(fontSize: 14, color: Colors.grey),
             ),
           ],
         ],

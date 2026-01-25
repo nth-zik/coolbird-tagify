@@ -346,8 +346,7 @@ class _FileDetailsItemState extends State<FileDetailsItem> {
             ),
             // Add optimized interaction layer on top
             Positioned.fill(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
+              child: OptimizedInteractionLayer(
                 onTap: () {
                   if (widget.isDesktopMode) {
                     _handleFileSelection();
@@ -355,16 +354,24 @@ class _FileDetailsItemState extends State<FileDetailsItem> {
                     widget.onTap!(widget.file, false);
                   }
                 },
-                onDoubleTap: () {
-                  if (widget.onTap != null) {
-                    widget.onTap!(widget.file, true);
-                  }
-                },
-                onLongPress: () {
-                  if (!_visuallySelected) {
-                    _handleFileSelection();
-                  }
-                },
+                onDoubleTap: widget.isDesktopMode && widget.onTap != null
+                    ? () {
+                        widget.onTap!(widget.file, true);
+                      }
+                    : null,
+                onLongPress: widget.isDesktopMode
+                    ? () {
+                        if (!_visuallySelected) {
+                          _handleFileSelection();
+                        }
+                      }
+                    : null,
+                onLongPressStart: !widget.isDesktopMode
+                    ? (d) {
+                        HapticFeedback.mediumImpact();
+                        _showFileContextMenu(context, d.globalPosition);
+                      }
+                    : null,
                 onSecondaryTapUp: (details) =>
                     _showFileContextMenu(context, details.globalPosition),
               ),

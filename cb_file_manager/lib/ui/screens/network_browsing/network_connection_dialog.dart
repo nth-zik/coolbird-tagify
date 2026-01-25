@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:remixicon/remixicon.dart' as remix;
 
+import '../../../config/languages/app_localizations.dart';
 import '../../../bloc/network_browsing/network_browsing_bloc.dart';
 import '../../../bloc/network_browsing/network_browsing_event.dart';
 import '../../../bloc/network_browsing/network_browsing_state.dart';
@@ -97,7 +98,7 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
       if (state.lastSuccessfullyConnectedPath != null &&
           widget.onConnectionRequested != null) {
         final connectionPath = state.lastSuccessfullyConnectedPath!;
-        final tabName = _getTabNameFromPath(connectionPath);
+        final tabName = _getTabNameFromPath(context, connectionPath);
         widget.onConnectionRequested!(connectionPath, tabName);
         RouteUtils.safePopDialog(context);
       }
@@ -115,7 +116,7 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
     super.dispose();
   }
 
-  String _getTabNameFromPath(String path) {
+  String _getTabNameFromPath(BuildContext context, String path) {
     try {
       if (path.startsWith('#network/')) {
         final parts = path.split('/');
@@ -131,7 +132,7 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
     } catch (e) {
       debugPrint('Error parsing path for tab name: $e');
     }
-    return 'Network Connection';
+    return AppLocalizations.of(context)!.networkConnection;
   }
 
   // Tải thông tin đăng nhập đã lưu
@@ -248,20 +249,20 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
   }
 
   Future<void> _deleteSavedHost(String host) async {
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Saved Connection?'),
-        content: Text(
-            'Are you sure you want to delete the saved connection for "$host"?'),
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.deleteSavedConnectionTitle),
+        content: Text(l10n.deleteSavedConnectionConfirm(host)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.cancel),
           ),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.delete, style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -269,7 +270,6 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
 
     if (confirmed == true) {
       try {
-        // Find the credentials to get the ID
         final credsToDelete = NetworkCredentialsService().findCredentials(
           serviceType: _selectedService,
           host: host,
@@ -277,10 +277,8 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
 
         if (credsToDelete != null) {
           NetworkCredentialsService().deleteCredentials(credsToDelete.id);
-          // Reload hosts to update the UI
           await _loadSavedHosts();
 
-          // Clear the form if the deleted host was the one being shown
           if (_hostController.text == host) {
             _hostController.clear();
             _usernameController.clear();
@@ -291,15 +289,14 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Connection for "$host" deleted.')),
+              SnackBar(content: Text(l10n.connectionDeleted(host))),
             );
           }
         } else {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                  content:
-                      Text('Could not find connection for "$host" to delete.'),
+                  content: Text(l10n.connectionNotFoundToDelete(host)),
                   backgroundColor: Colors.orange),
             );
           }
@@ -308,7 +305,7 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
         debugPrint('Error deleting host: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error deleting connection: $e')),
+            SnackBar(content: Text('${l10n.errorDeletingConnection}: $e')),
           );
         }
       }
@@ -394,7 +391,7 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
       debugPrint('Error connecting to server: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Connection failed: $e')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.connectionFailed(e.toString()))),
         );
       }
     } finally {
@@ -419,9 +416,9 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
           final isLoading =
               state.isLoading || state.isConnecting || _connectingToServer;
 
-          // Không còn cần dialog chọn share nữa vì shares sẽ hiển thị như thư mục
+          final l10n = AppLocalizations.of(context)!;
           return AlertDialog(
-            title: Text('Connect to $_selectedService Server'),
+            title: Text(l10n.connectToServiceServer(_selectedService)),
             content: SizedBox(
               width: 400,
               child: Form(
@@ -433,9 +430,9 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
                       // Service Selection Dropdown
                       DropdownButtonFormField<String>(
                         initialValue: _selectedService,
-                        decoration: const InputDecoration(
-                          labelText: 'Service Type',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: l10n.serviceType,
+                          border: const OutlineInputBorder(),
                         ),
                         items: const [
                           DropdownMenuItem(value: 'SMB', child: Text('SMB')),
@@ -474,9 +471,9 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
                             controller: controller,
                             focusNode: focusNode,
                             enabled: !isLoading,
-                            decoration: const InputDecoration(
-                              labelText: 'Host',
-                              border: OutlineInputBorder(),
+                            decoration: InputDecoration(
+                              labelText: l10n.host,
+                              border: const OutlineInputBorder(),
                             ),
                             onChanged: (value) {
                               _hostController.text = value;
@@ -521,7 +518,7 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
                                           RouteUtils.safePopDialog(context);
                                           _deleteSavedHost(option);
                                         },
-                                        tooltip: 'Delete Saved Connection',
+                                        tooltip: l10n.deleteSavedConnection,
                                       ),
                                     ],
                                   ),
@@ -541,9 +538,9 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
                       TextFormField(
                         controller: _usernameController,
                         enabled: !isLoading,
-                        decoration: const InputDecoration(
-                          labelText: 'Username',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: l10n.username,
+                          border: const OutlineInputBorder(),
                         ),
                       ),
 
@@ -555,7 +552,7 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
                         enabled: !isLoading,
                         obscureText: !_showPassword,
                         decoration: InputDecoration(
-                          labelText: 'Password',
+                          labelText: l10n.password,
                           border: const OutlineInputBorder(),
                           suffixIcon: IconButton(
                             icon: Icon(
@@ -580,9 +577,9 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
                       TextFormField(
                         controller: _portController,
                         enabled: !isLoading,
-                        decoration: const InputDecoration(
-                          labelText: 'Port (optional)',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: l10n.portOptional,
+                          border: const OutlineInputBorder(),
                         ),
                         keyboardType: TextInputType.number,
                       ),
@@ -593,7 +590,7 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
 
                         // SSL Checkbox
                         CheckboxListTile(
-                          title: const Text('Use SSL/TLS'),
+                          title: Text(l10n.useSslTls),
                           value: _useSSL,
                           onChanged: isLoading
                               ? null
@@ -615,10 +612,10 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
                         TextFormField(
                           controller: _basePathController,
                           enabled: !isLoading,
-                          decoration: const InputDecoration(
-                            labelText: 'Base Path (optional)',
-                            hintText: 'e.g., /webdav',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: l10n.basePathOptional,
+                            hintText: l10n.basePathHint,
+                            border: const OutlineInputBorder(),
                           ),
                         ),
                       ],
@@ -629,9 +626,9 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
                         // Domain Field
                         TextFormField(
                           enabled: !isLoading,
-                          decoration: const InputDecoration(
-                            labelText: 'Domain (optional)',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: l10n.domainOptional,
+                            border: const OutlineInputBorder(),
                           ),
                           onChanged: (value) {
                             _domain = value.isEmpty ? null : value;
@@ -669,9 +666,8 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
 
                       // Save Credentials Checkbox
                       CheckboxListTile(
-                        title: const Text('Save credentials'),
-                        subtitle: const Text(
-                            'Store login details for future connections'),
+                        title: Text(l10n.saveCredentials),
+                        subtitle: Text(l10n.saveCredentialsDescription),
                         value: _saveCredentials,
                         onChanged: isLoading
                             ? null
@@ -689,7 +685,7 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
             actions: [
               TextButton(
                 onPressed: isLoading ? null : () => Navigator.pop(context),
-                child: const Text('Cancel'),
+                child: Text(l10n.cancel),
               ),
               ElevatedButton(
                 onPressed: isLoading
@@ -757,7 +753,7 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white),
                       )
-                    : Text(_selectedService == 'SMB' ? 'Connect' : 'Connect'),
+                    : Text(l10n.connect),
               ),
             ],
           );

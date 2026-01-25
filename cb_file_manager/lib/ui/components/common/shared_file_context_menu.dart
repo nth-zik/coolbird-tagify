@@ -224,6 +224,20 @@ class SharedFileContextMenu extends StatelessWidget {
             );
           },
         ),
+        ListTile(
+          leading: const Icon(remix.Remix.apps_line),
+          title: Text(
+            AppLocalizations.of(context)!.chooseDefaultApp,
+            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+          ),
+          onTap: () {
+            Navigator.pop(context);
+            showDialog(
+              context: context,
+              builder: (context) => OpenWithDialog(filePath: file.path),
+            );
+          },
+        ),
 
         if ((currentService is WebDAVService || currentService is FTPService) &&
             remotePath != null)
@@ -613,7 +627,7 @@ class SharedFolderContextMenu extends StatelessWidget {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Folder Properties'),
+          title: Text(AppLocalizations.of(context)!.folderProperties),
           content: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -744,6 +758,10 @@ void _showFileContextMenuDesktop({
         value: 'open_with',
         child: _menuRow(AppLocalizations.of(context)!.openWith, remix.Remix.external_link_line),
       ),
+      PopupMenuItem(
+        value: 'choose_default_app',
+        child: _menuRow(AppLocalizations.of(context)!.chooseDefaultApp, remix.Remix.apps_line),
+      ),
       const PopupMenuDivider(),
       PopupMenuItem(
         value: 'copy',
@@ -794,6 +812,7 @@ void _showFileContextMenuDesktop({
         ExternalAppHelper.openFileWithApp(file.path, 'shell_open');
         break;
       case 'open_with':
+      case 'choose_default_app':
         showDialog(
           context: context,
           builder: (context) => OpenWithDialog(filePath: file.path),
