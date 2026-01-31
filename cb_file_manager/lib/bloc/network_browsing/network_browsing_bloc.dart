@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../services/network_browsing/network_service_base.dart';
@@ -6,6 +7,7 @@ import '../../services/network_browsing/network_service_registry.dart';
 import '../../helpers/network/network_thumbnail_helper.dart';
 import '../../ui/widgets/thumbnail_loader.dart';
 import '../../utils/app_logger.dart';
+import '../../services/network_browsing/mobile_smb_service.dart';
 import 'network_browsing_event.dart';
 import 'network_browsing_state.dart';
 
@@ -16,7 +18,8 @@ class NetworkBrowsingBloc
 
   // Track last requested path to prevent duplicate requests
   String? _lastRequestedPath;
-  bool _isProcessingDirectoryRequest = false;
+  int _directoryRequestId = 0;
+  int _activeDirectoryRequestId = 0;
 
   // Toggle this to true if you need verbose BLoC logs for debugging.
   static const bool _enableBlocVerboseLogs = false;
@@ -34,6 +37,7 @@ class NetworkBrowsingBloc
     on<NetworkDirectoryRequested>(_onDirectoryRequested);
     on<NetworkClearLastConnectedPath>(_onClearLastConnectedPath);
     on<NetworkDirectoryLoaded>(_onDirectoryLoaded);
+    on<NetworkDirectoryLoadFailed>(_onDirectoryLoadFailed);
   }
 
   void _onServicesListRequested(
@@ -130,199 +134,141 @@ class NetworkBrowsingBloc
     NetworkDirectoryRequested event,
     Emitter<NetworkBrowsingState> emit,
   ) async {
-    // Check for duplicate requests for the same path
-    if (event.path == _lastRequestedPath && _isProcessingDirectoryRequest) {
-      _log(
-        "NetworkBrowsingBloc: Skipping duplicate directory request for ${event.path}",
+    _lastRequestedPath = event.path;
+    final int requestId = ++_directoryRequestId;
+    _activeDirectoryRequestId = requestId;
+
+    final NetworkServiceBase? service = _registry.getServiceForPath(event.path);
+    if (service == null) {
+      emit(
+        state.copyWith(
+          isLoading: false,
+          isLoadingMore: false,
+          errorMessage: 'No connected service found for path: ${event.path}',
+          currentPath: event.path,
+          clearDirectories: true,
+          clearFiles: true,
+        ),
       );
       return;
     }
 
-    // Set request tracking variables
-    _lastRequestedPath = event.path;
-    _isProcessingDirectoryRequest = true;
+    emit(
+      state.copyWith(
+        isLoading: true,
+        isLoadingMore: false,
+        currentService: service,
+        currentPath: event.path,
+        clearDirectories: true,
+        clearFiles: true,
+        clearErrorMessage: true,
+      ),
+    );
 
-    final String? previousPath = state.currentPath;
-    final NetworkServiceBase? previousService = state.currentService;
+    // Yield to the UI thread before starting potentially slow network I/O.
+    await Future<void>.delayed(Duration.zero);
 
-    // Additional debugging for the current state
-    _log("NetworkBrowsingBloc: Current state BEFORE request:");
-    _log("  - currentPath: ${state.currentPath}");
-    _log("  - directories: ${state.directories?.length ?? 0}");
-    _log("  - files: ${state.files?.length ?? 0}");
+    unawaited(
+      _loadDirectoryInBackground(
+        requestId: requestId,
+        path: event.path,
+        service: service,
+      ),
+    );
+  }
 
-    // First, emit a loading state to show progress and clear old contents
-    emit(state.copyWith(
-      isLoading: true,
-      currentPath: event.path,
-      clearDirectories: true,
-      clearFiles: true,
-      clearErrorMessage: true,
-    ));
-
-    // Log once at the start of the request
-    _log("NetworkBrowsingBloc: Requesting directory: ${event.path}");
-
+  Future<void> _loadDirectoryInBackground({
+    required int requestId,
+    required String path,
+    required NetworkServiceBase service,
+  }) async {
     try {
-      final service = _registry.getServiceForPath(event.path);
+      final Duration timeout =
+          (Platform.isAndroid || Platform.isIOS)
+              ? const Duration(seconds: 12)
+              : const Duration(seconds: 8);
 
-      if (service == null) {
-        _log("NetworkBrowsingBloc: No service found for path: ${event.path}");
-        emit(
-          state.copyWith(
-            isLoading: false,
-            errorMessage: 'No connected service found for path: ${event.path}',
-            currentPath: previousPath,
-            currentService: previousService,
-          ),
-        );
-        _isProcessingDirectoryRequest = false;
-        return;
+      List<FileSystemEntity> contents;
+      try {
+        contents = await service.listDirectory(path).timeout(timeout);
+      } on TimeoutException catch (e) {
+        // Best-effort reconnect for Mobile SMB on timeout.
+        if (service is MobileSMBService) {
+          try {
+            await service.reconnect();
+            contents = await service.listDirectory(path).timeout(timeout);
+          } catch (_) {
+            throw e;
+          }
+        } else {
+          throw e;
+        }
       }
 
-      try {
-        // Log the service type we're using
-        _log("NetworkBrowsingBloc: Using service type: ${service.serviceName}");
+      if (requestId != _activeDirectoryRequestId) return;
 
-        // Get directory contents
-        final contents = await service.listDirectory(event.path);
+      final validContents = contents.where((item) => item.path.isNotEmpty).toList();
+      final List<Directory> directories = <Directory>[];
+      final List<File> files = <File>[];
 
-        // Log raw contents for debugging
-        _log(
-          "NetworkBrowsingBloc: Raw contents received (${contents.length} items):",
-        );
-        for (var item in contents) {
-          _log("  - ${item.runtimeType}: ${item.path}");
+      const int firstBatchSize = 12;
+      const int batchSize = 30;
+      int processedCount = 0;
+
+      for (final item in validContents) {
+        if (item is Directory) {
+          directories.add(item);
+        } else if (item is File) {
+          files.add(item);
+        } else if (item.path.endsWith('/') || item.path.endsWith('\\')) {
+          directories.add(Directory(item.path));
+        } else {
+          files.add(File(item.path));
         }
 
-        // Filter out empty entries that might be causing issues
-        final validContents =
-            contents.where((item) => item.path.isNotEmpty).toList();
+        processedCount++;
 
-        _log(
-          "NetworkBrowsingBloc: Valid contents after filtering: ${validContents.length} items",
-        );
+        final bool shouldEmitFirstBatch =
+            processedCount == firstBatchSize &&
+                processedCount < validContents.length;
+        final bool shouldEmitBatch =
+            processedCount % batchSize == 0 &&
+                processedCount < validContents.length;
 
-        // Force cast to correct types - this is important for the UI to recognize the types
-        final List<Directory> directories = [];
-        final List<File> files = [];
-
-        // Batch size for progressive loading - emit partial results every N items
-        const int batchSize = 30;
-        int processedCount = 0;
-
-        // Instead of blindly casting, ensure we create proper Directory and File objects
-        for (var item in validContents) {
-          // _log("Processing item: ${item.runtimeType} - ${item.path}");
-
-          if (item is Directory) {
-            directories.add(item);
-            _log("Added existing Directory: ${item.path}");
-          } else if (item is File) {
-            files.add(item);
-            _log("Added existing File: ${item.path}");
-          } else {
-            // For other types, create a proper Directory or File based on some criteria
-            // For example, path ending with / might be directory
-            if (item.path.endsWith('/') || item.path.endsWith('\\')) {
-              final dir = Directory(item.path);
-              directories.add(dir);
-              _log("Created new Directory from path: ${item.path}");
-            } else {
-              final file = File(item.path);
-              files.add(file);
-              _log("Created new File from path: ${item.path}");
-            }
-          }
-
-          processedCount++;
-
-          // Emit partial state every batchSize items for progressive/lazy loading
-          // This allows UI to display items as they are processed
-          if (processedCount % batchSize == 0 && processedCount < validContents.length) {
-            emit(NetworkBrowsingState.directoryLoaded(
-              currentService: service,
-              currentPath: event.path,
-              directories: List.from(directories),
-              files: List.from(files),
-              connections: state.connections,
-              lastSuccessfullyConnectedPath: state.lastSuccessfullyConnectedPath,
-              isLoadingMore: true, // Indicate more content is coming
-            ));
-            _log("NetworkBrowsingBloc: Emitted partial state with ${directories.length} dirs, ${files.length} files");
-          }
-        }
-
-        // Log success with count and content details
-        _log(
-          "NetworkBrowsingBloc: Listed ${directories.length} directories and ${files.length} files",
-        );
-
-        // Log all directories and files for debugging
-        _log("NetworkBrowsingBloc: Directories:");
-        for (var dir in directories) {
-          _log("  - Directory: ${dir.path}");
-        }
-        // Verify that directories and files are non-null before emitting
-        _log(
-          "NetworkBrowsingBloc: About to emit state update with directories: ${directories.length}, files: ${files.length}",
-        );
-
-        // If we have no content but no error, set a warning message
-        if (directories.isEmpty && files.isEmpty) {
-          _log(
-            "NetworkBrowsingBloc: Directory is empty or path might be invalid",
+        if (shouldEmitFirstBatch || shouldEmitBatch) {
+          add(
+            NetworkDirectoryLoaded(
+              path: path,
+              directories: List<Directory>.from(directories),
+              files: List<File>.from(files),
+              isLoadingMore: true,
+              requestId: requestId,
+            ),
           );
+          await Future<void>.delayed(Duration.zero);
+          if (requestId != _activeDirectoryRequestId) return;
         }
+      }
 
-        // Create a fresh state with directoryLoaded constructor for clarity
-        // isLoadingMore: false indicates loading is complete
-        final newState = NetworkBrowsingState.directoryLoaded(
-          currentService: service,
-          currentPath: event.path,
+      add(
+        NetworkDirectoryLoaded(
+          path: path,
           directories: directories,
           files: files,
-          connections: state.connections,
-          lastSuccessfullyConnectedPath: state.lastSuccessfullyConnectedPath,
           isLoadingMore: false,
-        );
-
-        emit(newState);
-
-        // Log the state after emission to confirm
-        _log("NetworkBrowsingBloc: State emitted successfully.");
-        _log(
-          "NetworkBrowsingBloc: New state has directories: ${newState.directories?.length ?? 0}, files: ${newState.files?.length ?? 0}",
-        );
-
-        // Extra verification to make sure state was properly updated
-        _log(
-          "NetworkBrowsingBloc: After emit - current state: directories=${state.directories?.length ?? 0}, files=${state.files?.length ?? 0}",
-        );
-      } catch (e) {
-        _log("NetworkBrowsingBloc: Error listing directory ${event.path}: $e");
-        emit(
-          state.copyWith(
-            isLoading: false,
-            errorMessage: 'Error listing directory: $e',
-            currentPath: previousPath,
-            currentService: previousService,
-          ),
-        );
-      }
+          requestId: requestId,
+        ),
+      );
     } catch (e) {
-      _log("NetworkBrowsingBloc: Error: $e");
-      emit(
-        state.copyWith(
-          isLoading: false,
-          errorMessage: 'Error: $e',
-          currentPath: previousPath,
-          currentService: previousService,
+      if (requestId != _activeDirectoryRequestId) return;
+      add(
+        NetworkDirectoryLoadFailed(
+          path: path,
+          errorMessage: 'Error listing directory: $e',
+          requestId: requestId,
         ),
       );
     }
-
-    _isProcessingDirectoryRequest = false;
   }
 
   Future<void> _onDisconnectRequested(
@@ -400,16 +346,41 @@ class NetworkBrowsingBloc
     _log("NetworkBrowsingBloc: Directories: ${event.directories.length}");
     _log("NetworkBrowsingBloc: Files: ${event.files.length}");
 
-    // We simply update the state with the provided directories and files
+    if (event.requestId != 0 && event.requestId != _activeDirectoryRequestId) {
+      return;
+    }
+
+    // We simply update the state with the provided directories and files.
     emit(
       state.copyWith(
         isLoading: false,
+        isLoadingMore: event.isLoadingMore,
         currentPath: event.path,
         directories: event.directories,
         files: event.files,
         clearErrorMessage: true,
         clearDirectories: false,
         clearFiles: false,
+      ),
+    );
+  }
+
+  void _onDirectoryLoadFailed(
+    NetworkDirectoryLoadFailed event,
+    Emitter<NetworkBrowsingState> emit,
+  ) {
+    if (event.requestId != _activeDirectoryRequestId) {
+      return;
+    }
+
+    emit(
+      state.copyWith(
+        isLoading: false,
+        isLoadingMore: false,
+        currentPath: event.path,
+        errorMessage: event.errorMessage,
+        clearDirectories: true,
+        clearFiles: true,
       ),
     );
   }

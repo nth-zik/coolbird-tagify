@@ -9,5 +9,7 @@
   - `features/02-keyboard-shortcuts.md` - Keyboard shortcuts guide
 - **Testing** `testing-strategy.md`
 - **Troubleshooting** `troubleshooting.md`
+- **UI Patterns**
+  - `ui-patterns/operation-progress.md`
 
 Each document is short and focused. Start with the overview, then dive into the AI guide for internals.

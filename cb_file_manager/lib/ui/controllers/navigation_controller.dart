@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/helpers/media/video_thumbnail_helper.dart';
+import 'package:cb_file_manager/helpers/core/user_preferences.dart';
 import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
@@ -23,6 +25,13 @@ class NavigationController {
     required this.onPathChanged,
     required this.onSaveLastAccessedFolder,
   });
+
+  void _recordRecentPath(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return;
+    if (trimmed.startsWith('#')) return;
+    unawaited(UserPreferences.instance.addRecentPath(trimmed));
+  }
 
   /// Navigate to a specific path
   void navigateToPath(
@@ -62,6 +71,8 @@ class NavigationController {
 
     // Update the folder list to show the new path
     folderListBloc.add(FolderListLoad(path));
+
+    _recordRecentPath(path);
 
     // Save this folder as last accessed
     onSaveLastAccessedFolder();
@@ -187,6 +198,7 @@ class NavigationController {
               folderListBloc.add(SearchByTagGlobally(tag));
             } else {
               folderListBloc.add(FolderListLoad(newPath));
+              _recordRecentPath(newPath);
             }
             debugPrint('=== Back navigation completed successfully ===');
             return false; // Don't exit app, we navigated back
@@ -282,6 +294,8 @@ class NavigationController {
     // Load the folder contents with the new path
     folderListBloc.add(FolderListLoad(newPath));
 
+    _recordRecentPath(newPath);
+
     // Save as last accessed folder
     onSaveLastAccessedFolder();
 
@@ -348,6 +362,7 @@ class NavigationController {
         folderListBloc.add(SearchByTagGlobally(tag));
       } else {
         folderListBloc.add(FolderListLoad(actualPath));
+        _recordRecentPath(actualPath);
       }
     }
   }
@@ -379,6 +394,7 @@ class NavigationController {
         folderListBloc.add(SearchByTagGlobally(tag));
       } else {
         folderListBloc.add(FolderListLoad(actualPath));
+        _recordRecentPath(actualPath);
       }
     }
   }

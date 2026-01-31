@@ -7,17 +7,22 @@ import 'package:cb_file_manager/helpers/core/filesystem_utils.dart'; // Import f
 import 'package:path/path.dart' as pathlib;
 import 'package:cb_file_manager/helpers/core/text_utils.dart';
 import 'package:cb_file_manager/helpers/media/video_thumbnail_helper.dart';
-import 'dart:async'; // Thêm import cho StreamSubscription
+import 'dart:async'; // Import for StreamSubscription
 import 'package:cb_file_manager/helpers/files/folder_sort_manager.dart';
 import 'package:cb_file_manager/models/database/database_manager.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 import 'package:cb_file_manager/services/permission_state_service.dart';
 import 'package:cb_file_manager/helpers/core/filesystem_sorter.dart';
+import 'package:cb_file_manager/core/service_locator.dart';
+import 'package:cb_file_manager/ui/controllers/operation_progress_controller.dart';
 
 import 'folder_list_event.dart';
 import 'folder_list_state.dart';
 
+import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/config/languages/english_localizations.dart';
+import 'package:cb_file_manager/config/language_controller.dart';
+import 'package:cb_file_manager/config/languages/vietnamese_localizations.dart';
 
 // Error message helper class using localization
 // Usage: Get the localized message from UI layer using AppLocalizations.of(context)
@@ -57,6 +62,18 @@ class SearchErrorMessages {
 
   static String errorSearchTagsGlobal(String error) {
     return _defaultLocalizations.errorSearchTagsGlobal({'error': error});
+  }
+}
+
+AppLocalizations _l10nNoContext() {
+  try {
+    final locale = locator<LanguageController>().currentLocale;
+    if (locale.languageCode == LanguageController.english) {
+      return EnglishLocalizations();
+    }
+    return VietnameseLocalizations();
+  } catch (_) {
+    return EnglishLocalizations();
   }
 }
 
@@ -239,12 +256,29 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
             }
           }
 
+          // Get folder-specific sort option BEFORE loading (for consistent sorting during batching)
+          final folderSortManager = FolderSortManager();
+          SortOption? folderSortOption;
+          try {
+            folderSortOption =
+                await folderSortManager.getFolderSortOption(event.path);
+          } catch (e) {
+            debugPrint(
+                'Error getting folder sort option for ${event.path}: $e');
+            folderSortOption = null;
+          }
+          final SortOption sortOptionToUse =
+              folderSortOption ?? state.sortOption;
+
           // Stream-based loading with batch emission for lazy loading
-          // Files will be displayed progressively as they are discovered
+          // OPTIMIZATION: Emit files immediately without sorting during batch
+          // to prioritize UI responsiveness. Sort only at the end.
           final List<FileSystemEntity> folders = [];
           final List<FileSystemEntity> files = [];
           int batchCount = 0;
-          const int batchSize = 30; // Emit partial state every 30 items
+          const int batchSize =
+              50; // Emit partial state every 50 items (increased for less overhead)
+          int lastSortedBatch = 0; // Track when we last sorted
           int retryCount = 0;
           const maxRetries = 3;
 
@@ -264,13 +298,40 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
                 batchCount++;
 
                 // Emit partial state every batchSize items for lazy loading effect
+                // OPTIMIZATION: Only sort every 150 items to reduce overhead
+                // For smaller batches, just emit unsorted for faster UI update
                 if (batchCount % batchSize == 0) {
-                  emit(state.copyWith(
-                    isLoading: true,
-                    folders: List.from(folders),
-                    files: List.from(files),
-                    error: null,
-                  ));
+                  final shouldSort = (batchCount - lastSortedBatch) >= 150;
+
+                  if (shouldSort && batchCount > 100) {
+                    // Sort only occasionally for large lists
+                    final sortedFoldersBatch =
+                        await FileSystemSorter.sortDirectories(
+                      folders.cast<Directory>(),
+                      sortOptionToUse,
+                    );
+                    final sortedFilesBatch = await FileSystemSorter.sortFiles(
+                      files.cast<File>(),
+                      sortOptionToUse,
+                    );
+                    lastSortedBatch = batchCount;
+                    emit(state.copyWith(
+                      isLoading: true,
+                      folders: sortedFoldersBatch,
+                      files: sortedFilesBatch,
+                      error: null,
+                      sortOption: sortOptionToUse,
+                    ));
+                  } else {
+                    // Quick emit without sorting - prioritize showing files fast
+                    emit(state.copyWith(
+                      isLoading: true,
+                      folders: List.from(folders),
+                      files: List.from(files),
+                      error: null,
+                      sortOption: sortOptionToUse,
+                    ));
+                  }
                 }
               }
               break; // Success, exit retry loop
@@ -292,31 +353,24 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
           debugPrint(
               'DEBUG: Final result - ${folders.length} folders, ${files.length} files');
 
-          // Get folder-specific sort option if available (with defensive error handling)
-          final folderSortManager = FolderSortManager();
-          SortOption? folderSortOption;
-          try {
-            // Remove timeout - let it run quickly with cache
-            folderSortOption =
-                await folderSortManager.getFolderSortOption(event.path);
-          } catch (e) {
-            debugPrint(
-                'Error getting folder sort option for ${event.path}: $e');
-            folderSortOption = null; // Use default sort option if error occurs
-          }
-
-          // Use folder-specific sort option if available, otherwise use the current sort option
-          SortOption sortOptionToUse = folderSortOption ?? state.sortOption;
-
-          // Once we have files and folders, sort them according to the sort option
-          await _sortFilesAndFolders(
-            folders,
-            files,
+          // Final sort for the complete list
+          final sortedFolders = await FileSystemSorter.sortDirectories(
+            folders.cast<Directory>(),
             sortOptionToUse,
-            emit,
-            updateSortOption: folderSortOption !=
-                null, // Only update state.sortOption if we found a folder-specific one
           );
+          final sortedFiles = await FileSystemSorter.sortFiles(
+            files.cast<File>(),
+            sortOptionToUse,
+          );
+
+          // Update folders and files with sorted versions
+          folders.clear();
+          folders.addAll(sortedFolders);
+          files.clear();
+          files.addAll(sortedFiles);
+
+          // Build file stats cache asynchronously (no need to await)
+          _buildFileStatsCacheAsync(sortedFolders, sortedFiles, emit);
 
           final activeFilter = state.currentFilter;
           final List<FileSystemEntity> filteredFiles =
@@ -428,59 +482,33 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
     }
   }
 
-  // Helper method to sort files and folders according to a given sort option
-  Future<void> _sortFilesAndFolders(
-      List<FileSystemEntity> folders,
-      List<FileSystemEntity> files,
-      SortOption sortOption,
-      Emitter<FolderListState> emit,
-      {bool updateSortOption = false}) async {
-    try {
-      // Use FileSystemSorter to sort folders and files
-      final sortedFolders = await FileSystemSorter.sortDirectories(
-        folders.cast<Directory>(),
-        sortOption,
-      );
-
-      final sortedFiles = await FileSystemSorter.sortFiles(
-        files.cast<File>(),
-        sortOption,
-      );
-
-      // Build file stats cache for the sorted entities
-      Map<String, FileStat> fileStatsCache = {};
-      final allEntities = [...sortedFolders, ...sortedFiles];
-      for (var entity in allEntities) {
-        try {
-          fileStatsCache[entity.path] = await entity.stat();
-        } catch (e) {
-          // Skip entities that can't be stat'd
-          continue;
+  /// Helper method to build file stats cache asynchronously
+  /// This runs in background and emits updated state when complete
+  void _buildFileStatsCacheAsync(
+    List<FileSystemEntity> folders,
+    List<FileSystemEntity> files,
+    Emitter<FolderListState> emit,
+  ) {
+    // Run in background without blocking
+    Future(() async {
+      try {
+        Map<String, FileStat> fileStatsCache = {};
+        final allEntities = [...folders, ...files];
+        for (var entity in allEntities) {
+          try {
+            fileStatsCache[entity.path] = await entity.stat();
+          } catch (e) {
+            // Skip entities that can't be stat'd
+            continue;
+          }
         }
+        if (fileStatsCache.isNotEmpty) {
+          emit(state.copyWith(fileStatsCache: fileStatsCache));
+        }
+      } catch (e) {
+        debugPrint("Error building file stats cache: $e");
       }
-
-      // Update the lists in place
-      folders.clear();
-      folders.addAll(sortedFolders);
-      files.clear();
-      files.addAll(sortedFiles);
-
-      // Only update the sort option in state if requested
-      if (updateSortOption) {
-        emit(state.copyWith(
-          sortOption: sortOption,
-          fileStatsCache: fileStatsCache,
-        ));
-      } else {
-        // Just update the fileStatsCache
-        emit(state.copyWith(
-          fileStatsCache: fileStatsCache,
-        ));
-      }
-    } catch (e) {
-      debugPrint("Error sorting files and folders: $e");
-      // Don't update state on error
-    }
+    });
   }
 
   void _onFolderListRefresh(
@@ -975,7 +1003,8 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
       sortedFilteredFiles.sort(compareFunction);
 
       // Always re-read search results at the end to avoid overwriting newer data.
-      List<FileSystemEntity> sortedSearchResults = List.from(state.searchResults);
+      List<FileSystemEntity> sortedSearchResults =
+          List.from(state.searchResults);
       await cacheFileStats(sortedSearchResults);
 
       final sortedSearchFolders = sortedSearchResults
@@ -1047,10 +1076,26 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
     FolderListDeleteFiles event,
     Emitter<FolderListState> emit,
   ) async {
-    emit(state.copyWith(isLoading: true));
+    final l10n = _l10nNoContext();
+    final Set<String> targetPaths = event.filePaths.toSet();
+    if (targetPaths.isNotEmpty) {
+      emit(_removePathsFromState(state, targetPaths).copyWith(error: null));
+    }
+    final operation = locator<OperationProgressController>();
+    String? opId;
     try {
+      final String currentOpId = operation.begin(
+        title: l10n.deletingFiles,
+        total: event.filePaths.length,
+        detail: event.filePaths.isEmpty
+            ? null
+            : pathlib.basename(event.filePaths.first),
+        showModal: false,
+      );
+      opId = currentOpId;
       List<String> failedDeletes = [];
       final trashManager = TrashManager(); // Create an instance of TrashManager
+      int completed = 0;
 
       for (var filePath in event.filePaths) {
         try {
@@ -1058,6 +1103,12 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
           if (await file.exists()) {
             await trashManager.moveToTrash(filePath); // Use the instance method
           }
+          completed++;
+          operation.update(
+            currentOpId,
+            completed: completed,
+            detail: pathlib.basename(filePath),
+          );
         } catch (e) {
           failedDeletes.add(filePath);
           debugPrint('Error deleting file $filePath: $e');
@@ -1065,35 +1116,118 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
       }
 
       if (failedDeletes.isNotEmpty) {
+        final message = l10n.failedToDeleteFilesCount(failedDeletes.length);
         emit(
           state.copyWith(
-            isLoading: false,
-            error: 'Failed to delete ${failedDeletes.length} files',
+            error: message,
           ),
         );
+        operation.fail(
+          currentOpId,
+          detail: message,
+        );
+        // Refresh to restore any items that failed to delete.
+        add(FolderListLoad(state.currentPath.path));
+        return;
       }
 
-      // Refresh the current directory
-      add(FolderListLoad(state.currentPath.path));
+      operation.succeed(
+        currentOpId,
+        detail: l10n.done,
+      );
+      // Keep the optimistic UI state; no need to reload on success.
     } catch (e) {
       emit(
         state.copyWith(
-          isLoading: false,
-          error: 'Error deleting files: ${e.toString()}',
+          error: l10n.errorDeletingFilesWithError(e.toString()),
         ),
       );
+      if (opId != null) {
+        operation.fail(opId!, detail: l10n.operationFailed);
+      }
+      // Fallback: refresh the entire folder if something goes wrong.
+      add(FolderListLoad(state.currentPath.path));
     }
+  }
+
+  FolderListState _removePathsFromState(
+    FolderListState current,
+    Set<String> targetPaths,
+  ) {
+    if (targetPaths.isEmpty) return current;
+
+    final updatedFiles =
+        current.files.where((e) => !targetPaths.contains(e.path)).toList();
+    final updatedFolders =
+        current.folders.where((e) => !targetPaths.contains(e.path)).toList();
+    final updatedFiltered = current.filteredFiles
+        .where((e) => !targetPaths.contains(e.path))
+        .toList();
+    final updatedSearch = current.searchResults
+        .where((e) => !targetPaths.contains(e.path))
+        .toList();
+
+    final updatedTags = Map<String, List<String>>.from(current.fileTags);
+    for (final p in targetPaths) {
+      updatedTags.remove(p);
+    }
+
+    final updatedStats = Map<String, FileStat>.from(current.fileStatsCache);
+    for (final p in targetPaths) {
+      updatedStats.remove(p);
+    }
+
+    final Set<String> updatedUniqueTags = <String>{};
+    for (final tags in updatedTags.values) {
+      updatedUniqueTags.addAll(tags);
+    }
+
+    return current.copyWith(
+      files: updatedFiles,
+      folders: updatedFolders,
+      filteredFiles: updatedFiltered,
+      searchResults: updatedSearch,
+      fileTags: updatedTags,
+      fileStatsCache: updatedStats,
+      allUniqueTags: updatedUniqueTags,
+    );
   }
 
   void _onFolderListDeleteItems(
     FolderListDeleteItems event,
     Emitter<FolderListState> emit,
   ) async {
+    final l10n = _l10nNoContext();
     // Don't show loading indicator for delete operation - it's usually fast
+    final Set<String> targetPaths = {
+      ...event.filePaths,
+      ...event.folderPaths,
+    };
+    if (targetPaths.isNotEmpty) {
+      emit(_removePathsFromState(state, targetPaths).copyWith(error: null));
+    }
+    final operation = locator<OperationProgressController>();
+    String? opId;
     try {
+      final int total = event.filePaths.length + event.folderPaths.length;
+      final String title =
+          event.permanent ? l10n.deletingItems : l10n.movingItemsToTrash;
+      final String? first = event.filePaths.isNotEmpty
+          ? pathlib.basename(event.filePaths.first)
+          : (event.folderPaths.isNotEmpty
+              ? pathlib.basename(event.folderPaths.first)
+              : null);
+      final String currentOpId = operation.begin(
+        title: title,
+        total: total,
+        detail: first,
+        showModal: false,
+      );
+      opId = currentOpId;
       List<String> failedDeletes = [];
       final trashManager = TrashManager();
       final deletedPaths = <String>[];
+      int completed = 0;
 
       Future<void> deleteItem(String path, bool isFile) async {
         try {
@@ -1115,6 +1249,12 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
             await trashManager.moveToTrash(path);
             deletedPaths.add(path);
           }
+          completed++;
+          operation.update(
+            currentOpId,
+            completed: completed,
+            detail: pathlib.basename(path),
+          );
         } catch (e) {
           failedDeletes.add(path);
           debugPrint('Error deleting $path: $e');
@@ -1130,34 +1270,31 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
       }
 
       if (failedDeletes.isNotEmpty) {
+        final message = l10n.failedToDeleteItemsCount(failedDeletes.length);
         emit(state.copyWith(
-          error: 'Failed to delete ${failedDeletes.length} items',
+          error: message,
         ));
+        operation.fail(
+          currentOpId,
+          detail: message,
+        );
         // Still need to refresh if some items failed
         add(FolderListLoad(state.currentPath.path));
         return;
       }
 
-      // Optimized: Remove deleted items from current state instead of reloading entire folder
-      // This is much faster and eliminates lag
-      final updatedFiles = state.files
-          .where((file) => !deletedPaths.contains(file.path))
-          .toList();
-      final updatedFolders = state.folders
-          .where((folder) => !deletedPaths.contains(folder.path))
-          .toList();
+      // Keep the optimistic UI state; items already removed before deletion ran.
 
-      emit(state.copyWith(
-        files: updatedFiles,
-        folders: updatedFolders,
-        error: null,
-      ));
-      
-      debugPrint('Deleted ${deletedPaths.length} items successfully (optimized refresh)');
+      debugPrint(
+          'Deleted ${deletedPaths.length} items successfully (optimized refresh)');
+      operation.succeed(currentOpId, detail: l10n.done);
     } catch (e) {
       emit(state.copyWith(
-        error: 'Error deleting items: ${e.toString()}',
+        error: l10n.errorDeletingItemsWithError(e.toString()),
       ));
+      if (opId != null) {
+        operation.fail(opId!, detail: l10n.operationFailed);
+      }
       // Fallback: refresh the entire folder if something goes wrong
       add(FolderListLoad(state.currentPath.path));
     }

@@ -55,7 +55,9 @@ dependencies:
   media_kit_libs_windows_video: ^1.0.11 # Windows video support
   media_kit_libs_android_video: ^1.3.7 # Android video support
   # media_kit_libs_ios_video: ^1.1.4 # Uncomment if you need iOS support
-  flutter_vlc_player: ^7.2.0
+  # Pin to 7.4.3: 7.4.4 has a Pigeon channel name mismatch that breaks Android initialization
+  # (PlatformException(channel-error, Unable to establish connection on channel.)).
+  flutter_vlc_player: 7.4.3
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.

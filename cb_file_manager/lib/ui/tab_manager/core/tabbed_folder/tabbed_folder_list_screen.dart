@@ -46,6 +46,7 @@ import 'package:cb_file_manager/ui/controllers/tab_lifecycle_manager.dart';
 import 'package:cb_file_manager/ui/controllers/tag_search_initializer.dart';
 import 'package:cb_file_manager/ui/controllers/app_bar_actions_builder.dart';
 import 'package:cb_file_manager/ui/utils/grid_zoom_constraints.dart';
+import 'package:cb_file_manager/ui/controllers/inline_rename_controller.dart';
 
 // Import extracted view layer components
 import 'package:cb_file_manager/ui/widgets/file_list_view_builder.dart';
@@ -131,6 +132,9 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
   late final TabbedFolderKeyboardController _keyboardController;
   late final ValueNotifier<double> _previewPaneWidthNotifier;
 
+  // Controller for inline rename on desktop
+  late final InlineRenameController _inlineRenameController;
+
   /// Actual grid crossAxisCount from the file list (for arrow up/down in grid).
   int? _gridCrossAxisCount;
 
@@ -142,6 +146,27 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
     return state.files.any((file) => FileTypeUtils.isMediaFile(file.path));
   }
 
+  bool _isTextInputFocused() {
+    final focused = FocusManager.instance.primaryFocus;
+    final focusedContext = focused?.context;
+    if (focusedContext == null) return false;
+    if (focusedContext.widget is EditableText) return true;
+    return focusedContext.findAncestorWidgetOfExactType<EditableText>() != null;
+  }
+
+  bool _isPointerInsideFocusedEditableText(PointerDownEvent event) {
+    final focused = FocusManager.instance.primaryFocus;
+    final focusedContext = focused?.context;
+    if (focusedContext == null) return false;
+
+    RenderObject? renderObject = focusedContext.findRenderObject();
+    if (renderObject is! RenderBox) return false;
+
+    final topLeft = renderObject.localToGlobal(Offset.zero);
+    final rect = topLeft & renderObject.size;
+    return rect.contains(event.position);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -151,6 +176,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
     _pathController = TextEditingController(text: _currentPath);
     _keyboardController = TabbedFolderKeyboardController();
     _previewPaneWidthNotifier = ValueNotifier<double>(previewPaneWidth);
+    _inlineRenameController = InlineRenameController();
 
     // If this is a new tab with empty path (drive view), enable lazy loading
     if (_currentPath.isEmpty && Platform.isWindows) {
@@ -279,6 +305,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
     _dragSelectionController.dispose();
     _keyboardController.dispose();
     _previewPaneWidthNotifier.dispose();
+    _inlineRenameController.dispose();
 
     // Restore default settings
     WidgetsBinding.instance.renderView.automaticSystemUiAdjustment = true;
@@ -410,7 +437,6 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
     );
   }
 
-
   Future<bool> _handleBackButton() async {
     return await _navigationController.handleBackButton(
       context,
@@ -424,17 +450,20 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
       debugPrint('_handleDelete called but widget not mounted');
       return;
     }
-    
+
     debugPrint('_handleDelete called - permanent: $permanent');
-    debugPrint('  Selected files: ${_selectionBloc.state.selectedFilePaths.length}');
-    debugPrint('  Selected folders: ${_selectionBloc.state.selectedFolderPaths.length}');
+    debugPrint(
+        '  Selected files: ${_selectionBloc.state.selectedFilePaths.length}');
+    debugPrint(
+        '  Selected folders: ${_selectionBloc.state.selectedFolderPaths.length}');
     debugPrint('  Focused path: ${_keyboardController.focusedPath}');
-    
+
     await FileOperationsHandler.handleDelete(
       context: context,
       folderListBloc: _folderListBloc,
       selectedFiles: _selectionBloc.state.selectedFilePaths.toList(),
       selectedFolders: _selectionBloc.state.selectedFolderPaths.toList(),
+      selectionBloc: _selectionBloc,
       focusedPath: _keyboardController.focusedPath,
       permanent: permanent,
       onClearSelection: () => _selectionBloc.add(ClearSelection()),
@@ -444,13 +473,14 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
   void _handleSelectAll() {
     debugPrint('Select all triggered');
     final allFiles = _folderListBloc.state.files.map((f) => f.path).toList();
-    final allFolders = _folderListBloc.state.folders.map((f) => f.path).toList();
-    
+    final allFolders =
+        _folderListBloc.state.folders.map((f) => f.path).toList();
+
     // Enable selection mode if not already enabled
     if (!_selectionBloc.state.isSelectionMode) {
       _toggleSelectionMode(forceValue: true);
     }
-    
+
     _selectionBloc.add(SelectAll(
       allFilePaths: allFiles,
       allFolderPaths: allFolders,
@@ -459,12 +489,13 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
 
   void _handleCopy() {
     final selectionState = _selectionBloc.state;
-    if (selectionState.selectedFilePaths.isEmpty && 
+    if (selectionState.selectedFilePaths.isEmpty &&
         selectionState.selectedFolderPaths.isEmpty &&
         _keyboardController.focusedPath != null) {
       // Copy focused item if no selection
-      final entity = FileSystemEntity.typeSync(_keyboardController.focusedPath!) == 
-          FileSystemEntityType.directory
+      final entity =
+          FileSystemEntity.typeSync(_keyboardController.focusedPath!) ==
+                  FileSystemEntityType.directory
               ? Directory(_keyboardController.focusedPath!)
               : File(_keyboardController.focusedPath!);
       FileOperationsHandler.copyToClipboard(
@@ -472,17 +503,18 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
         entity: entity,
         folderListBloc: _folderListBloc,
       );
-    } else if (selectionState.selectedFilePaths.isNotEmpty || 
-               selectionState.selectedFolderPaths.isNotEmpty) {
+    } else if (selectionState.selectedFilePaths.isNotEmpty ||
+        selectionState.selectedFolderPaths.isNotEmpty) {
       // Copy all selected items
       final allPaths = [
         ...selectionState.selectedFilePaths,
         ...selectionState.selectedFolderPaths,
       ];
       for (final path in allPaths) {
-        final entity = FileSystemEntity.typeSync(path) == FileSystemEntityType.directory
-            ? Directory(path)
-            : File(path);
+        final entity =
+            FileSystemEntity.typeSync(path) == FileSystemEntityType.directory
+                ? Directory(path)
+                : File(path);
         FileOperationsHandler.copyToClipboard(
           context: context,
           entity: entity,
@@ -494,12 +526,13 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
 
   void _handleCut() {
     final selectionState = _selectionBloc.state;
-    if (selectionState.selectedFilePaths.isEmpty && 
+    if (selectionState.selectedFilePaths.isEmpty &&
         selectionState.selectedFolderPaths.isEmpty &&
         _keyboardController.focusedPath != null) {
       // Cut focused item if no selection
-      final entity = FileSystemEntity.typeSync(_keyboardController.focusedPath!) == 
-          FileSystemEntityType.directory
+      final entity =
+          FileSystemEntity.typeSync(_keyboardController.focusedPath!) ==
+                  FileSystemEntityType.directory
               ? Directory(_keyboardController.focusedPath!)
               : File(_keyboardController.focusedPath!);
       FileOperationsHandler.cutToClipboard(
@@ -507,17 +540,18 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
         entity: entity,
         folderListBloc: _folderListBloc,
       );
-    } else if (selectionState.selectedFilePaths.isNotEmpty || 
-               selectionState.selectedFolderPaths.isNotEmpty) {
+    } else if (selectionState.selectedFilePaths.isNotEmpty ||
+        selectionState.selectedFolderPaths.isNotEmpty) {
       // Cut all selected items
       final allPaths = [
         ...selectionState.selectedFilePaths,
         ...selectionState.selectedFolderPaths,
       ];
       for (final path in allPaths) {
-        final entity = FileSystemEntity.typeSync(path) == FileSystemEntityType.directory
-            ? Directory(path)
-            : File(path);
+        final entity =
+            FileSystemEntity.typeSync(path) == FileSystemEntityType.directory
+                ? Directory(path)
+                : File(path);
         FileOperationsHandler.cutToClipboard(
           context: context,
           entity: entity,
@@ -552,11 +586,28 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
     }
 
     if (entityToRename != null) {
-      FileOperationsHandler.showRenameDialog(
-        context: context,
-        entity: entityToRename,
-        folderListBloc: _folderListBloc,
-      );
+      // On desktop: use inline rename (Windows-like behavior)
+      // On mobile: use modal dialog
+      if (isDesktopPlatform) {
+        _inlineRenameController.startRename(
+          entityToRename.path,
+          onCancelled: () {
+            // Refocus keyboard controller after rename is cancelled
+            _keyboardController.focusNode.requestFocus();
+          },
+          onCommitted: () {
+            // Refocus keyboard controller after rename is committed
+            _keyboardController.focusNode.requestFocus();
+          },
+        );
+        setState(() {}); // Trigger rebuild to show inline rename field
+      } else {
+        FileOperationsHandler.showRenameDialog(
+          context: context,
+          entity: entityToRename,
+          folderListBloc: _folderListBloc,
+        );
+      }
     }
   }
 
@@ -679,6 +730,9 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
         autofocus: isDesktopPlatform,
         focusNode: _keyboardController.focusNode,
         onKeyEvent: (node, event) {
+          if (_isTextInputFocused()) {
+            return KeyEventResult.ignored;
+          }
           return _keyboardController.handleKeyEvent(
             isDesktop: isDesktopPlatform,
             folderListState: _folderListBloc.state,
@@ -715,7 +769,16 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
         child: Listener(
           onPointerDown: (PointerDownEvent event) {
             if (isDesktopPlatform) {
-              _keyboardController.focusNode.requestFocus();
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                if (_isTextInputFocused()) {
+                  if (_isPointerInsideFocusedEditableText(event)) {
+                    return;
+                  }
+                  FocusManager.instance.primaryFocus?.unfocus();
+                }
+                _keyboardController.focusNode.requestFocus();
+              });
             }
             // Mouse button 4 is usually the back button (button value is 8)
             if (event.buttons == 8) {
@@ -786,15 +849,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
         showDeleteConfirmationDialog: (context) =>
             _showDeleteConfirmationDialog(context),
         isDesktop: isDesktopPlatform,
-        selectionModeFloatingActionButton: isNetworkPath
-            ? null
-            : FloatingActionButton(
-                onPressed: () {
-                  tab_components.showBatchAddTagDialog(
-                      context, selectionState.selectedFilePaths.toList());
-                },
-                child: const Icon(remix.Remix.shopping_bag_3_line),
-              ),
+        selectionModeFloatingActionButton: null,
         showAppBar: widget.showAppBar,
         showSearchBar: _showSearchBar,
         searchBar: tab_components.SearchBar(
@@ -948,35 +1003,44 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
   Widget _buildFolderAndFileList(FolderListState state) {
     return BlocBuilder<SelectionBloc, SelectionState>(
       builder: (context, selectionState) {
-        return FileListViewBuilder.build(
-          state: state,
-          selectionState: selectionState,
-          isDesktopPlatform: isDesktopPlatform,
-          onNavigateToPath: _navigateToPath,
-          onFileTap: _onFileTap,
-          toggleFileSelection: _toggleFileSelection,
-          toggleFolderSelection: _toggleFolderSelection,
-          clearSelection: _clearSelection,
-          dragSelectionController: _dragSelectionController,
-          showFileTags: showFileTags,
-          showDeleteTagDialog: _showDeleteTagDialog,
-          showAddTagToFileDialog: _showAddTagToFileDialog,
-          toggleSelectionMode: _toggleSelectionMode,
-          columnVisibility: columnVisibility,
-          showContextMenu: _showContextMenu,
-          isPreviewPaneVisible: isPreviewPaneVisible,
-          previewPaneWidthListenable: _previewPaneWidthNotifier,
-          onZoomLevelChanged: handleZoomLevelChange,
-          onPreviewPaneWidthChanged: _updatePreviewPaneWidth,
-          onPreviewPaneWidthCommitted: _commitPreviewPaneWidth,
-          onPreviewPaneToggled: _togglePreviewPane,
-          onGridCrossAxisCountChanged: (c) {
-            // Defer setState to after build — this callback runs from LayoutBuilder during build.
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted && _gridCrossAxisCount != c) {
-                setState(() => _gridCrossAxisCount = c);
-              }
-            });
+        // Wrap with InlineRenameScope to provide rename controller to child items
+        return ListenableBuilder(
+          listenable: _inlineRenameController,
+          builder: (context, _) {
+            return InlineRenameScope(
+              controller: _inlineRenameController,
+              child: FileListViewBuilder.build(
+                state: state,
+                selectionState: selectionState,
+                isDesktopPlatform: isDesktopPlatform,
+                onNavigateToPath: _navigateToPath,
+                onFileTap: _onFileTap,
+                toggleFileSelection: _toggleFileSelection,
+                toggleFolderSelection: _toggleFolderSelection,
+                clearSelection: _clearSelection,
+                dragSelectionController: _dragSelectionController,
+                showFileTags: showFileTags,
+                showDeleteTagDialog: _showDeleteTagDialog,
+                showAddTagToFileDialog: _showAddTagToFileDialog,
+                toggleSelectionMode: _toggleSelectionMode,
+                columnVisibility: columnVisibility,
+                showContextMenu: _showContextMenu,
+                isPreviewPaneVisible: isPreviewPaneVisible,
+                previewPaneWidthListenable: _previewPaneWidthNotifier,
+                onZoomLevelChanged: handleZoomLevelChange,
+                onPreviewPaneWidthChanged: _updatePreviewPaneWidth,
+                onPreviewPaneWidthCommitted: _commitPreviewPaneWidth,
+                onPreviewPaneToggled: _togglePreviewPane,
+                onGridCrossAxisCountChanged: (c) {
+                  // Defer setState to after build — this callback runs from LayoutBuilder during build.
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted && _gridCrossAxisCount != c) {
+                      setState(() => _gridCrossAxisCount = c);
+                    }
+                  });
+                },
+              ),
+            );
           },
         );
       },
@@ -1034,6 +1098,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
       context: context,
       file: file,
       folderListBloc: _folderListBloc,
+      selectionBloc: _selectionBloc,
       currentFilter: _currentFilter,
       currentSearchTag: _currentSearchTag,
     );

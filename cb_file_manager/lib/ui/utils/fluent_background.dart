@@ -71,6 +71,7 @@ class FluentBackground extends StatelessWidget {
   static AppBar appBar({
     required BuildContext context,
     required Widget title,
+    Widget? leading,
     List<Widget>? actions,
     PreferredSizeWidget? bottom,
     double? elevation,
@@ -83,6 +84,7 @@ class FluentBackground extends StatelessWidget {
     final bgColor = backgroundColor ?? defaultColor;
 
     return AppBar(
+      leading: leading,
       title: title,
       actions: actions,
       bottom: bottom,

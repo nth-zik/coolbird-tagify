@@ -150,8 +150,8 @@ class MethodChannelMobileSmbNative extends MobileSmbNativePlatform {
   @override
   Future<bool> isConnected() async {
     try {
-      final service = SmbPlatformService.instance;
-      return service.isConnected;
+      final result = await methodChannel.invokeMethod<bool>('isConnected');
+      return result ?? false;
     } catch (e) {
       debugPrint('SMB isConnected error: $e');
       return false;
@@ -161,15 +161,35 @@ class MethodChannelMobileSmbNative extends MobileSmbNativePlatform {
   @override
   Future<SmbFile?> getFileInfo(String path) async {
     try {
+      if (Platform.isAndroid || Platform.isIOS) {
+        final result = await methodChannel.invokeMethod<Map<Object?, Object?>>(
+          'getFileInfo',
+          {'path': path},
+        );
+        if (result == null) {
+          return null;
+        }
+        final map = Map<String, dynamic>.from(result);
+        return SmbFile(
+          name: map['name'] as String,
+          path: map['path'] as String,
+          size: map['size'] as int,
+          lastModified: DateTime.fromMillisecondsSinceEpoch(
+            map['lastModified'] as int,
+          ),
+          isDirectory: map['isDirectory'] as bool,
+        );
+      }
+
       final service = SmbPlatformService.instance;
       if (!service.isConnected) {
         return null;
       }
 
-      // For now, we'll use listDirectory to get file info
-      // This is a workaround until we implement a dedicated getFileInfo in native layer
-      final parentPath = path.substring(0, path.lastIndexOf('/'));
-      final fileName = path.substring(path.lastIndexOf('/') + 1);
+      // Fallback: list directory and locate file.
+      final lastSlash = path.lastIndexOf('/');
+      final parentPath = lastSlash > 0 ? path.substring(0, lastSlash) : '';
+      final fileName = lastSlash >= 0 ? path.substring(lastSlash + 1) : path;
 
       final files =
           await service.listDirectory(parentPath.isEmpty ? '/' : parentPath);
@@ -490,7 +510,7 @@ class MethodChannelMobileSmbNative extends MobileSmbNativePlatform {
           'SMB _startSeekFileStreamOnNative: Starting for path: $path at offset: $offset');
       debugPrint(
           'SMB _startSeekFileStreamOnNative: Chunk size: $chunkSize bytes');
-      await methodChannel.invokeMethod('startSeekFileStream', {
+      await methodChannel.invokeMethod('seekFileStream', {
         'path': path,
         'offset': offset,
         'chunkSize': chunkSize,

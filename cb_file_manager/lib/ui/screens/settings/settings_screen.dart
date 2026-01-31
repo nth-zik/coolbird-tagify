@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:cb_file_manager/helpers/core/user_preferences.dart';
 import 'package:cb_file_manager/ui/utils/base_screen.dart';
@@ -5,8 +7,10 @@ import 'package:cb_file_manager/config/language_controller.dart';
 import 'package:cb_file_manager/helpers/media/video_thumbnail_helper.dart';
 import 'package:cb_file_manager/helpers/network/network_thumbnail_helper.dart';
 import 'package:cb_file_manager/helpers/network/win32_smb_helper.dart';
+import 'package:cb_file_manager/helpers/core/app_path_helper.dart';
 import 'package:cb_file_manager/ui/screens/settings/database_settings_screen.dart';
 import 'package:cb_file_manager/ui/screens/settings/theme_settings_screen.dart';
+import 'package:cb_file_manager/ui/utils/format_utils.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:remixicon/remixicon.dart' as remix;
@@ -40,6 +44,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isClearingNetworkCache = false;
   bool _isClearingTempFiles = false;
   bool _isClearingCache = false;
+
+  // Cache info (sizes are on-disk bytes)
+  bool _isLoadingCacheInfo = false;
+  String? _cacheRootPath;
+  int? _networkThumbnailBytes;
+  int? _networkThumbnailFiles;
+  int? _videoThumbnailBytes;
+  int? _videoThumbnailFiles;
+  int? _tempFilesBytes;
+  int? _tempFilesCount;
 
   @override
   void initState() {
@@ -221,12 +235,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadCacheInfo() async {
     try {
-      // Cache info loading is now handled in individual cache operations
       if (mounted) {
-        setState(() {});
+        setState(() {
+          _isLoadingCacheInfo = true;
+        });
       }
+
+      final root = await AppPathHelper.getRootDir();
+      final networkStats = await NetworkThumbnailHelper().getCacheStats();
+      final videoDir = await AppPathHelper.getVideoCacheDir();
+      final tempDir = await AppPathHelper.getTempFilesDir();
+
+      final videoStats = await _directoryStats(videoDir);
+      final tempStats = await _directoryStats(tempDir);
+
+      if (!mounted) return;
+      setState(() {
+        _cacheRootPath = root.path;
+
+        _networkThumbnailBytes =
+            (networkStats['totalSize'] as int?) ?? 0;
+        _networkThumbnailFiles =
+            (networkStats['fileCount'] as int?) ?? 0;
+
+        _videoThumbnailBytes = videoStats.totalBytes;
+        _videoThumbnailFiles = videoStats.fileCount;
+
+        _tempFilesBytes = tempStats.totalBytes;
+        _tempFilesCount = tempStats.fileCount;
+      });
     } catch (e) {
       debugPrint('Error loading cache info: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingCacheInfo = false;
+        });
+      }
+    }
+  }
+
+  static Future<_DirectoryStats> _directoryStats(Directory dir) async {
+    try {
+      if (!await dir.exists()) {
+        return const _DirectoryStats(fileCount: 0, totalBytes: 0);
+      }
+
+      int totalBytes = 0;
+      int fileCount = 0;
+      await for (final entity in dir.list(recursive: true, followLinks: false)) {
+        if (entity is File) {
+          try {
+            totalBytes += await entity.length();
+            fileCount++;
+          } catch (_) {}
+        }
+      }
+      return _DirectoryStats(fileCount: fileCount, totalBytes: totalBytes);
+    } catch (_) {
+      return const _DirectoryStats(fileCount: 0, totalBytes: 0);
     }
   }
 
@@ -398,6 +465,91 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ),
+            ],
+          ),
+        ),
+
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      AppLocalizations.of(context)!.cacheFolder,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: _isLoadingCacheInfo ? null : () async {
+                      await _loadCacheInfo();
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content:
+                              Text(AppLocalizations.of(context)!.cacheInfoUpdated),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                    icon: const Icon(remix.Remix.refresh_line, size: 14),
+                    label: Text(
+                      AppLocalizations.of(context)!.refreshCacheInfo,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _cacheRootPath ?? AppLocalizations.of(context)!.notInitialized,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(height: 10),
+              _buildCacheStatRow(
+                icon: remix.Remix.cloud_line,
+                label: AppLocalizations.of(context)!.networkThumbnails,
+                bytes: _networkThumbnailBytes,
+                files: _networkThumbnailFiles,
+              ),
+              const SizedBox(height: 6),
+              _buildCacheStatRow(
+                icon: remix.Remix.video_line,
+                label: AppLocalizations.of(context)!.videoThumbnailsCache,
+                bytes: _videoThumbnailBytes,
+                files: _videoThumbnailFiles,
+              ),
+              const SizedBox(height: 6),
+              _buildCacheStatRow(
+                icon: remix.Remix.folder_reduce_line,
+                label: AppLocalizations.of(context)!.tempFiles,
+                bytes: _tempFilesBytes,
+                files: _tempFilesCount,
+              ),
+              const SizedBox(height: 12),
             ],
           ),
         ),
@@ -908,4 +1060,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
+
+  Widget _buildCacheStatRow({
+    required IconData icon,
+    required String label,
+    required int? bytes,
+    required int? files,
+  }) {
+    final sizeText = bytes == null
+        ? AppLocalizations.of(context)!.notInitialized
+        : FormatUtils.formatFileSize(bytes);
+    final fileCountText =
+        files == null ? '' : (files > 0 ? ' • $files' : '');
+
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        if (_isLoadingCacheInfo) ...[
+          const SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ] else ...[
+          Text(
+            '$sizeText$fileCountText',
+            style: TextStyle(
+              fontSize: 12,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _DirectoryStats {
+  final int fileCount;
+  final int totalBytes;
+
+  const _DirectoryStats({required this.fileCount, required this.totalBytes});
 }

@@ -1,12 +1,17 @@
 import 'dart:io';
 import 'dart:async';
 import 'dart:isolate';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:path/path.dart' as p;
+import 'package:video_thumbnail/video_thumbnail.dart';
+import 'package:cb_file_manager/services/network_browsing/network_service_base.dart';
 import 'package:cb_file_manager/services/network_browsing/network_service_registry.dart';
 import 'package:cb_file_manager/services/network_browsing/smb_service.dart';
 import 'package:cb_file_manager/services/network_browsing/mobile_smb_service.dart';
+import 'package:cb_file_manager/services/streaming/smb_http_proxy_server.dart';
+import 'package:cb_file_manager/ui/state/video_ui_state.dart';
 import 'package:image/image.dart' as img;
 import 'win32_smb_helper.dart';
 import 'smb_native_thumbnail_helper.dart';
@@ -156,9 +161,14 @@ class NetworkThumbnailHelper {
   void _cancelPath(String path) {
     _cancelledPaths.add(path);
 
-    // Cancel debounce timer
-    _debounceTimers[path]?.cancel();
-    _debounceTimers.remove(path);
+    // Cancel debounce timers for all sizes of this path.
+    final prefix = '$path:';
+    final debounceKeys =
+        _debounceTimers.keys.where((k) => k.startsWith(prefix)).toList();
+    for (final key in debounceKeys) {
+      _debounceTimers[key]?.cancel();
+      _debounceTimers.remove(key);
+    }
 
     // Remove from queue
     _requestQueue.removeWhere((request) {
@@ -183,6 +193,33 @@ class NetworkThumbnailHelper {
     }
 
     // debugPrint('Cancelled thumbnail processing for invisible path: $path');
+  }
+
+  /// Cancel all in-flight and queued thumbnail work.
+  ///
+  /// This is useful when navigating away from a folder, especially on SMB where
+  /// concurrent background thumbnail work can interfere with directory listing.
+  void cancelAllRequests() {
+    // Mark all currently visible paths as cancelled.
+    final pathsToCancel = Set<String>.from(_visiblePaths);
+    for (final p in pathsToCancel) {
+      _cancelPath(p);
+    }
+    _visiblePaths.clear();
+
+    // Cancel any remaining debounce timers (defensive).
+    for (final timer in _debounceTimers.values) {
+      timer.cancel();
+    }
+    _debounceTimers.clear();
+
+    // Clear any remaining queued requests (defensive).
+    for (final request in _requestQueue) {
+      if (!request.completer.isCompleted) {
+        request.completer.complete(null);
+      }
+    }
+    _requestQueue.clear();
   }
 
   /// Initialize cache directory
@@ -485,6 +522,12 @@ class NetworkThumbnailHelper {
   ) async {
     final requestKey = '$networkFilePath:$size';
 
+    // Avoid expensive thumbnail work while a video player is active.
+    // On Android this can contend for IO/CPU and cause playback stutter.
+    if (Platform.isAndroid && VideoUiState.isPlayerActive.value) {
+      return null;
+    }
+
     // Check if request is already pending
     if (_pendingRequests.containsKey(requestKey)) {
       return _pendingRequests[requestKey];
@@ -502,24 +545,6 @@ class NetworkThumbnailHelper {
       }
     } catch (e) {
       debugPrint('Error checking cached thumbnail: $e');
-    }
-
-    // Check if thumbnail is cached using NetworkFileCacheService
-    final cachedFile = await _cacheService.getCachedThumbnail(
-      networkFilePath,
-      size,
-    );
-    if (cachedFile != null) {
-      try {
-        final thumbnailPath = _getThumbnailFilePath(networkFilePath, size);
-        final file = File(thumbnailPath);
-        await file.writeAsBytes(await cachedFile.readAsBytes());
-        _thumbnailPathCache[networkFilePath] = thumbnailPath;
-        return thumbnailPath;
-      } catch (e) {
-        debugPrint('Error using cached thumbnail: $e');
-        // Continue with generation
-      }
     }
 
     // Check if this is a recent failed attempt
@@ -599,8 +624,11 @@ class NetworkThumbnailHelper {
             '#network/smb/'.toLowerCase(),
           )) {
         // Store the future to prevent duplicate requests
+        final timeout = (Platform.isAndroid || Platform.isIOS)
+            ? const Duration(seconds: 6)
+            : const Duration(seconds: 3);
         final future = _generateSMBThumbnail(networkFilePath, size).timeout(
-          const Duration(seconds: 3),
+          timeout,
           onTimeout: () => null,
         ); // Shorter timeout
         _pendingRequests[requestKey] = future;
@@ -703,7 +731,14 @@ class NetworkThumbnailHelper {
           }
         }
 
-        // 3) Fallback: Win32 helper (last resort)
+        // On mobile, avoid VideoThumbnail/MediaMetadataRetriever-based fallbacks for SMB videos.
+        // Those can block the Android main thread and make navigation/back unresponsive.
+        if ((Platform.isAndroid || Platform.isIOS) && isVideo) {
+          _failedAttempts['$smbFilePath:$size'] = DateTime.now();
+          return null;
+        }
+
+        // 3) Fallback: Win32 helper (last resort, Windows only)
         if (Platform.isWindows) {
           final unc = smbTabPathToUNC(smbFilePath);
           final thumbnailData = await _generateWindowsNativeThumbnail(
@@ -713,6 +748,22 @@ class NetworkThumbnailHelper {
           );
           if (thumbnailData != null) {
             return await _saveThumbnailToFile(smbFilePath, thumbnailData, size);
+          }
+        }
+
+        // 3b) Mobile SMB image: stream bytes and generate a thumbnail in an isolate.
+        if ((Platform.isAndroid || Platform.isIOS) && isImage) {
+          try {
+            final bytes = await _generateMobileSmbImageThumbnailBytes(
+              service: service,
+              smbTabPath: smbFilePath,
+              size: size,
+            );
+            if (bytes != null && bytes.isNotEmpty) {
+              return await _saveThumbnailToFile(smbFilePath, bytes, size);
+            }
+          } catch (_) {
+            // Ignore: thumbnail fallback is best-effort.
           }
         }
 
@@ -731,6 +782,128 @@ class NetworkThumbnailHelper {
     }
 
     return null;
+  }
+
+  Future<Uint8List?> _generateMobileSmbVideoThumbnailBytes({
+    required NetworkServiceBase? service,
+    required String smbTabPath,
+    required int size,
+  }) async {
+    final smbUrl = await _tryResolveSmbUrlForProxy(service, smbTabPath);
+    if (smbUrl == null || smbUrl.isEmpty) {
+      return null;
+    }
+
+    final httpUrl = await SmbHttpProxyServer.instance.urlFor(smbUrl);
+
+    return await VideoThumbnail.thumbnailData(
+      video: httpUrl.toString(),
+      imageFormat: ImageFormat.PNG,
+      maxWidth: size,
+      maxHeight: size,
+      quality: 100,
+      timeMs: 1000,
+    );
+  }
+
+  Future<Uint8List?> _generateMobileSmbImageThumbnailBytes({
+    required NetworkServiceBase? service,
+    required String smbTabPath,
+    required int size,
+  }) async {
+    final stream = service?.openFileStream(smbTabPath);
+    if (stream == null) return null;
+
+    final bytes = BytesBuilder(copy: false);
+    int total = 0;
+    const limit = 20 * 1024 * 1024;
+
+    await for (final chunk in stream) {
+      if (_cancelledPaths.contains(smbTabPath) ||
+          !_visiblePaths.contains(smbTabPath)) {
+        break;
+      }
+
+      bytes.add(chunk);
+      total += chunk.length;
+      if (total >= limit) break;
+    }
+
+    final data = bytes.takeBytes();
+    if (data.isEmpty) return null;
+
+    return compute(_generateImageThumbnailBytes, {
+      'bytes': data,
+      'size': size,
+    });
+  }
+
+  Future<String?> _tryResolveSmbUrlForProxy(
+    NetworkServiceBase? service,
+    String smbTabPath,
+  ) async {
+    try {
+      if (service is MobileSMBService) {
+        return await service.getSmbDirectLink(smbTabPath);
+      }
+    } catch (_) {}
+
+    // Best-effort fallback: build an unauthenticated SMB URL from the tab path.
+    final parts = smbTabPath.split('/').where((p) => p.isNotEmpty).toList();
+    if (parts.length < 4) return null;
+    final scheme = parts[1].toLowerCase();
+    if (scheme != 'smb') return null;
+
+    final host = Uri.decodeComponent(parts[2]);
+    final share = Uri.decodeComponent(parts[3]);
+    final remaining = parts.length > 4
+        ? parts.sublist(4).map(Uri.decodeComponent).toList()
+        : <String>[];
+    final encodedPath = [share, ...remaining].map(Uri.encodeComponent).join('/');
+    return 'smb://$host/$encodedPath';
+  }
+
+  static int _mobileVideoPrefixLimitBytes(String smbTabPath) {
+    final ext = p.extension(smbTabPath).toLowerCase();
+    if (ext == '.mp4' || ext == '.m4v' || ext == '.mov') {
+      return 12 * 1024 * 1024;
+    }
+    return 6 * 1024 * 1024;
+  }
+
+  static bool _isFastStartMp4Candidate(String smbTabPath) {
+    final ext = p.extension(smbTabPath).toLowerCase();
+    return ext == '.mp4' || ext == '.m4v' || ext == '.mov';
+  }
+
+  static bool _containsMoovAtom(
+    List<int> last3,
+    List<int> chunk, {
+    required void Function(List<int>) outLast3,
+  }) {
+    const moov = [0x6D, 0x6F, 0x6F, 0x76]; // "moov"
+    final combined = <int>[]
+      ..addAll(last3)
+      ..addAll(chunk);
+
+    for (var i = 0; i + 3 < combined.length; i++) {
+      if (combined[i] == moov[0] &&
+          combined[i + 1] == moov[1] &&
+          combined[i + 2] == moov[2] &&
+          combined[i + 3] == moov[3]) {
+        outLast3(_lastN([...last3, ...chunk], 3));
+        return true;
+      }
+    }
+
+    outLast3(_lastN([...last3, ...chunk], 3));
+    return false;
+  }
+
+  static List<int> _lastN(List<int> data, int n) {
+    if (n <= 0) return const <int>[];
+    if (data.length <= n) return List<int>.from(data);
+    return data.sublist(data.length - n);
   }
 
   /// Generate thumbnails using Windows native APIs (much faster)
@@ -851,14 +1024,6 @@ class NetworkThumbnailHelper {
         return null;
       }
 
-      // Cache the thumbnail data in NetworkFileCacheService
-      try {
-        await _cacheService.cacheThumbnail(smbFilePath, thumbnailData, size);
-      } catch (e) {
-        debugPrint('Error caching thumbnail in service: $e');
-        // Continue with local file saving
-      }
-
       // Ensure cache directory is initialized
       await _initializeCacheDirectory();
 
@@ -907,16 +1072,12 @@ class NetworkThumbnailHelper {
     try {
       // Clean up our cache directory
       if (_cacheDirectory != null && await _cacheDirectory!.exists()) {
-        await for (final file in _cacheDirectory!.list()) {
-          if (file is File) {
-            try {
-              await file.delete();
-              // debugPrint('Deleted cache file: ${file.path}');
-            } catch (e) {
-              debugPrint('Error deleting cache file: $e');
-            }
-          }
+        try {
+          await _cacheDirectory!.delete(recursive: true);
+        } catch (e) {
+          debugPrint('Error deleting cache directory: $e');
         }
+        await _cacheDirectory!.create(recursive: true);
         // debugPrint('Cleared SMB thumbnail cache directory');
       }
     } catch (e) {
@@ -942,9 +1103,6 @@ class NetworkThumbnailHelper {
 
     // Reset cleanup tracking
     _lastCleanup = null;
-
-    // Clear cache service
-    _cacheService.clearCache();
   }
 
   /// Clear cache and force regenerate thumbnails for debugging
@@ -976,7 +1134,7 @@ class NetworkThumbnailHelper {
       }
 
       final files = await _cacheDirectory!
-          .list()
+          .list(recursive: true, followLinks: false)
           .where((f) => f is File)
           .cast<File>()
           .toList();
@@ -1169,4 +1327,56 @@ class NetworkThumbnailHelper {
       scheduleMicrotask(_performCacheCleanup);
     }
   }
+}
+
+@pragma('vm:entry-point')
+Uint8List? _generateImageThumbnailBytes(Map<String, dynamic> params) {
+  final bytes = params['bytes'] as Uint8List?;
+  final size = params['size'] as int?;
+  if (bytes == null || bytes.isEmpty || size == null || size <= 0) {
+    return null;
+  }
+
+  final decoded = img.decodeImage(bytes);
+  if (decoded == null) return null;
+
+  final double aspectRatio = decoded.width / decoded.height;
+  int thumbW, thumbH;
+  if (aspectRatio > 1) {
+    thumbW = size;
+    thumbH = (size / aspectRatio).round();
+  } else {
+    thumbH = size;
+    thumbW = (size * aspectRatio).round();
+  }
+  thumbW = thumbW.clamp(1, size);
+  thumbH = thumbH.clamp(1, size);
+
+  var thumb = img.copyResize(
+    decoded,
+    width: thumbW,
+    height: thumbH,
+    interpolation: img.Interpolation.average,
+  );
+
+  thumb = img.adjustColor(
+    thumb,
+    contrast: 1.05,
+    saturation: 1.1,
+    brightness: 1.02,
+  );
+
+  if (thumb.width <= 256 && thumb.height <= 256) {
+    try {
+      thumb = img.convolution(
+        thumb,
+        filter: [0, -1, 0, -1, 5, -1, 0, -1, 0],
+        div: 1,
+      );
+    } catch (_) {
+      // Ignore convolution errors.
+    }
+  }
+
+  return Uint8List.fromList(img.encodePng(thumb, level: 6));
 }

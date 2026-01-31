@@ -62,6 +62,7 @@ class NetworkBrowserScreen extends StatefulWidget {
 
 class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
     with SingleTickerProviderStateMixin {
+  static const bool _enableVerboseLogs = false;
   late TextEditingController _searchController;
   late TextEditingController _pathController;
 
@@ -87,7 +88,13 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
 
   // Flag to track if there are background thumbnail tasks
   bool _hasPendingThumbnails = false;
-  bool _hasAnyContentLoaded = false;
+
+  // Flag to force immediate UI transition when navigating to a new path.
+  // This prevents the old directory contents from being displayed while the next
+  // directory load is being queued/started (common with slow SMB listings).
+  bool _isNavigationPending = false;
+
+  bool _isNetworkLoadScheduled = false;
 
   // Subscription for thumbnail loading events
   StreamSubscription? _thumbnailLoadingSubscription;
@@ -465,6 +472,17 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
     }
   }
 
+  void _scheduleNetworkDirectoryLoad() {
+    if (_isNetworkLoadScheduled) return;
+
+    _isNetworkLoadScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _isNetworkLoadScheduled = false;
+      if (!mounted) return;
+      _loadNetworkDirectory();
+    });
+  }
+
   // Add a method to check if there are any video/image files in the current state
   bool _hasVideoOrImageFiles(NetworkBrowsingState state) {
     final files = state.files ?? [];
@@ -478,10 +496,21 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
   }
 
   void _navigateToPath(String path) {
+    // Cancel any SMB thumbnail work from the previous folder to avoid
+    // background SMB operations interfering with the next directory listing.
+    if (Platform.isAndroid || Platform.isIOS) {
+      if (_currentPath.toLowerCase().startsWith('#network/smb/')) {
+        NetworkThumbnailHelper().cancelAllRequests();
+        ThumbnailLoader.resetPendingCount();
+        _hasPendingThumbnails = false;
+      }
+    }
+
     setState(() {
       _currentPath = path;
       _pathController.text = path;
       _isLoadingStarted = false; // Reset loading flag for new path
+      _isNavigationPending = true;
     });
 
     // Ensure path controller is updated
@@ -494,7 +523,7 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
     // Update the tab path (this will automatically handle navigation history)
     context.read<TabManagerBloc>().add(UpdateTabPath(widget.tabId, path));
 
-    _loadNetworkDirectory();
+    _scheduleNetworkDirectoryLoad();
 
     final pathParts = path.split('/');
     final lastPart =
@@ -589,12 +618,24 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
                   .read<TabManagerBloc>()
                   .add(UpdateTabLoading(widget.tabId, isLoading));
 
-              if (!state.isLoading) {
-                if (mounted) {
-                  setState(() {
+              if (!mounted) return;
+
+              final bool shouldClearLoadingStarted =
+                  !state.isLoading && _isLoadingStarted;
+              final bool shouldClearNavigationPending = _isNavigationPending &&
+                  (state.hasError ||
+                      (state.currentPath != null &&
+                          state.currentPath == _currentPath));
+
+              if (shouldClearLoadingStarted || shouldClearNavigationPending) {
+                setState(() {
+                  if (shouldClearLoadingStarted) {
                     _isLoadingStarted = false;
-                  });
-                }
+                  }
+                  if (shouldClearNavigationPending) {
+                    _isNavigationPending = false;
+                  }
+                });
               }
             }, buildWhen: (previous, current) {
               // Only rebuild when state actually changes
@@ -751,156 +792,164 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
       SelectionState selectionState) {
     FrameTimingOptimizer().optimizeBeforeHeavyOperation();
 
-    // Log debug information (minimal logging)
-    debugPrint("NetworkBrowserScreen: _buildBody called with state:");
-    debugPrint("  - isLoading: ${state.isLoading}");
-    debugPrint("  - hasError: ${state.hasError}");
-    debugPrint("  - directories: ${state.directories?.length ?? 'null'}");
-    debugPrint("  - files: ${state.files?.length ?? 'null'}");
-    debugPrint("  - currentPath: ${state.currentPath}");
-
-    if (state.hasError) {
-      debugPrint("NetworkBrowserScreen: Error - ${state.errorMessage}");
+    if (_enableVerboseLogs) {
+      debugPrint("NetworkBrowserScreen: _buildBody called with state:");
+      debugPrint("  - isLoading: ${state.isLoading}");
+      debugPrint("  - isLoadingMore: ${state.isLoadingMore}");
+      debugPrint("  - hasError: ${state.hasError}");
+      debugPrint("  - directories: ${state.directories?.length ?? 'null'}");
+      debugPrint("  - files: ${state.files?.length ?? 'null'}");
+      debugPrint("  - currentPath: ${state.currentPath}");
+      if (state.hasError) {
+        debugPrint("NetworkBrowserScreen: Error - ${state.errorMessage}");
+      }
     }
 
-    // Show skeleton only when:
-    // 1. isLoading is true AND we don't have any content yet
-    // 2. When isLoadingMore is true, we already have content - show it with a loading indicator
-    final bool shouldShowSkeleton = state.isLoading && !state.hasContent &&
-        !_hasAnyContentLoaded && !state.hasError;
+    final bool isStatePathOutOfSync =
+        state.currentPath != null && state.currentPath != _currentPath;
+
+    final bool shouldShowSkeleton = !state.hasError &&
+        (_isNavigationPending || (state.isLoading && !state.hasContent) || isStatePathOutOfSync);
+
+    Widget content;
+
     if (shouldShowSkeleton) {
-      // Show skeleton placeholders while loading to avoid empty-state flicker
-      // Reuse the same grid/list logic as the main file view where possible
-      // For network browser, default to grid-like skeletons based on current grid zoom level if available
       final int crossAxis = _viewMode == ViewMode.grid ? _gridZoomLevel : 2;
-      return FluentBackground.container(
+      content = FluentBackground.container(
         context: context,
         child: _viewMode == ViewMode.grid
             ? SkeletonHelper.fileGrid(crossAxisCount: crossAxis, itemCount: 12)
             : SkeletonHelper.fileList(itemCount: 12),
       );
-    }
-
-    if (state.hasError) {
-      return FluentBackground.container(
+    } else if (state.hasError) {
+      content = FluentBackground.container(
         context: context,
         padding: const EdgeInsets.all(24.0),
         blurAmount: 5.0,
         child: tab_components.ErrorView(
-          errorMessage: state.errorMessage ?? AppLocalizations.of(context)!.unknownError,
+          errorMessage:
+              state.errorMessage ?? AppLocalizations.of(context)!.unknownError,
           isNetworkPath: true,
           onRetry: () {
-            _loadNetworkDirectory();
+            _scheduleNetworkDirectoryLoad();
           },
           onGoBack: () {
             _handleBackButton();
           },
         ),
       );
-    }
+    } else {
+      final List<FileSystemEntity> folders = List.from(state.directories ?? []);
+      final List<FileSystemEntity> files = List.from(state.files ?? []);
 
-    // Get folders and files from state
-    List<FileSystemEntity> folders = List.from(state.directories ?? []);
-    List<FileSystemEntity> files = List.from(state.files ?? []);
-
-    if (folders.isEmpty && files.isEmpty) {
-      return FluentBackground.container(
-        context: context,
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.folder_open, size: 64, color: Colors.grey),
-              const SizedBox(height: 16),
-              Text(
-                AppLocalizations.of(context)!.emptyFolder,
-                style: const TextStyle(fontSize: 18),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.refresh),
-                label: Text(AppLocalizations.of(context)!.refresh),
-                onPressed: _refreshFileList,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // Mark that we have content at least once to prevent flicker
-    _hasAnyContentLoaded = true;
-
-    // Build the main content view
-    final contentView = _viewMode == ViewMode.grid
-        ? _buildGridView(folders, files, selectionState)
-        : _viewMode == ViewMode.details
-            ? _buildDetailsView(folders, files, selectionState)
-            : _buildListView(folders, files, selectionState);
-
-    // Determine view mode based on user preference
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        FluentBackground(
-          blurAmount: 8.0,
-          opacity: 0.2,
-          enableBlur: true,
-          child: GestureDetector(
-            onTap: () {
-              if (selectionState.isSelectionMode) {
-                _clearSelection();
-              }
-            },
-            onSecondaryTapUp: (details) {
-              _showContextMenu(context, details.globalPosition, null);
-            },
-            // Drag selection only on desktop
-            onPanStart: isDesktopPlatform
-                ? (details) {
-                    _startDragSelection(details.localPosition);
-                  }
-                : null,
-            onPanUpdate: isDesktopPlatform
-                ? (details) {
-                    _updateDragSelection(details.localPosition);
-                  }
-                : null,
-            onPanEnd: isDesktopPlatform
-                ? (details) {
-                    _endDragSelection();
-                  }
-                : null,
-            behavior: HitTestBehavior.translucent,
-            // Show content with loading indicator when isLoadingMore is true
+      if (folders.isEmpty && files.isEmpty) {
+        content = FluentBackground.container(
+          context: context,
+          child: Center(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(child: contentView),
-                // Show loading indicator at bottom when loading more content
-                if (state.isLoadingMore)
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          AppLocalizations.of(context)!.loading,
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
+                const Icon(Icons.folder_open, size: 64, color: Colors.grey),
+                const SizedBox(height: 16),
+                Text(
+                  AppLocalizations.of(context)!.emptyFolder,
+                  style: const TextStyle(fontSize: 18),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.refresh),
+                  label: Text(AppLocalizations.of(context)!.refresh),
+                  onPressed: _refreshFileList,
+                ),
               ],
             ),
           ),
-        ),
-        _buildDragSelectionOverlay(),
+        );
+      } else {
+        final Widget contentView = _viewMode == ViewMode.grid
+            ? _buildGridView(folders, files, selectionState)
+            : _viewMode == ViewMode.details
+                ? _buildDetailsView(folders, files, selectionState)
+                : _buildListView(folders, files, selectionState);
+
+        content = Stack(
+          clipBehavior: Clip.none,
+          children: [
+            FluentBackground(
+              blurAmount: 8.0,
+              opacity: 0.2,
+              enableBlur: true,
+              child: GestureDetector(
+                onTap: () {
+                  if (selectionState.isSelectionMode) {
+                    _clearSelection();
+                  }
+                },
+                onSecondaryTapUp: (details) {
+                  _showContextMenu(context, details.globalPosition, null);
+                },
+                onPanStart: isDesktopPlatform
+                    ? (details) {
+                        _startDragSelection(details.localPosition);
+                      }
+                    : null,
+                onPanUpdate: isDesktopPlatform
+                    ? (details) {
+                        _updateDragSelection(details.localPosition);
+                      }
+                    : null,
+                onPanEnd: isDesktopPlatform
+                    ? (details) {
+                        _endDragSelection();
+                      }
+                    : null,
+                behavior: HitTestBehavior.translucent,
+                child: Column(
+                  children: [
+                    Expanded(child: contentView),
+                    if (state.isLoadingMore)
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              AppLocalizations.of(context)!.loading,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            _buildDragSelectionOverlay(),
+          ],
+        );
+      }
+    }
+
+    final bool showTopLoadingBar =
+        _isNavigationPending || state.isLoading || state.isLoadingMore;
+
+    return Stack(
+      children: [
+        content,
+        if (showTopLoadingBar)
+          const Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            child: LinearProgressIndicator(minHeight: 2.0),
+          ),
       ],
     );
   }
@@ -962,56 +1011,32 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
 
           if (index < folders.length) {
             final folder = folders[index] as Directory;
-            return Stack(
-              children: [
-                KeyedSubtree(
-                  key: ValueKey('folder-grid-${folder.path}'),
-                  child: RepaintBoundary(
-                    child: FluentBackground.container(
-                      context: context,
-                      padding: EdgeInsets.zero,
-                      blurAmount: 5.0,
-                      opacity: isSelected ? 0.8 : 0.6,
-                      backgroundColor: isSelected
-                          ? Theme.of(context)
-                              .colorScheme
-                              .primaryContainer
-                              .withValues(alpha: 0.6)
-                          : Theme.of(context).cardColor.withValues(alpha: 0.4),
-                      child: folder_list_components.FolderGridItem(
-                        key: ValueKey('folder-grid-item-${folder.path}'),
-                        folder: folder,
-                        onNavigate: (path) {
-                          // Show loading indicator before navigating
-                          setState(() {
-                            _isLoadingStarted = true;
-                          });
-                          _navigateToPath(path);
-                        },
-                        isSelected: isSelected,
-                        toggleFolderSelection: _toggleFolderSelection,
-                        isDesktopMode: !Platform.isAndroid && !Platform.isIOS,
-                        lastSelectedPath: selectionState.lastSelectedPath,
-                        clearSelectionMode: _clearSelection,
-                      ),
-                    ),
+            return KeyedSubtree(
+              key: ValueKey('folder-grid-${folder.path}'),
+              child: RepaintBoundary(
+                child: FluentBackground.container(
+                  context: context,
+                  padding: EdgeInsets.zero,
+                  blurAmount: 5.0,
+                  opacity: isSelected ? 0.8 : 0.6,
+                  backgroundColor: isSelected
+                      ? Theme.of(context)
+                          .colorScheme
+                          .primaryContainer
+                          .withValues(alpha: 0.6)
+                      : Theme.of(context).cardColor.withValues(alpha: 0.4),
+                  child: folder_list_components.FolderGridItem(
+                    key: ValueKey('folder-grid-item-${folder.path}'),
+                    folder: folder,
+                    onNavigate: _navigateToPath,
+                    isSelected: isSelected,
+                    toggleFolderSelection: _toggleFolderSelection,
+                    isDesktopMode: !Platform.isAndroid && !Platform.isIOS,
+                    lastSelectedPath: selectionState.lastSelectedPath,
+                    clearSelectionMode: _clearSelection,
                   ),
                 ),
-                // Overlay loading indicator for this specific folder if it's being loaded
-                if (_isLoadingStarted && _currentPath == folder.path)
-                  Positioned.fill(
-                    child: Container(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.0,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                              Theme.of(context).primaryColor),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
+              ),
             );
           } else {
             final file = files[index - folders.length] as File;
@@ -1231,13 +1256,7 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
                 child: folder_list_components.FolderDetailsItem(
                   key: ValueKey('folder-details-item-${folder.path}'),
                   folder: folder,
-                  onTap: (path) {
-                    // Show loading indicator before navigating
-                    setState(() {
-                      _isLoadingStarted = true;
-                    });
-                    _navigateToPath(path);
-                  },
+                  onTap: _navigateToPath,
                   isSelected: isSelected,
                   toggleFolderSelection: _toggleFolderSelection,
                   isDesktopMode: !Platform.isAndroid && !Platform.isIOS,
@@ -1336,13 +1355,7 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
                 child: folder_list_components.FolderItem(
                   key: ValueKey('folder-list-item-${folder.path}'),
                   folder: folder,
-                  onTap: (path) {
-                    // Show loading indicator before navigating
-                    setState(() {
-                      _isLoadingStarted = true;
-                    });
-                    _navigateToPath(path);
-                  },
+                  onTap: _navigateToPath,
                   isSelected: isSelected,
                   toggleFolderSelection: _toggleFolderSelection,
                   isDesktopMode: !Platform.isAndroid && !Platform.isIOS,

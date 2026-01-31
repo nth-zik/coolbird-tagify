@@ -501,6 +501,8 @@ abstract class AppLocalizations {
   String errorRestoringItemWithError(String error);
   String itemPermanentlyDeleted(String name);
   String failedToDelete(String name);
+  String failedToDeleteFilesCount(int count);
+  String failedToDeleteItemsCount(int count);
   String errorDeletingItemWithError(String error);
   String get trashEmptiedSuccess;
   String get failedToEmptyTrash;
@@ -511,6 +513,7 @@ abstract class AppLocalizations {
   String itemsDeletedWithFailures(int success, int failed);
   String errorRestoringItemsWithError(String error);
   String errorDeletingItemsWithError(String error);
+  String errorDeletingFilesWithError(String error);
   String errorOpeningRecycleBinWithError(String error);
   String get restoreSelected;
   String get deleteSelected;
@@ -695,6 +698,10 @@ abstract class AppLocalizations {
   String get allCacheCleared;
   String get errorClearingCache;
   String get processing;
+  String get deletingFiles;
+  String get deletingItems;
+  String get movingItemsToTrash;
+  String get done;
   String get regenerateThumbnailsWithNewPosition;
   String get thumbnailPositionUpdated;
   String get fileTagsEnabled;

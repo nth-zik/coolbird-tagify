@@ -38,6 +38,8 @@ class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
   bool _showAppBar = true; // Control app bar visibility
   bool _inAndroidPip = false;
   Timer? _uiEnforceTimer;
+  Timer? _overlayHideTimer;
+  static const Duration _overlayAutoHideDuration = Duration(seconds: 3);
 
   @override
   void initState() {
@@ -83,6 +85,11 @@ class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
         }
       }
     });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _showOverlaysTemporarily();
+    });
   }
 
   @override
@@ -93,7 +100,29 @@ class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
     // Keep automatic adjustment enabled for underlying screens
     WidgetsBinding.instance.renderView.automaticSystemUiAdjustment = true;
     _uiEnforceTimer?.cancel();
+    _overlayHideTimer?.cancel();
     super.dispose();
+  }
+
+  bool _shouldAutoHideOverlays() {
+    if (Platform.isAndroid || Platform.isIOS) return false;
+    if (_inAndroidPip) return false;
+    return true;
+  }
+
+  void _showOverlaysTemporarily() {
+    if (!_shouldAutoHideOverlays()) return;
+
+    if (mounted) {
+      setState(() => _showAppBar = true);
+    }
+
+    _overlayHideTimer?.cancel();
+    _overlayHideTimer = Timer(_overlayAutoHideDuration, () {
+      if (!mounted) return;
+      if (!_shouldAutoHideOverlays()) return;
+      setState(() => _showAppBar = false);
+    });
   }
 
   @override
@@ -117,26 +146,48 @@ class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
                         onPressed: () => _showVideoInfo(context),
                       ),
                   ],
-                  onClose: () {
-                    // Close the app completely when close button is pressed
-                    exit(0);
-                  },
+                  onClose: null,
+                  // Default: pop when in a route, else exit(0)
                   showWindowControls: true,
                   blurAmount: 12.0,
                   opacity: 0.6,
                 )),
       extendBody: true,
-      extendBodyBehindAppBar: true,
+      extendBodyBehindAppBar: false,
       resizeToAvoidBottomInset: false,
       backgroundColor: Colors.black,
       body: Center(
-        child: _buildPlayer(context),
+        child: Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: (_) => _showOverlaysTemporarily(),
+          onPointerMove: (_) => _showOverlaysTemporarily(),
+          child: _buildPlayer(context),
+        ),
       ),
     );
-    return isMobile
-        ? AnnotatedRegion<SystemUiOverlayStyle>(
-            value: SystemUiOverlayStyle.light, child: scaffold)
-        : scaffold;
+
+    if (isMobile) {
+      return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        child: scaffold,
+      );
+    }
+
+    // Handle Escape at a parent focus node without stealing focus from the player
+    // (arrow keys are handled by the inner VideoPlayer Focus node).
+    return Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.escape) {
+          Navigator.of(context).maybePop();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: scaffold,
+    );
   }
 
   Widget _buildPlayer(BuildContext context) {
@@ -150,27 +201,18 @@ class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
     };
     final onErr = (String errorMessage) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('L?i: $errorMessage')),
+        SnackBar(content: Text('Lỗi: $errorMessage')),
       );
     };
     final onFs = () {
       setState(() {
         _isFullScreen = !_isFullScreen;
         _showAppBar = true;
-        if (_isFullScreen) {
-          Future.delayed(const Duration(seconds: 3), () {
-            if (mounted && _isFullScreen) setState(() => _showAppBar = false);
-          });
-        }
       });
+      _showOverlaysTemporarily();
     };
     final onCtrl = () {
-      if (_isFullScreen) {
-        setState(() => _showAppBar = true);
-        Future.delayed(const Duration(seconds: 3), () {
-          if (mounted && _isFullScreen) setState(() => _showAppBar = false);
-        });
-      }
+      _showOverlaysTemporarily();
     };
     if (widget.file != null) {
       return VideoPlayer.file(

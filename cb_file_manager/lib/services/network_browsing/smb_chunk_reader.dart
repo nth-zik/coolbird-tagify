@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:mobile_smb_native/mobile_smb_native.dart';
 
@@ -117,14 +118,35 @@ class SmbChunkReader {
     }
 
     try {
-      final stream = _client.seekFileStreamOptimized(_currentFilePath!, offset,
-          chunkSize: length);
+      final stream = _client.seekFileStreamOptimized(
+        _currentFilePath!,
+        offset,
+        chunkSize: length,
+      );
       if (stream == null) {
         debugPrint('SmbChunkReader: failed to open optimized stream');
         return null;
       }
 
-      final data = await stream.first;
+      final bytes = BytesBuilder(copy: false);
+      var remaining = length;
+      await for (final chunk in stream) {
+        if (chunk.isEmpty) {
+          continue;
+        }
+        if (chunk.length >= remaining) {
+          bytes.add(chunk.sublist(0, remaining));
+          remaining = 0;
+          break;
+        }
+        bytes.add(chunk);
+        remaining -= chunk.length;
+        if (remaining <= 0) {
+          break;
+        }
+      }
+
+      final data = bytes.takeBytes();
       if (data.isEmpty) return null;
 
       final isLast = _fileSize != null && offset + data.length >= _fileSize!;

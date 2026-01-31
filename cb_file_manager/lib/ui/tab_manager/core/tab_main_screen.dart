@@ -6,6 +6,7 @@ import '../../screens/permissions/permission_explainer_screen.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../../bloc/network_browsing/network_browsing_bloc.dart';
+import '../../components/common/operation_progress_overlay.dart';
 import 'tab_manager.dart';
 import 'tab_screen.dart';
 
@@ -45,6 +46,7 @@ class _TabMainScreenState extends State<TabMainScreen> {
   late TabManagerBloc _tabManagerBloc;
   late NetworkBrowsingBloc _networkBrowsingBloc;
   bool _checkedPerms = false;
+  OverlayEntry? _operationProgressOverlayEntry;
 
   @override
   void initState() {
@@ -53,6 +55,15 @@ class _TabMainScreenState extends State<TabMainScreen> {
     _networkBrowsingBloc = NetworkBrowsingBloc();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
+      if (_operationProgressOverlayEntry == null) {
+        final overlay = Overlay.maybeOf(context, rootOverlay: true);
+        if (overlay != null) {
+          _operationProgressOverlayEntry = OverlayEntry(
+            builder: (_) => const OperationProgressOverlay(),
+          );
+          overlay.insert(_operationProgressOverlayEntry!);
+        }
+      }
       if (_checkedPerms) return;
       _checkedPerms = true;
       final hasStorage =
@@ -83,6 +94,8 @@ class _TabMainScreenState extends State<TabMainScreen> {
 
   @override
   void dispose() {
+    _operationProgressOverlayEntry?.remove();
+    _operationProgressOverlayEntry = null;
     _tabManagerBloc.close();
     _networkBrowsingBloc.close();
     super.dispose();

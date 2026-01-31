@@ -25,8 +25,7 @@ class SmbHttpProxyServer {
 
   Future<void> _ensureStarted() async {
     if (_server != null) return;
-    final handler =
-        const Pipeline().addMiddleware(logRequests()).addHandler(_handle);
+    final handler = const Pipeline().addHandler(_handle);
     _server = await shelf_io.serve(handler, InternetAddress.loopbackIPv4, 0);
     _server!.autoCompress = false;
     _port = _server!.port;
@@ -72,6 +71,7 @@ class SmbHttpProxyServer {
       if (info == null) {
         return Response(400, body: 'Invalid SMB URL');
       }
+      final filePath = _buildClientPath(info);
 
       final ok = await reader.initialize(SmbConnectionConfig(
         host: info.host,
@@ -85,8 +85,8 @@ class SmbHttpProxyServer {
         return Response(502, body: 'Failed to connect SMB');
       }
 
-      // For SmbChunkReader we expect full smb url for setFile
-      final fileOk = await reader.setFile(smbUrl);
+      // SmbChunkReader expects a path relative to the SMB base share.
+      final fileOk = await reader.setFile(filePath);
       if (!fileOk) {
         return Response(404, body: 'File not found');
       }
@@ -185,6 +185,17 @@ class SmbHttpProxyServer {
     if (lower.endsWith('.mov')) return 'video/quicktime';
     if (lower.endsWith('.avi')) return 'video/x-msvideo';
     return 'application/octet-stream';
+  }
+
+  String _buildClientPath(_SmbUrlInfo info) {
+    var path = info.path.trim();
+    if (path.isEmpty || path == '/') {
+      return '';
+    }
+    if (path.startsWith('/')) {
+      path = path.substring(1);
+    }
+    return path;
   }
 }
 

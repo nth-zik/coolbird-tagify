@@ -42,6 +42,8 @@ import 'package:cb_file_manager/helpers/files/external_app_helper.dart';
 // Global access to test the video thumbnail screen (for development)
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+const List<String> _debugLogAllowList = <String>['VideoPlayer', 'VLC'];
+
 /// Launch file path from OS (e.g. double-click when app is default for video)
 List<String> _launchPaths = [];
 
@@ -77,12 +79,34 @@ Future<void> _handleAndroidLaunchVideo() async {
   } catch (_) {}
 }
 
+void _configureDebugPrintFiltering() {
+  debugPrint = (String? message, {int? wrapWidth}) {
+    if (message == null) return;
+    for (final token in _debugLogAllowList) {
+      if (message.contains(token)) {
+        debugPrintThrottled(message, wrapWidth: wrapWidth);
+        return;
+      }
+    }
+  };
+}
+
+bool _shouldAllowLog(String message) {
+  for (final token in _debugLogAllowList) {
+    if (message.contains(token)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void main(List<String> args) async {
   _launchPaths = List.from(args);
   // Catch any errors during app initialization
   runZonedGuarded(() async {
     // Ensure Flutter is initialized before using platform plugins
     WidgetsFlutterBinding.ensureInitialized();
+    _configureDebugPrintFiltering();
 
     // Native event loop init removed to avoid build issues when package
     // artifacts are not present locally.
@@ -279,7 +303,11 @@ void main(List<String> args) async {
     );
   }, (error, stackTrace) {
     debugPrint('Error during app initialization: $error');
-  });
+  }, zoneSpecification: ZoneSpecification(print: (self, parent, zone, line) {
+    if (_shouldAllowLog(line)) {
+      parent.print(zone, line);
+    }
+  }));
 }
 
 // no-op helper removed; using jsonDecode directly

@@ -2,12 +2,15 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cb_file_manager/helpers/core/io_extensions.dart';
+import 'package:cb_file_manager/ui/controllers/inline_rename_controller.dart';
+import 'package:cb_file_manager/ui/widgets/inline_rename_field.dart';
 import '../../../components/common/shared_file_context_menu.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../bloc/selection/selection_bloc.dart';
 import '../../../../bloc/selection/selection_event.dart';
 import 'folder_thumbnail.dart';
 import '../../../components/common/optimized_interaction_handler.dart';
+import '../../../utils/item_interaction_style.dart';
 
 class FolderGridItem extends StatefulWidget {
   final Directory folder;
@@ -109,19 +112,7 @@ class _FolderGridItemState extends State<FolderGridItem> {
                     child: Center(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: Text(
-                          widget.folder.basename(),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isDarkMode ? Colors.white : Colors.black87,
-                            fontWeight: _visuallySelected
-                                ? FontWeight.bold
-                                : FontWeight.w500,
-                          ),
-                        ),
+                        child: _buildNameWidget(context, isDarkMode),
                       ),
                     ),
                   ),
@@ -150,9 +141,12 @@ class _FolderGridItemState extends State<FolderGridItem> {
                 IgnorePointer(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .primaryColor
-                          .withValues(alpha: 0.12),
+                      color: ItemInteractionStyle.thumbnailOverlayColor(
+                        theme: Theme.of(context),
+                        isDesktopMode: widget.isDesktopMode,
+                        isSelected: true,
+                        isHovering: false,
+                      ),
                     ),
                   ),
                 ),
@@ -162,18 +156,20 @@ class _FolderGridItemState extends State<FolderGridItem> {
       );
     }
 
-    // Desktop: flat container with hover/selection cues
-    final Color backgroundColor = _visuallySelected
-        ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.25)
-        : _isHovering
-            ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.08)
-            : Colors.transparent;
+    final Color backgroundColor = ItemInteractionStyle.backgroundColor(
+      theme: Theme.of(context),
+      isDesktopMode: widget.isDesktopMode,
+      isSelected: _visuallySelected,
+      isHovering: _isHovering,
+    );
 
-    final Color borderColor = _visuallySelected
-        ? Theme.of(context).primaryColor.withValues(alpha: 0.7)
-        : _isHovering
-            ? Theme.of(context).dividerColor.withValues(alpha: 0.6)
-            : Colors.transparent;
+    final Color thumbnailOverlayColor =
+        ItemInteractionStyle.thumbnailOverlayColor(
+      theme: Theme.of(context),
+      isDesktopMode: widget.isDesktopMode,
+      isSelected: _visuallySelected,
+      isHovering: _isHovering,
+    );
 
     return GestureDetector(
       onSecondaryTapDown: (details) =>
@@ -186,10 +182,6 @@ class _FolderGridItemState extends State<FolderGridItem> {
           decoration: BoxDecoration(
             color: backgroundColor,
             borderRadius: BorderRadius.circular(8.0),
-            border: Border.all(
-              color: borderColor,
-              width: 1.0,
-            ),
           ),
           child: Stack(
             children: [
@@ -198,7 +190,16 @@ class _FolderGridItemState extends State<FolderGridItem> {
                   // Thumbnail/Icon section
                   Expanded(
                     flex: 3,
-                    child: FolderThumbnail(folder: widget.folder),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        FolderThumbnail(folder: widget.folder),
+                        if (thumbnailOverlayColor != Colors.transparent)
+                          IgnorePointer(
+                            child: Container(color: thumbnailOverlayColor),
+                          ),
+                      ],
+                    ),
                   ),
                   // Text section
                   SizedBox(
@@ -207,19 +208,7 @@ class _FolderGridItemState extends State<FolderGridItem> {
                     child: Center(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: Text(
-                          widget.folder.basename(),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isDarkMode ? Colors.white : Colors.black87,
-                            fontWeight: _visuallySelected
-                                ? FontWeight.bold
-                                : FontWeight.w500,
-                          ),
-                        ),
+                        child: _buildNameWidget(context, isDarkMode),
                       ),
                     ),
                   ),
@@ -281,5 +270,51 @@ class _FolderGridItemState extends State<FolderGridItem> {
       folderTags: [], // Pass empty tags or fetch from database in real implementation
       globalPosition: globalPosition, // Pass position for desktop popup menu
     );
+  }
+
+  Widget _buildNameWidget(BuildContext context, bool isDarkMode) {
+    // Check if this item is being renamed inline (desktop only)
+    final renameController = InlineRenameScope.maybeOf(context);
+    final isBeingRenamed = renameController != null &&
+        renameController.renamingPath == widget.folder.path;
+
+    final textWidget = Text(
+      widget.folder.basename(),
+      textAlign: TextAlign.center,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: 12,
+        color: isDarkMode ? Colors.white : Colors.black87,
+        fontWeight: _visuallySelected ? FontWeight.bold : FontWeight.w500,
+      ),
+    );
+
+    if (isBeingRenamed && renameController.textController != null) {
+      return Stack(
+        children: [
+          // Invisible text for layout sizing
+          Opacity(opacity: 0, child: textWidget),
+          // Positioned editable field on top
+          Positioned.fill(
+            child: InlineRenameField(
+              controller: renameController,
+              onCommit: () => renameController.commitRename(context),
+              onCancel: () => renameController.cancelRename(),
+              textStyle: TextStyle(
+                fontSize: 12,
+                color: isDarkMode ? Colors.white : Colors.black87,
+                fontWeight:
+                    _visuallySelected ? FontWeight.bold : FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return textWidget;
   }
 }

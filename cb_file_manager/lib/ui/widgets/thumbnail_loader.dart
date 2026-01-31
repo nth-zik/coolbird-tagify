@@ -284,9 +284,13 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
   Timer? _loadingOverlayTimer;
   String? _networkThumbnailPath; // Store the generated thumbnail path
 
-  // PERFORMANCE: Reduced debounce timing for better responsiveness during scrolling
-  static const Duration _visibilityDebounceDuration = Duration(
-      milliseconds: 150); // Reduced from 300ms for faster thumbnail loading
+  // PERFORMANCE: Debounce visibility changes - wait until scroll stops
+  static const Duration _visibilityDebounceDuration =
+      Duration(milliseconds: 100); // Quick response after scroll stops
+
+  // PERFORMANCE: Delay before starting thumbnail load to prioritize file list display
+  static const Duration _thumbnailLoadDelay =
+      Duration(milliseconds: 400); // Wait for file list to render first
 
   // PERFORMANCE: Adaptive filter quality based on scrolling state
   bool _isScrolling = false;
@@ -357,7 +361,13 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
       _isLoadingNotifier.value = false;
       _hasErrorNotifier.value = false;
     } else {
-      // Không khởi tạo thumbnail ngay; chờ khi widget thực sự hiển thị (VisibilityDetector)
+      // Schedule load after frame is built - don't wait for VisibilityDetector
+      // as it may not fire for already-visible widgets
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_widgetMounted && mounted && _networkThumbnailPath == null) {
+          _scheduleLoadWithDelay();
+        }
+      });
     }
     _handleLoadingChanged();
   }
@@ -372,10 +382,10 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
     });
   }
 
-  // Smart loading với priority queue
+  // Smart loading với priority queue - delay to prioritize file list display
   void _scheduleLoadWithDelay() {
     _delayedLoadTimer?.cancel();
-    _delayedLoadTimer = Timer(const Duration(milliseconds: 300), () {
+    _delayedLoadTimer = Timer(_thumbnailLoadDelay, () {
       if (_widgetMounted && mounted) {
         _addToLoadingQueue();
       }
@@ -670,8 +680,9 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
               return ValueListenableBuilder<bool>(
                 valueListenable: _isLoadingNotifier,
                 builder: (context, isLoading, _) {
-                  final bool showSkeleton =
-                      isLoading && widget.showLoadingIndicator && _showLoadingOverlay;
+                  final bool showSkeleton = isLoading &&
+                      widget.showLoadingIndicator &&
+                      _showLoadingOverlay;
                   return Stack(
                     fit: StackFit.expand,
                     children: [
@@ -844,7 +855,8 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
               widget.filePath,
               size: genSize,
             )
-            .timeout(const Duration(seconds: 30)) // Longer timeout for 4K videos
+            .timeout(
+                const Duration(seconds: 30)) // Longer timeout for 4K videos
             .then((path) {
           if (_widgetMounted && path != null) {
             setState(() {

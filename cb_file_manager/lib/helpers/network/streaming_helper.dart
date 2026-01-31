@@ -17,6 +17,7 @@ import 'native_vlc_direct_helper.dart';
 import '../../config/languages/app_localizations.dart';
 import '../../ui/utils/route.dart';
 import '../../services/network_browsing/webdav_service.dart';
+import 'package:open_filex/open_filex.dart';
 
 /// Class để lưu trữ kết quả mở file
 class FileOpenResult {
@@ -169,12 +170,9 @@ class StreamingHelper {
       if (fileType == FileCategory.unknown ||
           (!canStreamFile(remotePath) && !isDocumentFile(remotePath))) {
         debugPrint(
-            'StreamingHelper: Unsupported file type detected, showing options dialog immediately');
-        return FileOpenResult(
-          success: true,
-          requiresUserChoice: true,
-          fileType: fileType,
-        );
+            'StreamingHelper: Unsupported file type detected, downloading and opening with system app');
+        await _downloadAndOpen(context, remotePath);
+        return FileOpenResult(success: true, viewerLaunched: true, fileType: fileType);
       }
 
       // Handle FTP by downloading to a temp file and opening with system default app
@@ -200,13 +198,7 @@ class StreamingHelper {
           );
 
           // Open with system default app
-          if (Platform.isWindows) {
-            await Process.run('cmd', ['/c', 'start', '', tempPath]);
-          } else if (Platform.isMacOS) {
-            await Process.run('open', [tempPath]);
-          } else if (Platform.isLinux) {
-            await Process.run('xdg-open', [tempPath]);
-          }
+          await OpenFilex.open(tempPath);
 
           return FileOpenResult(success: true, viewerLaunched: true);
         } catch (e) {
@@ -279,6 +271,17 @@ class StreamingHelper {
               'StreamingHelper: ❌ VLC Direct SMB failed: $e. Proceeding to other fallbacks.');
           // If it fails, we just log it and continue with other methods
         }
+      }
+
+      // For Android SMB media, avoid stream fallback to keep seek/duration correct.
+      if (Platform.isAndroid &&
+          service is ISmbService &&
+          (fileType == FileCategory.video || fileType == FileCategory.audio)) {
+        return FileOpenResult(
+          success: false,
+          errorMessage: 'VLC SMB playback failed on Android.',
+          fileType: fileType,
+        );
       }
 
       // Check if file is already cached
@@ -407,6 +410,14 @@ class StreamingHelper {
         }
       }
 
+      // If streaming failed for a non-media file, fall back to download + open.
+      if (fileType != FileCategory.video && fileType != FileCategory.audio) {
+        debugPrint(
+            'StreamingHelper: All streaming methods failed for non-media file, downloading and opening with system app');
+        await _downloadAndOpen(context, remotePath);
+        return FileOpenResult(success: true, viewerLaunched: true, fileType: fileType);
+      }
+
       // All methods failed
       debugPrint('StreamingHelper: ERROR - All streaming methods failed');
       debugPrint('StreamingHelper: Service type: ${service.runtimeType}');
@@ -515,7 +526,7 @@ class StreamingHelper {
     if (result.requiresUserChoice) {
       // Hiển thị dialog cho người dùng chọn
       if (context.mounted) {
-        await _showFileOptionsDialog(context, result, fileName);
+        await _showFileOptionsDialog(context, result, fileName, remotePath);
       }
       return;
     }
@@ -527,12 +538,7 @@ class StreamingHelper {
       }
     } else if (result.localPath != null) {
       // File đã được tải về và mở
-      if (context.mounted) {
-        _showSuccessMessage(
-          context,
-          result.message ?? 'File opened successfully',
-        );
-      }
+      // Intentionally no success toast for downloads/opens.
     } else {
       // Không có dữ liệu để mở file
       if (context.mounted) {
@@ -594,7 +600,8 @@ class StreamingHelper {
       // LibSMB2 streaming removed - now using flutter_vlc_player for SMB
 
       // Fallback: VLC Direct SMB streaming
-      if (_currentNetworkService is ISmbService &&
+      if (result.streamingUrl == null &&
+          _currentNetworkService is ISmbService &&
           VlcDirectSmbHelper.canStreamDirectly(result.fileType!)) {
         try {
           debugPrint(
@@ -623,7 +630,17 @@ class StreamingHelper {
           MaterialPageRoute(
             builder: (context) => Scaffold(
               backgroundColor: Colors.black,
-              appBar: (Platform.isAndroid || Platform.isIOS) ? null : null,
+              appBar: (Platform.isAndroid || Platform.isIOS)
+                  ? null
+                  : AppBar(
+                      leading: const BackButton(color: Colors.white),
+                      title: Text(
+                        fileName,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      backgroundColor: Colors.black54,
+                      iconTheme: const IconThemeData(color: Colors.white),
+                    ),
               body: SafeArea(
                 top: Platform.isAndroid || Platform.isIOS,
                 bottom: Platform.isAndroid || Platform.isIOS,
@@ -679,54 +696,26 @@ class StreamingHelper {
           debugPrint(
               'StreamingHelper: Temp file created successfully: ${await tempFile.length()} bytes');
 
-          // Open with system default app
-          if (Platform.isWindows) {
-            final result =
-                await Process.run('cmd', ['/c', 'start', '', tempFile.path]);
-            debugPrint('StreamingHelper: Process result: ${result.exitCode}');
+          // Open with the system handler (works on Android/iOS/desktop via open_filex).
+          final openResult = await OpenFilex.open(tempFile.path);
+          final opened = openResult.type.toString().contains('done');
 
-            if (result.exitCode == 0) {
-              // Clean up temp file after a delay
-              Future.delayed(const Duration(seconds: 10), () async {
-                try {
-                  await tempFile.delete();
-                  debugPrint('StreamingHelper: Temp file cleaned up');
-                } catch (e) {
-                  debugPrint(
-                      'StreamingHelper: Failed to clean up temp file: $e');
-                }
-              });
-            } else {
-              if (context.mounted) {
-                await _handleOpenError(
-                    context, 'Failed to open file with system default app');
+          if (opened) {
+            // Clean up temp file after a delay
+            Future.delayed(const Duration(seconds: 10), () async {
+              try {
+                await tempFile.delete();
+                debugPrint('StreamingHelper: Temp file cleaned up');
+              } catch (e) {
+                debugPrint('StreamingHelper: Failed to clean up temp file: $e');
               }
-            }
+            });
           } else {
-            final result = await Process.run('open', [tempFile.path]);
-            debugPrint('StreamingHelper: Process result: ${result.exitCode}');
-
-            if (result.exitCode == 0) {
-              if (context.mounted) {
-                _showSuccessMessage(
-                    context, 'File opened with system default app');
-              }
-
-              // Clean up temp file after a delay
-              Future.delayed(const Duration(seconds: 10), () async {
-                try {
-                  await tempFile.delete();
-                  debugPrint('StreamingHelper: Temp file cleaned up');
-                } catch (e) {
-                  debugPrint(
-                      'StreamingHelper: Failed to clean up temp file: $e');
-                }
-              });
-            } else {
-              if (context.mounted) {
-                await _handleOpenError(
-                    context, 'Failed to open file with system default app');
-              }
+            if (context.mounted) {
+              await _handleOpenError(
+                context,
+                'Failed to open file with a system app.${openResult.message.isEmpty ? '' : ' ${openResult.message}'}',
+              );
             }
           }
         } catch (e) {
@@ -748,6 +737,7 @@ class StreamingHelper {
     BuildContext context,
     FileOpenResult result,
     String fileName,
+    String remotePath,
   ) async {
     if (!context.mounted) return;
 
@@ -773,7 +763,7 @@ class StreamingHelper {
             TextButton(
               onPressed: () async {
                 RouteUtils.safePopDialog(ctx);
-                await _downloadAndOpen(context, fileName);
+                await _downloadAndOpen(context, remotePath);
               },
               child: Text(l10n.download),
             ),
@@ -785,7 +775,7 @@ class StreamingHelper {
 
   /// Tải file về
   Future<void> _downloadAndOpen(BuildContext context, String remotePath) async {
-      if (_currentNetworkService == null) {
+    if (_currentNetworkService == null) {
       if (context.mounted) {
         await _handleOpenError(
             context, AppLocalizations.of(context)!.networkServiceNotAvailable);
@@ -814,7 +804,8 @@ class StreamingHelper {
       // Tạo file tạm thời
       final fileName = p.basename(remotePath);
       final tempDir = Directory.systemTemp;
-      final localPath = p.join(tempDir.path, 'smb_files', fileName);
+      final stamp = DateTime.now().millisecondsSinceEpoch;
+      final localPath = p.join(tempDir.path, 'smb_files', '${stamp}_$fileName');
 
       // Tạo thư mục nếu chưa tồn tại
       final localDir = Directory(p.dirname(localPath));
@@ -829,9 +820,31 @@ class StreamingHelper {
         RouteUtils.safePopDialog(context); // Đóng loading
       }
 
+      bool opened = false;
+      String? openErrorMessage;
+      try {
+        final openResult = await OpenFilex.open(localPath);
+        opened = openResult.type.toString().contains('done');
+        if (!opened) {
+          debugPrint(
+              'StreamingHelper: OpenFilex failed: ${openResult.type} - ${openResult.message}');
+          openErrorMessage = openResult.message;
+        }
+      } catch (e) {
+        debugPrint('StreamingHelper: OpenFilex exception: $e');
+        openErrorMessage = e.toString();
+      }
+
       if (context.mounted) {
-        _showSuccessMessage(
-            context, AppLocalizations.of(context)!.fileDownloadedSuccess);
+        if (!opened) {
+          final suffix = (openErrorMessage?.isNotEmpty ?? false)
+              ? ' $openErrorMessage'
+              : '';
+          await _handleOpenError(
+            context,
+            'File downloaded, but it could not be opened automatically.$suffix',
+          );
+        }
       }
     } catch (e) {
       if (context.mounted) {
@@ -867,15 +880,6 @@ class StreamingHelper {
         ),
       );
     }
-  }
-
-  /// Hiển thị thông báo thành công
-  void _showSuccessMessage(BuildContext context, String message) {
-    if (!context.mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.green),
-    );
   }
 
   /// Kiểm tra xem file có thể streaming không

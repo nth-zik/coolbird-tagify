@@ -26,15 +26,8 @@ class VlcDirectSmbHelper {
         throw Exception('Unsupported media type: $fileType');
       }
 
-      // Kiểm tra kết nối SMB
       if (!smbService.isConnected) {
-        throw Exception('SMB service not connected');
-      }
-
-      // Kiểm tra basePath
-      final basePath = smbService.basePath;
-      if (basePath.isEmpty) {
-        throw Exception('SMB base path not available');
+        // Continue: we can still attempt to build a direct SMB URL without an active connection.
       }
 
       debugPrint('VlcDirectSmbHelper: Opening media with Native SMB streaming');
@@ -42,7 +35,6 @@ class VlcDirectSmbHelper {
       debugPrint('VlcDirectSmbHelper: File Name: $fileName');
       debugPrint('VlcDirectSmbHelper: File Type: $fileType');
 
-      // Create SMB MRL URL (e.g. smb://host/share/path)
       // Create SMB MRL URL with credentials if available
       String smbUrl;
       try {
@@ -51,10 +43,18 @@ class VlcDirectSmbHelper {
           smbUrl = directLink;
           debugPrint('VlcDirectSmbHelper: Using direct link with credentials');
         } else {
+          final basePath = smbService.basePath;
+          if (basePath.isEmpty) {
+            throw Exception('SMB base path not available');
+          }
           smbUrl = createSmbUrl(smbService: smbService, smbPath: smbPath);
           debugPrint('VlcDirectSmbHelper: Using base SMB URL');
         }
       } catch (_) {
+        final basePath = smbService.basePath;
+        if (basePath.isEmpty) {
+          throw Exception('SMB base path not available');
+        }
         // Fallback if credential fetch fails
         smbUrl = createSmbUrl(smbService: smbService, smbPath: smbPath);
         debugPrint('VlcDirectSmbHelper: Fallback to base SMB URL');
@@ -66,7 +66,17 @@ class VlcDirectSmbHelper {
           MaterialPageRoute(
             builder: (context) => Scaffold(
               backgroundColor: Colors.black,
-              appBar: (Platform.isAndroid || Platform.isIOS) ? null : null,
+              appBar: (Platform.isAndroid || Platform.isIOS)
+                  ? null
+                  : AppBar(
+                      leading: const BackButton(color: Colors.white),
+                      title: Text(
+                        fileName,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      backgroundColor: Colors.black54,
+                      iconTheme: const IconThemeData(color: Colors.white),
+                    ),
               body: SafeArea(
                 top: Platform.isAndroid || Platform.isIOS,
                 bottom: Platform.isAndroid || Platform.isIOS,
@@ -74,7 +84,7 @@ class VlcDirectSmbHelper {
                   smbMrl: smbUrl,
                   fileName: fileName,
                   fileType: fileType,
-                  onClose: () => RouteUtils.safePopDialog(context),
+                  onClose: () => Navigator.of(context).pop(),
                 ),
               ),
             ),
@@ -110,7 +120,10 @@ class VlcDirectSmbHelper {
     return _isSupportedMediaType(fileType);
   }
 
-  /// Tạo SMB URL từ SMB service và path
+  /// Creates an SMB URL from the SMB service and an internal SMB tab path.
+  ///
+  /// Avoid duplicating the share name: if `basePath` is already `smb://host/share` then the
+  /// appended path must only include segments after the share (e.g. `folder/file`).
   static String createSmbUrl({
     required ISmbService smbService,
     required String smbPath,
@@ -119,38 +132,43 @@ class VlcDirectSmbHelper {
       throw Exception('SMB service not connected');
     }
 
-    // Base path from service (expected like smb://host[/share])
+    // Base path from service (e.g. smb://host or smb://host/share)
     final basePath = smbService.basePath;
+    final baseUri = Uri.tryParse(basePath);
+    final basePathSegments =
+        baseUri != null ? baseUri.pathSegments.where((s) => s.isNotEmpty).toList() : <String>[];
 
-    // Normalize internal app path like '#network/SMB/<host>/<share>/subdir/file'
+    // Normalize: '#network/SMB/<host>/<share>/subdir/file' -> 'share/subdir/file'.
     String normalized = smbPath;
-    if (normalized.startsWith('#network/SMB/')) {
-      normalized = normalized.substring('#network/SMB/'.length);
+    final lower = normalized.toLowerCase();
+    if (lower.startsWith('#network/smb/')) {
+      normalized = normalized.substring('#network/smb/'.length);
       final firstSlash = normalized.indexOf('/');
       if (firstSlash != -1) {
-        // Drop host segment
         normalized = normalized.substring(firstSlash + 1);
       } else {
         normalized = '';
       }
     }
 
-    // Remove leading slash
     if (normalized.startsWith('/')) {
       normalized = normalized.substring(1);
     }
 
-    // Decode then re-encode per path segment to avoid double encoding
-    final encodedPath = normalized
-        .split('/')
-        .where((s) => s.isNotEmpty)
-        .map((segment) => Uri.encodeComponent(Uri.decodeComponent(segment)))
-        .join('/');
+    var segments = normalized.split('/').where((s) => s.isNotEmpty).toList();
 
-    // Ensure there is exactly one slash between basePath and path
+    // If basePath already includes a share (smb://host/share), drop the share segment from the
+    // normalized path to avoid smb://host/share/share/folder/file.
+    if (basePathSegments.isNotEmpty && segments.isNotEmpty) {
+      segments = segments.sublist(1);
+    }
+
+    final pathToAppend = segments.join('/');
+    final encodedPath = _encodeSmbPath(pathToAppend);
+
     final needsSlash = !basePath.endsWith('/');
     final prefix = needsSlash ? '$basePath/' : basePath;
-    return '$prefix$encodedPath';
+    return encodedPath.isEmpty ? basePath.replaceAll(RegExp(r'/$'), '') : '$prefix$encodedPath';
   }
 
   /// Kiểm tra file type có được hỗ trợ không
@@ -165,6 +183,16 @@ class VlcDirectSmbHelper {
       default:
         return false;
     }
+  }
+
+  static String _encodeSmbPath(String path) {
+    if (path.isEmpty) return path;
+    final normalized = path.replaceAll('\\', '/');
+    return normalized
+        .replaceAll('%', '%25')
+        .replaceAll('#', '%23')
+        .replaceAll('?', '%3F')
+        .replaceAll(' ', '%20');
   }
 
   /// Lấy danh sách các format được hỗ trợ bởi VLC

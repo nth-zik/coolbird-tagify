@@ -1322,6 +1322,10 @@ class VietnameseLocalizations implements AppLocalizations {
   @override
   String failedToDelete(String name) => 'Không thể xóa $name';
   @override
+  String failedToDeleteFilesCount(int count) => 'Không thể xóa $count tệp';
+  @override
+  String failedToDeleteItemsCount(int count) => 'Không thể xóa $count mục';
+  @override
   String errorDeletingItemWithError(String error) =>
       'Lỗi khi xóa mục: $error';
   @override
@@ -1349,6 +1353,9 @@ class VietnameseLocalizations implements AppLocalizations {
   @override
   String errorDeletingItemsWithError(String error) =>
       'Lỗi khi xóa các mục: $error';
+  @override
+  String errorDeletingFilesWithError(String error) =>
+      'Lỗi khi xóa các tệp: $error';
   @override
   String errorOpeningRecycleBinWithError(String error) =>
       'Lỗi khi mở Thùng rác: $error';
@@ -1426,6 +1433,18 @@ class VietnameseLocalizations implements AppLocalizations {
 
   @override
   String get processing => 'Đang xử lý...';
+
+  @override
+  String get deletingFiles => 'Đang xóa tệp...';
+
+  @override
+  String get deletingItems => 'Đang xóa...';
+
+  @override
+  String get movingItemsToTrash => 'Đang chuyển vào thùng rác...';
+
+  @override
+  String get done => 'Xong';
 
   @override
   String get regenerateThumbnailsWithNewPosition =>

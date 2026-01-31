@@ -4,8 +4,11 @@ import 'package:cb_file_manager/helpers/core/io_extensions.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:remixicon/remixicon.dart' as remix;
 import 'package:flutter/services.dart';
+import 'package:cb_file_manager/ui/controllers/inline_rename_controller.dart';
+import 'package:cb_file_manager/ui/widgets/inline_rename_field.dart';
 import '../../../components/common/shared_file_context_menu.dart';
 import '../../../components/common/optimized_interaction_handler.dart';
+import '../../../utils/item_interaction_style.dart';
 
 class FolderDetailsItem extends StatefulWidget {
   final Directory folder;
@@ -120,16 +123,15 @@ class _FolderDetailsItemState extends State<FolderDetailsItem> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final ThemeData theme = Theme.of(context);
 
     // Calculate colors based on selection state
-    final Color itemBackgroundColor = _visuallySelected
-        ? Theme.of(context).primaryColor.withValues(alpha: 0.15)
-        : _isHovering && widget.isDesktopMode
-            ? isDarkMode
-                ? Colors.grey[800]!
-                : Colors.grey[100]!
-            : Colors.transparent;
+    final Color itemBackgroundColor = ItemInteractionStyle.backgroundColor(
+      theme: theme,
+      isDesktopMode: widget.isDesktopMode,
+      isSelected: _visuallySelected,
+      isHovering: _isHovering,
+    );
 
     final BoxDecoration boxDecoration = _visuallySelected
         ? BoxDecoration(
@@ -164,15 +166,7 @@ class _FolderDetailsItemState extends State<FolderDetailsItem> {
                               color: Colors.amber),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: Text(
-                              widget.folder.basename(),
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontWeight: _visuallySelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
+                            child: _buildNameWidget(context),
                           ),
                         ],
                       ),
@@ -298,6 +292,46 @@ class _FolderDetailsItemState extends State<FolderDetailsItem> {
     if (stat.modeString()[3] == 'x') attrs.add('X');
 
     return attrs.join(' ');
+  }
+
+  Widget _buildNameWidget(BuildContext context) {
+    // Check if this item is being renamed inline (desktop only)
+    final renameController = InlineRenameScope.maybeOf(context);
+    final isBeingRenamed = renameController != null &&
+        renameController.renamingPath == widget.folder.path;
+
+    final textWidget = Text(
+      widget.folder.basename(),
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontWeight: _visuallySelected ? FontWeight.bold : FontWeight.normal,
+      ),
+    );
+
+    if (isBeingRenamed && renameController.textController != null) {
+      return Stack(
+        children: [
+          // Invisible text for layout sizing
+          Opacity(opacity: 0, child: textWidget),
+          // Positioned editable field on top
+          Positioned.fill(
+            child: InlineRenameField(
+              controller: renameController,
+              onCommit: () => renameController.commitRename(context),
+              onCancel: () => renameController.cancelRename(),
+              textStyle: TextStyle(
+                fontWeight:
+                    _visuallySelected ? FontWeight.bold : FontWeight.normal,
+              ),
+              textAlign: TextAlign.start,
+              maxLines: 1,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return textWidget;
   }
 }
 

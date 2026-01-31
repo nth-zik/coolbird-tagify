@@ -5,6 +5,7 @@
 #include "flutter/generated_plugin_registrant.h"
 #include "fc_native_video_thumbnail_plugin.h"
 #include "app_icon_plugin.h"
+#include "shell_context_menu_plugin.h"
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
@@ -39,6 +40,13 @@ if (!flutter_controller_->engine() || !flutter_controller_->view()) {
   AppIconPlugin::RegisterWithRegistrar(
       flutter::PluginRegistrarManager::GetInstance()
           ->GetRegistrar<flutter::PluginRegistrarWindows>(icon_registrar));
+
+  // Manually register Shell Context Menu plugin
+  auto shell_menu_registrar =
+      flutter_controller_->engine()->GetRegistrarForPlugin("ShellContextMenuPlugin");
+  ShellContextMenuPlugin::RegisterWithRegistrar(
+      flutter::PluginRegistrarManager::GetInstance()
+          ->GetRegistrar<flutter::PluginRegistrarWindows>(shell_menu_registrar));
   
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 

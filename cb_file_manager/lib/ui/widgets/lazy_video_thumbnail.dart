@@ -113,9 +113,12 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
               await VideoThumbnailHelper.getFromCache(widget.videoPath);
           if (!mounted) return;
           if (cached != null) {
-            _thumbnailPathNotifier.value = cached;
-            _isThumbnailGenerated = true;
-            _shouldRegenerateThumbnail = false;
+            // IMPORTANT: Use setState to ensure widget rebuilds
+            setState(() {
+              _thumbnailPathNotifier.value = cached;
+              _isThumbnailGenerated = true;
+              _shouldRegenerateThumbnail = false;
+            });
             _onThumbnailGenerated(cached);
             _cachePollTimer?.cancel();
           }
@@ -198,9 +201,12 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
 
         // If we have a cached path, use it immediately
         if (cachedThumbnailPath != null) {
-          _thumbnailPathNotifier.value = cachedThumbnailPath;
-          _isThumbnailGenerated = true;
-          _shouldRegenerateThumbnail = false;
+          // IMPORTANT: Use setState to ensure widget rebuilds immediately
+          setState(() {
+            _thumbnailPathNotifier.value = cachedThumbnailPath;
+            _isThumbnailGenerated = true;
+            _shouldRegenerateThumbnail = false;
+          });
 
           // Notify parent if we already have a thumbnail
           if (widget.onThumbnailGenerated != null) {
@@ -209,8 +215,10 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
           return;
         }
 
-        // If no cached thumbnail, check if we should load
-        if (_visibilityNotifier.value && !widget.placeholderOnly) {
+        // If no cached thumbnail, assume visible and start loading
+        // Don't wait for VisibilityDetector as it may not fire for already-visible widgets
+        if (!widget.placeholderOnly) {
+          _visibilityNotifier.value = true;
           _loadThumbnail(isPriority: true);
         }
       }).catchError((error) {
@@ -218,8 +226,9 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
         VideoThumbnailHelper.logWithThrottle(
             '[Thumbnail] Error checking cache: $error', widget.videoPath);
 
-        // Try loading anyway if visible and not in placeholder mode
-        if (mounted && _visibilityNotifier.value && !widget.placeholderOnly) {
+        // Try loading anyway if not in placeholder mode
+        if (mounted && !widget.placeholderOnly) {
+          _visibilityNotifier.value = true;
           _loadThumbnail(isPriority: true);
         }
       });
@@ -271,9 +280,13 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
         VideoThumbnailHelper.logWithThrottle(
             '[Thumbnail] Thumbnail generated successfully', widget.videoPath);
 
-        _thumbnailPathNotifier.value = path;
-        _isThumbnailGenerated = true;
-        _shouldRegenerateThumbnail = false;
+        // IMPORTANT: Wrap in setState to ensure widget tree rebuilds
+        // ValueNotifier update alone may not trigger rebuild in some cases
+        setState(() {
+          _thumbnailPathNotifier.value = path;
+          _isThumbnailGenerated = true;
+          _shouldRegenerateThumbnail = false;
+        });
         _onThumbnailGenerated(path);
         // Stop polling if running
         _cachePollTimer?.cancel();
@@ -458,9 +471,12 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
         final cached =
             await VideoThumbnailHelper.getFromCache(widget.videoPath);
         if (cached != null && mounted) {
-          _thumbnailPathNotifier.value = cached;
-          _isThumbnailGenerated = true;
-          _shouldRegenerateThumbnail = false;
+          // IMPORTANT: Use setState to ensure widget rebuilds
+          setState(() {
+            _thumbnailPathNotifier.value = cached;
+            _isThumbnailGenerated = true;
+            _shouldRegenerateThumbnail = false;
+          });
           _onThumbnailGenerated(cached);
         }
       } catch (_) {}

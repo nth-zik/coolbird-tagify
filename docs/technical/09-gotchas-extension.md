@@ -4,6 +4,7 @@
 - **Tag Systems** Invoke `BatchTagManager.initialize()` and `TagManager.initialize()` during startup; failing to do so breaks gallery tagging.
 - **Gallery Scans** Empty gallery paths trigger recursive scans of common media directories (DCIM, Movies, Download, Pictures, Screenshots) inside `getAllVideos()` / `getAllImages()`.
 - **Network Modules** Legacy SMB helpers under `services/network_browsing/` may need refactors for modern authentication; consult `smb_refactor_plan.md` before changes.
+- **Android VLC + SMB Rendering** If SMB playback "starts" but the UI never renders video, check `flutter_vlc_player` Pigeon channel compatibility (see `docs/troubleshooting/android-smb-vlc-no-render.md`).
 
 ## Extending the App Safely
 

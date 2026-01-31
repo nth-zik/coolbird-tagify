@@ -174,11 +174,8 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
 
   void _openTabForConnection(String path, String name) {
     final tabBloc = BlocProvider.of<TabManagerBloc>(context, listen: false);
-    tabBloc.add(AddTab(
-      path: path,
-      name: '$name (WebDAV)',
-      switchToTab: true,
-    ));
+    tabBloc.add(UpdateTabPath(widget.tabId, path));
+    tabBloc.add(UpdateTabName(widget.tabId, '$name (WebDAV)'));
   }
 
   void _editConnection(NetworkCredentials credentials) {

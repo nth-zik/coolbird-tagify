@@ -229,30 +229,13 @@ class SelectionCoordinator {
           ),
           TextButton(
             onPressed: () {
-              // Delete files
-              if (fileCount > 0) {
-                folderListBloc.add(FolderListDeleteFiles(
-                    selectionState.selectedFilePaths.toList()));
-              }
-
-              // Delete folders
-              if (folderCount > 0) {
-                for (final folderPath in selectionState.selectedFolderPaths) {
-                  final folder = Directory(folderPath);
-                  try {
-                    // Check if folder exists and move to trash
-                    if (folder.existsSync()) {
-                      final trashManager = TrashManager();
-                      trashManager.moveToTrash(folderPath);
-                    }
-                  } catch (e) {
-                    debugPrint('Error moving folder to trash: $e');
-                  }
-                }
-
-                // Refresh the folder list after deletion
-                folderListBloc.add(FolderListLoad(currentPath));
-              }
+              folderListBloc.add(
+                FolderListDeleteItems(
+                  filePaths: selectionState.selectedFilePaths.toList(),
+                  folderPaths: selectionState.selectedFolderPaths.toList(),
+                  permanent: false,
+                ),
+              );
 
               RouteUtils.safePopDialog(context);
               clearSelection();

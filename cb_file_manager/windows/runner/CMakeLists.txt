@@ -18,6 +18,8 @@ add_executable(${BINARY_NAME} WIN32
   "smb_native_thumbnail_plugin.h"
   "app_icon_plugin.cpp"
   "app_icon_plugin.h"
+  "shell_context_menu_plugin.cpp"
+  "shell_context_menu_plugin.h"
   "Runner.rc"
   "runner.exe.manifest"
 )
@@ -41,6 +43,9 @@ target_compile_definitions(${BINARY_NAME} PRIVATE "NOMINMAX")
 target_link_libraries(${BINARY_NAME} PRIVATE flutter flutter_wrapper_app flutter_wrapper_plugin)
 target_link_libraries(${BINARY_NAME} PRIVATE "dwmapi.lib")
 target_link_libraries(${BINARY_NAME} PRIVATE smb_native)
+target_link_libraries(${BINARY_NAME} PRIVATE "comctl32.lib")
+target_link_libraries(${BINARY_NAME} PRIVATE "ole32.lib")
+target_link_libraries(${BINARY_NAME} PRIVATE "shell32.lib")
 
 # Add FFmpeg libraries
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")

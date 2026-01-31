@@ -28,6 +28,7 @@ import 'package:flutter/services.dart'; // Import for keyboard key detection
 // Import for RepaintBoundary
 import '../../../components/common/optimized_interaction_handler.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
+import '../../../utils/item_interaction_style.dart';
 import 'package:cb_file_manager/helpers/network/streaming_helper.dart';
 import 'package:cb_file_manager/services/network_browsing/webdav_service.dart';
 import 'package:cb_file_manager/services/network_browsing/ftp_service.dart';
@@ -374,15 +375,12 @@ class _FileItemState extends State<FileItem> {
         return ValueListenableBuilder<bool>(
           valueListenable: _isSelectedNotifier,
           builder: (context, isSelected, _) {
-            // Calculate colors based on selection and hover state
-            final Color backgroundColor = isSelected
-                ? Theme.of(context).colorScheme.primaryContainer
-                : isHovering && widget.isDesktopMode
-                    ? Theme.of(context)
-                        .colorScheme
-                        .surface
-                        .withValues(alpha: 0.6)
-                    : Colors.transparent;
+            final Color backgroundColor = ItemInteractionStyle.backgroundColor(
+              theme: Theme.of(context),
+              isDesktopMode: widget.isDesktopMode,
+              isSelected: isSelected,
+              isHovering: isHovering,
+            );
 
             return RepaintBoundary(
               child: MouseRegion(
@@ -441,16 +439,14 @@ class _FileItemState extends State<FileItem> {
                         bottom: 0,
                         child: OptimizedInteractionLayer(
                           onTap: () {
-                            if (widget.isDesktopMode && isVideo) {
+                            if (widget.isDesktopMode) {
                               _handleSelection();
                               return;
                             }
                             _openFile(isVideo, isImage);
                           },
-                          onDoubleTap: widget.isDesktopMode && isVideo
-                              ? () {
-                                  _openFile(isVideo, isImage);
-                                }
+                          onDoubleTap: widget.isDesktopMode
+                              ? () => _openFile(isVideo, isImage)
                               : null,
                           onSecondaryTapUp: (details) {
                             _showContextMenu(context, details.globalPosition);

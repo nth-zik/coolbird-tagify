@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:remixicon/remixicon.dart' as remix;
 import '../core/tab_manager.dart';
 import 'address_bar_menu.dart';
+import 'path_autocomplete_text_field.dart';
 
 /// Navigation bar component that includes back/forward buttons and path input field
 class PathNavigationBar extends StatefulWidget {
@@ -96,8 +97,9 @@ class _PathNavigationBarState extends State<PathNavigationBar> {
           ),
         ] else ...[
           Expanded(
-            child: TextField(
+            child: PathAutocompleteTextField(
               controller: widget.pathController,
+              onSubmitted: widget.onPathSubmitted,
               decoration: InputDecoration(
                 hintText: 'Path',
                 contentPadding: const EdgeInsets.symmetric(
@@ -114,7 +116,6 @@ class _PathNavigationBarState extends State<PathNavigationBar> {
                     .fillColor
                     ?.withValues(alpha: 0.7),
               ),
-              onSubmitted: widget.onPathSubmitted,
               textInputAction: TextInputAction.go,
             ),
           ),

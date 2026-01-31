@@ -60,6 +60,7 @@ class UserPreferences {
   static const String _previewPaneVisibleKey = 'preview_pane_visible';
   static const String _previewPaneWidthKey = 'preview_pane_width';
   static const String _useSystemDefaultForVideoKey = 'use_system_default_for_video';
+  static const String _recentPathsKey = 'recent_paths';
 
   // Constants for grid zoom level
   static const int minGridZoomLevel = 2; // Largest thumbnails (2 per row)
@@ -82,6 +83,9 @@ class UserPreferences {
       10; // 10% of video duration
   static const int minVideoThumbnailPercentage = 0; // Start of video
   static const int maxVideoThumbnailPercentage = 100; // End of video
+
+  // Constants for recent paths
+  static const int maxRecentPaths = 20;
 
   // Private constructor for singleton
   UserPreferences._internal();
@@ -441,6 +445,94 @@ class UserPreferences {
   /// Clear the last accessed folder preference
   Future<bool> clearLastAccessedFolder() async {
     return await _deletePreference(_lastFolderKey);
+  }
+
+  bool _pathsEqual(String a, String b) {
+    if (Platform.isWindows) {
+      return a.toLowerCase() == b.toLowerCase();
+    }
+    return a == b;
+  }
+
+  bool _isVirtualPath(String value) {
+    return value.startsWith('#');
+  }
+
+  /// Get recently visited filesystem paths.
+  ///
+  /// Virtual paths (e.g. "#search?tag=") are excluded.
+  Future<List<String>> getRecentPaths({
+    int limit = maxRecentPaths,
+    bool validateDirectories = true,
+  }) async {
+    final jsonString = await _getPreference<String>(_recentPathsKey);
+    if (jsonString == null || jsonString.trim().isEmpty) return <String>[];
+
+    try {
+      final decoded = json.decode(jsonString);
+      if (decoded is! List) return <String>[];
+
+      final rawPaths = decoded
+          .whereType<String>()
+          .map((p) => p.trim())
+          .where((p) => p.isNotEmpty && !_isVirtualPath(p))
+          .toList(growable: false);
+
+      if (!validateDirectories) {
+        return rawPaths.take(limit).toList(growable: false);
+      }
+
+      final List<String> validPaths = <String>[];
+      bool changed = false;
+      for (final p in rawPaths) {
+        try {
+          if (Directory(p).existsSync()) {
+            validPaths.add(p);
+          } else {
+            changed = true;
+          }
+        } catch (_) {
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        await _savePreference<String>(_recentPathsKey, json.encode(validPaths));
+      }
+
+      return validPaths.take(limit).toList(growable: false);
+    } catch (_) {
+      return <String>[];
+    }
+  }
+
+  /// Add a filesystem path to the recent paths list.
+  ///
+  /// Virtual paths (e.g. "#search?tag=") are ignored.
+  Future<bool> addRecentPath(String value) async {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return false;
+    if (_isVirtualPath(trimmed)) return false;
+
+    final existing = await getRecentPaths(
+      limit: maxRecentPaths,
+      validateDirectories: false,
+    );
+
+    final List<String> updated = <String>[];
+    updated.add(trimmed);
+    for (final p in existing) {
+      if (_pathsEqual(p, trimmed)) continue;
+      updated.add(p);
+      if (updated.length >= maxRecentPaths) break;
+    }
+
+    return await _savePreference<String>(_recentPathsKey, json.encode(updated));
+  }
+
+  /// Clear all stored recent paths.
+  Future<bool> clearRecentPaths() async {
+    return await _deletePreference(_recentPathsKey);
   }
 
   /// Get current view mode preference (list or grid)

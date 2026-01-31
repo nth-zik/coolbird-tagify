@@ -45,12 +45,27 @@ class _VideoPlayerAppBarState extends State<VideoPlayerAppBar> {
   bool get _isDesktopPlatform =>
       Platform.isWindows || Platform.isMacOS || Platform.isLinux;
 
+  VoidCallback get _onCloseDefault => () {
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        } else {
+          exit(0);
+        }
+      };
+
   @override
   Widget build(BuildContext context) {
+    final onClose = widget.onClose ?? _onCloseDefault;
     return FluentBackground.appBar(
       context: context,
       title: _buildTitle(),
-      actions: _buildActions(),
+      leading: _isDesktopPlatform
+          ? IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: onClose,
+            )
+          : null,
+      actions: _buildActions(onClose),
       blurAmount: widget.blurAmount,
       opacity: widget.opacity,
     );
@@ -82,7 +97,7 @@ class _VideoPlayerAppBarState extends State<VideoPlayerAppBar> {
     return content;
   }
 
-  List<Widget> _buildActions() {
+  List<Widget> _buildActions(VoidCallback onClose) {
     final List<Widget> actions = [];
 
     // Add custom actions if provided
@@ -94,11 +109,7 @@ class _VideoPlayerAppBarState extends State<VideoPlayerAppBar> {
     if (widget.showWindowControls && _isDesktopPlatform) {
       actions.add(WindowCaptionButtons(
         theme: Theme.of(context),
-        onClose: widget.onClose ??
-            () {
-              // Close the app completely when close button is pressed
-              exit(0);
-            },
+        onClose: onClose,
       ));
     }
 

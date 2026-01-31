@@ -233,7 +233,6 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
     debugPrint("NetworkConnectionScreen: Opening connection to path: $path");
 
     if (path.startsWith('#network/')) {
-      final tabBloc = BlocProvider.of<TabManagerBloc>(context, listen: false);
       final l10n = AppLocalizations.of(context)!;
 
       String tabName = l10n.networkTab;
@@ -247,35 +246,40 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
       } catch (_) {}
 
       debugPrint(
-          "NetworkConnectionScreen: Opening new tab with path: $path and name: $tabName");
-      tabBloc.add(AddTab(
-        path: path,
-        name: tabName,
-        switchToTab: true,
-      ));
+          "NetworkConnectionScreen: Navigating in current tab to path: $path and name: $tabName");
+      _navigateInCurrentTab(path, tabName: tabName);
     }
     // Do not pop the navigator here, as it causes the crash.
   }
 
   void _openBrowserInTab(BuildContext context, String path, String tabName) {
+    _navigateInCurrentTab(path, tabName: tabName);
+  }
+
+  void _navigateInCurrentTab(String path, {String? tabName}) {
     try {
       final tabBloc = BlocProvider.of<TabManagerBloc>(context, listen: false);
-      tabBloc.add(
-        AddTab(
-          path: path,
-          name: tabName,
-          switchToTab: true,
-        ),
-      );
-      // Do not pop the navigator here. The user should be able to navigate back
-      // to this connection screen from the tab bar if they wish.
+      final activeTab = tabBloc.state.activeTab;
+      if (activeTab == null) {
+        // Fallback: keep old behavior if we're not inside the tab system.
+        tabBloc.add(AddTab(path: path, name: tabName, switchToTab: true));
+        return;
+      }
+
+      tabBloc.add(UpdateTabPath(activeTab.id, path));
+      if (tabName != null && tabName.trim().isNotEmpty) {
+        tabBloc.add(UpdateTabName(activeTab.id, tabName));
+      }
     } catch (e) {
-      debugPrint('Error opening tab for $tabName: $e');
+      debugPrint('Error navigating in current tab: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(
-                  AppLocalizations.of(context)!.errorOpeningTab(tabName, e.toString()))),
+            content: Text(
+              AppLocalizations.of(context)!
+                  .errorWithMessage(e.toString()),
+            ),
+          ),
         );
       }
     }

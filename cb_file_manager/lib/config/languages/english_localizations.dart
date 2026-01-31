@@ -1318,6 +1318,12 @@ class EnglishLocalizations implements AppLocalizations {
   @override
   String failedToDelete(String name) => 'Failed to delete $name';
   @override
+  String failedToDeleteFilesCount(int count) =>
+      'Failed to delete $count file${count == 1 ? '' : 's'}';
+  @override
+  String failedToDeleteItemsCount(int count) =>
+      'Failed to delete $count item${count == 1 ? '' : 's'}';
+  @override
   String errorDeletingItemWithError(String error) =>
       'Error deleting item: $error';
   @override
@@ -1345,6 +1351,9 @@ class EnglishLocalizations implements AppLocalizations {
   @override
   String errorDeletingItemsWithError(String error) =>
       'Error deleting items: $error';
+  @override
+  String errorDeletingFilesWithError(String error) =>
+      'Error deleting files: $error';
   @override
   String errorOpeningRecycleBinWithError(String error) =>
       'Error opening Recycle Bin: $error';
@@ -1421,6 +1430,18 @@ class EnglishLocalizations implements AppLocalizations {
 
   @override
   String get processing => 'Processing...';
+
+  @override
+  String get deletingFiles => 'Deleting files...';
+
+  @override
+  String get deletingItems => 'Deleting items...';
+
+  @override
+  String get movingItemsToTrash => 'Moving items to trash...';
+
+  @override
+  String get done => 'Done';
 
   @override
   String get regenerateThumbnailsWithNewPosition =>

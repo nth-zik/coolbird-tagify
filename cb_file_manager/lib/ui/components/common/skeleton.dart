@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
@@ -151,12 +152,23 @@ class _SkeletonState extends State<Skeleton>
   }
 
   Widget _buildGridSkeleton(BuildContext context) {
+    final int requestedCrossAxisCount = widget.crossAxisCount ?? 3;
+    const double gridPadding = 8.0;
+    const double spacing = 8.0;
+    const double minItemWidth = 72.0;
+    final double width = MediaQuery.of(context).size.width;
+    final double safeWidth = math.max(0.0, width - (gridPadding * 2));
+    final int maxColumns =
+        ((safeWidth + spacing) / (minItemWidth + spacing)).floor().clamp(1, 1000);
+    final int crossAxisCount =
+        requestedCrossAxisCount.clamp(1, maxColumns).toInt();
+
     return GridView.builder(
       physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.all(8.0),
       cacheExtent: 800,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: widget.crossAxisCount ?? 3,
+        crossAxisCount: crossAxisCount,
         crossAxisSpacing: 8,
         mainAxisSpacing: 8,
         childAspectRatio: 1.0, // Always use album ratio

@@ -27,9 +27,8 @@ class NativeVlcDirectHelper {
         throw Exception('Unsupported media type: $fileType');
       }
 
-      // Kiểm tra kết nối SMB
       if (!smbService.isConnected) {
-        throw Exception('SMB service not connected');
+        // Continue: we can still attempt to build a direct SMB URL without an active connection.
       }
 
       debugPrint(
@@ -47,6 +46,10 @@ class NativeVlcDirectHelper {
           debugPrint(
               'NativeVlcDirectHelper: Using direct SMB link from service');
         } else {
+          final basePath = smbService.basePath;
+          if (basePath.isEmpty) {
+            throw Exception('SMB base path not available');
+          }
           finalSmbMrl = VlcDirectSmbHelper.createSmbUrl(
             smbService: smbService,
             smbPath: smbPath,
@@ -54,6 +57,10 @@ class NativeVlcDirectHelper {
           debugPrint('NativeVlcDirectHelper: Using constructed SMB URL');
         }
       } catch (_) {
+        final basePath = smbService.basePath;
+        if (basePath.isEmpty) {
+          throw Exception('SMB base path not available');
+        }
         finalSmbMrl = VlcDirectSmbHelper.createSmbUrl(
           smbService: smbService,
           smbPath: smbPath,
@@ -68,7 +75,17 @@ class NativeVlcDirectHelper {
           MaterialPageRoute(
             builder: (context) => Scaffold(
               backgroundColor: Colors.black,
-              appBar: (Platform.isAndroid || Platform.isIOS) ? null : null,
+              appBar: (Platform.isAndroid || Platform.isIOS)
+                  ? null
+                  : AppBar(
+                      leading: const BackButton(color: Colors.white),
+                      title: Text(
+                        fileName,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      backgroundColor: Colors.black54,
+                      iconTheme: const IconThemeData(color: Colors.white),
+                    ),
               body: SafeArea(
                 top: Platform.isAndroid || Platform.isIOS,
                 bottom: Platform.isAndroid || Platform.isIOS,

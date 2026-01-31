@@ -6,11 +6,14 @@ import 'package:flutter/services.dart';
 import '../../../components/common/shared_file_context_menu.dart';
 import 'package:cb_file_manager/helpers/files/file_type_registry.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
+import 'package:cb_file_manager/ui/controllers/inline_rename_controller.dart';
+import 'package:cb_file_manager/ui/widgets/inline_rename_field.dart';
 import 'package:path/path.dart' as path;
 import '../../../components/common/optimized_interaction_handler.dart';
 import 'package:cb_file_manager/helpers/network/streaming_helper.dart';
 import 'package:cb_file_manager/services/network_browsing/webdav_service.dart';
 import 'package:cb_file_manager/services/network_browsing/ftp_service.dart';
+import '../../../utils/item_interaction_style.dart';
 
 class FileDetailsItem extends StatefulWidget {
   final File file;
@@ -146,16 +149,15 @@ class _FileDetailsItemState extends State<FileDetailsItem> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final ThemeData theme = Theme.of(context);
 
     // Calculate colors based on selection state
-    final Color itemBackgroundColor = _visuallySelected
-        ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.7)
-        : _isHovering && widget.isDesktopMode
-            ? isDarkMode
-                ? Colors.grey[800]!
-                : Colors.grey[100]!
-            : Colors.transparent;
+    final Color itemBackgroundColor = ItemInteractionStyle.backgroundColor(
+      theme: theme,
+      isDesktopMode: widget.isDesktopMode,
+      isSelected: _visuallySelected,
+      isHovering: _isHovering,
+    );
 
     final BoxDecoration boxDecoration = BoxDecoration(
       color: itemBackgroundColor,
@@ -198,15 +200,7 @@ class _FileDetailsItemState extends State<FileDetailsItem> {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: Text(
-                              path.basename(widget.file.path),
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontWeight: _visuallySelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
+                            child: _buildNameWidget(context),
                           ),
 
                           // Show file tags if available and enabled
@@ -401,6 +395,46 @@ class _FileDetailsItemState extends State<FileDetailsItem> {
     if (stat.modeString()[3] == 'x') attrs.add('X');
 
     return attrs.join(' ');
+  }
+
+  Widget _buildNameWidget(BuildContext context) {
+    // Check if this item is being renamed inline (desktop only)
+    final renameController = InlineRenameScope.maybeOf(context);
+    final isBeingRenamed = renameController != null &&
+        renameController.renamingPath == widget.file.path;
+
+    final textWidget = Text(
+      path.basename(widget.file.path),
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontWeight: _visuallySelected ? FontWeight.bold : FontWeight.normal,
+      ),
+    );
+
+    if (isBeingRenamed && renameController.textController != null) {
+      return Stack(
+        children: [
+          // Invisible text for layout sizing
+          Opacity(opacity: 0, child: textWidget),
+          // Positioned editable field on top
+          Positioned.fill(
+            child: InlineRenameField(
+              controller: renameController,
+              onCommit: () => renameController.commitRename(context),
+              onCancel: () => renameController.cancelRename(),
+              textStyle: TextStyle(
+                fontWeight:
+                    _visuallySelected ? FontWeight.bold : FontWeight.normal,
+              ),
+              textAlign: TextAlign.start,
+              maxLines: 1,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return textWidget;
   }
 }
 

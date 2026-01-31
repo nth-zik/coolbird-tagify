@@ -160,11 +160,8 @@ class _FTPBrowserScreenState extends State<FTPBrowserScreen>
 
   void _openTabForConnection(String path, String name) {
     final tabBloc = BlocProvider.of<TabManagerBloc>(context, listen: false);
-    tabBloc.add(AddTab(
-      path: path,
-      name: '$name (FTP)',
-      switchToTab: true,
-    ));
+    tabBloc.add(UpdateTabPath(widget.tabId, path));
+    tabBloc.add(UpdateTabName(widget.tabId, '$name (FTP)'));
   }
 
   @override

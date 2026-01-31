@@ -137,13 +137,33 @@ class NetworkDirectoryLoaded extends NetworkBrowsingEvent {
   final String path;
   final List<Directory> directories;
   final List<File> files;
+  final bool isLoadingMore;
+  final int requestId;
 
   const NetworkDirectoryLoaded({
     required this.path,
     required this.directories,
     required this.files,
+    this.isLoadingMore = false,
+    this.requestId = 0,
   });
 
   @override
-  List<Object> get props => [path, directories, files];
+  List<Object> get props => [path, directories, files, isLoadingMore, requestId];
+}
+
+/// Event emitted by the BLoC when a directory listing failed in the background.
+class NetworkDirectoryLoadFailed extends NetworkBrowsingEvent {
+  final String path;
+  final String errorMessage;
+  final int requestId;
+
+  const NetworkDirectoryLoadFailed({
+    required this.path,
+    required this.errorMessage,
+    required this.requestId,
+  });
+
+  @override
+  List<Object> get props => [path, errorMessage, requestId];
 }

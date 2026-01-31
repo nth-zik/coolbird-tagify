@@ -53,6 +53,52 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
   private var consecutiveMemoryWarnings = 0
   private var lastGcTime = 0L
   private val gcInterval = 2000L // Tăng lên 2 seconds between GC calls
+  private val logTag = "SMB_DEBUG"
+  private var logEnabled = false
+
+  private fun logDebug(message: String) {
+    if (logEnabled) {
+      Log.d(logTag, message)
+    }
+  }
+
+  private fun logWarn(message: String, throwable: Throwable? = null) {
+    if (!logEnabled) return
+    if (throwable != null) {
+      Log.w(logTag, message, throwable)
+    } else {
+      Log.w(logTag, message)
+    }
+  }
+
+  private fun logError(message: String, throwable: Throwable? = null) {
+    if (!logEnabled) return
+    if (throwable != null) {
+      Log.e(logTag, message, throwable)
+    } else {
+      Log.e(logTag, message)
+    }
+  }
+
+  private fun normalizePath(rawPath: String): String {
+    var clean = rawPath.trim()
+    if (clean.startsWith("/")) {
+      clean = clean.substring(1)
+    }
+    if (clean.isEmpty()) {
+      return clean
+    }
+    val share = smbFile?.share ?: ""
+    if (share.isNotEmpty()) {
+      if (clean == share) {
+        return ""
+      }
+      if (clean.startsWith("$share/")) {
+        clean = clean.substring(share.length + 1)
+      }
+    }
+    return clean
+  }
 
   override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
     binding = flutterPluginBinding
@@ -128,7 +174,7 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
   private fun performAdaptiveGc() {
     val currentTime = System.currentTimeMillis()
     if (currentTime - lastGcTime > gcInterval) {
-      Log.d("SMB_DEBUG", "performAdaptiveGc: Forcing GC after ${gcInterval}ms")
+      logDebug("performAdaptiveGc: Forcing GC after ${gcInterval}ms")
       System.gc()
       lastGcTime = currentTime
       consecutiveMemoryWarnings = 0
@@ -139,12 +185,12 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
     if (consecutiveMemoryWarnings > 3) {
       // Reduce chunk size cautiously when repeated memory pressure occurs
       adaptiveChunkSize = maxOf(64 * 1024, adaptiveChunkSize / 2) // Minimum 64KB
-      Log.d("SMB_DEBUG", "adjustChunkSize: Reduced to \${adaptiveChunkSize / 1024}KB after sustained memory warnings")
+      logDebug("adjustChunkSize: Reduced to \${adaptiveChunkSize / 1024}KB after sustained memory warnings")
       consecutiveMemoryWarnings = 0
     } else if (consecutiveMemoryWarnings == 0 && currentMemoryUsage < maxMemoryUsage / 4) {
       // Increase chunk size if memory usage is very low
       adaptiveChunkSize = minOf(512 * 1024, adaptiveChunkSize * 2) // Maximum 512KB
-      Log.d("SMB_DEBUG", "adjustChunkSize: Increased to ${adaptiveChunkSize / 1024}KB due to low memory usage")
+      logDebug("adjustChunkSize: Increased to ${adaptiveChunkSize / 1024}KB due to low memory usage")
     }
   }
   
@@ -153,11 +199,11 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
     val usedMemory = runtime.totalMemory() - runtime.freeMemory()
     val maxMemory = runtime.maxMemory()
     
-    Log.d("SMB_DEBUG", "Memory Stats: Used=${usedMemory/1024/1024}MB, Max=${maxMemory/1024/1024}MB")
-    Log.d("SMB_DEBUG", "Buffer Pool: Size=${bufferPool.size}, MaxSize=$bufferPoolSize")
-    Log.d("SMB_DEBUG", "Current Memory Usage: ${currentMemoryUsage/1024/1024}MB")
-    Log.d("SMB_DEBUG", "Adaptive Chunk Size: ${adaptiveChunkSize/1024}KB")
-    Log.d("SMB_DEBUG", "Consecutive Memory Warnings: $consecutiveMemoryWarnings")
+    logDebug("Memory Stats: Used=${usedMemory/1024/1024}MB, Max=${maxMemory/1024/1024}MB")
+    logDebug("Buffer Pool: Size=${bufferPool.size}, MaxSize=$bufferPoolSize")
+    logDebug("Current Memory Usage: ${currentMemoryUsage/1024/1024}MB")
+    logDebug("Adaptive Chunk Size: ${adaptiveChunkSize/1024}KB")
+    logDebug("Consecutive Memory Warnings: $consecutiveMemoryWarnings")
   }
 
   override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
@@ -361,7 +407,7 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
         scope.launch {
           try {
             val path = call.argument<String>("path") ?: ""
-            val offset = call.argument<Long>("offset") ?: 0L
+            val offset = (call.argument<Number>("offset") ?: 0).toLong()
             val chunkSize = call.argument<Int>("chunkSize") ?: 1024 * 1024
             seekFileStream(path, offset, chunkSize)
             withContext(Dispatchers.Main) {
@@ -389,8 +435,8 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
       val domain = config["domain"] as? String
       val shareName = config["shareName"] as? String
       
-      Log.d("SMB_DEBUG", "connect: Attempting to connect to $host:$port with user $username")
-      Log.d("SMB_DEBUG", "connect: Domain: $domain, ShareName: $shareName")
+      logDebug("connect: Attempting to connect to $host:$port with user $username")
+      logDebug("connect: Domain: $domain, ShareName: $shareName")
       
       val auth = if (domain != null) {
         NtlmPasswordAuthenticator(domain, username, password)
@@ -406,19 +452,19 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
         "smb://$host:$port/"
       }
       
-      Log.d("SMB_DEBUG", "connect: Using URL: $url")
+      logDebug("connect: Using URL: $url")
       
       smbFile = SmbFile(url, context)
       
       // Test connection by listing the directory
-      Log.d("SMB_DEBUG", "connect: Testing connection by listing files")
+      logDebug("connect: Testing connection by listing files")
       val files = smbFile?.listFiles()
-      Log.d("SMB_DEBUG", "connect: Connection test successful, found ${files?.size ?: 0} files")
+      logDebug("connect: Connection test successful, found ${files?.size ?: 0} files")
       
       isConnected = true
       true
     } catch (e: Exception) {
-      Log.e("SMB_DEBUG", "connect: Connection failed", e)
+      logError("connect: Connection failed", e)
       isConnected = false
       false
     }
@@ -436,15 +482,15 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
 
   private suspend fun listShares(): List<String> = withContext(Dispatchers.IO) {
     try {
-      Log.d("SMB_DEBUG", "listShares: Starting to list shares")
+      logDebug("listShares: Starting to list shares")
       if (smbFile == null) {
-        Log.d("SMB_DEBUG", "listShares: smbFile is null")
+        logDebug("listShares: smbFile is null")
         return@withContext emptyList()
       }
       
       // Extract server info from current smbFile URL
       val currentUrl = smbFile!!.url.toString()
-      Log.d("SMB_DEBUG", "listShares: Current URL: $currentUrl")
+      logDebug("listShares: Current URL: $currentUrl")
       
       // Create server URL with proper format: smb://host:port/
       val serverUrl = if (currentUrl.contains("://")) {
@@ -456,40 +502,40 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
         "smb://${smbFile!!.server}/"
       }
       
-      Log.d("SMB_DEBUG", "listShares: Using server URL: $serverUrl")
+      logDebug("listShares: Using server URL: $serverUrl")
       val serverFile = SmbFile(serverUrl, smbFile!!.context)
       
       val files = serverFile.listFiles()
-      Log.d("SMB_DEBUG", "listShares: Got ${files?.size ?: 0} files")
+      logDebug("listShares: Got ${files?.size ?: 0} files")
       
       val shares = files?.map { 
         val shareName = it.name.removeSuffix("/")
-        Log.d("SMB_DEBUG", "listShares: Found share: $shareName")
+        logDebug("listShares: Found share: $shareName")
         shareName
       } ?: emptyList()
       
-      Log.d("SMB_DEBUG", "listShares: Returning ${shares.size} shares: $shares")
+      logDebug("listShares: Returning ${shares.size} shares: $shares")
       return@withContext shares
     } catch (e: Exception) {
-      Log.e("SMB_DEBUG", "listShares: Exception occurred", e)
+      logError("listShares: Exception occurred", e)
       emptyList()
     }
   }
 
   private suspend fun listDirectory(path: String): List<Map<String, Any>> = withContext(Dispatchers.IO) {
     try {
-      Log.d("SMB_DEBUG", "listDirectory: Starting to list directory with path: '$path'")
+      logDebug("listDirectory: Starting to list directory with path: '$path'")
       if (smbFile == null) {
-        Log.d("SMB_DEBUG", "listDirectory: smbFile is null")
+        logDebug("listDirectory: smbFile is null")
         return@withContext emptyList()
       }
       
-      Log.d("SMB_DEBUG", "listDirectory: Base smbFile URL: ${smbFile!!.url}")
-      Log.d("SMB_DEBUG", "listDirectory: Base smbFile path: ${smbFile!!.path}")
-      Log.d("SMB_DEBUG", "listDirectory: Base smbFile context: ${smbFile!!.context}")
+      logDebug("listDirectory: Base smbFile URL: ${smbFile!!.url}")
+      logDebug("listDirectory: Base smbFile path: ${smbFile!!.path}")
+      logDebug("listDirectory: Base smbFile context: ${smbFile!!.context}")
       
       val targetFile = if (path.isEmpty()) {
-        Log.d("SMB_DEBUG", "listDirectory: Using root smbFile")
+        logDebug("listDirectory: Using root smbFile")
         smbFile!!
       } else {
         // Check if base smbFile is server root (no share)
@@ -502,30 +548,30 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
           val host = smbFile!!.server
           val port = smbFile!!.url.port
           val newUrl = "smb://$host:$port/$shareName/"
-          Log.d("SMB_DEBUG", "listDirectory: Creating new SmbFile for share with URL: $newUrl")
+          logDebug("listDirectory: Creating new SmbFile for share with URL: $newUrl")
           val newFile = SmbFile(newUrl, smbFile!!.context)
-          Log.d("SMB_DEBUG", "listDirectory: New file URL: ${newFile.url}")
-          Log.d("SMB_DEBUG", "listDirectory: New file share: ${newFile.share}")
+          logDebug("listDirectory: New file URL: ${newFile.url}")
+          logDebug("listDirectory: New file share: ${newFile.share}")
           newFile
         } else {
           // Normal subdirectory path
           val directoryPath = if (path.endsWith("/")) path else "$path/"
-          Log.d("SMB_DEBUG", "listDirectory: Creating SmbFile with path: '$directoryPath'")
+          logDebug("listDirectory: Creating SmbFile with path: '$directoryPath'")
           val newFile = SmbFile(smbFile!!, directoryPath)
-          Log.d("SMB_DEBUG", "listDirectory: Target file path: ${newFile.path}")
-          Log.d("SMB_DEBUG", "listDirectory: Target file URL: ${newFile.url}")
-          Log.d("SMB_DEBUG", "listDirectory: Target file server: ${newFile.server}")
-          Log.d("SMB_DEBUG", "listDirectory: Target file share: ${newFile.share}")
+          logDebug("listDirectory: Target file path: ${newFile.path}")
+          logDebug("listDirectory: Target file URL: ${newFile.url}")
+          logDebug("listDirectory: Target file server: ${newFile.server}")
+          logDebug("listDirectory: Target file share: ${newFile.share}")
           newFile
         }
       }
       
-      Log.d("SMB_DEBUG", "listDirectory: About to call listFiles() on: ${targetFile.url}")
+      logDebug("listDirectory: About to call listFiles() on: ${targetFile.url}")
       val files = targetFile.listFiles()
-      Log.d("SMB_DEBUG", "listDirectory: Got ${files?.size ?: 0} files")
+      logDebug("listDirectory: Got ${files?.size ?: 0} files")
       
       val result = files?.map { file ->
-        Log.d("SMB_DEBUG", "listDirectory: Processing file: ${file.name}, isDirectory: ${file.isDirectory}")
+        logDebug("listDirectory: Processing file: ${file.name}, isDirectory: ${file.isDirectory}")
         mapOf<String, Any>(
           "name" to file.name.removeSuffix("/"),
           "path" to file.path,
@@ -537,13 +583,13 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
         )
       } ?: emptyList()
       
-      Log.d("SMB_DEBUG", "listDirectory: Returning ${result.size} items")
+      logDebug("listDirectory: Returning ${result.size} items")
       return@withContext result
     } catch (e: Exception) {
-      Log.e("SMB_DEBUG", "listDirectory: Exception occurred", e)
-      Log.e("SMB_DEBUG", "listDirectory: Exception type: ${e.javaClass.simpleName}")
-      Log.e("SMB_DEBUG", "listDirectory: Exception message: ${e.message}")
-      Log.e("SMB_DEBUG", "listDirectory: Exception cause: ${e.cause}")
+      logError("listDirectory: Exception occurred", e)
+      logError("listDirectory: Exception type: ${e.javaClass.simpleName}")
+      logError("listDirectory: Exception message: ${e.message}")
+      logError("listDirectory: Exception cause: ${e.cause}")
       emptyList()
     }
   }
@@ -551,32 +597,34 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
   private suspend fun readFile(path: String): ByteArray = withContext(Dispatchers.IO) {
     try {
       if (smbFile == null) {
-        Log.e("SMB", "readFile: SMB connection is null for path: $path")
+        logError("readFile: SMB connection is null for path: $path")
         throw Exception("SMB connection is null")
       }
       
-      Log.d("SMB", "readFile: Original path received: $path")
-      Log.d("SMB", "readFile: Original path bytes: ${path.toByteArray().joinToString(",") { it.toString() }}")
+      logDebug("readFile: Original path received: $path")
+      logDebug("readFile: Original path bytes: ${path.toByteArray().joinToString(",") { it.toString() }}")
       
       val decodedPath = java.net.URLDecoder.decode(path, "UTF-8")
-      Log.d("SMB", "readFile: Decoded path: $decodedPath")
-      Log.d("SMB", "readFile: Decoded path bytes: ${decodedPath.toByteArray().joinToString(",") { it.toString() }}")
-      Log.d("SMB", "readFile: Reading file at path: $decodedPath")
-      
-      val targetFile = SmbFile(smbFile!!, decodedPath)
+      logDebug("readFile: Decoded path: $decodedPath")
+      logDebug("readFile: Decoded path bytes: ${decodedPath.toByteArray().joinToString(",") { it.toString() }}")
+      val cleanPath = normalizePath(decodedPath)
+      logDebug("readFile: Normalized path: $cleanPath")
+      logDebug("readFile: Reading file at path: $cleanPath")
+
+      val targetFile = SmbFile(smbFile!!, cleanPath)
       
       if (!targetFile.exists()) {
-        Log.e("SMB", "readFile: File does not exist: $decodedPath")
+        logError("readFile: File does not exist: $decodedPath")
         throw Exception("File does not exist: $decodedPath")
       }
       
       if (targetFile.isDirectory) {
-        Log.e("SMB", "readFile: Path is a directory, not a file: $decodedPath")
+        logError("readFile: Path is a directory, not a file: $decodedPath")
         throw Exception("Path is a directory, not a file: $decodedPath")
       }
       
       val fileSize = targetFile.length()
-      Log.d("SMB", "readFile: File size: $fileSize bytes")
+      logDebug("readFile: File size: $fileSize bytes")
       
       val inputStream: InputStream = targetFile.inputStream
       val outputStream = ByteArrayOutputStream()
@@ -588,16 +636,16 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
       }
       
       val result = outputStream.toByteArray()
-      Log.d("SMB", "readFile: Successfully read ${result.size} bytes")
+      logDebug("readFile: Successfully read ${result.size} bytes")
       
       if (result.isEmpty()) {
-        Log.w("SMB", "readFile: Read 0 bytes from file: $decodedPath")
+        logWarn("readFile: Read 0 bytes from file: $decodedPath")
         throw Exception("Read 0 bytes from file: $decodedPath")
       }
       
       result
     } catch (e: Exception) {
-      Log.e("SMB", "readFile: Error reading file $path: ${e.message}", e)
+      logError("readFile: Error reading file $path: ${e.message}", e)
       throw e
     }
   }
@@ -648,7 +696,8 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
       if (smbFile == null) return@withContext null
       
       val decodedPath = java.net.URLDecoder.decode(path, "UTF-8")
-      val targetFile = SmbFile(smbFile!!, decodedPath)
+      val cleanPath = normalizePath(decodedPath)
+      val targetFile = SmbFile(smbFile!!, cleanPath)
       if (!targetFile.exists()) return@withContext null
       
       mapOf<String, Any>(
@@ -668,48 +717,47 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
   private suspend fun startFileStream(path: String) = withContext(Dispatchers.IO) {
     try {
       if (smbFile == null) {
-        Log.e("SMB_DEBUG", "startFileStream: smbFile is null")
+        logError("startFileStream: smbFile is null")
         return@withContext
       }
       
       // Decode URL-encoded path
       val decodedPath = java.net.URLDecoder.decode(path, "UTF-8")
-      Log.d("SMB_DEBUG", "startFileStream: Original path: $path")
-      Log.d("SMB_DEBUG", "startFileStream: Decoded path: $decodedPath")
-      Log.d("SMB_DEBUG", "startFileStream: Base smbFile URL: ${smbFile!!.url}")
+      logDebug("startFileStream: Original path: $path")
+      logDebug("startFileStream: Decoded path: $decodedPath")
+      logDebug("startFileStream: Base smbFile URL: ${smbFile!!.url}")
       
       // Create target file with proper path handling
       val targetFile = try {
-        // Remove leading slash if present to avoid double slashes
-        val cleanPath = if (decodedPath.startsWith("/")) decodedPath.substring(1) else decodedPath
-        Log.d("SMB_DEBUG", "startFileStream: Clean path: $cleanPath")
+        val cleanPath = normalizePath(decodedPath)
+        logDebug("startFileStream: Normalized path: $cleanPath")
         
         val file = SmbFile(smbFile!!, cleanPath)
-        Log.d("SMB_DEBUG", "startFileStream: Target file URL: ${file.url}")
-        Log.d("SMB_DEBUG", "startFileStream: Target file path: ${file.path}")
+        logDebug("startFileStream: Target file URL: ${file.url}")
+        logDebug("startFileStream: Target file path: ${file.path}")
         file
       } catch (e: Exception) {
-        Log.e("SMB_DEBUG", "startFileStream: Error creating SmbFile", e)
+        logError("startFileStream: Error creating SmbFile", e)
         throw e
       }
       
       // Check if file exists
       if (!targetFile.exists()) {
-        Log.e("SMB_DEBUG", "startFileStream: File does not exist: ${targetFile.url}")
+        logError("startFileStream: File does not exist: ${targetFile.url}")
         return@withContext
       }
       
       if (targetFile.isDirectory) {
-        Log.e("SMB_DEBUG", "startFileStream: Path is directory, not file: ${targetFile.url}")
+        logError("startFileStream: Path is directory, not file: ${targetFile.url}")
         return@withContext
       }
       
-      Log.d("SMB_DEBUG", "startFileStream: File exists and is valid, size: ${targetFile.length()}")
+      logDebug("startFileStream: File exists and is valid, size: ${targetFile.length()}")
       
       // Create event channel for this file stream
       val sanitizedPath = path.replace(Regex("[^a-zA-Z0-9]"), "_")
       val channelName = "mobile_smb_native/stream_$sanitizedPath"
-      Log.d("SMB_DEBUG", "startFileStream: Creating event channel: $channelName")
+      logDebug("startFileStream: Creating event channel: $channelName")
       
       withContext(Dispatchers.Main) {
         // Remove existing channel if any
@@ -720,7 +768,7 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
         
         eventChannel.setStreamHandler(object : StreamHandler {
           override fun onListen(arguments: Any?, events: EventSink?) {
-            Log.d("SMB_DEBUG", "startFileStream: EventChannel onListen called")
+            logDebug("startFileStream: EventChannel onListen called")
             events?.let { sink ->
               eventSinks[path] = sink
               // Start streaming in background
@@ -731,31 +779,31 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
           }
           
           override fun onCancel(arguments: Any?) {
-            Log.d("SMB_DEBUG", "startFileStream: EventChannel onCancel called")
+            logDebug("startFileStream: EventChannel onCancel called")
             eventSinks.remove(path)
           }
         })
         
-        Log.d("SMB_DEBUG", "startFileStream: Event channel setup complete")
+        logDebug("startFileStream: Event channel setup complete")
       }
     } catch (e: Exception) {
-      Log.e("SMB_DEBUG", "startFileStream: Exception occurred", e)
-      Log.e("SMB_DEBUG", "startFileStream: Exception type: ${e.javaClass.simpleName}")
-      Log.e("SMB_DEBUG", "startFileStream: Exception message: ${e.message}")
+      logError("startFileStream: Exception occurred", e)
+      logError("startFileStream: Exception type: ${e.javaClass.simpleName}")
+      logError("startFileStream: Exception message: ${e.message}")
       throw e
     }
   }
   
   private suspend fun streamFile(targetFile: SmbFile, sink: EventSink) = withContext(Dispatchers.IO) {
     try {
-      Log.d("SMB_DEBUG", "streamFile: Starting to stream file: ${targetFile.url}")
-      Log.d("SMB_DEBUG", "streamFile: File size: ${targetFile.length()}")
+      logDebug("streamFile: Starting to stream file: ${targetFile.url}")
+      logDebug("streamFile: File size: ${targetFile.length()}")
       
       val inputStream = targetFile.inputStream
       val buffer = ByteArray(256 * 1024) // 256KB buffer to improve throughput and reduce memory pressure
       var totalBytesRead = 0L
       
-      Log.d("SMB_DEBUG", "streamFile: Input stream created successfully")
+      logDebug("streamFile: Input stream created successfully")
       
       inputStream.use { input ->
         var bytesRead: Int
@@ -772,7 +820,7 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
           }
           
           if (chunkCount % 100 == 0) { // Log every 100 chunks
-            Log.d("SMB_DEBUG", "streamFile: Sent chunk $chunkCount, total bytes: $totalBytesRead")
+            logDebug("streamFile: Sent chunk $chunkCount, total bytes: $totalBytesRead")
           }
           
           withContext(Dispatchers.Main) {
@@ -780,7 +828,7 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
           }
         }
         
-        Log.d("SMB_DEBUG", "streamFile: Finished reading file, total chunks: $chunkCount, total bytes: $totalBytesRead")
+        logDebug("streamFile: Finished reading file, total chunks: $chunkCount, total bytes: $totalBytesRead")
       }
       
       // Signal end of stream
@@ -788,12 +836,12 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
         sink.endOfStream()
       }
       
-      Log.d("SMB_DEBUG", "streamFile: Stream completed successfully")
+      logDebug("streamFile: Stream completed successfully")
     } catch (e: Exception) {
-      Log.e("SMB_DEBUG", "streamFile: Exception occurred", e)
-      Log.e("SMB_DEBUG", "streamFile: Exception type: ${e.javaClass.simpleName}")
-      Log.e("SMB_DEBUG", "streamFile: Exception message: ${e.message}")
-      Log.e("SMB_DEBUG", "streamFile: Exception cause: ${e.cause}")
+      logError("streamFile: Exception occurred", e)
+      logError("streamFile: Exception type: ${e.javaClass.simpleName}")
+      logError("streamFile: Exception message: ${e.message}")
+      logError("streamFile: Exception cause: ${e.cause}")
       
       withContext(Dispatchers.Main) {
         sink.error("STREAM_ERROR", e.message ?: "Unknown streaming error", e.toString())
@@ -811,10 +859,10 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
       // We'll return the configured max version from our initialization
       val actualVersion = "SMB3.1.1" // Based on our initialization in initializeJcifs()
       
-      Log.d("SMB_DEBUG", "getSmbVersion: Using configured version: $actualVersion")
+      logDebug("getSmbVersion: Using configured version: $actualVersion")
       return@withContext actualVersion
     } catch (e: Exception) {
-      Log.e("SMB_DEBUG", "getSmbVersion: Exception occurred", e)
+      logError("getSmbVersion: Exception occurred", e)
       return@withContext "Unknown"
     }
   }
@@ -832,35 +880,36 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
       val version = getSmbVersion()
       
       val info = "Server: $server, Share: $share, Version: $version, User: $username"
-      Log.d("SMB_DEBUG", "getConnectionInfo: $info")
+      logDebug("getConnectionInfo: $info")
       return@withContext info
     } catch (e: Exception) {
-      Log.e("SMB_DEBUG", "getConnectionInfo: Exception occurred", e)
+      logError("getConnectionInfo: Exception occurred", e)
       return@withContext "Connection info unavailable"
     }
   }
 
   private suspend fun startOptimizedFileStream(path: String, chunkSize: Int) = withContext(Dispatchers.IO) {
     try {
-      Log.d("SMB_DEBUG", "startOptimizedFileStream: Starting optimized stream for path: $path")
-      Log.d("SMB_DEBUG", "startOptimizedFileStream: Chunk size: $chunkSize bytes")
+      logDebug("startOptimizedFileStream: Starting optimized stream for path: $path")
+      logDebug("startOptimizedFileStream: Chunk size: $chunkSize bytes")
       
       if (smbFile == null) {
         throw Exception("Not connected to SMB server")
       }
-      
-      val targetFile = if (path.isEmpty()) {
+      val decodedPath = java.net.URLDecoder.decode(path, "UTF-8")
+      val cleanPath = normalizePath(decodedPath)
+      val targetFile = if (cleanPath.isEmpty()) {
         smbFile!!
       } else {
-        SmbFile(smbFile!!.url.toString() + path, smbFile!!.context)
+        SmbFile(smbFile!!, cleanPath)
       }
       
       if (!targetFile.exists()) {
         throw Exception("File not found: $path")
       }
       
-      Log.d("SMB_DEBUG", "startOptimizedFileStream: Target file: ${targetFile.url}")
-      Log.d("SMB_DEBUG", "startOptimizedFileStream: File size: ${targetFile.length()}")
+      logDebug("startOptimizedFileStream: Target file: ${targetFile.url}")
+      logDebug("startOptimizedFileStream: File size: ${targetFile.length()}")
       
       // Create optimized event channel
       val sanitizedPath = path.replace(Regex("[^a-zA-Z0-9]"), "_")
@@ -875,7 +924,7 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
         
         eventChannel.setStreamHandler(object : StreamHandler {
           override fun onListen(arguments: Any?, events: EventSink?) {
-            Log.d("SMB_DEBUG", "startOptimizedFileStream: EventChannel onListen called")
+            logDebug("startOptimizedFileStream: EventChannel onListen called")
             events?.let { sink ->
               eventSinks[path] = sink
               // Start optimized streaming in background
@@ -886,32 +935,38 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
           }
           
           override fun onCancel(arguments: Any?) {
-            Log.d("SMB_DEBUG", "startOptimizedFileStream: EventChannel onCancel called")
+            logDebug("startOptimizedFileStream: EventChannel onCancel called")
             eventSinks.remove(path)
           }
         })
         
-        Log.d("SMB_DEBUG", "startOptimizedFileStream: Optimized event channel setup complete")
+        logDebug("startOptimizedFileStream: Optimized event channel setup complete")
       }
     } catch (e: Exception) {
-      Log.e("SMB_DEBUG", "startOptimizedFileStream: Exception occurred", e)
-      Log.e("SMB_DEBUG", "startOptimizedFileStream: Exception type: ${e.javaClass.simpleName}")
-      Log.e("SMB_DEBUG", "startOptimizedFileStream: Exception message: ${e.message}")
+      logError("startOptimizedFileStream: Exception occurred", e)
+      logError("startOptimizedFileStream: Exception type: ${e.javaClass.simpleName}")
+      logError("startOptimizedFileStream: Exception message: ${e.message}")
       throw e
     }
   }
   
-  private suspend fun streamFileOptimized(targetFile: SmbFile, sink: EventSink, chunkSize: Int, startOffset: Long = 0L) = withContext(Dispatchers.IO) {
+  private suspend fun streamFileOptimized(
+    targetFile: SmbFile,
+    sink: EventSink,
+    chunkSize: Int,
+    startOffset: Long = 0L,
+    maxBytes: Long? = null
+  ) = withContext(Dispatchers.IO) {
     var inputStream: InputStream? = null
     var readBuffer: ByteArray? = null
     var chunkBuffer: ByteArray? = null
     
     try {
-      Log.d("SMB_DEBUG", "streamFileOptimized: Starting optimized stream for file: ${targetFile.url}")
-      Log.d("SMB_DEBUG", "streamFileOptimized: File size: ${targetFile.length()}")
-      Log.d("SMB_DEBUG", "streamFileOptimized: Start offset: $startOffset")
-      Log.d("SMB_DEBUG", "streamFileOptimized: Initial chunk size: $chunkSize bytes")
-      Log.d("SMB_DEBUG", "streamFileOptimized: Adaptive chunk size: ${adaptiveChunkSize} bytes")
+      logDebug("streamFileOptimized: Starting optimized stream for file: ${targetFile.url}")
+      logDebug("streamFileOptimized: File size: ${targetFile.length()}")
+      logDebug("streamFileOptimized: Start offset: $startOffset")
+      logDebug("streamFileOptimized: Initial chunk size: $chunkSize bytes")
+      logDebug("streamFileOptimized: Adaptive chunk size: ${adaptiveChunkSize} bytes")
       
       // Reset adaptive controls
       consecutiveMemoryWarnings = 0
@@ -924,33 +979,41 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
       
       // Skip to start offset if specified (for seek support)
       if (startOffset > 0) {
-        Log.d("SMB_DEBUG", "streamFileOptimized: Skipping to offset: $startOffset")
+        logDebug("streamFileOptimized: Skipping to offset: $startOffset")
         val skipped = inputStream.skip(startOffset)
-        Log.d("SMB_DEBUG", "streamFileOptimized: Actually skipped: $skipped bytes")
+        logDebug("streamFileOptimized: Actually skipped: $skipped bytes")
         if (skipped != startOffset) {
-          Log.w("SMB_DEBUG", "streamFileOptimized: Could not skip full offset, expected: $startOffset, actual: $skipped")
+          logWarn("streamFileOptimized: Could not skip full offset, expected: $startOffset, actual: $skipped")
         }
       }
       
-      readBuffer = getBuffer(adaptiveChunkSize) // Use adaptive chunk size
-      trackAllocation(adaptiveChunkSize)
+      val baseChunkSize = minOf(adaptiveChunkSize, chunkSize)
+      readBuffer = getBuffer(baseChunkSize)
+      trackAllocation(baseChunkSize)
       
       var chunkCount = 0
       totalBytesRead = 0L
       lastLogTime = System.currentTimeMillis()
       lastLogBytes = 0L
       
-      Log.d("SMB_DEBUG", "streamFileOptimized: Input stream created successfully")
+      logDebug("streamFileOptimized: Input stream created successfully")
       
       var bytesRead: Int
-      while (inputStream.read(readBuffer).also { bytesRead = it } != -1) {
+      var bytesSent = 0L
+      while (true) {
+        val remaining = if (maxBytes != null) maxBytes - bytesSent else baseChunkSize.toLong()
+        if (remaining <= 0) break
+        val toRead = minOf(baseChunkSize.toLong(), remaining).toInt()
+        bytesRead = inputStream.read(readBuffer, 0, toRead)
+        if (bytesRead == -1) break
         chunkCount++
         totalBytesRead += bytesRead
+        bytesSent += bytesRead
         
         // Check memory usage before allocating new buffer
         if (!canAllocate(bytesRead)) {
           consecutiveMemoryWarnings++
-          Log.w("SMB_DEBUG", "streamFileOptimized: Memory limit reached (warning #$consecutiveMemoryWarnings), waiting for GC")
+          logWarn("streamFileOptimized: Memory limit reached (warning #$consecutiveMemoryWarnings), waiting for GC")
           
           // Perform adaptive GC
           performAdaptiveGc()
@@ -960,7 +1023,7 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
           adjustChunkSize()
           
           if (!canAllocate(bytesRead)) {
-            Log.e("SMB_DEBUG", "streamFileOptimized: Cannot allocate memory for chunk after GC")
+            logError("streamFileOptimized: Cannot allocate memory for chunk after GC")
             break
           }
         } else {
@@ -982,7 +1045,7 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
             String.format("%.2f MB/s", (bytesDiff / 1024.0 / 1024.0) / timeDiff)
           } else "N/A"
           
-          Log.d("SMB_DEBUG", "streamFileOptimized: Progress - Chunks: $chunkCount, Total: ${totalBytesRead / 1024 / 1024}MB, Speed: $speed")
+          logDebug("streamFileOptimized: Progress - Chunks: $chunkCount, Total: ${totalBytesRead / 1024 / 1024}MB, Speed: $speed")
           logMemoryStats()
           lastLogTime = currentTime
           lastLogBytes = totalBytesRead
@@ -1006,21 +1069,24 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
         if (chunkCount % 20 == 0) {
           performAdaptiveGc()
         }
+        if (maxBytes != null && bytesSent >= maxBytes) {
+          break
+        }
       }
       
-      Log.d("SMB_DEBUG", "streamFileOptimized: Finished reading file, total chunks: $chunkCount, total bytes: $totalBytesRead")
+      logDebug("streamFileOptimized: Finished reading file, total chunks: $chunkCount, total bytes: $totalBytesRead")
       
       // Signal end of stream
       withContext(Dispatchers.Main) {
         sink.endOfStream()
       }
       
-      Log.d("SMB_DEBUG", "streamFileOptimized: Optimized stream completed successfully")
+      logDebug("streamFileOptimized: Optimized stream completed successfully")
     } catch (e: Exception) {
-      Log.e("SMB_DEBUG", "streamFileOptimized: Exception occurred", e)
-      Log.e("SMB_DEBUG", "streamFileOptimized: Exception type: ${e.javaClass.simpleName}")
-      Log.e("SMB_DEBUG", "streamFileOptimized: Exception message: ${e.message}")
-      Log.e("SMB_DEBUG", "streamFileOptimized: Exception cause: ${e.cause}")
+      logError("streamFileOptimized: Exception occurred", e)
+      logError("streamFileOptimized: Exception type: ${e.javaClass.simpleName}")
+      logError("streamFileOptimized: Exception message: ${e.message}")
+      logError("streamFileOptimized: Exception cause: ${e.cause}")
       
       withContext(Dispatchers.Main) {
         sink.error("OPTIMIZED_STREAM_ERROR", e.message ?: "Unknown optimized streaming error", e.toString())
@@ -1030,7 +1096,7 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
       try {
         inputStream?.close()
       } catch (e: Exception) {
-        Log.w("SMB_DEBUG", "streamFileOptimized: Error closing input stream", e)
+        logWarn("streamFileOptimized: Error closing input stream", e)
       }
       
       // Return buffers to pool
@@ -1050,66 +1116,79 @@ class MobileSmbNativePlugin: FlutterPlugin, MethodCallHandler {
 
   private suspend fun seekFileStream(path: String, offset: Long, chunkSize: Int) = withContext(Dispatchers.IO) {
     try {
-      Log.d("SMB_DEBUG", "seekFileStream: Starting seek stream for path: $path")
-      Log.d("SMB_DEBUG", "seekFileStream: Seek offset: $offset bytes")
-      Log.d("SMB_DEBUG", "seekFileStream: Chunk size: $chunkSize bytes")
+      logDebug("seekFileStream: Starting seek stream for path: $path")
+      logDebug("seekFileStream: Seek offset: $offset bytes")
+      logDebug("seekFileStream: Chunk size: $chunkSize bytes")
       
       if (!isConnected || smbFile == null) {
-        Log.e("SMB_DEBUG", "seekFileStream: Not connected to SMB server")
+        logError("seekFileStream: Not connected to SMB server")
         throw Exception("Not connected to SMB server")
       }
-      
-      val targetFile = SmbFile("${smbFile!!.url}$path")
+
+      val decodedPath = java.net.URLDecoder.decode(path, "UTF-8")
+      val cleanPath = normalizePath(decodedPath)
+      if (cleanPath.isEmpty()) {
+        throw Exception("Invalid file path")
+      }
+      val targetFile = SmbFile(smbFile!!, cleanPath)
       if (!targetFile.exists()) {
-        Log.e("SMB_DEBUG", "seekFileStream: File does not exist: $path")
+        logError("seekFileStream: File does not exist: $path")
         throw Exception("File does not exist: $path")
       }
       
       if (targetFile.isDirectory) {
-        Log.e("SMB_DEBUG", "seekFileStream: Path is a directory: $path")
+        logError("seekFileStream: Path is a directory: $path")
         throw Exception("Path is a directory: $path")
       }
       
-      Log.d("SMB_DEBUG", "seekFileStream: Target file: ${targetFile.url}")
-      Log.d("SMB_DEBUG", "seekFileStream: File size: ${targetFile.length()}")
+      logDebug("seekFileStream: Target file: ${targetFile.url}")
+      logDebug("seekFileStream: File size: ${targetFile.length()}")
       
       // Validate offset
       if (offset < 0 || offset >= targetFile.length()) {
-        Log.e("SMB_DEBUG", "seekFileStream: Invalid offset: $offset, file size: ${targetFile.length()}")
+        logError("seekFileStream: Invalid offset: $offset, file size: ${targetFile.length()}")
         throw Exception("Invalid offset: $offset")
       }
       
       // Cancel existing stream if any
-      eventSinks[path]?.endOfStream()
-      eventSinks.remove(path)
+      val existingSink = eventSinks[path]
+      if (existingSink != null) {
+        withContext(Dispatchers.Main) {
+          existingSink.endOfStream()
+        }
+        eventSinks.remove(path)
+      }
       
       // Create new event channel for seek stream
-      val eventChannelName = "seek_stream_$path"
-      val eventChannel = EventChannel(binding.binaryMessenger, eventChannelName)
-      
-      eventChannel.setStreamHandler(object : StreamHandler {
-        override fun onListen(arguments: Any?, events: EventSink?) {
-          Log.d("SMB_DEBUG", "seekFileStream: EventChannel onListen called")
-          events?.let { sink ->
-            eventSinks[path] = sink
-            // Start optimized streaming with offset in background
-            scope.launch {
-              streamFileOptimized(targetFile, sink, chunkSize, offset)
+      val sanitizedPath = path.replace(Regex("[^a-zA-Z0-9]"), "_")
+      val eventChannelName = "mobile_smb_native/seek_stream_$sanitizedPath"
+
+      withContext(Dispatchers.Main) {
+        val eventChannel = EventChannel(binding.binaryMessenger, eventChannelName)
+        eventChannel.setStreamHandler(object : StreamHandler {
+          override fun onListen(arguments: Any?, events: EventSink?) {
+            logDebug("seekFileStream: EventChannel onListen called")
+            events?.let { sink ->
+              eventSinks[path] = sink
+              // Start optimized streaming with offset in background
+              scope.launch {
+                streamFileOptimized(targetFile, sink, chunkSize, offset, chunkSize.toLong())
+              }
             }
           }
-        }
-        
-        override fun onCancel(arguments: Any?) {
-          Log.d("SMB_DEBUG", "seekFileStream: EventChannel onCancel called")
-          eventSinks.remove(path)
-        }
-      })
-      
-      Log.d("SMB_DEBUG", "seekFileStream: Seek event channel setup complete")
+
+          override fun onCancel(arguments: Any?) {
+            logDebug("seekFileStream: EventChannel onCancel called")
+            eventSinks.remove(path)
+          }
+        })
+      }
+
+      logDebug("seekFileStream: Seek event channel setup complete")
     } catch (e: Exception) {
-      Log.e("SMB_DEBUG", "seekFileStream: Exception occurred", e)
-      Log.e("SMB_DEBUG", "seekFileStream: Exception type: ${e.javaClass.simpleName}")
-      Log.e("SMB_DEBUG", "seekFileStream: Exception message: ${e.message}")
+      logError("seekFileStream: Exception occurred", e)
+      logError("seekFileStream: Exception type: ${e.javaClass.simpleName}")
+      logError("seekFileStream: Exception message: ${e.message}")
       throw e
     }
   }

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cb_file_manager/core/service_locator.dart';
 import 'package:cb_file_manager/helpers/core/user_preferences.dart';
@@ -10,17 +11,137 @@ import 'package:cb_file_manager/helpers/files/external_app_helper.dart';
 import 'package:cb_file_manager/helpers/media/video_thumbnail_helper.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
+import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cb_file_manager/bloc/selection/selection.dart';
 import 'package:path/path.dart' as path;
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
 
 /// Handles file operations such as opening files with appropriate viewers
 class FileOperationsHandler {
+  static List<FileSystemEntity> _getNavigableItems(FolderListState state) {
+    if (state.currentSearchTag != null || state.currentSearchQuery != null) {
+      return List<FileSystemEntity>.from(state.searchResults);
+    }
+
+    final currentFilter = state.currentFilter;
+    if (currentFilter != null && currentFilter.isNotEmpty) {
+      return List<FileSystemEntity>.from(state.filteredFiles);
+    }
+
+    return [
+      ...state.folders.whereType<FileSystemEntity>(),
+      ...state.files.whereType<FileSystemEntity>(),
+    ];
+  }
+
+  @visibleForTesting
+  static String? computeNextFocusPathAfterDelete({
+    required FolderListState state,
+    required Set<String> pathsToDelete,
+    String? anchorPath,
+  }) {
+    final items = _getNavigableItems(state);
+    if (items.isEmpty) return null;
+
+    final orderedPaths = items.map((e) => e.path).toList(growable: false);
+
+    final String? effectiveAnchor = () {
+      if (anchorPath != null && orderedPaths.contains(anchorPath)) {
+        return anchorPath;
+      }
+      for (final p in orderedPaths) {
+        if (pathsToDelete.contains(p)) return p;
+      }
+      return null;
+    }();
+
+    if (effectiveAnchor == null) {
+      for (final p in orderedPaths) {
+        if (!pathsToDelete.contains(p)) return p;
+      }
+      return null;
+    }
+
+    final int anchorIndex = orderedPaths.indexOf(effectiveAnchor);
+    if (anchorIndex < 0) return null;
+
+    for (int i = anchorIndex + 1; i < orderedPaths.length; i++) {
+      final p = orderedPaths[i];
+      if (!pathsToDelete.contains(p)) return p;
+    }
+
+    for (int i = anchorIndex - 1; i >= 0; i--) {
+      final p = orderedPaths[i];
+      if (!pathsToDelete.contains(p)) return p;
+    }
+
+    return null;
+  }
+
   static String _entityBaseName(FileSystemEntity entity) {
     final normalized = path.normalize(entity.path);
     final name = path.basename(normalized);
     return name.isEmpty ? normalized : name;
+  }
+
+  static SelectionState? _tryGetSelectionState(
+    BuildContext context, {
+    required SelectionBloc? selectionBloc,
+  }) {
+    if (selectionBloc != null) return selectionBloc.state;
+    try {
+      return context.read<SelectionBloc>().state;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static void _tryRestoreSelectionAfterViewer(
+    BuildContext context, {
+    required SelectionState? snapshot,
+    required SelectionBloc? selectionBloc,
+  }) {
+    if (snapshot == null) return;
+    if (snapshot.allSelectedPaths.isEmpty) return;
+
+    if (!context.mounted) return;
+
+    final SelectionBloc bloc;
+    try {
+      bloc = selectionBloc ?? context.read<SelectionBloc>();
+    } catch (_) {
+      return;
+    }
+
+    final current = bloc.state;
+    if (current.selectedFilePaths.length == snapshot.selectedFilePaths.length &&
+        current.selectedFolderPaths.length == snapshot.selectedFolderPaths.length &&
+        current.selectedFilePaths.containsAll(snapshot.selectedFilePaths) &&
+        current.selectedFolderPaths.containsAll(snapshot.selectedFolderPaths) &&
+        current.lastSelectedPath == snapshot.lastSelectedPath) {
+      return;
+    }
+
+    final List<String> filePaths = snapshot.selectedFilePaths.toList();
+    final List<String> folderPaths = snapshot.selectedFolderPaths.toList();
+
+    final last = snapshot.lastSelectedPath;
+    if (last != null && snapshot.selectedFilePaths.contains(last)) {
+      filePaths.remove(last);
+      filePaths.add(last);
+    } else if (last != null && snapshot.selectedFolderPaths.contains(last)) {
+      folderPaths.remove(last);
+      folderPaths.add(last);
+    }
+
+    bloc.add(SelectItemsInRect(
+      folderPaths: folderPaths.toSet(),
+      filePaths: filePaths.toSet(),
+      isCtrlPressed: false,
+      isShiftPressed: true,
+    ));
   }
 
   /// Handle delete operation - shows confirmation dialog and dispatches delete event
@@ -29,6 +150,7 @@ class FileOperationsHandler {
     required FolderListBloc folderListBloc,
     required List<String> selectedFiles,
     required List<String> selectedFolders,
+    SelectionBloc? selectionBloc,
     String? focusedPath,
     required bool permanent,
     required VoidCallback onClearSelection,
@@ -60,6 +182,16 @@ class FileOperationsHandler {
       debugPrint('FileOperationsHandler.handleDelete - localizations is null!');
       return;
     }
+
+    final stateBeforeDelete = folderListBloc.state;
+    final pathsToDelete = <String>{...filesToDelete, ...foldersToDelete};
+    final nextFocusPath = selectionBloc == null
+        ? null
+        : computeNextFocusPathAfterDelete(
+            state: stateBeforeDelete,
+            pathsToDelete: pathsToDelete,
+            anchorPath: focusedPath,
+          );
 
     final totalCount = filesToDelete.length + foldersToDelete.length;
     final String firstItemName = filesToDelete.isNotEmpty
@@ -93,6 +225,23 @@ class FileOperationsHandler {
           permanent: true,
         ));
         onClearSelection();
+        if (selectionBloc != null && nextFocusPath != null) {
+          final nextType =
+              FileSystemEntity.typeSync(nextFocusPath, followLinks: false);
+          if (nextType == FileSystemEntityType.directory) {
+            selectionBloc.add(ToggleFolderSelection(
+              nextFocusPath,
+              shiftSelect: false,
+              ctrlSelect: false,
+            ));
+          } else {
+            selectionBloc.add(ToggleFileSelection(
+              nextFocusPath,
+              shiftSelect: false,
+              ctrlSelect: false,
+            ));
+          }
+        }
       }
     } else {
       // Show trash delete dialog with keyboard support
@@ -119,6 +268,23 @@ class FileOperationsHandler {
           permanent: false,
         ));
         onClearSelection();
+        if (selectionBloc != null && nextFocusPath != null) {
+          final nextType =
+              FileSystemEntity.typeSync(nextFocusPath, followLinks: false);
+          if (nextType == FileSystemEntityType.directory) {
+            selectionBloc.add(ToggleFolderSelection(
+              nextFocusPath,
+              shiftSelect: false,
+              ctrlSelect: false,
+            ));
+          } else {
+            selectionBloc.add(ToggleFileSelection(
+              nextFocusPath,
+              shiftSelect: false,
+              ctrlSelect: false,
+            ));
+          }
+        }
       }
     }
   }
@@ -249,6 +415,7 @@ class FileOperationsHandler {
     required BuildContext context,
     required File file,
     required FolderListBloc folderListBloc,
+    SelectionBloc? selectionBloc,
     String? currentFilter,
     String? currentSearchTag,
   }) {
@@ -261,6 +428,19 @@ class FileOperationsHandler {
 
     // Open file based on file type
     if (isVideo) {
+      final currentSelection = _tryGetSelectionState(
+        context,
+        selectionBloc: selectionBloc,
+      );
+      final SelectionState selectionSnapshot =
+          (currentSelection == null || currentSelection.allSelectedPaths.isEmpty)
+              ? SelectionState(
+                  selectedFilePaths: <String>{file.path},
+                  selectedFolderPaths: const <String>{},
+                  isSelectionMode: true,
+                  lastSelectedPath: file.path,
+                )
+              : currentSelection;
       // Default: use in-app player. Only use system default when user enabled it in Settings.
       locator<UserPreferences>().getUseSystemDefaultForVideo().then((useSystem) {
         if (useSystem) {
@@ -279,7 +459,13 @@ class FileOperationsHandler {
                 fullscreenDialog: true,
                 builder: (_) => VideoPlayerFullScreen(file: file),
               ),
-            );
+            ).then((_) {
+              _tryRestoreSelectionAfterViewer(
+                context,
+                snapshot: selectionSnapshot,
+                selectionBloc: selectionBloc,
+              );
+            });
           }
         }
       });

@@ -8,6 +8,7 @@ import '../../../../bloc/selection/selection_bloc.dart';
 import '../../../../bloc/selection/selection_event.dart';
 import 'package:remixicon/remixicon.dart' as remix;
 import '../../../components/common/optimized_interaction_handler.dart';
+import '../../../utils/item_interaction_style.dart';
 
 class FolderItem extends StatefulWidget {
   final Directory folder;
@@ -141,11 +142,12 @@ class _FolderItemState extends State<FolderItem> {
     return ValueListenableBuilder<bool>(
       valueListenable: _isHovering,
       builder: (context, isHovering, _) {
-        final Color backgroundColor = widget.isSelected
-            ? Theme.of(context).colorScheme.primaryContainer
-            : isHovering && widget.isDesktopMode
-                ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.6)
-                : Colors.transparent;
+        final Color backgroundColor = ItemInteractionStyle.backgroundColor(
+          theme: Theme.of(context),
+          isDesktopMode: widget.isDesktopMode,
+          isSelected: widget.isSelected,
+          isHovering: isHovering,
+        );
 
         return GestureDetector(
           onSecondaryTapDown: (details) => _showFolderContextMenu(context, details.globalPosition),
@@ -283,7 +285,12 @@ class _FolderItemState extends State<FolderItem> {
                     bottom: 0,
                     child: OptimizedInteractionLayer(
                       onTap: () {
-                        // Click vào tên sẽ navigate
+                        if (widget.isDesktopMode &&
+                            widget.toggleFolderSelection != null) {
+                          _handleFolderSelection();
+                          return;
+                        }
+
                         if (widget.onTap != null) {
                           widget.onTap!(widget.folder.path);
                         }

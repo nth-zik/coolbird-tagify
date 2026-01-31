@@ -142,7 +142,16 @@ class MobileSmbClient {
   /// [path] - The path to the file to stream
   /// Returns a Stream<List<int>> for reading file data in chunks, or null if streaming is not supported
   Stream<List<int>>? openFileStream(String path) {
-    return MobileSmbNativePlatform.instance.openFileStream(path);
+    return Stream.fromFuture(_ensureConnectedForStreaming()).asyncExpand(
+      (connected) {
+        if (!connected) {
+          return Stream<List<int>>.error(
+              Exception('Not connected to SMB server'));
+        }
+        return MobileSmbNativePlatform.instance.openFileStream(path) ??
+            const Stream.empty();
+      },
+    );
   }
 
   /// Get SMB version information
@@ -174,8 +183,17 @@ class MobileSmbClient {
   /// Returns a Stream<List<int>> for optimized video streaming, or null if not supported
   Stream<List<int>>? openFileStreamOptimized(String path,
       {int chunkSize = 1024 * 1024}) {
-    return MobileSmbNativePlatform.instance
-        .openFileStreamOptimized(path, chunkSize: chunkSize);
+    return Stream.fromFuture(_ensureConnectedForStreaming()).asyncExpand(
+      (connected) {
+        if (!connected) {
+          return Stream<List<int>>.error(
+              Exception('Not connected to SMB server'));
+        }
+        return MobileSmbNativePlatform.instance
+                .openFileStreamOptimized(path, chunkSize: chunkSize) ??
+            const Stream.empty();
+      },
+    );
   }
 
   /// Open file for optimized video streaming with seek support
@@ -186,8 +204,35 @@ class MobileSmbClient {
   /// Returns a Stream<List<int>> for optimized video streaming with seek, or null if not supported
   Stream<List<int>>? seekFileStreamOptimized(String path, int offset,
       {int chunkSize = 1024 * 1024}) {
-    return MobileSmbNativePlatform.instance
-        .seekFileStreamOptimized(path, offset, chunkSize: chunkSize);
+    return Stream.fromFuture(_ensureConnectedForStreaming()).asyncExpand(
+      (connected) {
+        if (!connected) {
+          return Stream<List<int>>.error(
+              Exception('Not connected to SMB server'));
+        }
+        return MobileSmbNativePlatform.instance
+                .seekFileStreamOptimized(path, offset, chunkSize: chunkSize) ??
+            const Stream.empty();
+      },
+    );
+  }
+
+  Future<bool> _ensureConnectedForStreaming() async {
+    try {
+      final connected = await MobileSmbNativePlatform.instance.isConnected();
+      if (connected) {
+        return true;
+      }
+
+      final config = _currentConfig;
+      if (config == null) {
+        return false;
+      }
+
+      return await connect(config);
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Check if a path exists

@@ -15,6 +15,7 @@ import '../../../helpers/network/streaming_helper.dart';
 import '../../../services/network_browsing/ftp_service.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../config/languages/app_localizations.dart';
+import 'package:cb_file_manager/bloc/selection/selection.dart';
 import '../../../helpers/media/folder_thumbnail_service.dart';
 import '../../../helpers/media/video_thumbnail_helper.dart';
 import '../../utils/file_type_utils.dart';
@@ -22,6 +23,7 @@ import '../../dialogs/folder_thumbnail_picker_dialog.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../screens/folder_list/folder_list_bloc.dart';
 import '../../screens/folder_list/folder_list_event.dart';
+import '../../../helpers/files/windows_shell_context_menu.dart';
 
 /// A shared context menu for files
 ///
@@ -730,6 +732,8 @@ void _showFileContextMenuDesktop({
 }) {
   final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
   if (overlay == null) return;
+  final canShowShellMenu = Platform.isWindows &&
+      FileSystemEntity.typeSync(file.path) != FileSystemEntityType.notFound;
 
   final RelativeRect position = RelativeRect.fromRect(
     Rect.fromPoints(globalPosition, globalPosition),
@@ -789,6 +793,13 @@ void _showFileContextMenuDesktop({
         child: _menuRow(AppLocalizations.of(context)!.moveToTrash, remix.Remix.delete_bin_2_line,
         color: Colors.red),
       ),
+      if (canShowShellMenu) ...[
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: 'more_options',
+          child: _menuRow(AppLocalizations.of(context)!.moreOptions, remix.Remix.more_2_line),
+        ),
+      ],
     ],
   ).then((value) async {
     if (value == null) return;
@@ -843,6 +854,13 @@ void _showFileContextMenuDesktop({
         break;
       case 'delete':
         _moveToTrashStandalone(context, file);
+        break;
+      case 'more_options':
+        await WindowsShellContextMenu.showForPaths(
+          paths: [file.path],
+          globalPosition: globalPosition,
+          devicePixelRatio: MediaQuery.of(context).devicePixelRatio,
+        );
         break;
     }
   });
@@ -923,6 +941,8 @@ void _showFolderContextMenuDesktop({
 }) {
   final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
   if (overlay == null) return;
+  final canShowShellMenu = Platform.isWindows &&
+      FileSystemEntity.typeSync(folder.path) != FileSystemEntityType.notFound;
 
   final RelativeRect position = RelativeRect.fromRect(
     Rect.fromPoints(globalPosition, globalPosition),
@@ -964,6 +984,13 @@ void _showFolderContextMenuDesktop({
         value: 'properties',
         child: _menuRow(l10n.properties, remix.Remix.information_line),
       ),
+      if (canShowShellMenu) ...[
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: 'more_options',
+          child: _menuRow(l10n.moreOptions, remix.Remix.more_2_line),
+        ),
+      ],
     ],
   ).then((value) async {
     if (value == null) return;
@@ -1000,6 +1027,13 @@ void _showFolderContextMenuDesktop({
         break;
       case 'properties':
         _showFolderPropertiesDialog(context, folder);
+        break;
+      case 'more_options':
+        await WindowsShellContextMenu.showForPaths(
+          paths: [folder.path],
+          globalPosition: globalPosition,
+          devicePixelRatio: MediaQuery.of(context).devicePixelRatio,
+        );
         break;
     }
   });
@@ -1176,6 +1210,10 @@ void showMultipleFilesContextMenu({
 }) {
   final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
   if (overlay == null) return;
+  final canShowShellMenu = Platform.isWindows &&
+      selectedPaths.isNotEmpty &&
+      selectedPaths.every((path) =>
+          FileSystemEntity.typeSync(path) != FileSystemEntityType.notFound);
 
   final RelativeRect position = RelativeRect.fromRect(
     Rect.fromPoints(globalPosition, globalPosition),
@@ -1210,9 +1248,24 @@ void showMultipleFilesContextMenu({
         value: 'delete',
         child: _menuRow(l10n.deleteTitle, remix.Remix.delete_bin_2_line, color: Colors.red),
       ),
+      if (canShowShellMenu) ...[
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: 'more_options',
+          child: _menuRow(l10n.moreOptions, remix.Remix.more_2_line),
+        ),
+      ],
     ],
   ).then((value) {
     if (value == null) return;
+    if (value == 'more_options') {
+      WindowsShellContextMenu.showForPaths(
+        paths: selectedPaths,
+        globalPosition: globalPosition,
+        devicePixelRatio: MediaQuery.of(context).devicePixelRatio,
+      );
+      return;
+    }
     
     final bloc = context.read<FolderListBloc>();
     List<FileSystemEntity> entitiesList = [];
@@ -1247,11 +1300,18 @@ void showMultipleFilesContextMenu({
         tag_dialogs.showBatchAddTagDialog(context, selectedPaths);
         break;
       case 'delete':
+        SelectionBloc? selectionBloc;
+        try {
+          selectionBloc = context.read<SelectionBloc>();
+        } catch (_) {
+          selectionBloc = null;
+        }
         FileOperationsHandler.handleDelete(
           context: context,
           folderListBloc: bloc,
           selectedFiles: files,
           selectedFolders: folders,
+          selectionBloc: selectionBloc,
           permanent: false,
           onClearSelection: onClearSelection,
         );

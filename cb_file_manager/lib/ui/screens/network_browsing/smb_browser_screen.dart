@@ -363,12 +363,8 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
             debugPrint(
                 'Opening SMB connection in tab with path: $connectionPath');
 
-            // Create a new tab with the connection path
-            tabBloc.add(AddTab(
-              path: connectionPath, // This is the #network/... path
-              name: tabName,
-              switchToTab: true,
-            ));
+            tabBloc.add(UpdateTabPath(widget.tabId, connectionPath));
+            tabBloc.add(UpdateTabName(widget.tabId, tabName));
           } else {
             // Handle cases where connectionPath is null (dialog cancelled) or not the expected format
             debugPrint(
@@ -400,11 +396,8 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
       }
 
       debugPrint('Opening saved SMB connection in tab with path: $tabPath');
-      tabBloc.add(AddTab(
-        path: tabPath,
-        name: tabName,
-        switchToTab: true,
-      ));
+      tabBloc.add(UpdateTabPath(widget.tabId, tabPath));
+      tabBloc.add(UpdateTabName(widget.tabId, tabName));
     }
   }
 
@@ -448,11 +441,8 @@ class _SMBBrowserScreenState extends State<SMBBrowserScreen>
                   if (connectionPath.startsWith('#network/')) {
                     debugPrint(
                         'Opening new SMB connection in tab with path: $connectionPath');
-                    tabBloc.add(AddTab(
-                      path: connectionPath,
-                      name: tabName,
-                      switchToTab: true,
-                    ));
+                    tabBloc.add(UpdateTabPath(widget.tabId, connectionPath));
+                    tabBloc.add(UpdateTabName(widget.tabId, tabName));
                   }
                 },
               ),

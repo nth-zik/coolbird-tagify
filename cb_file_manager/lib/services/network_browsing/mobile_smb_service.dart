@@ -1,9 +1,11 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:remixicon/remixicon.dart' as remix;
 import 'package:mobile_smb_native/mobile_smb_native.dart';
 import 'network_service_base.dart';
 import 'package:cb_file_manager/services/network_credentials_service.dart';
+import 'package:cb_file_manager/models/database/network_credentials.dart';
 
 /// Mobile SMB service implementation using the mobile_smb_native plugin
 import 'package:cb_file_manager/services/network_browsing/i_smb_service.dart';
@@ -17,6 +19,11 @@ class MobileSMBService implements ISmbService {
   String _connectedHost = '';
   String _connectedShare = '';
   bool _isConnected = false;
+
+  // Cache last successful credentials for reconnect attempts.
+  String _lastUsername = '';
+  String _lastPassword = '';
+  int _lastPort = 445;
 
   @override
   String get serviceName => 'SMB';
@@ -38,20 +45,39 @@ class MobileSMBService implements ISmbService {
 
   @override
   Future<String?> getSmbDirectLink(String tabPath) async {
-    if (!isConnected) return null;
-
     try {
-      // 1. Get credentials
-      final credentials = NetworkCredentialsService()
-          .findCredentials(serviceType: 'SMB', host: _connectedHost);
-      if (credentials == null) {
-        debugPrint(
-            'MobileSMBService: No credentials found for $_connectedHost');
+      final hostFromPath = _getHostFromTabPath(tabPath);
+      final targetHost =
+          _connectedHost.isNotEmpty ? _connectedHost : hostFromPath;
+      if (targetHost.isEmpty) {
         return null;
       }
 
-      final username = credentials.username;
-      final password = credentials.password;
+      // 1. Get credentials (prefer stored credentials, fallback to active config)
+      String username = '';
+      String password = '';
+      String domain = '';
+      NetworkCredentials? credentials;
+      try {
+        credentials = NetworkCredentialsService()
+            .findCredentials(serviceType: 'SMB', host: targetHost);
+      } catch (e) {
+        credentials = null;
+      }
+
+      if (credentials != null) {
+        username = credentials.username;
+        password = credentials.password;
+        domain = credentials.domain ?? '';
+      } else {
+        final config = _smbClient.currentConfig;
+        if (config != null) {
+          username = config.username;
+          password = config.password;
+          domain = config.domain ?? '';
+        } else {
+        }
+      }
 
       // 2. Get the relative SMB path from the tab path
       final smbPath = _getSmbPathFromTabPath(tabPath);
@@ -66,15 +92,19 @@ class MobileSMBService implements ISmbService {
       final pathComponent =
           smbPath.startsWith('/') ? smbPath.substring(1) : smbPath;
 
-      // 3. Construct the direct link, ensure each path segment is URL-encoded
-      final encodedUser = Uri.encodeComponent(username);
-      final encodedPass = Uri.encodeComponent(password);
-      final encodedPath =
-          pathComponent.split('/').map(Uri.encodeComponent).join('/');
-      final link =
-          'smb://$encodedUser:$encodedPass@$_connectedHost/$encodedPath';
+      // 3. Construct the direct link; keep common SMB path characters intact
+      final encodedPath = _encodeSmbPath(pathComponent);
+      String link;
+      if (username.isNotEmpty) {
+        final userWithDomain =
+            domain.isNotEmpty ? '$domain;$username' : username;
+        final encodedUser = Uri.encodeComponent(userWithDomain);
+        final encodedPass = Uri.encodeComponent(password);
+        link = 'smb://$encodedUser:$encodedPass@$targetHost/$encodedPath';
+      } else {
+        link = 'smb://$targetHost/$encodedPath';
+      }
 
-      debugPrint('MobileSMBService: Generated SMB direct link: $link');
       return link;
     } catch (e) {
       debugPrint('MobileSMBService: Error generating SMB direct link: $e');
@@ -90,6 +120,8 @@ class MobileSMBService implements ISmbService {
       debugPrint('Invalid tab path format: $tabPath');
       return '/';
     }
+
+    final bool endsWithSlash = tabPath.endsWith('/') || tabPath.endsWith('\\');
 
     // Remove the leading "#network/"
     final pathWithoutPrefix = tabPath.substring('#network/'.length);
@@ -110,7 +142,8 @@ class MobileSMBService implements ISmbService {
     // If only share specified (parts.length == 3), return share root
     if (parts.length == 3) {
       final shareName = Uri.decodeComponent(parts[2]);
-      return '/$shareName';
+      final root = '/$shareName';
+      return endsWithSlash ? '$root/' : root;
     }
 
     // Extract path after share
@@ -118,10 +151,39 @@ class MobileSMBService implements ISmbService {
       final shareName = Uri.decodeComponent(parts[2]);
       final folders =
           parts.sublist(3).map((f) => Uri.decodeComponent(f)).toList();
-      return '/$shareName/${folders.join('/')}';
+      final p = '/$shareName/${folders.join('/')}';
+      return endsWithSlash ? '$p/' : p;
     }
 
     return '/';
+  }
+
+  String _encodeSmbPath(String path) {
+    if (path.isEmpty) return path;
+    final normalized = path.replaceAll('\\', '/');
+    return normalized
+        .replaceAll('%', '%25')
+        .replaceAll('#', '%23')
+        .replaceAll('?', '%3F')
+        .replaceAll(' ', '%20');
+  }
+
+  /// Extract SMB host from a tab path.
+  /// e.g., "#network/SMB/192.168.1.200/Share/folder" -> "192.168.1.200"
+  String _getHostFromTabPath(String tabPath) {
+    final lowerPath = tabPath.toLowerCase();
+    if (!lowerPath.startsWith('#network/$_smbScheme/')) {
+      return '';
+    }
+
+    final pathWithoutPrefix = tabPath.substring('#network/'.length);
+    final parts =
+        pathWithoutPrefix.split('/').where((p) => p.isNotEmpty).toList();
+    if (parts.length < 2) {
+      return '';
+    }
+
+    return Uri.decodeComponent(parts[1]);
   }
 
   @override
@@ -170,6 +232,9 @@ class MobileSMBService implements ISmbService {
         _isConnected = true;
         _connectedHost = serverHost;
         _connectedShare = shareName ?? '';
+        _lastUsername = username;
+        _lastPassword = password ?? '';
+        _lastPort = port ?? 445;
 
         // Save credentials if connection is successful
         try {
@@ -220,6 +285,50 @@ class MobileSMBService implements ISmbService {
     }
   }
 
+  /// Best-effort reconnect for cases where the native connection gets stuck.
+  Future<bool> reconnect() async {
+    if (_connectedHost.isEmpty) return false;
+
+    String username = _lastUsername;
+    String password = _lastPassword;
+
+    if (username.isEmpty) {
+      try {
+        final credentials = NetworkCredentialsService()
+            .findCredentials(serviceType: 'SMB', host: _connectedHost);
+        if (credentials != null) {
+          username = credentials.username;
+          password = credentials.password;
+        }
+      } catch (_) {}
+    }
+
+    try {
+      await _smbClient.disconnect().timeout(const Duration(seconds: 2));
+    } catch (_) {
+      // Ignore disconnect errors/timeouts.
+    }
+
+    final shareName = _connectedShare.isEmpty ? null : _connectedShare;
+    final config = SmbConnectionConfig(
+      host: _connectedHost,
+      port: _lastPort,
+      username: username,
+      password: password,
+      shareName: shareName,
+      timeoutMs: 60000,
+    );
+
+    try {
+      final ok = await _smbClient.connect(config).timeout(const Duration(seconds: 6));
+      _isConnected = ok;
+      return ok;
+    } catch (_) {
+      _isConnected = false;
+      return false;
+    }
+  }
+
   @override
   Future<List<FileSystemEntity>> listDirectory(String tabPath) async {
     debugPrint('MobileSMBService: listDirectory called with tabPath: $tabPath');
@@ -249,7 +358,14 @@ class MobileSMBService implements ISmbService {
       final smbPath = _getSmbPathFromTabPath(tabPath);
       debugPrint('MobileSMBService: Converted tabPath to smbPath: $smbPath');
 
-      final smbFiles = await _smbClient.listDirectory(smbPath);
+      final Duration timeout = const Duration(seconds: 12);
+      List<SmbFile> smbFiles;
+      try {
+        smbFiles = await _smbClient.listDirectory(smbPath).timeout(timeout);
+      } on TimeoutException {
+        await reconnect();
+        smbFiles = await _smbClient.listDirectory(smbPath).timeout(timeout);
+      }
       debugPrint(
         'MobileSMBService: Got ${smbFiles.length} files from native client',
       );
@@ -278,7 +394,7 @@ class MobileSMBService implements ISmbService {
       return entities;
     } catch (e) {
       debugPrint('MobileSMBService: Error listing directory $tabPath: $e');
-      return [];
+      rethrow;
     }
   }
 
@@ -317,7 +433,7 @@ class MobileSMBService implements ISmbService {
       return entities;
     } catch (e) {
       debugPrint('MobileSMBService: Error listing shares: $e');
-      return [];
+      rethrow;
     }
   }
 
