@@ -44,6 +44,48 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Verify required runtime files exist in Windows release bundle.
+verify_windows_release_bundle() {
+    local release_dir="$1"
+    local missing_files=()
+
+    if [ ! -d "$release_dir" ]; then
+        print_error "Release directory not found: $release_dir"
+        return 1
+    fi
+
+    [ -f "$release_dir/coolbird_tagify.exe" ] || missing_files+=("coolbird_tagify.exe")
+    [ -f "$release_dir/flutter_windows.dll" ] || missing_files+=("flutter_windows.dll")
+
+    local ffmpeg_patterns=(
+        "avcodec-*.dll"
+        "avformat-*.dll"
+        "avutil-*.dll"
+        "swscale-*.dll"
+    )
+
+    local old_nullglob
+    old_nullglob=$(shopt -p nullglob || true)
+    shopt -s nullglob
+    for pattern in "${ffmpeg_patterns[@]}"; do
+        local matches=("$release_dir"/$pattern)
+        if [ ${#matches[@]} -eq 0 ]; then
+            missing_files+=("$pattern")
+        fi
+    done
+    eval "$old_nullglob"
+
+    if [ ${#missing_files[@]} -gt 0 ]; then
+        print_error "Missing required runtime files in Windows release bundle:"
+        for file in "${missing_files[@]}"; do
+            echo "  - $file"
+        done
+        return 1
+    fi
+
+    return 0
+}
+
 # Get current version
 get_version() {
     grep "^version:" "$PUBSPEC" | sed 's/version: //' | sed 's/+.*//'
@@ -224,8 +266,7 @@ build_windows_portable() {
         local RELEASE_DIR="$BUILD_DIR/windows/x64/runner/Release"
         local OUTPUT_ZIP="$PORTABLE_DIR/CoolBirdTagify-Portable.zip"
 
-        if [ ! -d "$RELEASE_DIR" ]; then
-            print_error "Release directory not found: $RELEASE_DIR"
+        if ! verify_windows_release_bundle "$RELEASE_DIR"; then
             cd ..
             return 1
         fi
@@ -360,6 +401,10 @@ build_windows_msi() {
     local OUTPUT_DIR="$PROJECT_DIR/build/windows/installer"
     
     mkdir -p "$OUTPUT_DIR"
+
+    if ! verify_windows_release_bundle "$BUILD_PATH"; then
+        return 1
+    fi
     
     # Convert paths for Windows if needed
     local BUILD_PATH_WIN="$BUILD_PATH"

@@ -49,21 +49,8 @@
 
   <Fragment>
     <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
-      <!-- Main executable -->
-      <Component Id="MainExecutable">
-        <File Id="coolbird_tagify.exe" Source="$(var.SourceDir)\coolbird_tagify.exe" KeyPath="yes" />
-      </Component>
-
-      <!-- All DLL files -->
-      <Component Id="FlutterDlls">
-        <File Id="flutter_windows.dll" Source="$(var.SourceDir)\flutter_windows.dll" />
-      </Component>
-
-      <!-- Data folder with all assets -->
-      <Component Id="DataFolderComponent" Directory="DataFolder"
-        Guid="0c3fe5b6-982d-4708-80ca-7b09931ac8a8">
-        <CreateFolder />
-      </Component>
+      <!-- Install all files produced in the Windows Release bundle, including FFmpeg DLLs. -->
+      <Files Include="$(var.SourceDir)\**" />
     </ComponentGroup>
 
     <!-- Start Menu Shortcut -->
