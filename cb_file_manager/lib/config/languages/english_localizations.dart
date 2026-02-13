@@ -2,7 +2,7 @@ import 'app_localizations.dart';
 
 class EnglishLocalizations implements AppLocalizations {
   @override
-  String get appTitle => 'CoolBird Tagify - File Manager';
+  String get appTitle => 'CoolBird Tagify';
 
   // Common actions
   @override
@@ -48,10 +48,10 @@ class EnglishLocalizations implements AppLocalizations {
   String get chooseDefaultApp => 'Choose default app';
   @override
   String get setCoolBirdAsDefaultForVideos =>
-      'Set CoolBird as default for video files';
+      'Set CoolBird Tagify as default for video files';
   @override
   String get setCoolBirdAsDefaultForVideosAndroidHint =>
-      'Opening Settings. In "Open by default", enable CoolBird for video files.';
+      'Opening Settings. In "Open by default", enable CoolBird Tagify for video files.';
   @override
   String get openFolder => 'Open Folder';
   @override
@@ -1092,7 +1092,7 @@ class EnglishLocalizations implements AppLocalizations {
 
   // Home screen
   @override
-  String get welcomeToFileManager => 'Welcome to CoolBird File Manager';
+  String get welcomeToFileManager => 'Welcome to CoolBird Tagify';
 
   @override
   String get welcomeDescription => 'Your powerful file management companion';

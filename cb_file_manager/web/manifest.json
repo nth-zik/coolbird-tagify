@@ -1,6 +1,6 @@
 {
-  "name": "CoolBird File Manager",
-  "short_name": "CoolBird File Manager",
+  "name": "CoolBird Tagify",
+  "short_name": "CoolBird Tagify",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#0175C2",

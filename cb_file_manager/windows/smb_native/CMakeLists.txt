@@ -28,8 +28,4 @@ set_target_properties(smb_native PROPERTIES
   CXX_STANDARD_REQUIRED ON
 )
 
-# Install the DLL next to the runner executable.
-install(
-  TARGETS smb_native
-  RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/"
-) 
+# The DLL is copied by the runner target post-build step.

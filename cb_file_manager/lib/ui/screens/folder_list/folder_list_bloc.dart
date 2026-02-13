@@ -289,7 +289,7 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
               emit(state.copyWith(
                 isLoading: false,
                 error:
-                    'Cần cấp quyền truy cập tất cả files để xem đầy đủ nội dung thư mục. Vui lòng vào Settings > Apps > CB File Manager > Permissions và bật "All files access".',
+                    'Cần cấp quyền truy cập tất cả files để xem đầy đủ nội dung thư mục. Vui lòng vào Settings > Apps > CoolBird Tagify > Permissions và bật "All files access".',
               ));
               return;
             }

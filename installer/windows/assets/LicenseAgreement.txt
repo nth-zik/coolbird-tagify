@@ -1,0 +1,54 @@
+END USER LICENSE AGREEMENT (EULA)
+CoolBird Tagify
+Version 1.0.0
+
+IMPORTANT: PLEASE READ THIS AGREEMENT CAREFULLY BEFORE INSTALLING OR USING THE SOFTWARE.
+BY INSTALLING, COPYING, OR USING THE SOFTWARE, YOU AGREE TO BE BOUND BY THIS AGREEMENT.
+IF YOU DO NOT AGREE, DO NOT INSTALL OR USE THE SOFTWARE.
+
+1. Parties
+This End User License Agreement ("Agreement") is a legal agreement between you ("User") and the software publisher identified as "Your Company Name" ("Licensor") for the software product "CoolBird Tagify" and related documentation ("Software").
+
+2. License Grant
+Licensor grants you a limited, non-exclusive, non-transferable, revocable license to install and use the Software on devices you own or control, strictly in accordance with this Agreement.
+
+3. Permitted Use
+You may:
+- Install and run the Software for personal or internal business use.
+- Make a reasonable number of backup copies for archival purposes.
+
+4. Restrictions
+You may not:
+- Sell, sublicense, rent, lease, or distribute the Software except as explicitly permitted by Licensor.
+- Reverse engineer, decompile, disassemble, or otherwise attempt to derive source code, except where applicable law explicitly allows it.
+- Remove or alter copyright, trademark, or proprietary notices.
+- Use the Software in violation of any law or regulation.
+
+5. Updates and Changes
+Licensor may provide updates, patches, or new versions at its discretion. Updates may be subject to additional terms. Licensor may modify features to improve quality, performance, or security.
+
+6. Third-Party Components
+The Software may include third-party libraries or components that are licensed under their own terms. Those terms remain applicable to the relevant components and may grant rights beyond this Agreement.
+
+7. Data and Privacy
+The Software may process local files and related metadata based on your usage. You are responsible for ensuring you have legal rights to access and process all files and data used with the Software.
+
+8. Intellectual Property
+The Software is licensed, not sold. All rights, title, and interest in and to the Software, including all intellectual property rights, remain with Licensor and its licensors.
+
+9. Disclaimer of Warranties
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE," WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+
+10. Limitation of Liability
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, LICENSOR SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR EXEMPLARY DAMAGES, INCLUDING LOSS OF DATA, PROFITS, OR BUSINESS INTERRUPTION, ARISING FROM OR RELATED TO THE SOFTWARE OR THIS AGREEMENT.
+
+11. Term and Termination
+This Agreement remains effective until terminated. It terminates automatically if you violate any term. Upon termination, you must stop using the Software and remove all installed copies.
+
+12. Governing Law
+This Agreement is governed by the laws of the jurisdiction where Licensor is established, without regard to conflict of law rules.
+
+13. Contact
+For licensing questions, contact Licensor through the official project channels.
+
+By selecting "I Agree" in the installer, you acknowledge that you have read, understood, and agreed to this Agreement.

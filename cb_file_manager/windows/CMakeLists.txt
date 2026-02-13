@@ -4,7 +4,7 @@ project(cb_file_manager LANGUAGES CXX)
 
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
-set(BINARY_NAME "cb_file_manager")
+set(BINARY_NAME "coolbird_tagify")
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.
@@ -48,6 +48,16 @@ set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_RELEASE}")
 
 # Use Unicode for all projects.
 add_definitions(-DUNICODE -D_UNICODE)
+
+# Shared dependency setup for this Windows build.
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/dependencies.cmake")
+
+# Ensure NuGet is available before plugin CMake files are processed.
+coolbird_ensure_nuget()
+
+# Resolve FFmpeg directory (local checkout or on-demand download).
+coolbird_resolve_ffmpeg_dir(COOLBIRD_FFMPEG_DIR)
+set(COOLBIRD_FFMPEG_DIR "${COOLBIRD_FFMPEG_DIR}" CACHE PATH "Resolved FFmpeg directory" FORCE)
 
 # Compilation settings that should be applied to most targets.
 #

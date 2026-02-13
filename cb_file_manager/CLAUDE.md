@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**CoolBird File Manager** is a cross-platform Flutter application that provides advanced file management capabilities with network browsing support (FTP, SMB, WebDAV), media playback, and a sophisticated tagging system.
+**CoolBird Tagify** is a cross-platform Flutter application that provides advanced file management capabilities with network browsing support (FTP, SMB, WebDAV), media playback, and a sophisticated tagging system.
 
 ## Development Commands
 

@@ -218,7 +218,7 @@ class _OpenWithDialogState extends State<OpenWithDialog> {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(ok
-                                        ? 'CoolBird is now the default for video files.'
+                                        ? 'CoolBird Tagify is now the default for video files.'
                                         : 'Could not set as default.'),
                                   ),
                                 );

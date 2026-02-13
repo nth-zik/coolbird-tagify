@@ -1,0 +1,92 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <?define ProductName = "CoolBird Tagify"?>
+  <?define ProductVersion = "1.0.0"?>
+  <?define Manufacturer = "Your Company Name"?>
+  <?define UpgradeCode = "683b4433-9621-4c1f-9a64-4f980bb8465d"?>
+  <?define AssetsDir = "$(sys.SOURCEFILEDIR)assets"?>
+
+  <Package Name="$(var.ProductName)" Language="1033" Version="$(var.ProductVersion)"
+    Manufacturer="$(var.Manufacturer)" UpgradeCode="$(var.UpgradeCode)" InstallerVersion="200">
+
+    <SummaryInformation Description="$(var.ProductName) Installer" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Feature Id="ProductFeature" Title="CoolBird Tagify" Level="1">
+      <ComponentGroupRef Id="ProductComponents" />
+      <ComponentRef Id="ApplicationShortcut" />
+      <ComponentRef Id="DesktopShortcut" />
+    </Feature>
+
+    <!-- UI -->
+    <ui:WixUI Id="WixUI_InstallDir" />
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.AssetsDir)\LicenseAgreement.rtf" />
+    <WixVariable Id="WixUIBannerBmp" Value="$(var.AssetsDir)\banner.bmp" />
+    <WixVariable Id="WixUIDialogBmp" Value="$(var.AssetsDir)\dialog.bmp" />
+
+    <!-- Icon -->
+    <Icon Id="AppIcon" SourceFile="$(var.AssetsDir)\app_icon.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+  </Package>
+
+  <Fragment>
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="CoolBird Tagify">
+        <Directory Id="DataFolder" Name="data" />
+      </Directory>
+    </StandardDirectory>
+
+    <!-- Start Menu -->
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="CoolBird Tagify" />
+    </StandardDirectory>
+
+    <!-- Desktop -->
+    <StandardDirectory Id="DesktopFolder" />
+  </Fragment>
+
+  <Fragment>
+    <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+      <!-- Main executable -->
+      <Component Id="MainExecutable">
+        <File Id="coolbird_tagify.exe" Source="$(var.SourceDir)\coolbird_tagify.exe" KeyPath="yes" />
+      </Component>
+
+      <!-- All DLL files -->
+      <Component Id="FlutterDlls">
+        <File Id="flutter_windows.dll" Source="$(var.SourceDir)\flutter_windows.dll" />
+      </Component>
+
+      <!-- Data folder with all assets -->
+      <Component Id="DataFolderComponent" Directory="DataFolder"
+        Guid="0c3fe5b6-982d-4708-80ca-7b09931ac8a8">
+        <CreateFolder />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Start Menu Shortcut -->
+    <DirectoryRef Id="ApplicationProgramsFolder">
+      <Component Id="ApplicationShortcut">
+        <Shortcut Id="ApplicationStartMenuShortcut" Name="CoolBird Tagify"
+          Description="Launch CoolBird Tagify" Target="[INSTALLFOLDER]coolbird_tagify.exe"
+          WorkingDirectory="INSTALLFOLDER" Icon="AppIcon" />
+        <RemoveFolder Id="CleanUpShortCut" Directory="ApplicationProgramsFolder" On="uninstall" />
+        <RegistryValue Root="HKCU" Key="Software\[Manufacturer]\[ProductName]" Name="installed"
+          Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <!-- Desktop Shortcut -->
+    <StandardDirectory Id="DesktopFolder">
+      <Component Id="DesktopShortcut">
+        <Shortcut Id="ApplicationDesktopShortcut" Name="CoolBird Tagify"
+          Description="Launch CoolBird Tagify" Target="[INSTALLFOLDER]coolbird_tagify.exe"
+          WorkingDirectory="INSTALLFOLDER" Icon="AppIcon" />
+        <RegistryValue Root="HKCU" Key="Software\[Manufacturer]\[ProductName]"
+          Name="desktopShortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+  </Fragment>
+</Wix>

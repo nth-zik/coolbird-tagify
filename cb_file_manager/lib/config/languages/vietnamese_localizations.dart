@@ -2,7 +2,7 @@ import 'app_localizations.dart';
 
 class VietnameseLocalizations implements AppLocalizations {
   @override
-  String get appTitle => 'CoolBird Tagify - Trình Quản Lý Tệp';
+  String get appTitle => 'CoolBird Tagify';
 
   // Common actions
   @override
@@ -48,10 +48,10 @@ class VietnameseLocalizations implements AppLocalizations {
   String get chooseDefaultApp => 'Chọn ứng dụng mặc định';
   @override
   String get setCoolBirdAsDefaultForVideos =>
-      'Đặt CoolBird làm mặc định cho file video';
+      'Đặt CoolBird Tagify làm mặc định cho file video';
   @override
   String get setCoolBirdAsDefaultForVideosAndroidHint =>
-      'Đang mở Cài đặt. Trong "Mở theo mặc định", bật CoolBird cho file video.';
+      'Đang mở Cài đặt. Trong "Mở theo mặc định", bật CoolBird Tagify cho file video.';
   @override
   String get openFolder => 'Mở thư mục';
   @override
@@ -1096,7 +1096,7 @@ class VietnameseLocalizations implements AppLocalizations {
 
   // Home screen
   @override
-  String get welcomeToFileManager => 'Chào mừng đến với CoolBird File Manager';
+  String get welcomeToFileManager => 'Chào mừng đến với CoolBird Tagify';
 
   @override
   String get welcomeDescription => 'Trợ lý quản lý tệp mạnh mẽ của bạn';

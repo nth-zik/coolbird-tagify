@@ -73,6 +73,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
 
   // Key for the scaffold to control drawer programmatically
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final GlobalKey _tabStripAreaKey = GlobalKey();
 
   // Controller cho TabBar tích hợp
   late TabController _tabController;
@@ -161,6 +162,25 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
     if (mounted) {
       // This setState is crucial for the UI to pick up the new _tabController instance
       setState(() {});
+    }
+  }
+
+  void _clearTabSelectionWhenClickOutsideStrip(PointerDownEvent event) {
+    if (!_isDesktop) return;
+    if (event.kind != PointerDeviceKind.mouse) return;
+    if (event.buttons != kPrimaryMouseButton) return;
+
+    final bloc = context.read<TabManagerBloc>();
+    if (bloc.state.selectedTabIds.isEmpty) return;
+
+    final stripContext = _tabStripAreaKey.currentContext;
+    final stripBox = stripContext?.findRenderObject() as RenderBox?;
+    if (stripBox == null || !stripBox.hasSize) return;
+
+    final stripOrigin = stripBox.localToGlobal(Offset.zero);
+    final stripRect = stripOrigin & stripBox.size;
+    if (!stripRect.contains(event.position)) {
+      bloc.add(ClearTabSelection());
     }
   }
 
@@ -445,244 +465,263 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                         }
                       }
                     },
-                    child: Scaffold(
-                      key: _scaffoldKey,
-                      // Modern AppBar, always present on tablet/desktop for custom title bar
-                      appBar: isTablet
-                          ? AppBar(
-                              elevation: 0,
-                              backgroundColor: theme.scaffoldBackgroundColor,
-                              // Always show ScrollableTabBar in the title for Windows (isTablet)
-                              // It handles its own content (tabs or add button) and window controls.
-                              title: ScrollConfiguration(
-                                behavior: TabBarMouseScrollBehavior(),
-                                child: ScrollableTabBar(
-                                  controller:
-                                      _tabController, // Ensure this controller has the correct length
-                                  onTabPrimaryClick: (index, shiftPressed) {
-                                    if (index >= state.tabs.length) return;
+                    child: Listener(
+                      behavior: HitTestBehavior.translucent,
+                      onPointerDown: _clearTabSelectionWhenClickOutsideStrip,
+                      child: Scaffold(
+                        key: _scaffoldKey,
+                        // Modern AppBar, always present on tablet/desktop for custom title bar
+                        appBar: isTablet
+                            ? AppBar(
+                                elevation: 0,
+                                backgroundColor: theme.scaffoldBackgroundColor,
+                                // Always show ScrollableTabBar in the title for Windows (isTablet)
+                                // It handles its own content (tabs or add button) and window controls.
+                                title: KeyedSubtree(
+                                  key: _tabStripAreaKey,
+                                  child: ScrollConfiguration(
+                                    behavior: TabBarMouseScrollBehavior(),
+                                    child: ScrollableTabBar(
+                                      controller:
+                                          _tabController, // Ensure this controller has the correct length
+                                      onTabPrimaryClick: (index, shiftPressed) {
+                                        if (index >= state.tabs.length) return;
 
-                                    final tabId = state.tabs[index].id;
-                                    final bloc = context.read<TabManagerBloc>();
-                                    final selectedIds = state.selectedTabIds;
-                                    final keepMultiSelection = _isDesktop &&
-                                        !shiftPressed &&
-                                        selectedIds.length > 1 &&
-                                        selectedIds.contains(tabId);
+                                        final tabId = state.tabs[index].id;
+                                        final bloc =
+                                            context.read<TabManagerBloc>();
+                                        final selectedIds =
+                                            state.selectedTabIds;
+                                        final keepMultiSelection = _isDesktop &&
+                                            !shiftPressed &&
+                                            selectedIds.length > 1 &&
+                                            selectedIds.contains(tabId);
 
-                                    if (_isDesktop && shiftPressed) {
-                                      // Shift+click is additive:
-                                      // - First Shift selection includes current active tab.
-                                      // - Next Shift selections only add (do not toggle off).
-                                      if (selectedIds.isEmpty) {
-                                        final activeId = state.activeTabId;
-                                        if (activeId != null &&
-                                            activeId != tabId &&
-                                            state.tabs.any(
-                                                (tab) => tab.id == activeId)) {
-                                          bloc.add(
-                                              ToggleTabSelection(activeId));
+                                        if (_isDesktop && shiftPressed) {
+                                          // Shift+click is additive:
+                                          // - First Shift selection includes current active tab.
+                                          // - Next Shift selections only add (do not toggle off).
+                                          if (selectedIds.isEmpty) {
+                                            final activeId = state.activeTabId;
+                                            if (activeId != null &&
+                                                activeId != tabId &&
+                                                state.tabs.any((tab) =>
+                                                    tab.id == activeId)) {
+                                              bloc.add(
+                                                  ToggleTabSelection(activeId));
+                                            }
+                                            bloc.add(ToggleTabSelection(tabId));
+                                          } else if (!selectedIds
+                                              .contains(tabId)) {
+                                            bloc.add(ToggleTabSelection(tabId));
+                                          }
+                                        } else if (_isDesktop &&
+                                            !keepMultiSelection) {
+                                          bloc.add(ClearTabSelection());
                                         }
-                                        bloc.add(ToggleTabSelection(tabId));
-                                      } else if (!selectedIds.contains(tabId)) {
-                                        bloc.add(ToggleTabSelection(tabId));
-                                      }
-                                    } else if (_isDesktop &&
-                                        !keepMultiSelection) {
-                                      bloc.add(ClearTabSelection());
-                                    }
 
-                                    bloc.add(SwitchToTab(tabId));
-                                  },
-                                  draggableTabs: _isDesktop
-                                      ? state.tabs
-                                          .map(
-                                            (t) => DesktopTabDragData(
-                                              tabId: t.id,
-                                              tab: _toWindowTabPayload(t),
-                                            ),
-                                          )
-                                          .toList(growable: false)
-                                      : null,
-                                  selectedTabIds: _isDesktop
-                                      ? state.selectedTabIds
-                                      : const <String>{},
-                                  onTabReorder: _isDesktop
-                                      ? (fromIndex, toIndex) {
+                                        bloc.add(SwitchToTab(tabId));
+                                      },
+                                      draggableTabs: _isDesktop
+                                          ? state.tabs
+                                              .map(
+                                                (t) => DesktopTabDragData(
+                                                  tabId: t.id,
+                                                  tab: _toWindowTabPayload(t),
+                                                ),
+                                              )
+                                              .toList(growable: false)
+                                          : null,
+                                      selectedTabIds: _isDesktop
+                                          ? state.selectedTabIds
+                                          : const <String>{},
+                                      onTabReorder: _isDesktop
+                                          ? (fromIndex, toIndex) {
+                                              context
+                                                  .read<TabManagerBloc>()
+                                                  .add(
+                                                    ReorderTab(
+                                                      fromIndex: fromIndex,
+                                                      toIndex: toIndex,
+                                                    ),
+                                                  );
+                                            }
+                                          : null,
+                                      onNativeTabDragRequested:
+                                          Platform.isWindows
+                                              ? _handleNativeTabDrag
+                                              : null,
+                                      onTabDragStarted:
+                                          (_isDesktop && !Platform.isWindows)
+                                              ? (d) => unawaited(
+                                                    _showWindowDropOverlay(
+                                                        context, d),
+                                                  )
+                                              : null,
+                                      onTabDragEnded: (!Platform.isWindows)
+                                          ? _removeWindowDropOverlay
+                                          : null,
+                                      onTabContextMenu: (index, pos) {
+                                        if (index < state.tabs.length) {
+                                          unawaited(_showDesktopTabContextMenu(
+                                            context: context,
+                                            tab: state.tabs[index],
+                                            globalPosition: pos,
+                                          ));
+                                        }
+                                      },
+                                      // Add tab close callback
+                                      onTabClose: (index) {
+                                        if (index < state.tabs.length) {
                                           context.read<TabManagerBloc>().add(
-                                                ReorderTab(
-                                                  fromIndex: fromIndex,
-                                                  toIndex: toIndex,
-                                                ),
-                                              );
+                                              CloseTab(state.tabs[index].id));
                                         }
-                                      : null,
-                                  onNativeTabDragRequested: Platform.isWindows
-                                      ? _handleNativeTabDrag
-                                      : null,
-                                  onTabDragStarted: (_isDesktop &&
-                                          !Platform.isWindows)
-                                      ? (d) => unawaited(
-                                            _showWindowDropOverlay(context, d),
-                                          )
-                                      : null,
-                                  onTabDragEnded: (!Platform.isWindows)
-                                      ? _removeWindowDropOverlay
-                                      : null,
-                                  onTabContextMenu: (index, pos) {
-                                    if (index < state.tabs.length) {
-                                      unawaited(_showDesktopTabContextMenu(
-                                        context: context,
-                                        tab: state.tabs[index],
-                                        globalPosition: pos,
-                                      ));
-                                    }
-                                  },
-                                  // Add tab close callback
-                                  onTabClose: (index) {
-                                    if (index < state.tabs.length) {
-                                      context
-                                          .read<TabManagerBloc>()
-                                          .add(CloseTab(state.tabs[index].id));
-                                    }
-                                  },
-                                  // Keep the add tab button functionality
-                                  onAddTabPressed: _handleAddNewTab,
-                                  tabs: [
-                                    // Generate modern-style tabs from state.tabs
-                                    ...state.tabs.map((tab) {
-                                      return Tab(
-                                        height: 38,
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 4),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              if (tab.isLoading) ...[
-                                                const SizedBox(
-                                                  width: 14,
-                                                  height: 14,
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                    strokeWidth: 2,
+                                      },
+                                      // Keep the add tab button functionality
+                                      onAddTabPressed: _handleAddNewTab,
+                                      tabs: [
+                                        // Generate modern-style tabs from state.tabs
+                                        ...state.tabs.map((tab) {
+                                          return Tab(
+                                            height: 38,
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 4),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  if (tab.isLoading) ...[
+                                                    const SizedBox(
+                                                      width: 14,
+                                                      height: 14,
+                                                      child:
+                                                          CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 6),
+                                                  ],
+                                                  Icon(
+                                                    tab.isPinned
+                                                        ? remix
+                                                            .Remix.pushpin_fill
+                                                        : tab.icon ??
+                                                            remix.Remix
+                                                                .folder_3_line,
+                                                    size: 16,
                                                   ),
-                                                ),
-                                                const SizedBox(width: 6),
-                                              ],
-                                              Icon(
-                                                tab.isPinned
-                                                    ? remix.Remix.pushpin_fill
-                                                    : tab.icon ??
-                                                        remix.Remix
-                                                            .folder_3_line,
-                                                size: 16,
+                                                  const SizedBox(width: 8),
+                                                  Flexible(
+                                                    child: Text(
+                                                      tab.name,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
-                                              const SizedBox(width: 8),
-                                              Flexible(
-                                                child: Text(
-                                                  tab.name,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      );
-                                    }).toList(),
-                                  ],
-                                ),
-                              ),
-                              actions: [
-                                // Modern menu button
-                                Padding(
-                                  padding: const EdgeInsets.only(right: 8.0),
-                                  child: IconButton(
-                                    icon: Icon(
-                                      remix.Remix.more_2_line,
-                                      color: isDarkMode
-                                          ? Colors.white.withValues(alpha: 0.8)
-                                          : theme.colorScheme.primary,
-                                      size: 22,
+                                            ),
+                                          );
+                                        }).toList(),
+                                      ],
                                     ),
-                                    style: IconButton.styleFrom(
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      backgroundColor: isDarkMode
-                                          ? Colors.white.withValues(alpha: 0.03)
-                                          : theme.colorScheme.primary
-                                              .withValues(alpha: 0.05),
-                                    ),
-                                    onPressed: () => _showTabOptions(context),
                                   ),
                                 ),
-                              ],
-                            )
-                          : null, // No AppBar for mobile interface
-                      drawer: !_isDrawerPinned
-                          ? CBDrawer(
-                              context,
-                              isPinned: _isDrawerPinned,
-                              onPinStateChanged: (isPinned) {
-                                _toggleDrawerPin();
-                              },
-                            )
-                          : null,
-                      body: Row(
-                        children: [
-                          // Pinned drawer (if enabled)
-                          if (_isDrawerPinned)
-                            SizedBox(
-                              width: 280,
-                              child: CBDrawer(
+                                actions: [
+                                  // Modern menu button
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 8.0),
+                                    child: IconButton(
+                                      icon: Icon(
+                                        remix.Remix.more_2_line,
+                                        color: isDarkMode
+                                            ? Colors.white
+                                                .withValues(alpha: 0.8)
+                                            : theme.colorScheme.primary,
+                                        size: 22,
+                                      ),
+                                      style: IconButton.styleFrom(
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        backgroundColor: isDarkMode
+                                            ? Colors.white
+                                                .withValues(alpha: 0.03)
+                                            : theme.colorScheme.primary
+                                                .withValues(alpha: 0.05),
+                                      ),
+                                      onPressed: () => _showTabOptions(context),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : null, // No AppBar for mobile interface
+                        drawer: !_isDrawerPinned
+                            ? CBDrawer(
                                 context,
                                 isPinned: _isDrawerPinned,
                                 onPinStateChanged: (isPinned) {
                                   _toggleDrawerPin();
                                 },
-                              ),
-                            ),
-                          // Main content area with subtle container styling
-                          Expanded(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: theme.scaffoldBackgroundColor,
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(16),
-                                  bottomLeft: Radius.circular(16),
+                              )
+                            : null,
+                        body: Row(
+                          children: [
+                            // Pinned drawer (if enabled)
+                            if (_isDrawerPinned)
+                              SizedBox(
+                                width: 280,
+                                child: CBDrawer(
+                                  context,
+                                  isPinned: _isDrawerPinned,
+                                  onPinStateChanged: (isPinned) {
+                                    _toggleDrawerPin();
+                                  },
                                 ),
                               ),
-                              child: ClipRRect(
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(16),
-                                  bottomLeft: Radius.circular(16),
+                            // Main content area with subtle container styling
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: theme.scaffoldBackgroundColor,
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(16),
+                                    bottomLeft: Radius.circular(16),
+                                  ),
                                 ),
-                                child: _buildContent(context, state, isTablet),
+                                child: ClipRRect(
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(16),
+                                    bottomLeft: Radius.circular(16),
+                                  ),
+                                  child:
+                                      _buildContent(context, state, isTablet),
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      floatingActionButton: state.tabs.isEmpty
-                          ? FloatingActionButton(
-                              heroTag:
-                                  null, // Disable hero animation to avoid conflicts
-                              onPressed: _handleAddNewTab,
-                              tooltip: context.tr.newFolder,
-                              elevation: 2,
-                              backgroundColor: theme.colorScheme.primary,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: const Icon(
-                                remix.Remix.add_line,
-                                size: 24,
-                              ),
-                            )
-                          : null,
-                    ), // Scaffold
+                          ],
+                        ),
+                        floatingActionButton: state.tabs.isEmpty
+                            ? FloatingActionButton(
+                                heroTag:
+                                    null, // Disable hero animation to avoid conflicts
+                                onPressed: _handleAddNewTab,
+                                tooltip: context.tr.newFolder,
+                                elevation: 2,
+                                backgroundColor: theme.colorScheme.primary,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: const Icon(
+                                  remix.Remix.add_line,
+                                  size: 24,
+                                ),
+                              )
+                            : null,
+                      ), // Scaffold
+                    ), // Listener
                   ); // PopScope
                 }, // builder function
               ), // Builder

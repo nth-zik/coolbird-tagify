@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 
-# CB File Manager - Interactive Build Script
+# CoolBird Tagify - Interactive Build Script
 # Cross-platform build system with CLI menu
 # Works on: Windows (Git Bash/WSL), Linux, macOS
 
 set -e
 
 # Configuration
-PROJECT_DIR="cb_file_manager"
+SCRIPT_DIR="$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+PROJECT_DIR="$REPO_DIR/cb_file_manager"
 BUILD_DIR="$PROJECT_DIR/build"
 PUBSPEC="$PROJECT_DIR/pubspec.yaml"
 
@@ -22,7 +24,7 @@ NC='\033[0m' # No Color
 # Print functions
 print_header() {
     echo -e "${CYAN}╔════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║     CB File Manager - Build System            ║${NC}"
+    echo -e "${CYAN}║     CoolBird Tagify - Build System            ║${NC}"
     echo -e "${CYAN}╚════════════════════════════════════════════════╝${NC}"
 }
 
@@ -163,8 +165,8 @@ install_deps() {
 build_windows_portable() {
     print_info "Building Windows Portable..."
     
-    # Don't auto-clean - causes first-build failures
-    # User can manually clean if needed (option 10 or 11)
+    # Force clean to ensure reproducible Windows builds.
+    clean_build
     install_deps
     
     cd "$PROJECT_DIR"
@@ -216,24 +218,41 @@ build_windows_portable() {
     
     if [ $? -eq 0 ]; then
         print_info "Creating ZIP package..."
-        mkdir -p "$BUILD_DIR/windows/portable"
+        local PORTABLE_DIR="$BUILD_DIR/windows/portable"
+        mkdir -p "$PORTABLE_DIR"
         
         local RELEASE_DIR="$BUILD_DIR/windows/x64/runner/Release"
-        local OUTPUT_ZIP="$BUILD_DIR/windows/portable/CBFileManager-Portable.zip"
-        
-        cd "$RELEASE_DIR"
+        local OUTPUT_ZIP="$PORTABLE_DIR/CoolBirdTagify-Portable.zip"
+
+        if [ ! -d "$RELEASE_DIR" ]; then
+            print_error "Release directory not found: $RELEASE_DIR"
+            cd ..
+            return 1
+        fi
+
         if command -v zip &> /dev/null; then
-            zip -r "../../../../portable/CBFileManager-Portable.zip" ./*
+            (
+                cd "$RELEASE_DIR"
+                zip -r "$OUTPUT_ZIP" ./*
+            )
         elif command -v 7z &> /dev/null; then
-            7z a -tzip "../../../../portable/CBFileManager-Portable.zip" ./*
+            (
+                cd "$RELEASE_DIR"
+                7z a -tzip "$OUTPUT_ZIP" ./*
+            )
         elif command -v powershell.exe &> /dev/null; then
-            powershell.exe -Command "Compress-Archive -Path '$PWD/*' -DestinationPath '../../../../portable/CBFileManager-Portable.zip' -Force"
+            local RELEASE_DIR_WIN="$RELEASE_DIR"
+            local OUTPUT_ZIP_WIN="$OUTPUT_ZIP"
+            if command -v cygpath &> /dev/null; then
+                RELEASE_DIR_WIN=$(cygpath -w "$RELEASE_DIR")
+                OUTPUT_ZIP_WIN=$(cygpath -w "$OUTPUT_ZIP")
+            fi
+            powershell.exe -NoProfile -Command "Compress-Archive -Path '$RELEASE_DIR_WIN\\*' -DestinationPath '$OUTPUT_ZIP_WIN' -Force"
         else
             print_warning "No ZIP tool found. Files available at: $RELEASE_DIR"
-            cd ../../../../..
+            cd ..
             return 0
         fi
-        cd ../../../../..
         
         print_success "Windows Portable build completed!"
         print_info "Output: $OUTPUT_ZIP"
@@ -283,7 +302,7 @@ build_windows_exe() {
     
     if [ $? -eq 0 ]; then
         print_success "Windows EXE Installer created!"
-        print_info "Output: $BUILD_DIR/windows/installer/CBFileManager-Setup.exe"
+        print_info "Output: $BUILD_DIR/windows/installer/CoolBirdTagify-Setup.exe"
     else
         print_error "EXE installer creation failed!"
         return 1
@@ -337,7 +356,7 @@ build_windows_msi() {
     
     print_info "Creating MSI installer..."
     local BUILD_PATH="$PROJECT_DIR/build/windows/x64/runner/Release"
-    local INSTALLER_DIR="installer/windows"
+    local INSTALLER_DIR="$REPO_DIR/installer/windows"
     local OUTPUT_DIR="$PROJECT_DIR/build/windows/installer"
     
     mkdir -p "$OUTPUT_DIR"
@@ -358,10 +377,10 @@ build_windows_msi() {
         print_info "Using WiX v3 (candle/light)..."
         if [ "$WIX_CMD" = "candle" ]; then
             candle.exe -dSourceDir="$BUILD_PATH_WIN" -out "$OUTPUT_DIR_WIN\\installer.wixobj" "$INSTALLER_DIR_WIN\\installer.wxs"
-            light.exe -out "$OUTPUT_DIR_WIN\\CBFileManager-Setup.msi" "$OUTPUT_DIR_WIN\\installer.wixobj" -ext WixUIExtension -sval
+            light.exe -out "$OUTPUT_DIR_WIN\\CoolBirdTagify-Setup.msi" "$OUTPUT_DIR_WIN\\installer.wixobj" -ext WixUIExtension -sval
         else
             "$WIX_CMD/candle.exe" -dSourceDir="$BUILD_PATH_WIN" -out "$OUTPUT_DIR_WIN\\installer.wixobj" "$INSTALLER_DIR_WIN\\installer.wxs"
-            "$WIX_CMD/light.exe" -out "$OUTPUT_DIR_WIN\\CBFileManager-Setup.msi" "$OUTPUT_DIR_WIN\\installer.wixobj" -ext WixUIExtension -sval
+            "$WIX_CMD/light.exe" -out "$OUTPUT_DIR_WIN\\CoolBirdTagify-Setup.msi" "$OUTPUT_DIR_WIN\\installer.wixobj" -ext WixUIExtension -sval
         fi
     else
         # WiX v4+: Use wix.exe build command
@@ -369,12 +388,13 @@ build_windows_msi() {
         # -d defines preprocessor variables (like -dSourceDir)
         # -ext adds extensions (WixUIExtension for UI dialogs)
         print_info "Using WiX $WIX_VERSION (wix build)..."
-        "$WIX_CMD" build "$INSTALLER_DIR_WIN\\installer.wxs" -d "SourceDir=$BUILD_PATH_WIN" -ext WixToolset.UI.wixext -o "$OUTPUT_DIR_WIN\\CBFileManager-Setup.msi"
+        "$WIX_CMD" eula accept wix7 >/dev/null 2>&1 || true
+        "$WIX_CMD" build "$INSTALLER_DIR_WIN\\installer.wxs" -d "SourceDir=$BUILD_PATH_WIN" -ext WixToolset.UI.wixext -o "$OUTPUT_DIR_WIN\\CoolBirdTagify-Setup.msi"
     fi
     
     if [ $? -eq 0 ]; then
         print_success "Windows MSI Installer created!"
-        print_info "Output: $OUTPUT_DIR/CBFileManager-Setup.msi"
+        print_info "Output: $OUTPUT_DIR/CoolBirdTagify-Setup.msi"
     else
         print_error "MSI installer creation failed!"
         return 1
@@ -437,11 +457,11 @@ build_linux() {
         print_info "Creating tar.gz package..."
         mkdir -p "$BUILD_DIR/linux/portable"
         cd "$BUILD_DIR/linux/x64/release"
-        tar -czf "../portable/CBFileManager-Linux.tar.gz" bundle/
+        tar -czf "../portable/CoolBirdTagify-Linux.tar.gz" bundle/
         cd ../../../../..
         
         print_success "Linux build completed!"
-        print_info "Output: $BUILD_DIR/linux/portable/CBFileManager-Linux.tar.gz"
+        print_info "Output: $BUILD_DIR/linux/portable/CoolBirdTagify-Linux.tar.gz"
     else
         print_error "Linux build failed!"
         cd ..
@@ -469,11 +489,11 @@ build_macos() {
         print_info "Creating ZIP package..."
         mkdir -p "$BUILD_DIR/macos/portable"
         cd "$BUILD_DIR/macos/Build/Products/Release"
-        zip -r "../../../portable/CBFileManager-macOS.zip" cb_file_manager.app
+        zip -r "../../../portable/CoolBirdTagify-macOS.zip" coolbird_tagify.app
         cd ../../../../../..
         
         print_success "macOS build completed!"
-        print_info "Output: $BUILD_DIR/macos/portable/CBFileManager-macOS.zip"
+        print_info "Output: $BUILD_DIR/macos/portable/CoolBirdTagify-macOS.zip"
     else
         print_error "macOS build failed!"
         cd ..

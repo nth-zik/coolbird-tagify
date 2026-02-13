@@ -53,8 +53,27 @@ target_link_libraries(${BINARY_NAME} PRIVATE "comctl32.lib")
 target_link_libraries(${BINARY_NAME} PRIVATE "ole32.lib")
 target_link_libraries(${BINARY_NAME} PRIVATE "shell32.lib")
 
+# Copy smb_native runtime next to the app executable.
+add_custom_command(TARGET ${BINARY_NAME} POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    $<TARGET_FILE:smb_native>
+    $<TARGET_FILE_DIR:${BINARY_NAME}>
+  COMMENT "Copying smb_native DLL to output directory"
+)
+
 # Add FFmpeg libraries
-set(FFMPEG_DIR "${CMAKE_SOURCE_DIR}/ffmpeg")
+if(DEFINED COOLBIRD_FFMPEG_DIR AND EXISTS "${COOLBIRD_FFMPEG_DIR}")
+  set(FFMPEG_DIR "${COOLBIRD_FFMPEG_DIR}")
+elseif(DEFINED FFMPEG_DIR AND EXISTS "${FFMPEG_DIR}")
+  set(FFMPEG_DIR "${FFMPEG_DIR}")
+else()
+  set(FFMPEG_DIR "${CMAKE_SOURCE_DIR}/ffmpeg")
+endif()
+
+if(NOT EXISTS "${FFMPEG_DIR}/include/libavcodec/avcodec.h" OR NOT EXISTS "${FFMPEG_DIR}/lib/avcodec.lib")
+  message(FATAL_ERROR "FFmpeg files are missing in ${FFMPEG_DIR}. Set FFMPEG_DIR or enable COOLBIRD_FFMPEG_AUTO_DOWNLOAD.")
+endif()
+
 target_include_directories(${BINARY_NAME} SYSTEM PRIVATE "${FFMPEG_DIR}/include")
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
 target_link_directories(${BINARY_NAME} PRIVATE "${FFMPEG_DIR}/lib")
@@ -67,13 +86,24 @@ set_source_files_properties(
 )
 
 # Copy FFmpeg DLLs to output directory
-set(FFMPEG_DLLS
-  "${FFMPEG_DIR}/bin/avcodec-62.dll"
-  "${FFMPEG_DIR}/bin/avformat-62.dll"
-  "${FFMPEG_DIR}/bin/avutil-60.dll"
-  "${FFMPEG_DIR}/bin/swscale-9.dll"
-  "${FFMPEG_DIR}/bin/swresample-6.dll"
+set(_FFMPEG_DLL_PATTERNS
+  "${FFMPEG_DIR}/bin/avcodec-*.dll"
+  "${FFMPEG_DIR}/bin/avformat-*.dll"
+  "${FFMPEG_DIR}/bin/avutil-*.dll"
+  "${FFMPEG_DIR}/bin/swscale-*.dll"
+  "${FFMPEG_DIR}/bin/swresample-*.dll"
 )
+set(FFMPEG_DLLS)
+foreach(_dll_pattern IN LISTS _FFMPEG_DLL_PATTERNS)
+  file(GLOB _dll_matches "${_dll_pattern}")
+  list(APPEND FFMPEG_DLLS ${_dll_matches})
+endforeach()
+list(REMOVE_DUPLICATES FFMPEG_DLLS)
+
+if(NOT FFMPEG_DLLS)
+  message(FATAL_ERROR "No FFmpeg runtime DLLs found in ${FFMPEG_DIR}/bin.")
+endif()
+
 add_custom_command(TARGET ${BINARY_NAME} POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
     ${FFMPEG_DLLS}

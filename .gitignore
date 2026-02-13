@@ -4,7 +4,12 @@
 .bmad-*/
 .claude
 .trae
-.github
+# Keep .github/workflows but ignore other .github files
+.github/*
+!.github/workflows/
+!.github/ISSUE_TEMPLATE/
+!.github/pull_request_template.md
 .cursor
 .idea
 .kiro
+_bmad

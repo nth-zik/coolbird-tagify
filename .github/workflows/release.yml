@@ -78,16 +78,39 @@ jobs:
           echo "" >> release_notes.md
           echo "Choose the appropriate package for your platform:" >> release_notes.md
           echo "" >> release_notes.md
-          echo "- **Windows**: \`CBFileManager-$VERSION-windows.zip\` or \`CBFileManager-Setup-$VERSION.msi\`" >> release_notes.md
-          echo "- **Android**: \`CBFileManager-$VERSION.apk\` or \`CBFileManager-$VERSION.aab\`" >> release_notes.md
-          echo "- **Linux**: \`CBFileManager-$VERSION-linux.tar.gz\`" >> release_notes.md
-          echo "- **macOS**: \`CBFileManager-$VERSION-macos.zip\`" >> release_notes.md
+          echo "### Windows" >> release_notes.md
+          echo "- **Portable**: \`CBFileManager-$VERSION-windows-portable.zip\` - Extract and run, no installation needed" >> release_notes.md
+          echo "- **EXE Installer**: \`CBFileManager-Setup-$VERSION.exe\` - Recommended for most users" >> release_notes.md
+          echo "- **MSI Installer**: \`CBFileManager-Setup-$VERSION.msi\` - For enterprise deployment" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### Android" >> release_notes.md
+          echo "- **APK**: \`CBFileManager-$VERSION-arm64-v8a.apk\` (64-bit)" >> release_notes.md
+          echo "- **APK**: \`CBFileManager-$VERSION-armeabi-v7a.apk\` (32-bit)" >> release_notes.md
+          echo "- **AAB**: \`CBFileManager-$VERSION.aab\` (For Google Play)" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### Linux" >> release_notes.md
+          echo "- \`CBFileManager-$VERSION-linux.tar.gz\`" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### macOS" >> release_notes.md
+          echo "- \`CBFileManager-$VERSION-macos.zip\`" >> release_notes.md
           echo "" >> release_notes.md
           echo "## 🚀 Installation" >> release_notes.md
           echo "" >> release_notes.md
           echo "### Windows" >> release_notes.md
-          echo "- **MSI Installer**: Download and run the \`.msi\` file" >> release_notes.md
-          echo "- **Portable**: Extract the \`.zip\` file and run \`cb_file_manager.exe\`" >> release_notes.md
+          echo "**Portable (No Installation):**" >> release_notes.md
+          echo "1. Download \`CBFileManager-$VERSION-windows-portable.zip\`" >> release_notes.md
+          echo "2. Extract to any folder" >> release_notes.md
+          echo "3. Run \`cb_file_manager.exe\`" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "**EXE Installer (Recommended):**" >> release_notes.md
+          echo "1. Download \`CBFileManager-Setup-$VERSION.exe\`" >> release_notes.md
+          echo "2. Run the installer" >> release_notes.md
+          echo "3. Follow the setup wizard" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "**MSI Installer (Enterprise):**" >> release_notes.md
+          echo "1. Download \`CBFileManager-Setup-$VERSION.msi\`" >> release_notes.md
+          echo "2. Run the installer" >> release_notes.md
+          echo "3. Supports Group Policy deployment" >> release_notes.md
           echo "" >> release_notes.md
           echo "### Android" >> release_notes.md
           echo "- Download and install the \`.apk\` file" >> release_notes.md
@@ -143,14 +166,75 @@ jobs:
         run: |
           $VERSION = "${{ needs.generate-release-notes.outputs.version }}"
           $BUILD_DIR = "${{ env.PROJECT_DIR }}\build\windows\x64\runner\Release"
-          $OUTPUT_NAME = "CBFileManager-$VERSION-windows.zip"
+          $OUTPUT_DIR = "${{ env.PROJECT_DIR }}\build\windows\portable"
+          
+          New-Item -ItemType Directory -Force -Path $OUTPUT_DIR
+          $OUTPUT_NAME = "$OUTPUT_DIR\CBFileManager-$VERSION-windows-portable.zip"
+          
           Compress-Archive -Path "$BUILD_DIR\*" -DestinationPath $OUTPUT_NAME
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: CBFileManager-*.zip
+          path: ${{ env.PROJECT_DIR }}/build/windows/portable/*.zip
+
+  # Build Windows EXE Installer
+  build-windows-exe:
+    runs-on: windows-latest
+    needs: generate-release-notes
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: Install Inno Setup
+        run: |
+          choco install innosetup -y
+          echo "C:\Program Files (x86)\Inno Setup 6" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Install dependencies
+        run: |
+          cd ${{ env.PROJECT_DIR }}
+          flutter pub get
+
+      - name: Build Windows
+        run: |
+          cd ${{ env.PROJECT_DIR }}
+          flutter build windows --release
+
+      - name: Generate GUID for Inno Setup
+        run: |
+          $issPath = "installer\windows\installer.iss"
+          $content = Get-Content $issPath -Raw
+          if ($content -match "YOUR-GUID-HERE-REPLACE-ME") {
+            $newGuid = [guid]::NewGuid().ToString().ToUpper()
+            $content = $content -replace "YOUR-GUID-HERE-REPLACE-ME", $newGuid
+            Set-Content -Path $issPath -Value $content
+            Write-Host "Generated GUID: $newGuid"
+          }
+
+      - name: Build EXE Installer
+        run: |
+          $VERSION = "${{ needs.generate-release-notes.outputs.version }}"
+          iscc installer\windows\installer.iss
+
+      - name: Rename EXE
+        run: |
+          $VERSION = "${{ needs.generate-release-notes.outputs.version }}"
+          $OUTPUT_DIR = "${{ env.PROJECT_DIR }}\build\windows\installer"
+          Move-Item "$OUTPUT_DIR\CBFileManager-Setup.exe" "$OUTPUT_DIR\CBFileManager-Setup-$VERSION.exe"
+
+      - name: Upload EXE artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe
+          path: ${{ env.PROJECT_DIR }}/build/windows/installer/*.exe
 
   # Build Windows MSI
   build-windows-msi:
@@ -386,6 +470,7 @@ jobs:
     needs: 
       - generate-release-notes
       - build-windows
+      - build-windows-exe
       - build-windows-msi
       - build-android-apk
       - build-android-aab
@@ -412,6 +497,7 @@ jobs:
           prerelease: false
           files: |
             artifacts/windows-build/*.zip
+            artifacts/windows-exe/*.exe
             artifacts/windows-msi/*.msi
             artifacts/android-apk/*.apk
             artifacts/android-aab/*.aab

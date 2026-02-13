@@ -205,7 +205,7 @@ class ExternalAppHelper {
       if (Platform.isAndroid && FileTypeUtils.isVideoFile(filePath)) {
         apps.add(AppInfo(
           packageName: '__cb_video_player__',
-          appName: 'CoolBird Video Player',
+          appName: 'CoolBird Tagify Video Player',
           icon: const Icon(Icons.play_circle_outline, size: 36),
         ));
       }
@@ -240,11 +240,11 @@ class ExternalAppHelper {
       final List<AppInfo> apps = [];
       final extension = filePath.split('.').last.toLowerCase();
 
-      // On Windows, offer CoolBird Video Player as an option for video files
+      // On Windows, offer CoolBird Tagify Video Player as an option for video files
       if (Platform.isWindows && FileTypeUtils.isVideoFile(filePath)) {
         apps.add(AppInfo(
           packageName: '__cb_video_player__',
-          appName: 'CoolBird Video Player',
+          appName: 'CoolBird Tagify Video Player',
           icon: const Icon(Icons.play_circle_outline, size: 36),
         ));
       }
