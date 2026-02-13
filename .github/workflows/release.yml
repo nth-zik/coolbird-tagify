@@ -1,0 +1,421 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Trigger on version tags like v1.0.0
+  workflow_dispatch:  # Allow manual trigger
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+env:
+  FLUTTER_VERSION: '3.24.0'
+  PROJECT_DIR: 'cb_file_manager'
+
+jobs:
+  # Generate release notes from commits
+  generate-release-notes:
+    runs-on: ubuntu-latest
+    outputs:
+      release_notes: ${{ steps.notes.outputs.notes }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for changelog
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          
+          # Get previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          echo "# 🎉 CB File Manager $VERSION" > release_notes.md
+          echo "" >> release_notes.md
+          echo "## 📝 What's Changed" >> release_notes.md
+          echo "" >> release_notes.md
+          
+          if [ -z "$PREV_TAG" ]; then
+            echo "Initial release" >> release_notes.md
+          else
+            # Group commits by type
+            echo "### ✨ Features" >> release_notes.md
+            git log $PREV_TAG..HEAD --pretty=format:"- %s (%h)" --grep="^feat" >> release_notes.md || echo "- No new features" >> release_notes.md
+            echo "" >> release_notes.md
+            echo "" >> release_notes.md
+            
+            echo "### 🐛 Bug Fixes" >> release_notes.md
+            git log $PREV_TAG..HEAD --pretty=format:"- %s (%h)" --grep="^fix" >> release_notes.md || echo "- No bug fixes" >> release_notes.md
+            echo "" >> release_notes.md
+            echo "" >> release_notes.md
+            
+            echo "### 📚 Documentation" >> release_notes.md
+            git log $PREV_TAG..HEAD --pretty=format:"- %s (%h)" --grep="^docs" >> release_notes.md || echo "- No documentation changes" >> release_notes.md
+            echo "" >> release_notes.md
+            echo "" >> release_notes.md
+            
+            echo "### 🔧 Other Changes" >> release_notes.md
+            git log $PREV_TAG..HEAD --pretty=format:"- %s (%h)" --invert-grep --grep="^feat" --grep="^fix" --grep="^docs" >> release_notes.md || echo "- No other changes" >> release_notes.md
+          fi
+          
+          echo "" >> release_notes.md
+          echo "## 📦 Downloads" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "Choose the appropriate package for your platform:" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "- **Windows**: \`CBFileManager-$VERSION-windows.zip\` or \`CBFileManager-Setup-$VERSION.msi\`" >> release_notes.md
+          echo "- **Android**: \`CBFileManager-$VERSION.apk\` or \`CBFileManager-$VERSION.aab\`" >> release_notes.md
+          echo "- **Linux**: \`CBFileManager-$VERSION-linux.tar.gz\`" >> release_notes.md
+          echo "- **macOS**: \`CBFileManager-$VERSION-macos.zip\`" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "## 🚀 Installation" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### Windows" >> release_notes.md
+          echo "- **MSI Installer**: Download and run the \`.msi\` file" >> release_notes.md
+          echo "- **Portable**: Extract the \`.zip\` file and run \`cb_file_manager.exe\`" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### Android" >> release_notes.md
+          echo "- Download and install the \`.apk\` file" >> release_notes.md
+          echo "- Enable \"Install from Unknown Sources\" if needed" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### Linux" >> release_notes.md
+          echo "- Extract the \`.tar.gz\` file" >> release_notes.md
+          echo "- Run \`./cb_file_manager\`" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### macOS" >> release_notes.md
+          echo "- Extract the \`.zip\` file" >> release_notes.md
+          echo "- Move to Applications folder" >> release_notes.md
+          echo "- Run the app (may need to allow in Security settings)" >> release_notes.md
+          
+          # Save to output
+          {
+            echo 'notes<<EOF'
+            cat release_notes.md
+            echo EOF
+          } >> $GITHUB_OUTPUT
+
+      - name: Upload release notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release_notes.md
+
+  # Build Windows
+  build-windows:
+    runs-on: windows-latest
+    needs: generate-release-notes
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: |
+          cd ${{ env.PROJECT_DIR }}
+          flutter pub get
+
+      - name: Build Windows
+        run: |
+          cd ${{ env.PROJECT_DIR }}
+          flutter build windows --release
+
+      - name: Package Windows build
+        run: |
+          $VERSION = "${{ needs.generate-release-notes.outputs.version }}"
+          $BUILD_DIR = "${{ env.PROJECT_DIR }}\build\windows\x64\runner\Release"
+          $OUTPUT_NAME = "CBFileManager-$VERSION-windows.zip"
+          Compress-Archive -Path "$BUILD_DIR\*" -DestinationPath $OUTPUT_NAME
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: CBFileManager-*.zip
+
+  # Build Windows MSI
+  build-windows-msi:
+    runs-on: windows-latest
+    needs: generate-release-notes
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: Install WiX Toolset
+        run: |
+          choco install wixtoolset -y
+          echo "C:\Program Files (x86)\WiX Toolset v3.11\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Install dependencies
+        run: |
+          cd ${{ env.PROJECT_DIR }}
+          flutter pub get
+
+      - name: Build Windows
+        run: |
+          cd ${{ env.PROJECT_DIR }}
+          flutter build windows --release
+
+      - name: Generate GUID for WiX
+        run: |
+          $wxsPath = "installer\windows\installer.wxs"
+          $content = Get-Content $wxsPath -Raw
+          if ($content -match "YOUR-GUID-HERE-REPLACE-ME") {
+            $newGuid = [guid]::NewGuid().ToString().ToUpper()
+            $content = $content -replace "YOUR-GUID-HERE-REPLACE-ME", $newGuid
+            Set-Content -Path $wxsPath -Value $content
+            Write-Host "Generated GUID: $newGuid"
+          }
+
+      - name: Build MSI
+        run: |
+          $VERSION = "${{ needs.generate-release-notes.outputs.version }}"
+          $BUILD_DIR = "${{ env.PROJECT_DIR }}\build\windows\x64\runner\Release"
+          $INSTALLER_DIR = "installer\windows"
+          $OUTPUT_DIR = "${{ env.PROJECT_DIR }}\build\windows\installer"
+          
+          New-Item -ItemType Directory -Force -Path $OUTPUT_DIR
+          
+          candle.exe -dSourceDir="$BUILD_DIR" -out "$OUTPUT_DIR\installer.wixobj" "$INSTALLER_DIR\installer.wxs"
+          light.exe -out "$OUTPUT_DIR\CBFileManager-Setup-$VERSION.msi" "$OUTPUT_DIR\installer.wixobj" -ext WixUIExtension -sval
+
+      - name: Upload MSI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-msi
+          path: ${{ env.PROJECT_DIR }}/build/windows/installer/*.msi
+
+  # Build Android APK
+  build-android-apk:
+    runs-on: ubuntu-latest
+    needs: generate-release-notes
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: |
+          cd ${{ env.PROJECT_DIR }}
+          flutter pub get
+
+      - name: Build APK
+        run: |
+          cd ${{ env.PROJECT_DIR }}
+          flutter build apk --release --split-per-abi
+
+      - name: Rename APK files
+        run: |
+          VERSION="${{ needs.generate-release-notes.outputs.version }}"
+          cd ${{ env.PROJECT_DIR }}/build/app/outputs/flutter-apk
+          
+          for file in *.apk; do
+            if [[ $file == *"arm64-v8a"* ]]; then
+              mv "$file" "CBFileManager-$VERSION-arm64-v8a.apk"
+            elif [[ $file == *"armeabi-v7a"* ]]; then
+              mv "$file" "CBFileManager-$VERSION-armeabi-v7a.apk"
+            elif [[ $file == *"x86_64"* ]]; then
+              mv "$file" "CBFileManager-$VERSION-x86_64.apk"
+            fi
+          done
+
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: ${{ env.PROJECT_DIR }}/build/app/outputs/flutter-apk/*.apk
+
+  # Build Android AAB
+  build-android-aab:
+    runs-on: ubuntu-latest
+    needs: generate-release-notes
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: |
+          cd ${{ env.PROJECT_DIR }}
+          flutter pub get
+
+      - name: Build AAB
+        run: |
+          cd ${{ env.PROJECT_DIR }}
+          flutter build appbundle --release
+
+      - name: Rename AAB file
+        run: |
+          VERSION="${{ needs.generate-release-notes.outputs.version }}"
+          cd ${{ env.PROJECT_DIR }}/build/app/outputs/bundle/release
+          mv app-release.aab "CBFileManager-$VERSION.aab"
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-aab
+          path: ${{ env.PROJECT_DIR }}/build/app/outputs/bundle/release/*.aab
+
+  # Build Linux
+  build-linux:
+    runs-on: ubuntu-latest
+    needs: generate-release-notes
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: |
+          cd ${{ env.PROJECT_DIR }}
+          flutter pub get
+
+      - name: Build Linux
+        run: |
+          cd ${{ env.PROJECT_DIR }}
+          flutter build linux --release
+
+      - name: Package Linux build
+        run: |
+          VERSION="${{ needs.generate-release-notes.outputs.version }}"
+          cd ${{ env.PROJECT_DIR }}/build/linux/x64/release
+          tar -czf "../../../../../CBFileManager-$VERSION-linux.tar.gz" bundle/
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: CBFileManager-*.tar.gz
+
+  # Build macOS
+  build-macos:
+    runs-on: macos-latest
+    needs: generate-release-notes
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: |
+          cd ${{ env.PROJECT_DIR }}
+          flutter pub get
+
+      - name: Build macOS
+        run: |
+          cd ${{ env.PROJECT_DIR }}
+          flutter build macos --release
+
+      - name: Package macOS build
+        run: |
+          VERSION="${{ needs.generate-release-notes.outputs.version }}"
+          cd ${{ env.PROJECT_DIR }}/build/macos/Build/Products/Release
+          zip -r "../../../../../CBFileManager-$VERSION-macos.zip" cb_file_manager.app
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build
+          path: CBFileManager-*.zip
+
+  # Create GitHub Release
+  create-release:
+    runs-on: ubuntu-latest
+    needs: 
+      - generate-release-notes
+      - build-windows
+      - build-windows-msi
+      - build-android-apk
+      - build-android-aab
+      - build-linux
+      - build-macos
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.generate-release-notes.outputs.version }}
+          name: CB File Manager ${{ needs.generate-release-notes.outputs.version }}
+          body: ${{ needs.generate-release-notes.outputs.release_notes }}
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/windows-build/*.zip
+            artifacts/windows-msi/*.msi
+            artifacts/android-apk/*.apk
+            artifacts/android-aab/*.aab
+            artifacts/linux-build/*.tar.gz
+            artifacts/macos-build/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

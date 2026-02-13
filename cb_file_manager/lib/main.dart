@@ -37,6 +37,8 @@ import 'package:cb_file_manager/services/album_service.dart'; // Import AlbumSer
 import 'package:cb_file_manager/ui/screens/media_gallery/video_player_full_screen.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 import 'package:cb_file_manager/helpers/files/external_app_helper.dart';
+import 'services/windowing/window_startup_payload.dart';
+import 'services/windowing/windows_native_tab_drag_drop_service.dart';
 // Permission explainer is pushed from TabMainScreen; no direct import needed here
 
 // Global access to test the video thumbnail screen (for development)
@@ -107,6 +109,16 @@ void main(List<String> args) async {
     // Ensure Flutter is initialized before using platform plugins
     WidgetsFlutterBinding.ensureInitialized();
     _configureDebugPrintFiltering();
+    final env = Platform.environment;
+    final isDesktopPlatform =
+        Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+    final isSecondaryWindow =
+        env[WindowStartupPayload.envSecondaryWindowKey] == '1';
+    final startHidden = env[WindowStartupPayload.envStartHiddenKey] == '1';
+    final windowRole =
+        (env[WindowStartupPayload.envWindowRoleKey] ?? 'normal').trim();
+    final isPip = env['CB_PIP_MODE'] == '1';
+    final List<Future<void> Function()> deferredSecondaryInitializers = [];
 
     // Native event loop init removed to avoid build issues when package
     // artifacts are not present locally.
@@ -115,26 +127,76 @@ void main(List<String> args) async {
     // We avoid importing it directly to prevent build failures when
     // the package isn't available in the environment.
 
-    // If launched in PiP window mode (desktop), boot a minimal PiP app.
-    try {
-      final env = Platform.environment;
-      final isPip = env['CB_PIP_MODE'] == '1';
-      if (isPip &&
-          (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+    if (isDesktopPlatform) {
+      try {
         await windowManager.ensureInitialized();
-        MediaKit.ensureInitialized();
+      } catch (_) {}
+
+      if (!isPip) {
+        // Show desktop windows as soon as possible.
+        const windowOptions = WindowOptions(
+          center: true,
+          backgroundColor: Colors.transparent,
+          titleBarStyle: TitleBarStyle.hidden,
+          windowButtonVisibility: true,
+          minimumSize: Size(800, 600),
+        );
+
+        try {
+          // For secondary windows, avoid blocking startup on window option
+          // application. We'll show/focus immediately and let options settle.
+          if (isSecondaryWindow) {
+            unawaited(windowManager.waitUntilReadyToShow(windowOptions));
+          } else {
+            await windowManager.waitUntilReadyToShow(windowOptions);
+          }
+        } catch (_) {}
+
+        if (Platform.isWindows) {
+          if (isSecondaryWindow) {
+            if (startHidden || windowRole == 'spare') {
+              try {
+                await windowManager.setSkipTaskbar(true);
+                await windowManager.hide();
+              } catch (_) {}
+            } else {
+              try {
+                await windowManager.setSkipTaskbar(false);
+                await windowManager.show();
+                await windowManager.focus();
+                await WindowsNativeTabDragDropService.forceActivateWindow();
+                unawaited(windowManager.center());
+              } catch (_) {}
+            }
+          } else {
+            try {
+              await windowManager.maximize();
+              await windowManager.show();
+              unawaited(windowManager.focus());
+              unawaited(windowManager.setResizable(true));
+              unawaited(windowManager.setPreventClose(false));
+              unawaited(windowManager.setSkipTaskbar(false));
+            } catch (_) {}
+          }
+        }
       }
-    } catch (_) {}
+    }
 
     // Configure frame timing and rendering for better performance
     // This helps prevent the "Reported frame time is older than the last one" error
     // Note: Removed incorrect schedulerPhase setter that caused compilation error
 
     // Initialize frame timing optimizer
-    await FrameTimingOptimizer().initialize();
+    if (isSecondaryWindow && !isPip) {
+      deferredSecondaryInitializers.add(() async {
+        await FrameTimingOptimizer().initialize();
+      });
+    } else {
+      await FrameTimingOptimizer().initialize();
+    }
 
     // Platform-specific optimizations
-    if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+    if (isDesktopPlatform) {
       // For desktop platforms, configure Skia resource cache for better image handling
       SystemChannels.skia.invokeMethod<void>(
           'Skia.setResourceCacheMaxBytes', 512 * 1024 * 1024);
@@ -160,55 +222,35 @@ void main(List<String> args) async {
         100 * 1024 * 1024; // Giới hạn ~100MB
 
     // Initialize Media Kit with proper audio configuration
-    MediaKit.ensureInitialized();
+    if (isSecondaryWindow && !isPip) {
+      deferredSecondaryInitializers.add(() async {
+        MediaKit.ensureInitialized();
+      });
+    } else {
+      MediaKit.ensureInitialized();
+    }
 
     // Initialize our audio helper to ensure sound works
     if (Platform.isWindows) {
-      debugPrint('Setting up Windows-specific audio configuration');
-      await MediaKitAudioHelper.initialize();
+      if (isSecondaryWindow) {
+        deferredSecondaryInitializers.add(() async {
+          debugPrint(
+              'Deferred Windows audio configuration for secondary window');
+          await MediaKitAudioHelper.initialize();
+        });
+      } else {
+        debugPrint('Setting up Windows-specific audio configuration');
+        await MediaKitAudioHelper.initialize();
+      }
     }
 
     // Initialize streaming service manager
-    await StreamingServiceManager.initialize();
-
-    // Initialize window_manager if on desktop platform
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      await windowManager.ensureInitialized();
-
-      final isPip = Platform.environment['CB_PIP_MODE'] == '1';
-      if (!isPip) {
-        // Create window options with minimum size but still allow maximized state
-        WindowOptions windowOptions = const WindowOptions(
-          center: true,
-          backgroundColor: Colors.transparent,
-          titleBarStyle: TitleBarStyle.hidden,
-          windowButtonVisibility: true,
-          // Set minimum size but allow window to be resized
-          minimumSize: Size(800, 600),
-        );
-
-        // Apply the window options
-        await windowManager.waitUntilReadyToShow(windowOptions);
-
-        // Windows: the native runner starts hidden and Dart controls when to
-        // show the window. This prevents a visible flash when applying window
-        // options (e.g. hidden title bar) and then changing the window state.
-        if (Platform.isWindows) {
-          // Enable resizing so the window can be un-maximized
-          await windowManager.setResizable(true);
-
-          // Maximize before showing to avoid a normal->maximized transition flash.
-          await windowManager.maximize();
-          await windowManager.show();
-
-          // Configure additional window properties
-          await windowManager.setPreventClose(false);
-          await windowManager.setSkipTaskbar(false);
-
-          // Focus the window
-          await windowManager.focus();
-        }
-      }
+    if (isSecondaryWindow) {
+      deferredSecondaryInitializers.add(() async {
+        await StreamingServiceManager.initialize();
+      });
+    } else {
+      await StreamingServiceManager.initialize();
     }
 
     // Do not request permissions at startup; handled via explainer UI on demand
@@ -218,64 +260,91 @@ void main(List<String> args) async {
     await setupServiceLocator();
     debugPrint('Service locator initialized successfully');
 
-    // Khởi tạo cơ sở dữ liệu và hệ thống tag một cách an toàn
-    try {
-      // Khởi tạo UserPreferences trước tiên
-      // Now using service locator, but keeping backward compatibility
-      final preferences = locator<UserPreferences>();
-      await preferences.init();
-      debugPrint('User preferences initialized successfully');
-
-      // Sau đó khởi tạo DatabaseManager
-      // Now using service locator, but keeping backward compatibility
-      final dbManager = locator<DatabaseManager>();
-      if (!dbManager.isInitialized()) {
-        await dbManager.initialize();
-        debugPrint('Database manager initialized successfully');
-      } else {
-        debugPrint('Database manager already initialized');
+    // Initialize preferences first for theme and language.
+    if (isSecondaryWindow && !isPip) {
+      deferredSecondaryInitializers.add(() async {
+        try {
+          final preferences = locator<UserPreferences>();
+          await preferences.init();
+          debugPrint('Deferred user preferences initialization completed');
+        } catch (e) {
+          debugPrint('Error initializing user preferences: $e');
+        }
+      });
+      deferredSecondaryInitializers.add(() async {
+        await locator<LanguageController>().initialize();
+      });
+    } else {
+      try {
+        final preferences = locator<UserPreferences>();
+        await preferences.init();
+        debugPrint('User preferences initialized successfully');
+      } catch (e) {
+        debugPrint('Error initializing user preferences: $e');
       }
-      final store = dbManager.getStore();
-      if (store != null) {
-        // Initialize NetworkCredentialsService with the store
-        final networkCredService = locator<NetworkCredentialsService>();
-        await networkCredService.init(store);
-      }
 
-      // Khởi tạo các hệ thống phụ thuộc khác
-      // Services are now available through the locator
-      await BatchTagManager.initialize();
-      await TagManager.initialize();
-
-      debugPrint('All initialization completed successfully');
-    } catch (e) {
-      // Ghi log lỗi nhưng vẫn cho phép ứng dụng tiếp tục chạy
-      debugPrint('Error during initialization: $e');
-      debugPrint('Application will continue with limited functionality');
+      // Initialize language controller
+      await locator<LanguageController>().initialize();
     }
 
-    // Initialize folder thumbnail service
-    await locator<FolderThumbnailService>().initialize();
+    Future<void> initializeDataAndTags() async {
+      try {
+        final dbManager = locator<DatabaseManager>();
+        if (!dbManager.isInitialized()) {
+          await dbManager.initialize();
+          debugPrint('Database manager initialized successfully');
+        } else {
+          debugPrint('Database manager already initialized');
+        }
+        final store = dbManager.getStore();
+        if (store != null) {
+          final networkCredService = locator<NetworkCredentialsService>();
+          await networkCredService.init(store);
+        }
 
-    // Initialize video thumbnail cache system
-    debugPrint('Initializing video thumbnail cache system');
-    await VideoThumbnailHelper.initializeCache();
-
-    // Enable verbose logging for thumbnail debugging (can be disabled in production)
-    if (kDebugMode) {
-      VideoThumbnailHelper.setVerboseLogging(true);
+        await BatchTagManager.initialize();
+        await TagManager.initialize();
+        debugPrint('Data and tag services initialized successfully');
+      } catch (e) {
+        debugPrint('Error during data/tag initialization: $e');
+      }
     }
 
-    // Initialize language controller
-    await locator<LanguageController>().initialize();
+    Future<void> initializeHeavyBackgroundServices() async {
+      try {
+        await locator<FolderThumbnailService>().initialize();
+      } catch (e) {
+        debugPrint('Error initializing folder thumbnail service: $e');
+      }
 
-    // Initialize AlbumService (starts background processing)
-    await locator<AlbumService>().initialize();
+      try {
+        debugPrint('Initializing video thumbnail cache system');
+        await VideoThumbnailHelper.initializeCache();
+        if (kDebugMode) {
+          VideoThumbnailHelper.setVerboseLogging(true);
+        }
+      } catch (e) {
+        debugPrint('Error initializing video thumbnail cache: $e');
+      }
+
+      try {
+        await locator<AlbumService>().initialize();
+      } catch (e) {
+        debugPrint('Error initializing album service: $e');
+      }
+    }
+
+    if (isSecondaryWindow) {
+      deferredSecondaryInitializers.add(initializeDataAndTags);
+      deferredSecondaryInitializers.add(initializeHeavyBackgroundServices);
+    } else {
+      await initializeDataAndTags();
+      await initializeHeavyBackgroundServices();
+    }
 
     // Streaming functionality is now handled directly by StreamingHelper with network services
 
     // If PiP env flag is set, run ultra‑lightweight PiP window instead of full app
-    final env = Platform.environment;
     if (env['CB_PIP_MODE'] == '1' &&
         (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
       Map<String, dynamic> args = {};
@@ -295,12 +364,21 @@ void main(List<String> args) async {
       return;
     }
 
+    final startupPayload = WindowStartupPayload.fromEnvironment();
     runApp(
       ChangeNotifierProvider(
         create: (context) => locator<ThemeProvider>(),
-        child: const CBFileApp(),
+        child: CBFileApp(startupPayload: startupPayload),
       ),
     );
+
+    if (isSecondaryWindow && deferredSecondaryInitializers.isNotEmpty) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        for (final initializer in deferredSecondaryInitializers) {
+          unawaited(initializer());
+        }
+      });
+    }
   }, (error, stackTrace) {
     debugPrint('Error during app initialization: $error');
   }, zoneSpecification: ZoneSpecification(print: (self, parent, zone, line) {
@@ -337,7 +415,8 @@ void goHome(BuildContext context) {
 }
 
 class CBFileApp extends StatefulWidget {
-  const CBFileApp({Key? key}) : super(key: key);
+  final WindowStartupPayload? startupPayload;
+  const CBFileApp({Key? key, this.startupPayload}) : super(key: key);
 
   @override
   State<CBFileApp> createState() => _CBFileAppState();
@@ -398,7 +477,7 @@ class _CBFileAppState extends State<CBFileApp> with WidgetsBindingObserver {
       child: MaterialApp(
         title: 'CoolBird - File Manager',
         // Always start at main; we'll push explainer modally if needed
-        home: const TabMainScreen(),
+        home: TabMainScreen(startupPayload: widget.startupPayload),
         navigatorKey: navigatorKey, // Add navigator key for global access
         // Dynamic theming: use selected theme for light, and selected dark theme for dark
         theme:

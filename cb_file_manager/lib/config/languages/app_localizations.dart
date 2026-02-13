@@ -851,6 +851,14 @@ abstract class AppLocalizations {
   String get closeTab;
   String get addNewTab;
 
+  // Desktop windows (tabbed browsing)
+  String get newWindow;
+  String get moveTabToNewWindow;
+  String get moveTabToWindow;
+  String get mergeWindowIntoThis;
+  String get selectWindow;
+  String get noOtherWindows;
+
   // Home screen
   String get welcomeTitle;
   String get welcomeSubtitle;

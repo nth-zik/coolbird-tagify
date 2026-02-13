@@ -58,6 +58,15 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     pip_mode = true;
   }
 
+  bool secondary_window = false;
+  wchar_t secondaryBuf[8];
+  DWORD secondaryLen =
+      GetEnvironmentVariableW(L"CB_SECONDARY_WINDOW", secondaryBuf, 8);
+  if (secondaryLen > 0 && secondaryBuf[0] == L'1')
+  {
+    secondary_window = true;
+  }
+
   // Prepare origin and size
   Win32Window::Point origin(0, 0);
   Win32Window::Size size(0, 0);
@@ -66,6 +75,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   {
     // Small initial window for PiP; will be adjusted by window_manager later
     size = Win32Window::Size(384, 216);
+  }
+  else if (secondary_window)
+  {
+    // Secondary windows should start with a browser-like size.
+    // This avoids creating a full-screen-sized surface and then shrinking it.
+    size = Win32Window::Size(1200, 800);
   }
   else
   {

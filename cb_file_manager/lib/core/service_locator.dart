@@ -10,6 +10,7 @@ import '../services/streaming_service_manager.dart';
 import '../helpers/media/folder_thumbnail_service.dart';
 import '../config/language_controller.dart';
 import '../ui/controllers/operation_progress_controller.dart';
+import '../services/windowing/desktop_windowing_service.dart';
 
 /// Global service locator instance
 final GetIt locator = GetIt.instance;
@@ -85,6 +86,11 @@ Future<void> setupServiceLocator() async {
   // Register OperationProgressController (global operation progress UI)
   locator.registerLazySingleton<OperationProgressController>(
     () => OperationProgressController(),
+  );
+
+  // Register DesktopWindowingService (desktop-only; no-op on mobile).
+  locator.registerLazySingleton<DesktopWindowingService>(
+    () => DesktopWindowingService(),
   );
 
   // Note: Services are registered but not initialized here.

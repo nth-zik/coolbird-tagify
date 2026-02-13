@@ -1813,6 +1813,25 @@ class VietnameseLocalizations implements AppLocalizations {
   @override
   String get addNewTab => 'Thêm tab mới';
 
+  // Desktop windows (tabbed browsing)
+  @override
+  String get newWindow => 'Cửa sổ mới';
+
+  @override
+  String get moveTabToNewWindow => 'Chuyển tab sang cửa sổ mới';
+
+  @override
+  String get moveTabToWindow => 'Chuyển tab sang cửa sổ...';
+
+  @override
+  String get mergeWindowIntoThis => 'Gộp cửa sổ vào đây...';
+
+  @override
+  String get selectWindow => 'Chọn cửa sổ';
+
+  @override
+  String get noOtherWindows => 'Không có cửa sổ nào khác';
+
   // Home screen
   @override
   String get welcomeTitle => 'Chào mừng đến với CoolBird Tagify';

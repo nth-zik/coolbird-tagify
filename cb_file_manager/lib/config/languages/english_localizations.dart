@@ -1815,6 +1815,25 @@ class EnglishLocalizations implements AppLocalizations {
   @override
   String get addNewTab => 'Add new tab';
 
+  // Desktop windows (tabbed browsing)
+  @override
+  String get newWindow => 'New window';
+
+  @override
+  String get moveTabToNewWindow => 'Move tab to new window';
+
+  @override
+  String get moveTabToWindow => 'Move tab to window...';
+
+  @override
+  String get mergeWindowIntoThis => 'Merge window into this...';
+
+  @override
+  String get selectWindow => 'Select window';
+
+  @override
+  String get noOtherWindows => 'No other windows';
+
   // Home screen
   @override
   String get welcomeTitle => 'Welcome to CoolBird Tagify';

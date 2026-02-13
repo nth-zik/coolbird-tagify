@@ -1,26 +1,31 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart'; // Import for keyboard shortcuts
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:remixicon/remixicon.dart' as remix;
 import 'package:cb_file_manager/helpers/ui/frame_timing_optimizer.dart';
 import 'tab_manager.dart';
+import 'tab_data.dart';
 import '../../drawer.dart';
 import 'package:cb_file_manager/helpers/core/user_preferences.dart';
 import 'tabbed_folder/tabbed_folder_list_screen.dart';
 import '../../screens/settings/settings_screen.dart';
 import 'package:flutter/gestures.dart'; // Import for mouse scrolling
 import '../desktop/scrollable_tab_bar.dart'; // Import our custom ScrollableTabBar
+import '../desktop/desktop_tab_drag_data.dart';
 import '../mobile/mobile_tab_view.dart'; // Import giao diện mobile kiểu Chrome
 import 'package:cb_file_manager/config/languages/app_localizations.dart'; // Import AppLocalizations
 import 'package:cb_file_manager/config/translation_helper.dart'; // Import translation helper
 import 'package:cb_file_manager/ui/screens/system_screen_router.dart'; // Import system screen router
 // import 'package:cb_file_manager/widgets/test_native_streaming.dart'; // Test widget removed
 import '../../utils/route.dart';
-import 'package:cb_file_manager/helpers/core/filesystem_utils.dart'; // Import filesystem utils
 import '../../screens/home/home_screen.dart'; // Import home screen
+import 'package:cb_file_manager/core/service_locator.dart';
+import 'package:cb_file_manager/services/windowing/desktop_windowing_service.dart';
+import 'package:cb_file_manager/services/windowing/window_startup_payload.dart';
+import 'package:cb_file_manager/services/windowing/windows_native_tab_drag_drop_service.dart';
 
 // Create a custom scroll behavior that supports mouse wheel scrolling
 class TabBarMouseScrollBehavior extends MaterialScrollBehavior {
@@ -51,6 +56,11 @@ class CloseTabIntent extends Intent {
   const CloseTabIntent();
 }
 
+// Create a new window action for keyboard shortcuts
+class CreateNewWindowIntent extends Intent {
+  const CreateNewWindowIntent();
+}
+
 // Create actions for switching to specific tabs
 class SwitchToTabIntent extends Intent {
   final int tabIndex;
@@ -66,6 +76,13 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
 
   // Controller cho TabBar tích hợp
   late TabController _tabController;
+
+  bool get _isDesktop =>
+      Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+
+  OverlayEntry? _windowDropOverlayEntry;
+  final Map<String, _CachedTabContent> _tabContentCache =
+      <String, _CachedTabContent>{};
 
   @override
   void initState() {
@@ -93,6 +110,8 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _removeWindowDropOverlay();
+    _tabContentCache.clear();
     _tabController.dispose();
     super.dispose();
   }
@@ -300,8 +319,25 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
         // Define keyboard shortcuts and actions
         final Map<ShortcutActivator, Intent> shortcuts = {
           // Create new tab with Ctrl+T
-          LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyT):
+          const SingleActivator(LogicalKeyboardKey.keyT, control: true):
               const CreateNewTabIntent(),
+          // Create new tab with Ctrl+N
+          const SingleActivator(LogicalKeyboardKey.keyN, control: true):
+              const CreateNewTabIntent(),
+          // Create new window with Ctrl+Shift+N
+          const SingleActivator(
+            LogicalKeyboardKey.keyN,
+            control: true,
+            shift: true,
+          ): const CreateNewWindowIntent(),
+          // macOS equivalents
+          const SingleActivator(LogicalKeyboardKey.keyN, meta: true):
+              const CreateNewTabIntent(),
+          const SingleActivator(
+            LogicalKeyboardKey.keyN,
+            meta: true,
+            shift: true,
+          ): const CreateNewWindowIntent(),
           // Close current tab with Ctrl+W
           LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyW):
               const CloseTabIntent(),
@@ -329,11 +365,20 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
         final Map<Type, Action<Intent>> actions = {
           CreateNewTabIntent: CallbackAction<CreateNewTabIntent>(
             onInvoke: (CreateNewTabIntent intent) {
-              // Use HapticFeedback for better user experience
+              _handleAddNewTab();
+              return null;
+            },
+          ),
+          CreateNewWindowIntent: CallbackAction<CreateNewWindowIntent>(
+            onInvoke: (CreateNewWindowIntent intent) {
+              if (!_isDesktop) return null;
               HapticFeedback.mediumImpact();
-              // Force create new tab with FocusScope to ensure keyboard events are captured properly
-              SchedulerBinding.instance.addPostFrameCallback((_) {
-                _handleAddNewTab();
+              SchedulerBinding.instance.addPostFrameCallback((_) async {
+                await locator<DesktopWindowingService>().openNewWindow(
+                  tabs: [
+                    WindowTabPayload(path: '#home', name: context.tr.homeTab),
+                  ],
+                );
               });
               return null;
             },
@@ -414,12 +459,83 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                                 child: ScrollableTabBar(
                                   controller:
                                       _tabController, // Ensure this controller has the correct length
-                                  onTap: (index) {
-                                    // Only handle tab switching for valid tabs
+                                  onTabPrimaryClick: (index, shiftPressed) {
+                                    if (index >= state.tabs.length) return;
+
+                                    final tabId = state.tabs[index].id;
+                                    final bloc = context.read<TabManagerBloc>();
+                                    final selectedIds = state.selectedTabIds;
+                                    final keepMultiSelection = _isDesktop &&
+                                        !shiftPressed &&
+                                        selectedIds.length > 1 &&
+                                        selectedIds.contains(tabId);
+
+                                    if (_isDesktop && shiftPressed) {
+                                      // Shift+click is additive:
+                                      // - First Shift selection includes current active tab.
+                                      // - Next Shift selections only add (do not toggle off).
+                                      if (selectedIds.isEmpty) {
+                                        final activeId = state.activeTabId;
+                                        if (activeId != null &&
+                                            activeId != tabId &&
+                                            state.tabs.any(
+                                                (tab) => tab.id == activeId)) {
+                                          bloc.add(
+                                              ToggleTabSelection(activeId));
+                                        }
+                                        bloc.add(ToggleTabSelection(tabId));
+                                      } else if (!selectedIds.contains(tabId)) {
+                                        bloc.add(ToggleTabSelection(tabId));
+                                      }
+                                    } else if (_isDesktop &&
+                                        !keepMultiSelection) {
+                                      bloc.add(ClearTabSelection());
+                                    }
+
+                                    bloc.add(SwitchToTab(tabId));
+                                  },
+                                  draggableTabs: _isDesktop
+                                      ? state.tabs
+                                          .map(
+                                            (t) => DesktopTabDragData(
+                                              tabId: t.id,
+                                              tab: _toWindowTabPayload(t),
+                                            ),
+                                          )
+                                          .toList(growable: false)
+                                      : null,
+                                  selectedTabIds: _isDesktop
+                                      ? state.selectedTabIds
+                                      : const <String>{},
+                                  onTabReorder: _isDesktop
+                                      ? (fromIndex, toIndex) {
+                                          context.read<TabManagerBloc>().add(
+                                                ReorderTab(
+                                                  fromIndex: fromIndex,
+                                                  toIndex: toIndex,
+                                                ),
+                                              );
+                                        }
+                                      : null,
+                                  onNativeTabDragRequested: Platform.isWindows
+                                      ? _handleNativeTabDrag
+                                      : null,
+                                  onTabDragStarted: (_isDesktop &&
+                                          !Platform.isWindows)
+                                      ? (d) => unawaited(
+                                            _showWindowDropOverlay(context, d),
+                                          )
+                                      : null,
+                                  onTabDragEnded: (!Platform.isWindows)
+                                      ? _removeWindowDropOverlay
+                                      : null,
+                                  onTabContextMenu: (index, pos) {
                                     if (index < state.tabs.length) {
-                                      // Dispatch event to change active tab
-                                      context.read<TabManagerBloc>().add(
-                                          SwitchToTab(state.tabs[index].id));
+                                      unawaited(_showDesktopTabContextMenu(
+                                        context: context,
+                                        tab: state.tabs[index],
+                                        globalPosition: pos,
+                                      ));
                                     }
                                   },
                                   // Add tab close callback
@@ -611,6 +727,45 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
 
   // ...existing code...
 
+  void _syncTabContentCache(List<TabData> tabs) {
+    final currentIds = tabs.map((tab) => tab.id).toSet();
+    _tabContentCache.removeWhere((id, _) => !currentIds.contains(id));
+  }
+
+  Widget _buildOrGetTabContent(TabData tab) {
+    final cached = _tabContentCache[tab.id];
+    if (cached != null && cached.path == tab.path) {
+      return cached.widget;
+    }
+
+    final widget = _createTabContent(tab);
+    _tabContentCache[tab.id] =
+        _CachedTabContent(path: tab.path, widget: widget);
+    return widget;
+  }
+
+  Widget _createTabContent(TabData tab) {
+    final Widget content;
+    if (tab.path.startsWith('#')) {
+      content = SystemScreenRouter.routeSystemPath(context, tab.path, tab.id) ??
+          Container();
+    } else {
+      content = TabbedFolderListScreen(
+        key: ValueKey(tab.id),
+        path: tab.path,
+        tabId: tab.id,
+      );
+    }
+
+    return KeyedSubtree(
+      key: ValueKey(tab.id),
+      child: RepaintBoundary(
+        key: tab.repaintBoundaryKey,
+        child: content,
+      ),
+    );
+  }
+
   Widget _buildTabContent(TabManagerState state) {
     if (state.tabs.isEmpty) return Container();
 
@@ -622,29 +777,8 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
     final safeActiveIndex =
         activeIndex >= 0 && activeIndex < state.tabs.length ? activeIndex : 0;
 
-    final children = state.tabs.map((tab) {
-      Widget content;
-
-      if (tab.path.startsWith('#')) {
-        content =
-            SystemScreenRouter.routeSystemPath(context, tab.path, tab.id) ??
-                Container();
-      } else {
-        content = TabbedFolderListScreen(
-          key: ValueKey(tab.id),
-          path: tab.path,
-          tabId: tab.id,
-        );
-      }
-
-      return KeyedSubtree(
-        key: ValueKey(tab.id),
-        child: RepaintBoundary(
-          key: tab.repaintBoundaryKey,
-          child: content,
-        ),
-      );
-    }).toList();
+    _syncTabContentCache(state.tabs);
+    final children = state.tabs.map(_buildOrGetTabContent).toList();
 
     return IndexedStack(
       index: safeActiveIndex,
@@ -652,10 +786,428 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
     );
   }
 
-  Future<void> _handleAddNewTab() async {
+  void _handleAddNewTab() {
     // Always create new tab with home page
     if (mounted) {
-      context.read<TabManagerBloc>().add(AddTab(path: '#home', name: context.tr.homeTab));
+      context
+          .read<TabManagerBloc>()
+          .add(AddTab(path: '#home', name: context.tr.homeTab));
+    }
+  }
+
+  WindowTabPayload _toWindowTabPayload(TabData tab) {
+    return WindowTabPayload(
+      path: tab.path,
+      name: tab.name,
+      highlightedFileName: tab.highlightedFileName,
+    );
+  }
+
+  _ResolvedTabMoveSelection _resolveTabMoveSelection(String triggerTabId) {
+    final bloc = context.read<TabManagerBloc>();
+    final state = bloc.state;
+    final selected = state.selectedTabIds;
+    final useSelection = selected.isNotEmpty && selected.contains(triggerTabId);
+    final requestedIds = useSelection ? selected : <String>{triggerTabId};
+
+    final tabs = state.tabs
+        .where((tab) => requestedIds.contains(tab.id))
+        .toList(growable: false);
+
+    if (tabs.isEmpty) {
+      return _ResolvedTabMoveSelection(
+        tabIds: <String>[triggerTabId],
+        payloads: <WindowTabPayload>[],
+      );
+    }
+
+    return _ResolvedTabMoveSelection(
+      tabIds: tabs.map((tab) => tab.id).toList(growable: false),
+      payloads: tabs.map(_toWindowTabPayload).toList(growable: false),
+    );
+  }
+
+  void _removeWindowDropOverlay() {
+    _windowDropOverlayEntry?.remove();
+    _windowDropOverlayEntry = null;
+  }
+
+  Future<void> _showWindowDropOverlay(
+    BuildContext context,
+    DesktopTabDragData dragged,
+  ) async {
+    if (!_isDesktop) return;
+
+    _removeWindowDropOverlay();
+
+    final svc = locator<DesktopWindowingService>();
+    final others = await svc.listOtherWindows();
+    if (!mounted) return;
+    final moveSelection = _resolveTabMoveSelection(dragged.tabId);
+    final moveCount = moveSelection.tabIds.length;
+
+    final overlay = Overlay.maybeOf(context, rootOverlay: true);
+    if (overlay == null) return;
+
+    _windowDropOverlayEntry = OverlayEntry(
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        final isDarkMode = theme.brightness == Brightness.dark;
+        final bg = isDarkMode
+            ? Colors.black.withAlpha((0.72 * 255).round())
+            : Colors.white.withAlpha((0.94 * 255).round());
+
+        Widget buildTarget({
+          required Widget child,
+          required Future<void> Function(DesktopTabDragData) onAccept,
+        }) {
+          return DragTarget<DesktopTabDragData>(
+            onWillAcceptWithDetails: (_) => true,
+            onAcceptWithDetails: (details) async {
+              _removeWindowDropOverlay();
+              await onAccept(details.data);
+            },
+            builder: (context, candidateData, rejectedData) {
+              final hovered = candidateData.isNotEmpty;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 120),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: hovered
+                      ? theme.colorScheme.primary
+                          .withAlpha((0.12 * 255).round())
+                      : (isDarkMode
+                          ? Colors.white.withAlpha((0.06 * 255).round())
+                          : Colors.black.withAlpha((0.04 * 255).round())),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: child,
+              );
+            },
+          );
+        }
+
+        return Positioned.fill(
+          child: Material(
+            color: Colors.black.withAlpha((0.05 * 255).round()),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Container(
+                margin: const EdgeInsets.only(top: 56),
+                width: 520,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: bg,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha((0.12 * 255).round()),
+                      blurRadius: 24,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      ctx.tr.moveTabToWindow,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      (dragged.tab.name ?? dragged.tab.path).trim(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.textTheme.bodySmall?.color
+                            ?.withValues(alpha: 0.75),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    buildTarget(
+                      child: Row(
+                        children: [
+                          const Icon(Icons.open_in_new, size: 18),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              moveCount > 1
+                                  ? '${ctx.tr.moveTabToNewWindow} ($moveCount)'
+                                  : ctx.tr.moveTabToNewWindow,
+                            ),
+                          ),
+                        ],
+                      ),
+                      onAccept: (d) async {
+                        final tabs = moveSelection.payloads.isNotEmpty
+                            ? moveSelection.payloads
+                            : <WindowTabPayload>[d.tab];
+                        final ok = await svc.openNewWindow(tabs: tabs);
+                        if (!mounted) return;
+                        if (ok) {
+                          final bloc = context.read<TabManagerBloc>();
+                          for (final id in moveSelection.tabIds) {
+                            bloc.add(CloseTab(id));
+                          }
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    if (others.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Text(
+                          ctx.tr.noOtherWindows,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.textTheme.bodyMedium?.color
+                                ?.withValues(alpha: 0.75),
+                          ),
+                        ),
+                      )
+                    else
+                      ...others.map((w) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: buildTarget(
+                            child: Row(
+                              children: [
+                                const Icon(Icons.window, size: 18),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    w.title,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Text(
+                                  '${w.tabCount}',
+                                  style: theme.textTheme.labelMedium,
+                                ),
+                              ],
+                            ),
+                            onAccept: (d) async {
+                              final tabs = moveSelection.payloads.isNotEmpty
+                                  ? moveSelection.payloads
+                                  : <WindowTabPayload>[d.tab];
+                              final ok = await svc.sendTabsToWindow(w, tabs);
+                              if (!mounted) return;
+                              if (ok) {
+                                final bloc = context.read<TabManagerBloc>();
+                                for (final id in moveSelection.tabIds) {
+                                  bloc.add(CloseTab(id));
+                                }
+                              }
+                            },
+                          ),
+                        );
+                      }),
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: _removeWindowDropOverlay,
+                      child: Text(ctx.tr.cancel),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    overlay.insert(_windowDropOverlayEntry!);
+  }
+
+  Future<void> _handleNativeTabDrag(DesktopTabDragData data) async {
+    if (!Platform.isWindows) return;
+
+    final moveSelection = _resolveTabMoveSelection(data.tabId);
+    final payloads = moveSelection.payloads;
+
+    final result = await WindowsNativeTabDragDropService.startDrag(
+      tabs: payloads.isNotEmpty ? payloads : <WindowTabPayload>[data.tab],
+    );
+    if (!mounted) return;
+
+    if (result == WindowsNativeTabDragResult.moved) {
+      final bloc = context.read<TabManagerBloc>();
+      for (final id in moveSelection.tabIds) {
+        bloc.add(CloseTab(id));
+      }
+    }
+  }
+
+  Future<DesktopWindowInfo?> _pickTargetWindow(BuildContext context) async {
+    final svc = locator<DesktopWindowingService>();
+    final others = await svc.listOtherWindows();
+    if (!mounted) return null;
+
+    if (others.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr.noOtherWindows)),
+      );
+      return null;
+    }
+
+    return showDialog<DesktopWindowInfo>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text(context.tr.selectWindow),
+          content: SizedBox(
+            width: 420,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: others.length,
+              itemBuilder: (context, index) {
+                final w = others[index];
+                final subtitle =
+                    '${context.tr.openTabs}: ${w.tabCount} • ${w.windowId.substring(0, 8)}';
+                return ListTile(
+                  title: Text(w.title),
+                  subtitle: Text(subtitle),
+                  onTap: () => Navigator.of(ctx).pop(w),
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(null),
+              child: Text(context.tr.cancel),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _mergeWindowIntoThis(BuildContext context) async {
+    final svc = locator<DesktopWindowingService>();
+    final target = await _pickTargetWindow(context);
+    if (target == null || !mounted) return;
+
+    final incomingTabs = await svc.requestTabsFromWindow(target);
+    if (!mounted) return;
+
+    if (incomingTabs.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr.noTabsOpen)),
+      );
+      return;
+    }
+
+    final bloc = context.read<TabManagerBloc>();
+    for (int i = 0; i < incomingTabs.length; i++) {
+      final t = incomingTabs[i];
+      bloc.add(AddTab(
+        path: t.path,
+        name: t.name,
+        switchToTab: i == incomingTabs.length - 1,
+        highlightedFileName: t.highlightedFileName,
+      ));
+    }
+
+    await svc.requestCloseWindow(target);
+  }
+
+  Future<void> _showDesktopTabContextMenu({
+    required BuildContext context,
+    required TabData tab,
+    required Offset globalPosition,
+  }) async {
+    if (!_isDesktop) return;
+
+    final moveSelection = _resolveTabMoveSelection(tab.id);
+    final selectionCount = moveSelection.tabIds.length;
+
+    final moveToNewWindowLabel = selectionCount > 1
+        ? '${context.tr.moveTabToNewWindow} ($selectionCount)'
+        : context.tr.moveTabToNewWindow;
+    final moveToWindowLabel = selectionCount > 1
+        ? '${context.tr.moveTabToWindow} ($selectionCount)'
+        : context.tr.moveTabToWindow;
+    final closeTabLabel = selectionCount > 1
+        ? '${context.tr.closeTab} ($selectionCount)'
+        : context.tr.closeTab;
+
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox?;
+    final size = overlay?.size ?? const Size(1, 1);
+    final pos = RelativeRect.fromLTRB(
+      globalPosition.dx,
+      globalPosition.dy,
+      size.width - globalPosition.dx,
+      size.height - globalPosition.dy,
+    );
+
+    final action = await showMenu<_DesktopTabAction>(
+      context: context,
+      position: pos,
+      items: [
+        PopupMenuItem(
+          value: _DesktopTabAction.moveToNewWindow,
+          child: Text(moveToNewWindowLabel),
+        ),
+        PopupMenuItem(
+          value: _DesktopTabAction.moveToWindow,
+          child: Text(moveToWindowLabel),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: _DesktopTabAction.closeTab,
+          child: Text(closeTabLabel),
+        ),
+      ],
+    );
+
+    if (action == null || !mounted) return;
+
+    final bloc = context.read<TabManagerBloc>();
+    final svc = locator<DesktopWindowingService>();
+    final payloads = moveSelection.payloads.isNotEmpty
+        ? moveSelection.payloads
+        : <WindowTabPayload>[_toWindowTabPayload(tab)];
+    final tabIdsToMove = moveSelection.tabIds.isNotEmpty
+        ? moveSelection.tabIds
+        : <String>[tab.id];
+
+    switch (action) {
+      case _DesktopTabAction.moveToNewWindow:
+        {
+          final ok = await svc.openNewWindow(tabs: payloads);
+          if (!mounted) return;
+          if (ok) {
+            for (final id in tabIdsToMove) {
+              bloc.add(CloseTab(id));
+            }
+          }
+          return;
+        }
+      case _DesktopTabAction.moveToWindow:
+        {
+          final target = await _pickTargetWindow(context);
+          if (target == null || !mounted) return;
+
+          final ok = await svc.sendTabsToWindow(target, payloads);
+          if (!mounted) return;
+          if (ok) {
+            for (final id in tabIdsToMove) {
+              bloc.add(CloseTab(id));
+            }
+          }
+          return;
+        }
+      case _DesktopTabAction.closeTab:
+        for (final id in tabIdsToMove) {
+          bloc.add(CloseTab(id));
+        }
+        return;
     }
   }
 
@@ -663,7 +1215,9 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
   void _createFallbackTab() {
     if (mounted) {
       try {
-        context.read<TabManagerBloc>().add(AddTab(path: '#home', name: context.tr.homeTab));
+        context
+            .read<TabManagerBloc>()
+            .add(AddTab(path: '#home', name: context.tr.homeTab));
       } catch (e) {
         debugPrint("Failed to create fallback tab: $e");
       }
@@ -726,7 +1280,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                 child: Row(
                   children: [
                     Text(
-                      'Tab options',
+                      context.tr.tabManager,
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -759,7 +1313,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
               _buildOptionItem(
                 context,
                 icon: remix.Remix.add_circle_line,
-                text: 'New tab',
+                text: context.tr.addNewTab,
                 onTap: () {
                   RouteUtils.safePopDialog(context);
                   _handleAddNewTab();
@@ -768,7 +1322,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
               _buildOptionItem(
                 context,
                 icon: remix.Remix.close_line,
-                text: 'Close current tab',
+                text: context.tr.closeTab,
                 onTap: () {
                   RouteUtils.safePopDialog(context);
                   _handleCloseCurrentTab();
@@ -779,16 +1333,36 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
               _buildOptionItem(
                 context,
                 icon: remix.Remix.close_circle_line,
-                text: 'Close all tabs',
+                text: context.tr.closeAllTabs,
                 onTap: () {
                   RouteUtils.safePopDialog(context);
                   _handleCloseAllTabs();
                 },
               ),
+              if (_isDesktop)
+                _buildOptionItem(
+                  context,
+                  icon: remix.Remix.window_2_line,
+                  text: context.tr.newWindow,
+                  onTap: () async {
+                    RouteUtils.safePopDialog(context);
+                    await locator<DesktopWindowingService>().openNewWindow();
+                  },
+                ),
+              if (_isDesktop)
+                _buildOptionItem(
+                  context,
+                  icon: Icons.call_merge,
+                  text: context.tr.mergeWindowIntoThis,
+                  onTap: () async {
+                    RouteUtils.safePopDialog(context);
+                    await _mergeWindowIntoThis(context);
+                  },
+                ),
               _buildOptionItem(
                 context,
                 icon: remix.Remix.settings_3_line,
-                text: 'Settings',
+                text: context.tr.settings,
                 onTap: () {
                   RouteUtils.safePopDialog(context);
                   Navigator.push(
@@ -868,4 +1442,30 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
   }
 
   // ...existing code...
+}
+
+enum _DesktopTabAction {
+  moveToNewWindow,
+  moveToWindow,
+  closeTab,
+}
+
+class _CachedTabContent {
+  final String path;
+  final Widget widget;
+
+  const _CachedTabContent({
+    required this.path,
+    required this.widget,
+  });
+}
+
+class _ResolvedTabMoveSelection {
+  final List<String> tabIds;
+  final List<WindowTabPayload> payloads;
+
+  const _ResolvedTabMoveSelection({
+    required this.tabIds,
+    required this.payloads,
+  });
 }

@@ -12,7 +12,8 @@ class AddTab extends TabEvent {
   final String path;
   final String? name;
   final bool switchToTab;
-  final String? highlightedFileName; // File to highlight/focus after opening tab
+  final String?
+      highlightedFileName; // File to highlight/focus after opening tab
 
   AddTab({
     required this.path,
@@ -86,15 +87,38 @@ class UpdateTabThumbnail extends TabEvent {
   UpdateTabThumbnail(this.tabId, this.thumbnail);
 }
 
+/// Event to reorder tab positions
+class ReorderTab extends TabEvent {
+  final int fromIndex;
+  final int toIndex;
+
+  ReorderTab({
+    required this.fromIndex,
+    required this.toIndex,
+  });
+}
+
+/// Event to clear any multi-tab selection.
+class ClearTabSelection extends TabEvent {}
+
+/// Event to toggle a tab's selection state (desktop-only UX).
+class ToggleTabSelection extends TabEvent {
+  final String tabId;
+
+  ToggleTabSelection(this.tabId);
+}
+
 /// State for the TabManager
 class TabManagerState {
   final List<TabData> tabs;
   final String? activeTabId;
+  final Set<String> selectedTabIds;
 
   TabManagerState({
     required this.tabs,
     this.activeTabId,
-  });
+    Set<String>? selectedTabIds,
+  }) : selectedTabIds = selectedTabIds ?? <String>{};
 
   TabData? get activeTab => activeTabId != null
       ? tabs.firstWhere((tab) => tab.id == activeTabId,
@@ -105,10 +129,15 @@ class TabManagerState {
     List<TabData>? tabs,
     String? activeTabId,
     bool clearActiveTabId = false,
+    Set<String>? selectedTabIds,
+    bool clearSelectedTabIds = false,
   }) {
     return TabManagerState(
       tabs: tabs ?? this.tabs,
       activeTabId: clearActiveTabId ? null : (activeTabId ?? this.activeTabId),
+      selectedTabIds: clearSelectedTabIds
+          ? <String>{}
+          : (selectedTabIds ?? this.selectedTabIds),
     );
   }
 }
@@ -126,6 +155,9 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
     on<UpdateTabLoading>(_onUpdateTabLoading);
     on<AddToTabHistory>(_onAddToTabHistory);
     on<UpdateTabThumbnail>(_onUpdateTabThumbnail);
+    on<ReorderTab>(_onReorderTab);
+    on<ClearTabSelection>(_onClearTabSelection);
+    on<ToggleTabSelection>(_onToggleTabSelection);
   }
 
   void _onAddTab(AddTab event, Emitter<TabManagerState> emit) {
@@ -146,6 +178,8 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
     emit(state.copyWith(
       tabs: tabs,
       activeTabId: event.switchToTab ? newTabId : state.activeTabId,
+      // When a new tab becomes active (e.g., Ctrl+N), clear multi-selection.
+      selectedTabIds: event.switchToTab ? <String>{} : state.selectedTabIds,
     ));
   }
 
@@ -159,6 +193,8 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
     if (state.tabs.isEmpty) return;
 
     final tabs = state.tabs.where((tab) => tab.id != event.tabId).toList();
+    final selected =
+        state.selectedTabIds.where((id) => id != event.tabId).toSet();
 
     // If we're closing the active tab, switch to another tab
     String? newActiveTabId;
@@ -180,6 +216,7 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
       tabs: tabs,
       activeTabId: newActiveTabId,
       clearActiveTabId: newActiveTabId == null,
+      selectedTabIds: selected,
     ));
   }
 
@@ -188,7 +225,27 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
       tabs: [],
       activeTabId: null,
       clearActiveTabId: true,
+      clearSelectedTabIds: true,
     ));
+  }
+
+  void _onClearTabSelection(
+      ClearTabSelection event, Emitter<TabManagerState> emit) {
+    if (state.selectedTabIds.isEmpty) return;
+    emit(state.copyWith(clearSelectedTabIds: true));
+  }
+
+  void _onToggleTabSelection(
+      ToggleTabSelection event, Emitter<TabManagerState> emit) {
+    if (!state.tabs.any((t) => t.id == event.tabId)) return;
+
+    final selected = Set<String>.from(state.selectedTabIds);
+    if (selected.contains(event.tabId)) {
+      selected.remove(event.tabId);
+    } else {
+      selected.add(event.tabId);
+    }
+    emit(state.copyWith(selectedTabIds: selected));
   }
 
   void _onUpdateTabPath(UpdateTabPath event, Emitter<TabManagerState> emit) {
@@ -211,17 +268,20 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
 
     final tabs = state.tabs.map((tab) {
       if (tab.id == event.tabId) {
-        debugPrint('BLOC_DEBUG: Before updatePath - history: ${tab.navigationHistory}');
+        debugPrint(
+            'BLOC_DEBUG: Before updatePath - history: ${tab.navigationHistory}');
         debugPrint('BLOC_DEBUG: Before updatePath - current path: ${tab.path}');
-        
+
         // First add the new path to the navigation history of the existing tab
         tab.updatePath(event.newPath);
-        
-        debugPrint('BLOC_DEBUG: After updatePath - history: ${tab.navigationHistory}');
+
+        debugPrint(
+            'BLOC_DEBUG: After updatePath - history: ${tab.navigationHistory}');
 
         // Then create a new tab instance with the updated path
         final updatedTab = tab.copyWith(path: event.newPath);
-        debugPrint('BLOC_DEBUG: After copyWith - new tab history: ${updatedTab.navigationHistory}');
+        debugPrint(
+            'BLOC_DEBUG: After copyWith - new tab history: ${updatedTab.navigationHistory}');
         return updatedTab;
       }
       return tab;
@@ -423,6 +483,51 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
 
     emit(state.copyWith(tabs: tabs));
   }
+
+  void _onReorderTab(ReorderTab event, Emitter<TabManagerState> emit) {
+    if (state.tabs.length < 2) return;
+    if (event.fromIndex < 0 || event.fromIndex >= state.tabs.length) return;
+    if (event.toIndex < 0 || event.toIndex >= state.tabs.length) return;
+    if (event.fromIndex == event.toIndex) return;
+
+    final tabs = List<TabData>.from(state.tabs);
+    final movingTab = tabs[event.fromIndex];
+    final selectedIds = state.selectedTabIds;
+    final shouldMoveSelectionAsGroup =
+        selectedIds.length > 1 && selectedIds.contains(movingTab.id);
+
+    if (shouldMoveSelectionAsGroup) {
+      final selectedTabs = tabs
+          .where((tab) => selectedIds.contains(tab.id))
+          .toList(growable: false);
+      final selectedCount = selectedTabs.length;
+      if (selectedCount > 1) {
+        final draggedOffsetInGroup =
+            selectedTabs.indexWhere((tab) => tab.id == movingTab.id);
+        final unselectedTabs = tabs
+            .where((tab) => !selectedIds.contains(tab.id))
+            .toList(growable: true);
+
+        final rawInsertIndex = event.toIndex - draggedOffsetInGroup;
+        final insertIndex = rawInsertIndex.clamp(0, unselectedTabs.length);
+        unselectedTabs.insertAll(insertIndex, selectedTabs);
+
+        emit(state.copyWith(
+          tabs: unselectedTabs,
+          activeTabId: state.activeTabId,
+        ));
+        return;
+      }
+    }
+
+    final moved = tabs.removeAt(event.fromIndex);
+    tabs.insert(event.toIndex, moved);
+
+    emit(state.copyWith(
+      tabs: tabs,
+      activeTabId: state.activeTabId,
+    ));
+  }
 }
 
 /// Helper class for working with the tab system
@@ -446,7 +551,8 @@ class TabNavigator {
   }
 
   /// Opens a new tab with the specified path
-  static void openTab(BuildContext context, String path, {String? title, String? highlightedFileName}) {
+  static void openTab(BuildContext context, String path,
+      {String? title, String? highlightedFileName}) {
     final tabBloc = BlocProvider.of<TabManagerBloc>(context);
     tabBloc.add(AddTab(
       path: path,

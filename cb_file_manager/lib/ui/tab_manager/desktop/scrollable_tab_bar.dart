@@ -1,11 +1,13 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter/services.dart'; // Added import for HapticFeedback
 import 'package:remixicon/remixicon.dart' as remix;
 // Import app theme
 import 'package:window_manager/window_manager.dart'; // Import window_manager
 import 'dart:io'; // Import dart:io for Platform check
 import '../../components/common/window_caption_buttons.dart';
+import 'desktop_tab_drag_data.dart';
 
 /// A custom TabBar wrapper that translates vertical mouse wheel scrolling
 /// to horizontal scrolling of the tab bar, with modern styling.
@@ -24,6 +26,15 @@ class ScrollableTabBar extends StatefulWidget {
   final Function(int)? onTap;
   final VoidCallback? onAddTabPressed;
   final Function(int)? onTabClose; // Added callback for tab closing
+  final void Function(int index, Offset globalPosition)? onTabContextMenu;
+  final List<DesktopTabDragData>? draggableTabs;
+  final Set<String> selectedTabIds;
+  final ValueChanged<DesktopTabDragData>? onTabDragStarted;
+  final VoidCallback? onTabDragEnded;
+  final Future<void> Function(DesktopTabDragData data)?
+      onNativeTabDragRequested;
+  final void Function(int fromIndex, int toIndex)? onTabReorder;
+  final void Function(int index, bool shiftPressed)? onTabPrimaryClick;
 
   const ScrollableTabBar({
     Key? key,
@@ -41,6 +52,14 @@ class ScrollableTabBar extends StatefulWidget {
     this.onTap,
     this.onAddTabPressed,
     this.onTabClose, // Added parameter
+    this.onTabContextMenu,
+    this.draggableTabs,
+    this.selectedTabIds = const <String>{},
+    this.onTabDragStarted,
+    this.onTabDragEnded,
+    this.onNativeTabDragRequested,
+    this.onTabReorder,
+    this.onTabPrimaryClick,
   }) : super(key: key);
 
   @override
@@ -94,62 +113,108 @@ class _ScrollableTabBarState extends State<ScrollableTabBar> {
       margin: Platform.isWindows
           ? const EdgeInsets.only(bottom: 1)
           : const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      padding: Platform.isWindows
-          ? const EdgeInsets.only(
-              left: 8.0) // Initial padding for the draggable area
-          : EdgeInsets.zero,
+      padding: EdgeInsets.zero,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Draggable area for tabs
-          Expanded(
-            child: DragToMoveArea(
-              child: Listener(
-                onPointerSignal: (PointerSignalEvent event) {
-                  if (event is PointerScrollEvent &&
-                      _scrollController.hasClients) {
-                    GestureBinding.instance.pointerSignalResolver
-                        .register(event, (_) {});
-                    final double newPosition =
-                        _scrollController.offset + event.scrollDelta.dy;
-                    _scrollController.animateTo(
-                      newPosition.clamp(
-                        _scrollController.position.minScrollExtent,
-                        _scrollController.position.maxScrollExtent,
-                      ),
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeOutCubic,
-                    );
-                  }
-                },
-                child: SingleChildScrollView(
-                  controller: _scrollController,
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: _ModernTabBar(
-                    controller: widget.controller,
-                    tabs: widget.tabs,
-                    labelColor:
-                        isDarkMode ? Colors.white : theme.colorScheme.primary,
-                    unselectedLabelColor: isDarkMode
-                        ? Colors.white70
-                        : theme.colorScheme.onSurface,
-                    labelStyle: widget.labelStyle,
-                    unselectedLabelStyle: widget.unselectedLabelStyle,
-                    onTap: widget.onTap,
-                    activeTabColor: activeTabColor,
-                    hoverColor: hoverColor,
-                    tabBackgroundColor:
-                        tabBackgroundColor, // This is for individual tab bg, might need renaming or re-evaluation
-                    onAddTabPressed: widget.onAddTabPressed,
-                    onTabClose: widget.onTabClose,
-                    theme: theme,
-                  ),
-                ),
+          if (Platform.isWindows)
+            DragToMoveArea(
+              child: const SizedBox(
+                width: 12,
+                height: double.infinity,
               ),
             ),
+          // Tab strip area (not draggable) so tab drag gestures can win.
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return Listener(
+                  onPointerSignal: (PointerSignalEvent event) {
+                    if (event is PointerScrollEvent) {
+                      final keys = HardwareKeyboard.instance.logicalKeysPressed;
+                      final isShiftPressed =
+                          HardwareKeyboard.instance.isShiftPressed ||
+                              keys.contains(LogicalKeyboardKey.shiftLeft) ||
+                              keys.contains(LogicalKeyboardKey.shiftRight);
+
+                      // Only scroll the tab strip when a horizontal scroll is
+                      // requested (trackpad swipe) or when the user holds Shift.
+                      // Do not map vertical wheel scrolling to horizontal by
+                      // default so vertical scroll can pass through naturally.
+                      final delta = event.scrollDelta.dx.abs() > 0
+                          ? event.scrollDelta.dx
+                          : (isShiftPressed ? event.scrollDelta.dy : 0.0);
+
+                      // Always consume the wheel event over the tab strip so
+                      // the content underneath does not scroll vertically.
+                      GestureBinding.instance.pointerSignalResolver
+                          .register(event, (_) {});
+
+                      if (delta == 0.0) return;
+                      if (!_scrollController.hasClients) return;
+
+                      final double newPosition =
+                          _scrollController.offset + delta;
+                      _scrollController.animateTo(
+                        newPosition.clamp(
+                          _scrollController.position.minScrollExtent,
+                          _scrollController.position.maxScrollExtent,
+                        ),
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOutCubic,
+                      );
+                    }
+                  },
+                  behavior: HitTestBehavior.opaque,
+                  child: ScrollConfiguration(
+                    behavior: const _NoMouseDragScrollBehavior(),
+                    child: SingleChildScrollView(
+                      controller: _scrollController,
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      child: _ModernTabBar(
+                        viewportWidth: constraints.maxWidth,
+                        controller: widget.controller,
+                        tabs: widget.tabs,
+                        labelColor: isDarkMode
+                            ? Colors.white
+                            : theme.colorScheme.primary,
+                        unselectedLabelColor: isDarkMode
+                            ? Colors.white70
+                            : theme.colorScheme.onSurface,
+                        labelStyle: widget.labelStyle,
+                        unselectedLabelStyle: widget.unselectedLabelStyle,
+                        onTap: widget.onTap,
+                        activeTabColor: activeTabColor,
+                        hoverColor: hoverColor,
+                        tabBackgroundColor: tabBackgroundColor,
+                        onAddTabPressed: widget.onAddTabPressed,
+                        onTabClose: widget.onTabClose,
+                        onTabContextMenu: widget.onTabContextMenu,
+                        draggableTabs: widget.draggableTabs,
+                        selectedTabIds: widget.selectedTabIds,
+                        onTabDragStarted: widget.onTabDragStarted,
+                        onTabDragEnded: widget.onTabDragEnded,
+                        onNativeTabDragRequested:
+                            widget.onNativeTabDragRequested,
+                        onTabReorder: widget.onTabReorder,
+                        onTabPrimaryClick: widget.onTabPrimaryClick,
+                        theme: theme,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
-          // Window caption buttons outside DragToMoveArea
+          if (Platform.isWindows)
+            DragToMoveArea(
+              child: const SizedBox(
+                width: 84,
+                height: double.infinity,
+              ),
+            ),
+          // Window caption buttons.
           windowCaptionButtons,
         ],
       ),
@@ -157,8 +222,24 @@ class _ScrollableTabBarState extends State<ScrollableTabBar> {
   }
 }
 
+class _NoMouseDragScrollBehavior extends MaterialScrollBehavior {
+  const _NoMouseDragScrollBehavior();
+
+  // Avoid click-and-drag panning with the mouse on desktop. This prevents
+  // the tab strip from scrolling when the user is trying to drag a tab.
+  @override
+  Set<PointerDeviceKind> get dragDevices => const <PointerDeviceKind>{
+        PointerDeviceKind.touch,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+        PointerDeviceKind.invertedStylus,
+        PointerDeviceKind.unknown,
+      };
+}
+
 /// Modern tab bar implementation with softer, more elegant styling
 class _ModernTabBar extends StatefulWidget {
+  final double viewportWidth;
   final TabController controller;
   final List<Widget> tabs;
   final Color? labelColor;
@@ -172,10 +253,20 @@ class _ModernTabBar extends StatefulWidget {
       tabBackgroundColor; // This is the background of the tab itself, not the whole bar
   final VoidCallback? onAddTabPressed;
   final Function(int)? onTabClose;
+  final void Function(int index, Offset globalPosition)? onTabContextMenu;
+  final List<DesktopTabDragData>? draggableTabs;
+  final Set<String> selectedTabIds;
+  final ValueChanged<DesktopTabDragData>? onTabDragStarted;
+  final VoidCallback? onTabDragEnded;
+  final Future<void> Function(DesktopTabDragData data)?
+      onNativeTabDragRequested;
+  final void Function(int fromIndex, int toIndex)? onTabReorder;
+  final void Function(int index, bool shiftPressed)? onTabPrimaryClick;
   final ThemeData theme;
 
   const _ModernTabBar({
     Key? key,
+    required this.viewportWidth,
     required this.controller,
     required this.tabs,
     this.labelColor,
@@ -188,6 +279,14 @@ class _ModernTabBar extends StatefulWidget {
     required this.tabBackgroundColor,
     this.onAddTabPressed,
     this.onTabClose,
+    this.onTabContextMenu,
+    this.draggableTabs,
+    this.selectedTabIds = const <String>{},
+    this.onTabDragStarted,
+    this.onTabDragEnded,
+    this.onNativeTabDragRequested,
+    this.onTabReorder,
+    this.onTabPrimaryClick,
     required this.theme,
   }) : super(key: key);
 
@@ -196,6 +295,283 @@ class _ModernTabBar extends StatefulWidget {
 }
 
 class _ModernTabBarState extends State<_ModernTabBar> {
+  final GlobalKey _tabRowKey = GlobalKey();
+  final GlobalKey _tabStripKey = GlobalKey();
+  final GlobalKey _addTabButtonKey = GlobalKey();
+  String? _activeDragTabId;
+  int? _previewTargetIndex;
+  int? _lastReorderFromIndex;
+  int? _lastReorderToIndex;
+  Offset? _blankPointerDownGlobal;
+  DateTime? _lastBlankTapAt;
+  Offset? _lastBlankTapGlobal;
+  bool _blankDragEligible = false;
+  bool _blankDragStarted = false;
+
+  static const double _blankDragThreshold = 5.0;
+  static const Duration _doubleClickTimeout = Duration(milliseconds: 350);
+  static const double _doubleClickSlop = 22.0;
+
+  Future<void> _toggleMaximizeRestore() async {
+    if (!Platform.isWindows) return;
+    try {
+      final isMax = await windowManager.isMaximized();
+      if (isMax) {
+        await windowManager.unmaximize();
+      } else {
+        await windowManager.maximize();
+      }
+    } catch (_) {}
+  }
+
+  bool _isBlankStripPosition(Offset globalPosition) {
+    if (!Platform.isWindows) return false;
+
+    final stripContext = _tabStripKey.currentContext;
+    final rowContext = _tabRowKey.currentContext;
+    if (stripContext == null || rowContext == null) return false;
+
+    final stripBox = stripContext.findRenderObject() as RenderBox?;
+    final rowBox = rowContext.findRenderObject() as RenderBox?;
+    if (stripBox == null || rowBox == null) return false;
+
+    // Treat the strip as "blank" only when the pointer is outside the actual
+    // tab row bounds. This avoids starting a window drag when the user drags a
+    // tab (reorder/native drag).
+    final rowLocal = rowBox.globalToLocal(globalPosition);
+    final isOverTabRow = rowLocal.dx >= 0 &&
+        rowLocal.dx <= rowBox.size.width &&
+        rowLocal.dy >= 0 &&
+        rowLocal.dy <= rowBox.size.height;
+    return !isOverTabRow;
+  }
+
+  void _resetBlankDrag() {
+    _blankPointerDownGlobal = null;
+    _blankDragEligible = false;
+    _blankDragStarted = false;
+  }
+
+  int _activeDragIndex() {
+    final activeTabId = _activeDragTabId;
+    final items = widget.draggableTabs;
+    if (activeTabId == null || items == null || items.isEmpty) return -1;
+    return items.indexWhere((e) => e.tabId == activeTabId);
+  }
+
+  bool _isDraggedTabAt(int index) {
+    final activeTabId = _activeDragTabId;
+    final items = widget.draggableTabs;
+    if (activeTabId == null || items == null || index >= items.length) {
+      return false;
+    }
+    return items[index].tabId == activeTabId;
+  }
+
+  double _slideOffsetForIndex(int index) {
+    final fromIndex = _activeDragIndex();
+    final toIndex = _previewTargetIndex;
+    if (fromIndex < 0 || toIndex == null) return 0;
+    if (index == fromIndex) return 0;
+
+    if (fromIndex < toIndex && index > fromIndex && index <= toIndex) {
+      return -0.10;
+    }
+    if (fromIndex > toIndex && index >= toIndex && index < fromIndex) {
+      return 0.10;
+    }
+    return 0;
+  }
+
+  Widget _wrapTabReorderEffect({
+    required int index,
+    required Widget child,
+  }) {
+    final slideX = _slideOffsetForIndex(index);
+    final isAnyDragActive = _activeDragTabId != null;
+    final isDraggedTab = _isDraggedTabAt(index);
+    final shouldDimDraggedTab = Platform.isWindows &&
+        widget.onNativeTabDragRequested != null &&
+        isAnyDragActive &&
+        isDraggedTab;
+    final scale =
+        isDraggedTab ? 0.97 : (isAnyDragActive && slideX != 0 ? 1.01 : 1.0);
+
+    return AnimatedSlide(
+      duration: const Duration(milliseconds: 120),
+      curve: Curves.easeOutCubic,
+      offset: Offset(slideX, 0),
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOutCubic,
+        scale: scale,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 120),
+          opacity: shouldDimDraggedTab ? 0.62 : 1,
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  int _indexOfDragData(DesktopTabDragData data) {
+    final items = widget.draggableTabs;
+    if (items == null || items.isEmpty) return -1;
+    return items.indexWhere((e) => e.tabId == data.tabId);
+  }
+
+  int _resolveTargetIndex(Offset globalPosition) {
+    final rowContext = _tabRowKey.currentContext;
+    if (rowContext == null) return -1;
+    final box = rowContext.findRenderObject() as RenderBox?;
+    if (box == null || widget.tabs.isEmpty) return -1;
+
+    final local = box.globalToLocal(globalPosition);
+    const tabSlotWidth = 216.0;
+    final raw = (local.dx / tabSlotWidth).floor();
+    return raw.clamp(0, widget.tabs.length - 1);
+  }
+
+  void _beginDrag(DesktopTabDragData data) {
+    _activeDragTabId = data.tabId;
+    _previewTargetIndex = _indexOfDragData(data);
+    _lastReorderFromIndex = null;
+    _lastReorderToIndex = null;
+    widget.onTabDragStarted?.call(data);
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _endDrag() {
+    _activeDragTabId = null;
+    _previewTargetIndex = null;
+    _lastReorderFromIndex = null;
+    _lastReorderToIndex = null;
+    widget.onTabDragEnded?.call();
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _notifyReorder(DesktopTabDragData data, int toIndex) {
+    final fromIndex = _indexOfDragData(data);
+    if (fromIndex < 0) return;
+    if (toIndex < 0 || toIndex >= widget.tabs.length) return;
+    if (fromIndex == toIndex) return;
+    if (_lastReorderFromIndex == fromIndex && _lastReorderToIndex == toIndex) {
+      return;
+    }
+    _lastReorderFromIndex = fromIndex;
+    _lastReorderToIndex = toIndex;
+    _previewTargetIndex = toIndex;
+    if (mounted) {
+      setState(() {});
+    }
+    widget.onTabReorder?.call(fromIndex, toIndex);
+  }
+
+  void _handleNativeReorderMove(
+    DesktopTabDragData data,
+    Offset globalPosition,
+  ) {
+    final toIndex = _resolveTargetIndex(globalPosition);
+    if (toIndex < 0) return;
+    _notifyReorder(data, toIndex);
+  }
+
+  void _handleDragUpdate(
+    DesktopTabDragData data,
+    DragUpdateDetails details,
+  ) {
+    _handleNativeReorderMove(data, details.globalPosition);
+  }
+
+  Future<void> _handleNativeDetachRequest(DesktopTabDragData data) async {
+    try {
+      await widget.onNativeTabDragRequested?.call(data);
+    } finally {
+      _endDrag();
+    }
+  }
+
+  Widget _buildReorderTarget({
+    required int targetIndex,
+    required Widget child,
+  }) {
+    if (widget.onTabReorder == null) return child;
+    return DragTarget<DesktopTabDragData>(
+      onWillAcceptWithDetails: (details) {
+        final from = _indexOfDragData(details.data);
+        return from >= 0 && from != targetIndex;
+      },
+      onMove: (details) {
+        _notifyReorder(details.data, targetIndex);
+      },
+      onAcceptWithDetails: (details) {
+        _notifyReorder(details.data, targetIndex);
+      },
+      builder: (context, candidateData, rejectedData) {
+        final isHovering = candidateData.isNotEmpty ||
+            (_activeDragTabId != null && _previewTargetIndex == targetIndex);
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            child,
+            Positioned.fill(
+              child: IgnorePointer(
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 120),
+                  curve: Curves.easeOutCubic,
+                  opacity: isHovering ? 1 : 0,
+                  child: Container(
+                    margin:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: widget.theme.colorScheme.primary
+                          .withValues(alpha: 0.10),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: -2,
+              top: 7,
+              bottom: 7,
+              child: AnimatedScale(
+                duration: const Duration(milliseconds: 120),
+                curve: Curves.easeOutCubic,
+                scale: isHovering ? 1 : 0.7,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 120),
+                  curve: Curves.easeOutCubic,
+                  opacity: isHovering ? 1 : 0,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 120),
+                    width: isHovering ? 4 : 2,
+                    decoration: BoxDecoration(
+                      color: widget.theme.colorScheme.primary,
+                      borderRadius: BorderRadius.circular(999),
+                      boxShadow: [
+                        BoxShadow(
+                          color: widget.theme.colorScheme.primary
+                              .withValues(alpha: 0.45),
+                          blurRadius: 10,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -228,75 +604,266 @@ class _ModernTabBarState extends State<_ModernTabBar> {
     final isDarkMode = widget.theme.brightness == Brightness.dark;
 
     return Padding(
-      // Padding to vertically center the tabs if the parent container has a fixed height (e.g., 48px)
-      // _ModernTab height is 38px. (48-38)/2 = 5px vertical padding.
-      // Horizontal padding is for spacing from the edges of the scroll area.
-      padding: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 4.0),
-      child: Row(
-        mainAxisSize: MainAxisSize
-            .min, // CRITICAL: This ensures the Row takes only the width of its children
-        children: [
-          ...List.generate(widget.tabs.length, (index) {
-            final isActive = widget.controller.index == index;
-            return _ModernTab(
-              isActive: isActive,
-              onTap: () => widget.onTap?.call(index),
-              activeTabColor: widget.activeTabColor,
-              hoverColor: widget.hoverColor,
-              tabBackgroundColor: widget
-                  .tabBackgroundColor, // This is for the individual tab's bg when active
-              labelColor:
-                  isActive ? widget.labelColor : widget.unselectedLabelColor,
-              labelStyle:
-                  isActive ? widget.labelStyle : widget.unselectedLabelStyle,
-              onClose: () => widget.onTabClose?.call(index),
-              theme: widget.theme,
-              child: widget.tabs[index],
-            );
-          }),
+      padding: const EdgeInsets.fromLTRB(0, 5, 4, 5),
+      child: Listener(
+        key: _tabStripKey,
+        onPointerDown: (e) {
+          if (!Platform.isWindows) return;
+          if (e.kind != PointerDeviceKind.mouse) return;
+          if (e.buttons != kPrimaryMouseButton) return;
+          if (!_isBlankStripPosition(e.position)) return;
 
-          // "New Tab" button with modern styling and optimized interaction
-          if (widget.onAddTabPressed != null)
-            Material(
-              color: Colors.transparent,
-              child: Tooltip(
-                message: 'Add new tab',
-                child: Container(
-                  margin: const EdgeInsets.only(
-                      left: 4, right: 4), // Keep existing margin
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: _OptimizedButtonInteraction(
-                      onTap: () {
-                        widget.onAddTabPressed?.call();
-                        HapticFeedback.lightImpact();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isDarkMode
-                              ? Colors.white.withAlpha((0.08 * 255).round())
-                              : Colors.black.withAlpha((0.05 * 255).round()),
+          _blankPointerDownGlobal = e.position;
+          _blankDragEligible = true;
+          _blankDragStarted = false;
+        },
+        onPointerMove: (e) {
+          if (!Platform.isWindows) return;
+          if (!_blankDragEligible) return;
+          if (_blankPointerDownGlobal == null) return;
+          if ((e.buttons & kPrimaryMouseButton) == 0) {
+            _resetBlankDrag();
+            return;
+          }
+
+          final delta = (e.position - _blankPointerDownGlobal!).distance;
+          if (delta < _blankDragThreshold) return;
+          _blankDragStarted = true;
+          // Dragging should not count as a "tap" for double-click.
+          _lastBlankTapAt = null;
+          _lastBlankTapGlobal = null;
+          _resetBlankDrag();
+          unawaited(windowManager.startDragging());
+        },
+        onPointerUp: (e) {
+          if (!Platform.isWindows) {
+            _resetBlankDrag();
+            return;
+          }
+
+          if (_blankDragEligible &&
+              !_blankDragStarted &&
+              _blankPointerDownGlobal != null &&
+              _isBlankStripPosition(e.position)) {
+            final now = DateTime.now();
+            final lastAt = _lastBlankTapAt;
+            final lastPos = _lastBlankTapGlobal;
+
+            if (lastAt != null &&
+                now.difference(lastAt) <= _doubleClickTimeout &&
+                lastPos != null &&
+                (e.position - lastPos).distance <= _doubleClickSlop) {
+              _lastBlankTapAt = null;
+              _lastBlankTapGlobal = null;
+              _resetBlankDrag();
+              unawaited(_toggleMaximizeRestore());
+              return;
+            }
+
+            _lastBlankTapAt = now;
+            _lastBlankTapGlobal = e.position;
+          }
+
+          _resetBlankDrag();
+        },
+        onPointerCancel: (_) => _resetBlankDrag(),
+        behavior: HitTestBehavior.translucent,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minWidth: widget.viewportWidth),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Row(
+              key: _tabRowKey,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ...List.generate(widget.tabs.length, (index) {
+                  final isActive = widget.controller.index == index;
+
+                  final dragData = (widget.draggableTabs != null &&
+                          index < (widget.draggableTabs?.length ?? 0))
+                      ? widget.draggableTabs![index]
+                      : null;
+
+                  final isSelected = dragData != null &&
+                      widget.selectedTabIds.contains(dragData.tabId);
+
+                  final tabWidget = _ModernTab(
+                    isActive: isActive,
+                    isSelected: isSelected,
+                    onPrimaryDown: (event) {
+                      final keys = HardwareKeyboard.instance.logicalKeysPressed;
+                      final shiftPressed =
+                          HardwareKeyboard.instance.isShiftPressed ||
+                              keys.contains(LogicalKeyboardKey.shiftLeft) ||
+                              keys.contains(LogicalKeyboardKey.shiftRight);
+                      final handler = widget.onTabPrimaryClick;
+                      if (handler != null) {
+                        handler(index, shiftPressed);
+                        return;
+                      }
+                      widget.onTap?.call(index);
+                    },
+                    onSecondaryClick: widget.onTabContextMenu == null
+                        ? null
+                        : (pos) => widget.onTabContextMenu!.call(index, pos),
+                    activeTabColor: widget.activeTabColor,
+                    hoverColor: widget.hoverColor,
+                    tabBackgroundColor: widget.tabBackgroundColor,
+                    labelColor: isActive
+                        ? widget.labelColor
+                        : widget.unselectedLabelColor,
+                    labelStyle: isActive
+                        ? widget.labelStyle
+                        : widget.unselectedLabelStyle,
+                    onClose: () => widget.onTabClose?.call(index),
+                    theme: widget.theme,
+                    child: widget.tabs[index],
+                  );
+                  final tabKey = ValueKey<String>(
+                    dragData != null
+                        ? 'desktop_tab_${dragData.tabId}'
+                        : 'desktop_tab_index_$index',
+                  );
+
+                  if (dragData == null) {
+                    return _wrapTabReorderEffect(
+                      index: index,
+                      child: KeyedSubtree(key: tabKey, child: tabWidget),
+                    );
+                  }
+
+                  final shouldUseNativeDrag = Platform.isWindows &&
+                      widget.onNativeTabDragRequested != null;
+                  if (shouldUseNativeDrag) {
+                    return _wrapTabReorderEffect(
+                      index: index,
+                      child: KeyedSubtree(
+                        key: tabKey,
+                        child: _buildReorderTarget(
+                          targetIndex: index,
+                          child: _NativeTabDragHandle(
+                            data: dragData,
+                            onDragStarted: _beginDrag,
+                            onDragMove: _handleNativeReorderMove,
+                            onDragFinished: (_) => _endDrag(),
+                            onDetachRequested: _handleNativeDetachRequest,
+                            child: tabWidget,
+                          ),
                         ),
-                        child: Center(
-                          child: Icon(
-                            remix.Remix.add_line,
-                            size: 18,
-                            color: isDarkMode
-                                ? Colors.white70
-                                : widget.theme.colorScheme.primary,
+                      ),
+                    );
+                  }
+
+                  return _wrapTabReorderEffect(
+                    index: index,
+                    child: KeyedSubtree(
+                      key: tabKey,
+                      child: _buildReorderTarget(
+                        targetIndex: index,
+                        child: Draggable<DesktopTabDragData>(
+                          data: dragData,
+                          onDragStarted: () => _beginDrag(dragData),
+                          onDragUpdate: (details) =>
+                              _handleDragUpdate(dragData, details),
+                          onDragEnd: (_) => _endDrag(),
+                          childWhenDragging:
+                              Opacity(opacity: 0.35, child: tabWidget),
+                          feedback: Material(
+                            color: Colors.transparent,
+                            child: Opacity(
+                              opacity: 0.95,
+                              child: Transform.scale(
+                                scale: 1.02,
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints.tightFor(
+                                      width: 210, height: 38),
+                                  child: DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      color: widget.activeTabColor,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: widget.theme.colorScheme.primary
+                                            .withValues(alpha: 0.35),
+                                        width: 0.8,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black
+                                              .withAlpha((0.14 * 255).round()),
+                                          blurRadius: 14,
+                                          offset: const Offset(0, 8),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Center(
+                                      child: DefaultTextStyle.merge(
+                                        style: TextStyle(
+                                          color: widget.labelColor,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        child: widget.tabs[index],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          child: tabWidget,
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+                if (widget.onAddTabPressed != null)
+                  KeyedSubtree(
+                    key: _addTabButtonKey,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: Tooltip(
+                        message: 'Add new tab',
+                        child: Container(
+                          margin: const EdgeInsets.only(left: 4, right: 4),
+                          child: MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: _OptimizedButtonInteraction(
+                              onTap: () {
+                                widget.onAddTabPressed?.call();
+                                HapticFeedback.lightImpact();
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                width: 36,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: isDarkMode
+                                      ? Colors.white
+                                          .withAlpha((0.08 * 255).round())
+                                      : Colors.black
+                                          .withAlpha((0.05 * 255).round()),
+                                ),
+                                child: Center(
+                                  child: Icon(
+                                    remix.Remix.add_line,
+                                    size: 18,
+                                    color: isDarkMode
+                                        ? Colors.white70
+                                        : widget.theme.colorScheme.primary,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ),
+              ],
             ),
-        ],
+          ),
+        ),
       ),
     );
   }
@@ -305,7 +872,9 @@ class _ModernTabBarState extends State<_ModernTabBar> {
 /// Individual modern tab with softer, more elegant styling
 class _ModernTab extends StatefulWidget {
   final bool isActive;
-  final VoidCallback onTap;
+  final bool isSelected;
+  final ValueChanged<PointerDownEvent> onPrimaryDown;
+  final ValueChanged<Offset>? onSecondaryClick;
   final Color activeTabColor;
   final Color hoverColor;
   final Color tabBackgroundColor;
@@ -318,7 +887,9 @@ class _ModernTab extends StatefulWidget {
   const _ModernTab({
     Key? key,
     required this.isActive,
-    required this.onTap,
+    required this.isSelected,
+    required this.onPrimaryDown,
+    this.onSecondaryClick,
     required this.activeTabColor,
     required this.hoverColor,
     required this.tabBackgroundColor,
@@ -384,6 +955,12 @@ class _ModernTabState extends State<_ModernTab>
     final hoverColor = isDarkMode
         ? Colors.white.withAlpha((0.04 * 255).round())
         : Colors.black.withAlpha((0.04 * 255).round());
+    final selectedFillColor = primaryColor.withAlpha(
+      ((isDarkMode ? 0.20 : 0.14) * 255).round(),
+    );
+    final selectedBorderColor = primaryColor.withAlpha(
+      ((isDarkMode ? 0.75 : 0.65) * 255).round(),
+    );
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -392,100 +969,120 @@ class _ModernTabState extends State<_ModernTab>
       child: AnimatedBuilder(
         animation: _animation,
         builder: (context, child) {
+          final tabScale = widget.isSelected
+              ? 1.015
+              : (widget.isActive ? 1.006 : (_isHovered ? 1.003 : 1.0));
+
           return _OptimizedTabInteraction(
-            onTap: widget.onTap,
+            onPrimaryDown: widget.onPrimaryDown,
             onMiddleClick: widget.onClose,
+            onSecondaryClick: widget.onSecondaryClick,
             child: Stack(
               children: [
-                Container(
-                  width: tabWidth,
-                  height: 38,
-                  margin:
-                      const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: widget.isActive
-                        ? widget.activeTabColor
-                        : (_isHovered && !_isCloseButtonHovered
-                            ? widget.hoverColor
-                            : Colors.transparent),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: widget.isActive
-                          ? (isDarkMode
-                              ? Colors.white.withAlpha((0.1 * 255).round())
-                              : Colors.black.withAlpha((0.05 * 255).round()))
-                          : Colors.transparent,
-                      width: 0.5,
-                    ),
-                    boxShadow: widget.isActive
-                        ? [
-                            BoxShadow(
-                              color:
-                                  Colors.black.withAlpha((0.03 * 255).round()),
-                              blurRadius: 2,
-                              offset: const Offset(0, 1),
-                            ),
-                          ]
-                        : null,
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Stack(
-                      children: [
-                        // Tab content
-                        Positioned.fill(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            child: DefaultTextStyle(
-                              style: TextStyle(
-                                color: widget.labelColor,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ).merge(widget.labelStyle),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Expanded(
-                                    child: Padding(
-                                      padding:
-                                          const EdgeInsets.only(right: 24.0),
-                                      child: Center(child: widget.child),
-                                    ),
-                                  ),
-                                ],
+                AnimatedScale(
+                  scale: tabScale,
+                  duration: const Duration(milliseconds: 140),
+                  curve: Curves.easeOutCubic,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    curve: Curves.easeOutCubic,
+                    width: tabWidth,
+                    height: 38,
+                    margin:
+                        const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: widget.isSelected
+                          ? selectedFillColor
+                          : (widget.isActive
+                              ? widget.activeTabColor
+                              : (_isHovered && !_isCloseButtonHovered
+                                  ? widget.hoverColor
+                                  : Colors.transparent)),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: widget.isSelected
+                            ? selectedBorderColor
+                            : (widget.isActive
+                                ? (isDarkMode
+                                    ? Colors.white.withAlpha(
+                                        (0.1 * 255).round(),
+                                      )
+                                    : Colors.black
+                                        .withAlpha((0.05 * 255).round()))
+                                : Colors.transparent),
+                        width: widget.isSelected ? 0.9 : 0.5,
+                      ),
+                      boxShadow: (widget.isActive || widget.isSelected)
+                          ? [
+                              BoxShadow(
+                                color: Colors.black
+                                    .withAlpha((0.03 * 255).round()),
+                                blurRadius: widget.isSelected ? 4 : 2,
+                                offset: const Offset(0, 1),
                               ),
-                            ),
-                          ),
-                        ),
-
-                        // Hover effect - only show when not hovering the close button
-                        if (_isHovered &&
-                            !_isCloseButtonHovered &&
-                            !widget.isActive)
+                            ]
+                          : null,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Stack(
+                        children: [
+                          // Tab content
                           Positioned.fill(
-                            child: Material(
-                              color: hoverColor,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-
-                        // Active tab indicator - subtle left border
-                        if (widget.isActive)
-                          Positioned(
-                            left: 0,
-                            top: 6,
-                            bottom: 6,
-                            width: 3,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: primaryColor,
-                                borderRadius: const BorderRadius.horizontal(
-                                  right: Radius.circular(4),
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 12),
+                              child: DefaultTextStyle(
+                                style: TextStyle(
+                                  color: widget.labelColor,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ).merge(widget.labelStyle),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Expanded(
+                                      child: Padding(
+                                        padding:
+                                            const EdgeInsets.only(right: 24.0),
+                                        child: Center(child: widget.child),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
-                      ],
+
+                          // Hover effect - only show when not hovering the close button
+                          if (_isHovered &&
+                              !_isCloseButtonHovered &&
+                              !widget.isActive)
+                            Positioned.fill(
+                              child: Material(
+                                color: hoverColor,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+
+                          // Active tab indicator - subtle left border
+                          if (widget.isActive)
+                            Positioned(
+                              left: 0,
+                              top: 6,
+                              bottom: 6,
+                              width: 3,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: primaryColor,
+                                  borderRadius: const BorderRadius.horizontal(
+                                    right: Radius.circular(4),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -550,14 +1147,16 @@ class _ModernTabState extends State<_ModernTab>
 
 /// Optimized tab interaction handler that eliminates delay on tab clicks
 class _OptimizedTabInteraction extends StatefulWidget {
-  final VoidCallback onTap;
+  final ValueChanged<PointerDownEvent> onPrimaryDown;
   final VoidCallback? onMiddleClick;
+  final ValueChanged<Offset>? onSecondaryClick;
   final Widget child;
 
   const _OptimizedTabInteraction({
     Key? key,
-    required this.onTap,
+    required this.onPrimaryDown,
     this.onMiddleClick,
+    this.onSecondaryClick,
     required this.child,
   }) : super(key: key);
 
@@ -573,7 +1172,7 @@ class _OptimizedTabInteractionState extends State<_OptimizedTabInteraction> {
       onPointerDown: (PointerDownEvent event) {
         // Primary mouse button (left click)
         if (event.buttons == kPrimaryMouseButton) {
-          widget.onTap();
+          widget.onPrimaryDown(event);
           HapticFeedback.lightImpact();
         }
         // Middle mouse button (wheel click)
@@ -581,6 +1180,11 @@ class _OptimizedTabInteractionState extends State<_OptimizedTabInteraction> {
             widget.onMiddleClick != null) {
           widget.onMiddleClick!();
           HapticFeedback.lightImpact();
+        }
+        // Secondary mouse button (right click)
+        else if (event.buttons == kSecondaryMouseButton &&
+            widget.onSecondaryClick != null) {
+          widget.onSecondaryClick!(event.position);
         }
       },
       behavior: HitTestBehavior.opaque,
@@ -622,3 +1226,87 @@ class _OptimizedButtonInteractionState
 }
 
 // New widget for window caption buttons
+
+class _NativeTabDragHandle extends StatefulWidget {
+  final DesktopTabDragData data;
+  final ValueChanged<DesktopTabDragData>? onDragStarted;
+  final void Function(DesktopTabDragData data, Offset globalPosition)?
+      onDragMove;
+  final ValueChanged<DesktopTabDragData>? onDragFinished;
+  final Future<void> Function(DesktopTabDragData data) onDetachRequested;
+  final Widget child;
+
+  const _NativeTabDragHandle({
+    Key? key,
+    required this.data,
+    this.onDragStarted,
+    this.onDragMove,
+    this.onDragFinished,
+    required this.onDetachRequested,
+    required this.child,
+  }) : super(key: key);
+
+  @override
+  State<_NativeTabDragHandle> createState() => _NativeTabDragHandleState();
+}
+
+class _NativeTabDragHandleState extends State<_NativeTabDragHandle> {
+  Offset? _downPosition;
+  bool _dragging = false;
+  bool _detaching = false;
+
+  static const double _startDistance = 6.0;
+  static const double _detachDistance = 28.0;
+
+  void _reset() {
+    _downPosition = null;
+    _dragging = false;
+    _detaching = false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      onPointerDown: (e) {
+        if (e.kind == PointerDeviceKind.mouse &&
+            e.buttons == kPrimaryMouseButton) {
+          _downPosition = e.position;
+        }
+      },
+      onPointerMove: (e) {
+        if (_downPosition == null) return;
+        if ((e.buttons & kPrimaryMouseButton) == 0) return;
+
+        final delta = e.position - _downPosition!;
+        if (!_dragging && delta.distance >= _startDistance) {
+          _dragging = true;
+          widget.onDragStarted?.call(widget.data);
+        }
+
+        if (!_dragging || _detaching) return;
+
+        if (delta.dy.abs() >= _detachDistance) {
+          _detaching = true;
+          unawaited(widget.onDetachRequested(widget.data).whenComplete(_reset));
+          return;
+        }
+
+        widget.onDragMove?.call(widget.data, e.position);
+      },
+      onPointerUp: (_) {
+        if (_dragging && !_detaching) {
+          widget.onDragFinished?.call(widget.data);
+        }
+        _reset();
+      },
+      onPointerCancel: (_) {
+        if (_dragging && !_detaching) {
+          widget.onDragFinished?.call(widget.data);
+        }
+        _reset();
+      },
+      behavior: HitTestBehavior.opaque,
+      child: widget.child,
+    );
+  }
+}
