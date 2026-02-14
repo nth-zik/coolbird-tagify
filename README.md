@@ -1,7 +1,7 @@
 # CoolBird Tagify
 
-[![Build and Test](https://github.com/YOUR_USERNAME/coolbirdfm-flutter/actions/workflows/build-test.yml/badge.svg)](https://github.com/YOUR_USERNAME/coolbirdfm-flutter/actions/workflows/build-test.yml)
-[![Release](https://github.com/YOUR_USERNAME/coolbirdfm-flutter/actions/workflows/release.yml/badge.svg)](https://github.com/YOUR_USERNAME/coolbirdfm-flutter/actions/workflows/release.yml)
+[![Build and Test](https://github.com/nth-zik/coolbird-tagify/actions/workflows/build-test.yml/badge.svg)](https://github.com/nth-zik/coolbird-tagify/actions/workflows/build-test.yml)
+[![Release](https://github.com/nth-zik/coolbird-tagify/actions/workflows/release.yml/badge.svg)](https://github.com/nth-zik/coolbird-tagify/actions/workflows/release.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 A powerful cross-platform file manager built with Flutter, supporting local and network (SMB) file access with advanced media playback capabilities.
@@ -39,7 +39,7 @@ Download the latest release for your platform:
 
 - **ZIP**: Extract and move to Applications
 
-[📥 Download Latest Release](https://github.com/YOUR_USERNAME/coolbirdfm-flutter/releases/latest)
+[📥 Download Latest Release](https://github.com/nth-zik/coolbird-tagify/releases/latest)
 
 ## 🚀 Quick Start
 
@@ -98,7 +98,7 @@ cd bundle
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/coolbirdfm-flutter.git
+git clone https://github.com/nth-zik/coolbird-tagify.git
 cd coolbirdfm-flutter
 
 # Navigate to project directory
@@ -207,7 +207,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ## 🐛 Bug Reports
 
-Found a bug? Please [open an issue](https://github.com/YOUR_USERNAME/coolbirdfm-flutter/issues/new) with:
+Found a bug? Please [open an issue](https://github.com/nth-zik/coolbird-tagify/issues/new) with:
 
 - Clear description
 - Steps to reproduce
@@ -217,7 +217,7 @@ Found a bug? Please [open an issue](https://github.com/YOUR_USERNAME/coolbirdfm-
 
 ## 💡 Feature Requests
 
-Have an idea? [Open a feature request](https://github.com/YOUR_USERNAME/coolbirdfm-flutter/issues/new) and describe:
+Have an idea? [Open a feature request](https://github.com/nth-zik/coolbird-tagify/issues/new) and describe:
 
 - The problem you're trying to solve
 - Your proposed solution
@@ -282,8 +282,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Contact
 
-- **Issues**: [GitHub Issues](https://github.com/YOUR_USERNAME/coolbirdfm-flutter/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/YOUR_USERNAME/coolbirdfm-flutter/discussions)
+- **Issues**: [GitHub Issues](https://github.com/nth-zik/coolbird-tagify/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/nth-zik/coolbird-tagify/discussions)
 - **Email**: your.email@example.com
 
 ## 🌟 Star History

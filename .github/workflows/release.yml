@@ -3,17 +3,17 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*.*.*'  # Trigger on version tags like v1.0.0
-  workflow_dispatch:  # Allow manual trigger
+      - "v*.*.*" # Trigger on version tags like v1.0.0
+  workflow_dispatch: # Allow manual trigger
     inputs:
       version:
-        description: 'Release version (e.g., v1.0.0)'
-        required: true
-        default: 'v1.0.0'
+        description: "Release version (e.g., v1.0.0)"
+        required: false
+        default: ""
 
 env:
-  FLUTTER_VERSION: '3.24.0'
-  PROJECT_DIR: 'cb_file_manager'
+  FLUTTER_VERSION: "3.24.0"
+  PROJECT_DIR: "cb_file_manager"
 
 jobs:
   # Generate release notes from commits
@@ -21,35 +21,60 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       release_notes: ${{ steps.notes.outputs.notes }}
-      version: ${{ steps.version.outputs.version }}
+      version_name: ${{ steps.version.outputs.version_name }}
+      version_code: ${{ steps.version.outputs.version_code }}
+      version_tag: ${{ steps.version.outputs.version_tag }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch all history for changelog
+          fetch-depth: 0 # Fetch all history for changelog
 
       - name: Get version
         id: version
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          VERSION_LINE=$(grep "^version:" "${{ env.PROJECT_DIR }}/pubspec.yaml" | sed 's/version: //')
+          VERSION_NAME="${VERSION_LINE%%+*}"
+          if [[ "$VERSION_LINE" == *"+"* ]]; then
+            VERSION_CODE="${VERSION_LINE##*+}"
           else
-            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+            VERSION_CODE="0"
           fi
+          VERSION_TAG="v$VERSION_NAME"
+
+          if [ "${{ github.event_name }}" == "push" ]; then
+            TAG_REF="${GITHUB_REF#refs/tags/}"
+            if [ "$TAG_REF" != "$VERSION_TAG" ]; then
+              echo "Tag $TAG_REF does not match pubspec version $VERSION_TAG"
+              exit 1
+            fi
+          fi
+
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            INPUT_VERSION="${{ github.event.inputs.version }}"
+            if [ -n "$INPUT_VERSION" ] && [ "$INPUT_VERSION" != "$VERSION_TAG" ] && [ "$INPUT_VERSION" != "$VERSION_NAME" ]; then
+              echo "Input version $INPUT_VERSION does not match pubspec version $VERSION_TAG"
+              exit 1
+            fi
+          fi
+
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "version_tag=$VERSION_TAG" >> $GITHUB_OUTPUT
 
       - name: Generate release notes
         id: notes
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          
+          VERSION="${{ steps.version.outputs.version_name }}"
+
           # Get previous tag
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          
+
           echo "# 🎉 CB File Manager $VERSION" > release_notes.md
           echo "" >> release_notes.md
           echo "## 📝 What's Changed" >> release_notes.md
           echo "" >> release_notes.md
-          
+
           if [ -z "$PREV_TAG" ]; then
             echo "Initial release" >> release_notes.md
           else
@@ -72,7 +97,7 @@ jobs:
             echo "### 🔧 Other Changes" >> release_notes.md
             git log $PREV_TAG..HEAD --pretty=format:"- %s (%h)" --invert-grep --grep="^feat" --grep="^fix" --grep="^docs" >> release_notes.md || echo "- No other changes" >> release_notes.md
           fi
-          
+
           echo "" >> release_notes.md
           echo "## 📦 Downloads" >> release_notes.md
           echo "" >> release_notes.md
@@ -124,7 +149,7 @@ jobs:
           echo "- Extract the \`.zip\` file" >> release_notes.md
           echo "- Move to Applications folder" >> release_notes.md
           echo "- Run the app (may need to allow in Security settings)" >> release_notes.md
-          
+
           # Save to output
           {
             echo 'notes<<EOF'
@@ -150,28 +175,24 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
+          channel: "stable"
 
-      - name: Install dependencies
-        run: |
-          cd ${{ env.PROJECT_DIR }}
-          flutter pub get
+      - name: Ensure build script is executable
+        shell: bash
+        run: chmod +x scripts/build.sh
 
-      - name: Build Windows
-        run: |
-          cd ${{ env.PROJECT_DIR }}
-          flutter build windows --release
+      - name: Build Windows Portable
+        shell: bash
+        run: ./scripts/build.sh windows-portable
 
-      - name: Package Windows build
+      - name: Rename Portable ZIP
+        shell: bash
         run: |
-          $VERSION = "${{ needs.generate-release-notes.outputs.version }}"
-          $BUILD_DIR = "${{ env.PROJECT_DIR }}\build\windows\x64\runner\Release"
-          $OUTPUT_DIR = "${{ env.PROJECT_DIR }}\build\windows\portable"
-          
-          New-Item -ItemType Directory -Force -Path $OUTPUT_DIR
-          $OUTPUT_NAME = "$OUTPUT_DIR\CBFileManager-$VERSION-windows-portable.zip"
-          
-          Compress-Archive -Path "$BUILD_DIR\*" -DestinationPath $OUTPUT_NAME
+          VERSION="${{ needs.generate-release-notes.outputs.version_name }}"
+          OUTPUT_DIR="${{ env.PROJECT_DIR }}/build/windows/portable"
+          if [ -f "$OUTPUT_DIR/CoolBirdTagify-Portable.zip" ]; then
+            mv "$OUTPUT_DIR/CoolBirdTagify-Portable.zip" "$OUTPUT_DIR/CBFileManager-$VERSION-windows-portable.zip"
+          fi
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
@@ -191,44 +212,27 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
+          channel: "stable"
 
       - name: Install Inno Setup
         run: |
           choco install innosetup -y
           echo "C:\Program Files (x86)\Inno Setup 6" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Install dependencies
-        run: |
-          cd ${{ env.PROJECT_DIR }}
-          flutter pub get
-
-      - name: Build Windows
-        run: |
-          cd ${{ env.PROJECT_DIR }}
-          flutter build windows --release
-
-      - name: Generate GUID for Inno Setup
-        run: |
-          $issPath = "installer\windows\installer.iss"
-          $content = Get-Content $issPath -Raw
-          if ($content -match "YOUR-GUID-HERE-REPLACE-ME") {
-            $newGuid = [guid]::NewGuid().ToString().ToUpper()
-            $content = $content -replace "YOUR-GUID-HERE-REPLACE-ME", $newGuid
-            Set-Content -Path $issPath -Value $content
-            Write-Host "Generated GUID: $newGuid"
-          }
+      - name: Ensure build script is executable
+        shell: bash
+        run: chmod +x scripts/build.sh
 
       - name: Build EXE Installer
-        run: |
-          $VERSION = "${{ needs.generate-release-notes.outputs.version }}"
-          iscc installer\windows\installer.iss
+        shell: bash
+        run: ./scripts/build.sh windows-exe
 
       - name: Rename EXE
+        shell: bash
         run: |
-          $VERSION = "${{ needs.generate-release-notes.outputs.version }}"
-          $OUTPUT_DIR = "${{ env.PROJECT_DIR }}\build\windows\installer"
-          Move-Item "$OUTPUT_DIR\CBFileManager-Setup.exe" "$OUTPUT_DIR\CBFileManager-Setup-$VERSION.exe"
+          VERSION="${{ needs.generate-release-notes.outputs.version_name }}"
+          OUTPUT_DIR="${{ env.PROJECT_DIR }}/build/windows/installer"
+          mv "$OUTPUT_DIR/CoolBirdTagify-Setup.exe" "$OUTPUT_DIR/CBFileManager-Setup-$VERSION.exe"
 
       - name: Upload EXE artifact
         uses: actions/upload-artifact@v4
@@ -248,45 +252,27 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
+          channel: "stable"
 
       - name: Install WiX Toolset
         run: |
-          choco install wixtoolset -y
-          echo "C:\Program Files (x86)\WiX Toolset v3.11\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          dotnet tool install --global wix
+          echo "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Install dependencies
-        run: |
-          cd ${{ env.PROJECT_DIR }}
-          flutter pub get
-
-      - name: Build Windows
-        run: |
-          cd ${{ env.PROJECT_DIR }}
-          flutter build windows --release
-
-      - name: Generate GUID for WiX
-        run: |
-          $wxsPath = "installer\windows\installer.wxs"
-          $content = Get-Content $wxsPath -Raw
-          if ($content -match "YOUR-GUID-HERE-REPLACE-ME") {
-            $newGuid = [guid]::NewGuid().ToString().ToUpper()
-            $content = $content -replace "YOUR-GUID-HERE-REPLACE-ME", $newGuid
-            Set-Content -Path $wxsPath -Value $content
-            Write-Host "Generated GUID: $newGuid"
-          }
+      - name: Ensure build script is executable
+        shell: bash
+        run: chmod +x scripts/build.sh
 
       - name: Build MSI
+        shell: bash
+        run: ./scripts/build.sh windows-msi
+
+      - name: Rename MSI
+        shell: bash
         run: |
-          $VERSION = "${{ needs.generate-release-notes.outputs.version }}"
-          $BUILD_DIR = "${{ env.PROJECT_DIR }}\build\windows\x64\runner\Release"
-          $INSTALLER_DIR = "installer\windows"
-          $OUTPUT_DIR = "${{ env.PROJECT_DIR }}\build\windows\installer"
-          
-          New-Item -ItemType Directory -Force -Path $OUTPUT_DIR
-          
-          candle.exe -dSourceDir="$BUILD_DIR" -out "$OUTPUT_DIR\installer.wixobj" "$INSTALLER_DIR\installer.wxs"
-          light.exe -out "$OUTPUT_DIR\CBFileManager-Setup-$VERSION.msi" "$OUTPUT_DIR\installer.wixobj" -ext WixUIExtension -sval
+          VERSION="${{ needs.generate-release-notes.outputs.version_name }}"
+          OUTPUT_DIR="${{ env.PROJECT_DIR }}/build/windows/installer"
+          mv "$OUTPUT_DIR/CoolBirdTagify-Setup.msi" "$OUTPUT_DIR/CBFileManager-Setup-$VERSION.msi"
 
       - name: Upload MSI artifact
         uses: actions/upload-artifact@v4
@@ -305,14 +291,14 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
-          java-version: '17'
+          distribution: "zulu"
+          java-version: "17"
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
+          channel: "stable"
 
       - name: Install dependencies
         run: |
@@ -322,13 +308,13 @@ jobs:
       - name: Build APK
         run: |
           cd ${{ env.PROJECT_DIR }}
-          flutter build apk --release --split-per-abi
+          flutter build apk --release --split-per-abi --build-name ${{ needs.generate-release-notes.outputs.version_name }} --build-number ${{ needs.generate-release-notes.outputs.version_code }}
 
       - name: Rename APK files
         run: |
-          VERSION="${{ needs.generate-release-notes.outputs.version }}"
+          VERSION="${{ needs.generate-release-notes.outputs.version_name }}"
           cd ${{ env.PROJECT_DIR }}/build/app/outputs/flutter-apk
-          
+
           for file in *.apk; do
             if [[ $file == *"arm64-v8a"* ]]; then
               mv "$file" "CBFileManager-$VERSION-arm64-v8a.apk"
@@ -356,14 +342,14 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
-          java-version: '17'
+          distribution: "zulu"
+          java-version: "17"
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
+          channel: "stable"
 
       - name: Install dependencies
         run: |
@@ -373,11 +359,11 @@ jobs:
       - name: Build AAB
         run: |
           cd ${{ env.PROJECT_DIR }}
-          flutter build appbundle --release
+          flutter build appbundle --release --build-name ${{ needs.generate-release-notes.outputs.version_name }} --build-number ${{ needs.generate-release-notes.outputs.version_code }}
 
       - name: Rename AAB file
         run: |
-          VERSION="${{ needs.generate-release-notes.outputs.version }}"
+          VERSION="${{ needs.generate-release-notes.outputs.version_name }}"
           cd ${{ env.PROJECT_DIR }}/build/app/outputs/bundle/release
           mv app-release.aab "CBFileManager-$VERSION.aab"
 
@@ -404,7 +390,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
+          channel: "stable"
 
       - name: Install dependencies
         run: |
@@ -414,11 +400,11 @@ jobs:
       - name: Build Linux
         run: |
           cd ${{ env.PROJECT_DIR }}
-          flutter build linux --release
+          flutter build linux --release --build-name ${{ needs.generate-release-notes.outputs.version_name }} --build-number ${{ needs.generate-release-notes.outputs.version_code }}
 
       - name: Package Linux build
         run: |
-          VERSION="${{ needs.generate-release-notes.outputs.version }}"
+          VERSION="${{ needs.generate-release-notes.outputs.version_name }}"
           cd ${{ env.PROJECT_DIR }}/build/linux/x64/release
           tar -czf "../../../../../CBFileManager-$VERSION-linux.tar.gz" bundle/
 
@@ -440,7 +426,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
+          channel: "stable"
 
       - name: Install dependencies
         run: |
@@ -450,11 +436,11 @@ jobs:
       - name: Build macOS
         run: |
           cd ${{ env.PROJECT_DIR }}
-          flutter build macos --release
+          flutter build macos --release --build-name ${{ needs.generate-release-notes.outputs.version_name }} --build-number ${{ needs.generate-release-notes.outputs.version_code }}
 
       - name: Package macOS build
         run: |
-          VERSION="${{ needs.generate-release-notes.outputs.version }}"
+          VERSION="${{ needs.generate-release-notes.outputs.version_name }}"
           cd ${{ env.PROJECT_DIR }}/build/macos/Build/Products/Release
           zip -r "../../../../../CBFileManager-$VERSION-macos.zip" cb_file_manager.app
 
@@ -467,7 +453,7 @@ jobs:
   # Create GitHub Release
   create-release:
     runs-on: ubuntu-latest
-    needs: 
+    needs:
       - generate-release-notes
       - build-windows
       - build-windows-exe
@@ -490,8 +476,8 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ needs.generate-release-notes.outputs.version }}
-          name: CB File Manager ${{ needs.generate-release-notes.outputs.version }}
+          tag_name: ${{ needs.generate-release-notes.outputs.version_tag }}
+          name: CB File Manager ${{ needs.generate-release-notes.outputs.version_tag }}
           body: ${{ needs.generate-release-notes.outputs.release_notes }}
           draft: false
           prerelease: false

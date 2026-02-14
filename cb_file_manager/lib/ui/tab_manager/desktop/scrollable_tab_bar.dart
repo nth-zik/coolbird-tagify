@@ -602,6 +602,8 @@ class _ModernTabBarState extends State<_ModernTabBar> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = widget.theme.brightness == Brightness.dark;
+    final isDesktop =
+        Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(0, 5, 4, 5),
@@ -678,6 +680,8 @@ class _ModernTabBarState extends State<_ModernTabBar> {
               children: [
                 ...List.generate(widget.tabs.length, (index) {
                   final isActive = widget.controller.index == index;
+                  final showRightDivider =
+                      isDesktop && index < widget.tabs.length - 1;
 
                   final dragData = (widget.draggableTabs != null &&
                           index < (widget.draggableTabs?.length ?? 0))
@@ -690,6 +694,7 @@ class _ModernTabBarState extends State<_ModernTabBar> {
                   final tabWidget = _ModernTab(
                     isActive: isActive,
                     isSelected: isSelected,
+                    showRightDivider: showRightDivider,
                     onPrimaryDown: (event) {
                       final keys = HardwareKeyboard.instance.logicalKeysPressed;
                       final shiftPressed =
@@ -873,6 +878,7 @@ class _ModernTabBarState extends State<_ModernTabBar> {
 class _ModernTab extends StatefulWidget {
   final bool isActive;
   final bool isSelected;
+  final bool showRightDivider;
   final ValueChanged<PointerDownEvent> onPrimaryDown;
   final ValueChanged<Offset>? onSecondaryClick;
   final Color activeTabColor;
@@ -888,6 +894,7 @@ class _ModernTab extends StatefulWidget {
     Key? key,
     required this.isActive,
     required this.isSelected,
+    required this.showRightDivider,
     required this.onPrimaryDown,
     this.onSecondaryClick,
     required this.activeTabColor,
@@ -951,6 +958,9 @@ class _ModernTabState extends State<_ModernTab>
     const tabWidth = 210.0;
     final isDarkMode = widget.theme.brightness == Brightness.dark;
     final primaryColor = widget.theme.colorScheme.primary;
+    final dividerColor = isDarkMode
+        ? Colors.white.withAlpha((0.16 * 255).round())
+        : Colors.black.withAlpha((0.12 * 255).round());
 
     final hoverColor = isDarkMode
         ? Colors.white.withAlpha((0.04 * 255).round())
@@ -978,6 +988,7 @@ class _ModernTabState extends State<_ModernTab>
             onMiddleClick: widget.onClose,
             onSecondaryClick: widget.onSecondaryClick,
             child: Stack(
+              clipBehavior: Clip.none,
               children: [
                 AnimatedScale(
                   scale: tabScale,
@@ -1133,6 +1144,18 @@ class _ModernTabState extends State<_ModernTab>
                             ),
                           ),
                         ),
+                      ),
+                    ),
+                  ),
+                if (widget.showRightDivider)
+                  Positioned(
+                    right: -2,
+                    top: 9,
+                    bottom: 9,
+                    child: IgnorePointer(
+                      child: Container(
+                        width: 1,
+                        color: dividerColor,
                       ),
                     ),
                   ),

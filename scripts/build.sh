@@ -87,8 +87,84 @@ verify_windows_release_bundle() {
 }
 
 # Get current version
+get_version_line() {
+    grep "^version:" "$PUBSPEC" | sed 's/version: //'
+}
+
+get_version_name() {
+    local version_line
+    version_line=$(get_version_line)
+    echo "${version_line%%+*}"
+}
+
+get_version_code() {
+    local version_line
+    version_line=$(get_version_line)
+    if [[ "$version_line" == *"+"* ]]; then
+        echo "${version_line##*+}"
+    else
+        echo "0"
+    fi
+}
+
 get_version() {
-    grep "^version:" "$PUBSPEC" | sed 's/version: //' | sed 's/+.*//'
+    local version_line
+    version_line=$(get_version_line)
+    echo "$version_line"
+}
+
+set_version_line() {
+    local version_name=$1
+    local build_number=$2
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "s/^version:.*/version: $version_name+$build_number/" "$PUBSPEC"
+    else
+        sed -i "s/^version:.*/version: $version_name+$build_number/" "$PUBSPEC"
+    fi
+}
+
+get_msi_version() {
+    local version_name
+    local build_number
+    local major minor patch
+    local msi_build
+    local msi_build_formatted
+    version_name=$(get_version_name)
+    build_number=$(get_version_code)
+
+    # MSI ProductVersion should use 3 numeric parts (major.minor.build).
+    # Encode pubspec patch/build-number into the third field to keep upgrade ordering:
+    #   1.0.0+1 -> 1.0.0001
+    #   1.0.0+2 -> 1.0.0002
+    #   1.2.3+4 -> 1.2.3004
+    IFS='.' read -r major minor patch <<< "$version_name"
+    major=${major:-0}
+    minor=${minor:-0}
+    patch=${patch:-0}
+    build_number=${build_number:-0}
+    msi_build=$((patch * 1000 + build_number))
+
+    if [ "$msi_build" -gt 65535 ]; then
+        print_warning "MSI build component exceeded 65535; clamping for compatibility."
+        msi_build=65535
+    fi
+
+    msi_build_formatted=$(printf "%04d" "$msi_build")
+    echo "$major.$minor.$msi_build_formatted"
+}
+
+get_display_version() {
+    local version_name
+    local build_number
+    local major minor patch
+    version_name=$(get_version_name)
+    build_number=$(get_version_code)
+    IFS='.' read -r major minor patch <<< "$version_name"
+    major=${major:-0}
+    minor=${minor:-0}
+    patch=${patch:-0}
+    build_number=${build_number:-0}
+    echo "$major.$patch.$minor.$build_number"
 }
 
 # Show main menu
@@ -129,6 +205,7 @@ show_menu() {
     echo " 18) Create Patch Release (x.x.X)"
     echo " 19) Create Minor Release (x.X.0)"
     echo " 20) Create Major Release (X.0.0)"
+    echo " 21) Bump Build Number Only"
     echo ""
     echo -e "${CYAN}═══════════════════════════════════════════════${NC}"
     echo "  0) Exit"
@@ -244,13 +321,17 @@ build_windows_portable() {
     
     # Try build - if it fails with CMake/VS error, retry once
     print_info "Starting Flutter build..."
-    if ! flutter build windows --release 2>&1 | tee /tmp/flutter_build.log; then
+    local VERSION_NAME
+    local VERSION_CODE
+    VERSION_NAME=$(get_version_name)
+    VERSION_CODE=$(get_version_code)
+    if ! flutter build windows --release --build-name "$VERSION_NAME" --build-number "$VERSION_CODE" 2>&1 | tee /tmp/flutter_build.log; then
         # Check if it's the known CMake/VS race condition error
         if grep -q "MSB3073\|CMake.*failed\|Visual Studio" /tmp/flutter_build.log 2>/dev/null; then
             print_warning "First build failed (known CMake race condition)"
             print_info "Retrying build automatically..."
             sleep 2
-            flutter build windows --release
+            flutter build windows --release --build-name "$VERSION_NAME" --build-number "$VERSION_CODE"
         else
             # Different error, don't retry
             cd ..
@@ -330,6 +411,10 @@ build_windows_exe() {
     print_info "Found Inno Setup: $ISCC"
     
     build_windows_portable
+    local VERSION_NAME
+    VERSION_NAME=$(get_version_name)
+    local VERSION_NAME
+    VERSION_NAME=$(get_version_name)
     
     print_info "Creating EXE installer..."
     
@@ -339,7 +424,7 @@ build_windows_exe() {
         INSTALLER_SCRIPT=$(cygpath -w "$INSTALLER_SCRIPT")
     fi
     
-    "$ISCC" "$INSTALLER_SCRIPT"
+    "$ISCC" "/DMyAppVersion=$VERSION_NAME" "$INSTALLER_SCRIPT"
     
     if [ $? -eq 0 ]; then
         print_success "Windows EXE Installer created!"
@@ -394,6 +479,10 @@ build_windows_msi() {
     print_info "Found WiX $WIX_VERSION: $WIX_CMD"
     
     build_windows_portable
+    local VERSION_DISPLAY
+    VERSION_DISPLAY=$(get_display_version)
+    local VERSION_MSI
+    VERSION_MSI=$(get_msi_version)
     
     print_info "Creating MSI installer..."
     local BUILD_PATH="$PROJECT_DIR/build/windows/x64/runner/Release"
@@ -421,10 +510,10 @@ build_windows_msi() {
         # WiX v3: Use candle.exe and light.exe
         print_info "Using WiX v3 (candle/light)..."
         if [ "$WIX_CMD" = "candle" ]; then
-            candle.exe -dSourceDir="$BUILD_PATH_WIN" -out "$OUTPUT_DIR_WIN\\installer.wixobj" "$INSTALLER_DIR_WIN\\installer.wxs"
+            candle.exe -dSourceDir="$BUILD_PATH_WIN" -dProductVersion="$VERSION_MSI" -dProductDisplayVersion="$VERSION_DISPLAY" -out "$OUTPUT_DIR_WIN\\installer.wixobj" "$INSTALLER_DIR_WIN\\installer.wxs"
             light.exe -out "$OUTPUT_DIR_WIN\\CoolBirdTagify-Setup.msi" "$OUTPUT_DIR_WIN\\installer.wixobj" -ext WixUIExtension -sval
         else
-            "$WIX_CMD/candle.exe" -dSourceDir="$BUILD_PATH_WIN" -out "$OUTPUT_DIR_WIN\\installer.wixobj" "$INSTALLER_DIR_WIN\\installer.wxs"
+            "$WIX_CMD/candle.exe" -dSourceDir="$BUILD_PATH_WIN" -dProductVersion="$VERSION_MSI" -dProductDisplayVersion="$VERSION_DISPLAY" -out "$OUTPUT_DIR_WIN\\installer.wixobj" "$INSTALLER_DIR_WIN\\installer.wxs"
             "$WIX_CMD/light.exe" -out "$OUTPUT_DIR_WIN\\CoolBirdTagify-Setup.msi" "$OUTPUT_DIR_WIN\\installer.wixobj" -ext WixUIExtension -sval
         fi
     else
@@ -434,7 +523,7 @@ build_windows_msi() {
         # -ext adds extensions (WixUIExtension for UI dialogs)
         print_info "Using WiX $WIX_VERSION (wix build)..."
         "$WIX_CMD" eula accept wix7 >/dev/null 2>&1 || true
-        "$WIX_CMD" build "$INSTALLER_DIR_WIN\\installer.wxs" -d "SourceDir=$BUILD_PATH_WIN" -ext WixToolset.UI.wixext -o "$OUTPUT_DIR_WIN\\CoolBirdTagify-Setup.msi"
+        "$WIX_CMD" build "$INSTALLER_DIR_WIN\\installer.wxs" -d "SourceDir=$BUILD_PATH_WIN" -d "ProductVersion=$VERSION_MSI" -d "ProductDisplayVersion=$VERSION_DISPLAY" -ext WixToolset.UI.wixext -o "$OUTPUT_DIR_WIN\\CoolBirdTagify-Setup.msi"
     fi
     
     if [ $? -eq 0 ]; then
@@ -454,7 +543,11 @@ build_android_apk() {
     install_deps
     
     cd "$PROJECT_DIR"
-    flutter build apk --release --split-per-abi
+    local VERSION_NAME
+    local VERSION_CODE
+    VERSION_NAME=$(get_version_name)
+    VERSION_CODE=$(get_version_code)
+    flutter build apk --release --split-per-abi --build-name "$VERSION_NAME" --build-number "$VERSION_CODE"
     
     if [ $? -eq 0 ]; then
         print_success "Android APK build completed!"
@@ -475,7 +568,11 @@ build_android_aab() {
     install_deps
     
     cd "$PROJECT_DIR"
-    flutter build appbundle --release
+    local VERSION_NAME
+    local VERSION_CODE
+    VERSION_NAME=$(get_version_name)
+    VERSION_CODE=$(get_version_code)
+    flutter build appbundle --release --build-name "$VERSION_NAME" --build-number "$VERSION_CODE"
     
     if [ $? -eq 0 ]; then
         print_success "Android AAB build completed!"
@@ -496,7 +593,11 @@ build_linux() {
     install_deps
     
     cd "$PROJECT_DIR"
-    flutter build linux --release
+    local VERSION_NAME
+    local VERSION_CODE
+    VERSION_NAME=$(get_version_name)
+    VERSION_CODE=$(get_version_code)
+    flutter build linux --release --build-name "$VERSION_NAME" --build-number "$VERSION_CODE"
     
     if [ $? -eq 0 ]; then
         print_info "Creating tar.gz package..."
@@ -528,7 +629,11 @@ build_macos() {
     install_deps
     
     cd "$PROJECT_DIR"
-    flutter build macos --release
+    local VERSION_NAME
+    local VERSION_CODE
+    VERSION_NAME=$(get_version_name)
+    VERSION_CODE=$(get_version_code)
+    flutter build macos --release --build-name "$VERSION_NAME" --build-number "$VERSION_CODE"
     
     if [ $? -eq 0 ]; then
         print_info "Creating ZIP package..."
@@ -560,7 +665,11 @@ build_ios() {
     install_deps
     
     cd "$PROJECT_DIR"
-    flutter build ios --release --no-codesign
+    local VERSION_NAME
+    local VERSION_CODE
+    VERSION_NAME=$(get_version_name)
+    VERSION_CODE=$(get_version_code)
+    flutter build ios --release --no-codesign --build-name "$VERSION_NAME" --build-number "$VERSION_CODE"
     
     if [ $? -eq 0 ]; then
         print_success "iOS build completed!"
@@ -715,7 +824,8 @@ check_build_tools() {
 
 # Calculate next version
 next_version() {
-    local current=$(get_version)
+    local current
+    current=$(get_version_name)
     local type=$1
     
     IFS='.' read -r major minor patch <<< "$current"
@@ -741,12 +851,30 @@ next_version() {
 # Update version in pubspec.yaml
 update_version() {
     local new_version=$1
-    
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' "s/^version:.*/version: $new_version+1/" "$PUBSPEC"
-    else
-        sed -i "s/^version:.*/version: $new_version+1/" "$PUBSPEC"
-    fi
+    local current_build
+    current_build=$(get_version_code)
+    set_version_line "$new_version" "$current_build"
+}
+
+bump_build_number() {
+    local current_version
+    local current_build
+    current_version=$(get_version_name)
+    current_build=$(get_version_code)
+    current_build=$((current_build + 1))
+    set_version_line "$current_version" "$current_build"
+}
+
+create_build() {
+    local current_build
+    current_build=$(get_version_code)
+    current_build=$((current_build + 1))
+    set_version_line "$(get_version_name)" "$current_build"
+
+    git add "$PUBSPEC"
+    git commit -m "chore: bump build number to $current_build"
+
+    print_success "Bumped build number to $current_build"
 }
 
 # Create release
@@ -758,6 +886,7 @@ create_release() {
     
     # Update version
     update_version "$new_version"
+    bump_build_number
     
     # Commit and tag
     git add "$PUBSPEC"
@@ -801,6 +930,7 @@ main() {
             18) create_release "patch"; pause ;;
             19) create_release "minor"; pause ;;
             20) create_release "major"; pause ;;
+            21) create_build; pause ;;
             0) 
                 print_info "Exiting..."
                 exit 0
@@ -812,6 +942,37 @@ main() {
         esac
     done
 }
+
+if [ $# -gt 0 ]; then
+    case "$1" in
+        windows-portable) build_windows_portable ;;
+        windows-exe) build_windows_exe ;;
+        windows-msi) build_windows_msi ;;
+        android-apk) build_android_apk ;;
+        android-aab) build_android_aab ;;
+        linux) build_linux ;;
+        macos) build_macos ;;
+        ios) build_ios ;;
+        all) build_all ;;
+        clean) clean_build ;;
+        deep-clean) deep_clean ;;
+        install-deps) install_deps ;;
+        test) run_tests ;;
+        analyze) analyze_code ;;
+        format) format_code ;;
+        doctor) flutter_doctor ;;
+        check-tools) check_build_tools ;;
+        release-patch) create_release "patch" ;;
+        release-minor) create_release "minor" ;;
+        release-major) create_release "major" ;;
+        build-number) create_build ;;
+        *) 
+            print_error "Invalid option: $1"
+            exit 1
+            ;;
+    esac
+    exit 0
+fi
 
 # Run main
 main

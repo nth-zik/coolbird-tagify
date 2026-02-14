@@ -1,16 +1,24 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
   <?define ProductName = "CoolBird Tagify"?>
+  <?ifndef ProductVersion?>
   <?define ProductVersion = "1.0.0"?>
-  <?define Manufacturer = "Your Company Name"?>
+  <?endif?>
+  <?ifndef ProductDisplayVersion?>
+  <?define ProductDisplayVersion = "$(var.ProductVersion)"?>
+  <?endif?>
+  <?define Manufacturer = "COOLBIRDZIK"?>
   <?define UpgradeCode = "683b4433-9621-4c1f-9a64-4f980bb8465d"?>
   <?define AssetsDir = "$(sys.SOURCEFILEDIR)assets"?>
 
-  <Package Name="$(var.ProductName)" Language="1033" Version="$(var.ProductVersion)"
-    Manufacturer="$(var.Manufacturer)" UpgradeCode="$(var.UpgradeCode)" InstallerVersion="200">
+  <Package Name="$(var.ProductName) v$(var.ProductDisplayVersion)" Language="1033" Version="$(var.ProductVersion)"
+    Manufacturer="$(var.Manufacturer)" UpgradeCode="$(var.UpgradeCode)" InstallerVersion="200"
+    Scope="perMachine">
 
     <SummaryInformation Description="$(var.ProductName) Installer" />
+    <Property Id="ARPCOMMENTS" Value="Full version: $(var.ProductDisplayVersion)" />
 
-    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed."
+      AllowSameVersionUpgrades="yes" />
     <MediaTemplate EmbedCab="yes" />
 
     <Feature Id="ProductFeature" Title="CoolBird Tagify" Level="1">

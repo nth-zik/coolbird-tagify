@@ -3,8 +3,8 @@
 
 #define MyAppName "CoolBird Tagify"
 #define MyAppVersion "1.0.0"
-#define MyAppPublisher "Your Company Name"
-#define MyAppURL "https://github.com/YOUR_USERNAME/coolbirdfm-flutter"
+#define MyAppPublisher "COOLBIRDZIK"
+#define MyAppURL "https://github.com/nth-zik/coolbird-tagify"
 #define MyAppExeName "coolbird_tagify.exe"
 
 [Setup]

@@ -8,6 +8,7 @@ import 'package:cb_file_manager/ui/screens/settings/settings_screen.dart';
 import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
 import 'package:cb_file_manager/ui/tab_manager/core/tab_data.dart';
 import 'package:cb_file_manager/config/translation_helper.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 // Imported components
 import 'package:cb_file_manager/ui/widgets/drawer/drawer_header_widget.dart';
@@ -247,12 +248,21 @@ class _CBDrawerContent extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            'Version 1.0.0',
-            style: TextStyle(
-              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
-              fontSize: 12,
-            ),
+          FutureBuilder<String>(
+            future: _getFullVersion(),
+            builder: (context, snapshot) {
+              final versionText = snapshot.data == null
+                  ? 'Version'
+                  : 'Version ${snapshot.data}';
+              return Text(
+                versionText,
+                style: TextStyle(
+                  color:
+                      theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                  fontSize: 12,
+                ),
+              );
+            },
           ),
           Text(
             '© CoolBird',
@@ -280,16 +290,23 @@ class _CBDrawerContent extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(context.tr.appTitle),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('A powerful file manager with tagging capabilities.'),
-            SizedBox(height: 16),
-            Text('Version: 1.0.0'),
-            SizedBox(height: 8),
-            Text('Developed by CoolBird - ngtanhung41@gmail.com'),
-          ],
+        content: FutureBuilder<String>(
+          future: _getFullVersion(),
+          builder: (context, snapshot) {
+            final versionText = snapshot.data ?? '';
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                    'A powerful file manager with tagging capabilities.'),
+                const SizedBox(height: 16),
+                Text('Version: $versionText'),
+                const SizedBox(height: 8),
+                const Text('Developed by COOLBIRDZIK - ngtanhung41@gmail.com'),
+              ],
+            );
+          },
         ),
         actions: [
           TextButton(
@@ -299,5 +316,21 @@ class _CBDrawerContent extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<String> _getFullVersion() async {
+    final info = await PackageInfo.fromPlatform();
+    final version = info.version.trim();
+    final build = info.buildNumber.trim();
+    if (version.isEmpty && build.isEmpty) {
+      return '';
+    }
+    if (build.isEmpty) {
+      return version;
+    }
+    if (version.isEmpty) {
+      return build;
+    }
+    return '$version.$build';
   }
 }
