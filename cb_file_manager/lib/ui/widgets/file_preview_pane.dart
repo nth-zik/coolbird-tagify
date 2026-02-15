@@ -6,6 +6,7 @@ import 'package:cb_file_manager/ui/components/video/video_player/video_player.da
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:path/path.dart' as path;
 import 'package:pdfx/pdfx.dart';
 
@@ -49,7 +50,7 @@ class FilePreviewPane extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const Icon(Icons.visibility, size: 18),
+              const Icon(PhosphorIconsLight.eye, size: 18),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -61,7 +62,7 @@ class FilePreviewPane extends StatelessWidget {
               ),
               if (file != null && onOpenFile != null)
                 IconButton(
-                  icon: const Icon(Icons.open_in_new, size: 18),
+                  icon: const Icon(PhosphorIconsLight.arrowSquareOut, size: 18),
                   tooltip: l10n.open,
                   onPressed: () {
                     onOpenFile?.call(
@@ -71,7 +72,7 @@ class FilePreviewPane extends StatelessWidget {
                   },
                 ),
               IconButton(
-                icon: const Icon(Icons.close, size: 18),
+                icon: const Icon(PhosphorIconsLight.x, size: 18),
                 tooltip: l10n.hidePreview,
                 onPressed: onClosePreview,
               ),
@@ -98,21 +99,21 @@ class FilePreviewPane extends StatelessWidget {
 
     if (selectedPath == null) {
       return _PreviewPlaceholder(
-        icon: Icons.visibility,
+        icon: PhosphorIconsLight.eye,
         message: l10n.previewSelectFile,
       );
     }
 
     if (selectedPath.startsWith('#network/')) {
       return _PreviewPlaceholder(
-        icon: Icons.wifi_off,
+        icon: PhosphorIconsLight.wifiSlash,
         message: l10n.previewUnavailable,
       );
     }
 
     if (file == null) {
       return _PreviewPlaceholder(
-        icon: Icons.error_outline,
+        icon: PhosphorIconsLight.warningCircle,
         message: l10n.previewUnavailable,
       );
     }
@@ -144,7 +145,7 @@ class FilePreviewPane extends StatelessWidget {
             fit: BoxFit.contain,
             filterQuality: FilterQuality.high,
             errorBuilder: (context, error, stackTrace) => _PreviewPlaceholder(
-              icon: Icons.broken_image,
+              icon: PhosphorIconsLight.imageSquare,
               message: l10n.previewUnavailable,
             ),
           ),
@@ -160,7 +161,7 @@ class FilePreviewPane extends StatelessWidget {
     }
 
     return _PreviewPlaceholder(
-      icon: Icons.insert_drive_file,
+      icon: PhosphorIconsLight.file,
       message: l10n.previewNotSupported,
     );
   }
@@ -275,3 +276,6 @@ class _PdfPreviewState extends State<_PdfPreview> {
     );
   }
 }
+
+
+

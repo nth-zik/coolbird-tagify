@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:path/path.dart' as path;
 import 'ftp_client/index.dart';
 
@@ -43,7 +43,7 @@ class FTPService implements NetworkServiceBase {
   String get serviceDescription => 'File Transfer Protocol (FTP)';
 
   @override
-  IconData get serviceIcon => remix.Remix.upload_cloud_2_line;
+  IconData get serviceIcon => PhosphorIconsLight.cloudArrowUp;
 
   @override
   bool isAvailable() => true; // Available on all platforms
@@ -759,3 +759,7 @@ class Class {
         'Please ensure it is properly installed and configured in pubspec.yaml.',
       );
 }
+
+
+
+

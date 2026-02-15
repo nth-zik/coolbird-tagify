@@ -5,6 +5,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -1311,7 +1312,7 @@ class _VideoPlayerState extends _VideoPlayerVolumeHost
     }
     return ClipRRect(
       borderRadius:
-          _isFullScreen ? BorderRadius.zero : BorderRadius.circular(8.0),
+          _isFullScreen ? BorderRadius.zero : BorderRadius.circular(16.0),
       child: RepaintBoundary(child: surface),
     );
   }
@@ -1869,7 +1870,7 @@ class _VideoPlayerState extends _VideoPlayerVolumeHost
                   borderRadius: BorderRadius.circular(100),
                 ),
                 child:
-                    const Icon(Icons.music_note, size: 80, color: Colors.white),
+                    const Icon(PhosphorIconsLight.musicNote, size: 80, color: Colors.white),
               ),
               const SizedBox(height: 32),
               Text(
@@ -1906,7 +1907,7 @@ class _VideoPlayerState extends _VideoPlayerVolumeHost
           children: [
             IconButton(
               onPressed: () => _player!.previous(),
-              icon: const Icon(Icons.skip_previous,
+              icon: const Icon(PhosphorIconsLight.skipBack,
                   color: Colors.white, size: 32),
             ),
             const SizedBox(width: 16),
@@ -1914,8 +1915,8 @@ class _VideoPlayerState extends _VideoPlayerVolumeHost
               onPressed: () => _player!.playOrPause(),
               icon: Icon(
                 isPlaying
-                    ? Icons.pause_circle_filled
-                    : Icons.play_circle_filled,
+                    ? PhosphorIconsLight.pauseCircle
+                    : PhosphorIconsLight.playCircle,
                 color: Colors.white,
                 size: 64,
               ),
@@ -1923,7 +1924,7 @@ class _VideoPlayerState extends _VideoPlayerVolumeHost
             const SizedBox(width: 16),
             IconButton(
               onPressed: () => _player!.next(),
-              icon: const Icon(Icons.skip_next, color: Colors.white, size: 32),
+              icon: const Icon(PhosphorIconsLight.skipForward, color: Colors.white, size: 32),
             ),
           ],
         );
@@ -1959,7 +1960,7 @@ class _VideoPlayerState extends _VideoPlayerVolumeHost
                   Colors.black.withValues(alpha: 0.7),
                 ],
               ),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16.0),
               border: Border.all(
                 color: Colors.orange.withValues(alpha: 0.5),
                 width: 1,
@@ -2551,7 +2552,7 @@ class _VideoPlayerState extends _VideoPlayerVolumeHost
                 Row(
                   children: [
                     VideoPlayerControlButton(
-                      icon: Icons.replay_10,
+                      icon: PhosphorIconsLight.skipBack,
                       onPressed: () => _seekBackward(10),
                       tooltip: 'Rewind 10s',
                     ),
@@ -2559,7 +2560,7 @@ class _VideoPlayerState extends _VideoPlayerVolumeHost
                     _buildPlayPauseButton(),
                     const SizedBox(width: 4),
                     VideoPlayerControlButton(
-                      icon: Icons.forward_10,
+                      icon: PhosphorIconsLight.skipForward,
                       onPressed: () => _seekForward(10),
                       tooltip: 'Forward 10s',
                     ),
@@ -2571,8 +2572,8 @@ class _VideoPlayerState extends _VideoPlayerVolumeHost
                       const SizedBox(width: 6),
                       VideoPlayerControlButton(
                         icon: _isFullScreen
-                            ? Icons.fullscreen_exit
-                            : Icons.fullscreen,
+                            ? PhosphorIconsLight.cornersIn
+                            : PhosphorIconsLight.cornersOut,
                         onPressed: _toggleFullScreen,
                         enabled: true,
                         tooltip: _isFullScreen
@@ -2672,8 +2673,8 @@ class _VideoPlayerState extends _VideoPlayerVolumeHost
           final isMuted = vol <= 0;
           return VideoPlayerControlButton(
             icon: isMuted
-                ? Icons.volume_off
-                : (vol < 50 ? Icons.volume_down : Icons.volume_up),
+                ? PhosphorIconsLight.speakerSlash
+                : (vol < 50 ? PhosphorIconsLight.speakerLow : PhosphorIconsLight.speakerHigh),
             onPressed: _toggleMute,
             enabled: true,
             tooltip: isMuted ? 'Unmute' : 'Mute',
@@ -2688,8 +2689,8 @@ class _VideoPlayerState extends _VideoPlayerVolumeHost
           final isMuted = vol <= 0.001;
           return VideoPlayerControlButton(
             icon: isMuted
-                ? Icons.volume_off
-                : (vol < 0.5 ? Icons.volume_down : Icons.volume_up),
+                ? PhosphorIconsLight.speakerSlash
+                : (vol < 0.5 ? PhosphorIconsLight.speakerLow : PhosphorIconsLight.speakerHigh),
             onPressed: _toggleMute,
             enabled: true,
             tooltip: isMuted ? 'Unmute' : 'Mute',
@@ -2705,10 +2706,10 @@ class _VideoPlayerState extends _VideoPlayerVolumeHost
           final isMuted = volume <= 0.1;
           return VideoPlayerControlButton(
             icon: isMuted
-                ? Icons.volume_off
+                ? PhosphorIconsLight.speakerSlash
                 : volume < 50
-                    ? Icons.volume_down
-                    : Icons.volume_up,
+                    ? PhosphorIconsLight.speakerLow
+                    : PhosphorIconsLight.speakerHigh,
             onPressed: _toggleMute,
             enabled: true,
             tooltip: isMuted ? 'Unmute' : 'Mute',
@@ -2742,8 +2743,8 @@ class _VideoPlayerState extends _VideoPlayerVolumeHost
                 final fullScreenButton = widget.allowFullScreen
                     ? VideoPlayerControlButton(
                         icon: _isFullScreen
-                            ? Icons.fullscreen_exit
-                            : Icons.fullscreen,
+                            ? PhosphorIconsLight.cornersIn
+                            : PhosphorIconsLight.cornersOut,
                         onPressed: _toggleFullScreen,
                         enabled: true,
                         tooltip: _isFullScreen
@@ -2988,7 +2989,7 @@ class _VideoPlayerState extends _VideoPlayerVolumeHost
         valueListenable: _vlcController!,
         builder: (context, v, _) {
           return VideoPlayerControlButton(
-            icon: v.isPlaying ? Icons.pause : Icons.play_arrow,
+            icon: v.isPlaying ? PhosphorIconsLight.pause : PhosphorIconsLight.play,
             onPressed: _togglePlayPause,
             size: 40,
             padding: 10,
@@ -3001,7 +3002,7 @@ class _VideoPlayerState extends _VideoPlayerVolumeHost
         valueListenable: _exoController!,
         builder: (context, v, _) {
           return VideoPlayerControlButton(
-            icon: v.isPlaying ? Icons.pause : Icons.play_arrow,
+            icon: v.isPlaying ? PhosphorIconsLight.pause : PhosphorIconsLight.play,
             onPressed: _togglePlayPause,
             size: 40,
             padding: 10,
@@ -3016,7 +3017,7 @@ class _VideoPlayerState extends _VideoPlayerVolumeHost
         builder: (context, snapshot) {
           final isPlaying = snapshot.data ?? _player!.state.playing;
           return VideoPlayerControlButton(
-            icon: isPlaying ? Icons.pause : Icons.play_arrow,
+            icon: isPlaying ? PhosphorIconsLight.pause : PhosphorIconsLight.play,
             onPressed: _togglePlayPause,
             size: 40,
             padding: 10,
@@ -3027,7 +3028,7 @@ class _VideoPlayerState extends _VideoPlayerVolumeHost
     } else {
       // Fallback: No player initialized yet, show loading state
       return const VideoPlayerControlButton(
-        icon: Icons.play_arrow,
+        icon: PhosphorIconsLight.play,
         onPressed: null, // Disabled
         size: 40,
         padding: 10,
@@ -3048,8 +3049,8 @@ class _VideoPlayerState extends _VideoPlayerVolumeHost
               final isMuted = vol <= 0;
               return VideoPlayerControlButton(
                 icon: isMuted
-                    ? Icons.volume_off
-                    : (vol < 50 ? Icons.volume_down : Icons.volume_up),
+                    ? PhosphorIconsLight.speakerSlash
+                    : (vol < 50 ? PhosphorIconsLight.speakerLow : PhosphorIconsLight.speakerHigh),
                 onPressed: _toggleMute,
                 enabled: true,
                 tooltip: isMuted ? 'Unmute' : 'Mute',
@@ -3064,8 +3065,8 @@ class _VideoPlayerState extends _VideoPlayerVolumeHost
               final isMuted = vol <= 0.001;
               return VideoPlayerControlButton(
                 icon: isMuted
-                    ? Icons.volume_off
-                    : (vol < 0.5 ? Icons.volume_down : Icons.volume_up),
+                    ? PhosphorIconsLight.speakerSlash
+                    : (vol < 0.5 ? PhosphorIconsLight.speakerLow : PhosphorIconsLight.speakerHigh),
                 onPressed: _toggleMute,
                 enabled: true,
                 tooltip: isMuted ? 'Unmute' : 'Mute',
@@ -3078,10 +3079,10 @@ class _VideoPlayerState extends _VideoPlayerVolumeHost
             final isMuted = volume <= 0.1;
             return VideoPlayerControlButton(
               icon: isMuted
-                  ? Icons.volume_off
+                  ? PhosphorIconsLight.speakerSlash
                   : volume < 50
-                      ? Icons.volume_down
-                      : Icons.volume_up,
+                      ? PhosphorIconsLight.speakerLow
+                      : PhosphorIconsLight.speakerHigh,
               onPressed: _toggleMute,
               enabled: true,
               tooltip: isMuted ? 'Unmute' : 'Mute',
@@ -3433,7 +3434,7 @@ class _VideoPlayerState extends _VideoPlayerVolumeHost
                   Row(
                     children: [
                       Icon(
-                        Icons.check_circle,
+                        PhosphorIconsLight.checkCircle,
                         color: theme.colorScheme.primary,
                         size: 18,
                       ),
@@ -4880,3 +4881,8 @@ class _VideoPlayerState extends _VideoPlayerVolumeHost
     }
   }
 }
+
+
+
+
+

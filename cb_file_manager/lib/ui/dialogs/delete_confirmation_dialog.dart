@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter/services.dart';
 
 /// A delete confirmation dialog with keyboard support and visual focus indication
@@ -206,10 +207,10 @@ class _DesktopConfirmationWindow extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return Material(
-      elevation: 10,
+      elevation: 0,
       color: Colors.transparent,
       shadowColor: Colors.black.withValues(alpha: 0.5),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(16.0),
       child: Container(
         width: 450,
         constraints: const BoxConstraints(
@@ -217,7 +218,7 @@ class _DesktopConfirmationWindow extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF2D2D2D) : Colors.white,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(16.0),
           border: Border.all(
             color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
             width: 1,
@@ -243,7 +244,7 @@ class _DesktopConfirmationWindow extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Icon(
-                        Icons.warning_amber_rounded,
+                        PhosphorIconsLight.warning,
                         size: 32,
                         color: Colors.orange.shade700,
                       ),
@@ -378,13 +379,13 @@ class _WindowTitleBar extends StatelessWidget {
           // Close button
           InkWell(
             onTap: onClose,
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(16.0),
             child: Container(
               width: 32,
               height: 32,
               alignment: Alignment.center,
               child: Icon(
-                Icons.close,
+                PhosphorIconsLight.x,
                 size: 16,
                 color: theme.colorScheme.onSurface,
               ),
@@ -396,3 +397,9 @@ class _WindowTitleBar extends StatelessWidget {
     );
   }
 }
+
+
+
+
+
+

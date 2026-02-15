@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cb_file_manager/ui/utils/base_screen.dart';
 import 'package:cb_file_manager/ui/utils/route.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 /// Helper class to standardize app bar functionality across the application
 class ActionBarHelper {
@@ -34,12 +34,12 @@ class ActionBarHelper {
 
     if (canPop) {
       return IconButton(
-        icon: const Icon(remix.Remix.arrow_left_line),
+        icon: const Icon(PhosphorIconsLight.arrowLeft),
         onPressed: () => RouteUtils.safeBackNavigation(context),
       );
     } else {
       return IconButton(
-        icon: const Icon(remix.Remix.menu_2_line),
+        icon: const Icon(PhosphorIconsLight.list),
         onPressed: () => BaseScreen.openDrawer(),
       );
     }
@@ -48,7 +48,7 @@ class ActionBarHelper {
   /// Creates a search action for the app bar
   static IconButton createSearchAction(VoidCallback onPressed) {
     return IconButton(
-      icon: const Icon(remix.Remix.search_line),
+      icon: const Icon(PhosphorIconsLight.magnifyingGlass),
       tooltip: 'Search',
       onPressed: onPressed,
     );
@@ -57,7 +57,7 @@ class ActionBarHelper {
   /// Creates a settings action for the app bar
   static IconButton createSettingsAction(VoidCallback onPressed) {
     return IconButton(
-      icon: const Icon(remix.Remix.settings_3_line),
+      icon: const Icon(PhosphorIconsLight.gear),
       tooltip: 'Settings',
       onPressed: onPressed,
     );
@@ -125,7 +125,7 @@ class ActionBarHelper {
   }) {
     return AppBar(
       leading: IconButton(
-        icon: const Icon(remix.Remix.close_line),
+        icon: const Icon(PhosphorIconsLight.x),
         onPressed: onClose,
       ),
       title: Text('$selectedCount selected'),
@@ -134,3 +134,7 @@ class ActionBarHelper {
     );
   }
 }
+
+
+
+

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
@@ -411,11 +412,11 @@ void showBatchAddTagDialog(BuildContext context, List<String> selectedFiles) {
                             values: selectedTags,
                             decoration: InputDecoration(
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(16.0),
                               ),
                               labelText: 'Tên thẻ',
                               hintText: 'Nhập tên thẻ...',
-                              prefixIcon: const Icon(Icons.local_offer),
+                              prefixIcon: const Icon(PhosphorIconsLight.tag),
                               filled: true,
                               fillColor: Theme.of(context).brightness ==
                                       Brightness.dark
@@ -453,7 +454,7 @@ void showBatchAddTagDialog(BuildContext context, List<String> selectedFiles) {
                                       Brightness.dark
                                   ? Colors.grey[800]
                                   : Colors.grey[100],
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(16.0),
                               border: Border.all(
                                 color: Colors.grey.withValues(alpha: 0.2),
                               ),
@@ -469,7 +470,7 @@ void showBatchAddTagDialog(BuildContext context, List<String> selectedFiles) {
                                 return ListTile(
                                   dense: true,
                                   leading:
-                                      const Icon(Icons.local_offer, size: 18),
+                                      const Icon(PhosphorIconsLight.tag, size: 18),
                                   title: Text(suggestion),
                                   onTap: () {
                                     setState(() {
@@ -509,7 +510,7 @@ void showBatchAddTagDialog(BuildContext context, List<String> selectedFiles) {
                                       });
                                     },
                                     deleteIcon:
-                                        const Icon(Icons.close, size: 16),
+                                        const Icon(PhosphorIconsLight.x, size: 16),
                                   );
                                 }).toList(),
                               ),
@@ -700,7 +701,7 @@ class PopularTagsWidget extends StatelessWidget {
             Row(
               children: [
                 Icon(
-                  Icons.star,
+                  PhosphorIconsLight.star,
                   size: 18,
                   color: Theme.of(context).brightness == Brightness.dark
                       ? Colors.amber[300]
@@ -757,7 +758,7 @@ class RecentTagsWidget extends StatelessWidget {
             Row(
               children: [
                 Icon(
-                  Icons.history,
+                  PhosphorIconsLight.clockCounterClockwise,
                   size: 18,
                   color: Theme.of(context).brightness == Brightness.dark
                       ? Colors.grey[400]
@@ -944,7 +945,7 @@ class _AnimatedTagChipState extends State<AnimatedTagChip>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        Icons.local_offer,
+                        PhosphorIconsLight.tag,
                         size: 14,
                         color: iconColor,
                       ),
@@ -961,7 +962,7 @@ class _AnimatedTagChipState extends State<AnimatedTagChip>
                       if (_isHovered) ...[
                         const SizedBox(width: 4),
                         Icon(
-                          Icons.add_circle_outline,
+                          PhosphorIconsLight.plusCircle,
                           size: 14,
                           color: iconColor,
                         ),
@@ -1223,7 +1224,7 @@ class _RemoveTagsChipDialogState extends State<RemoveTagsChipDialog> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.info_outline,
+                        Icon(PhosphorIconsLight.info,
                             size: 48, color: Colors.grey.shade400),
                         const SizedBox(height: 16),
                         Text(
@@ -1268,7 +1269,7 @@ class _RemoveTagsChipDialogState extends State<RemoveTagsChipDialog> {
                                 Theme.of(context).brightness == Brightness.dark
                                     ? Colors.grey[800]
                                     : Colors.grey[100],
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(16.0),
                             border: Border.all(
                               color: Colors.grey.withValues(alpha: 0.2),
                             ),
@@ -1337,3 +1338,8 @@ class _RemoveTagsChipDialogState extends State<RemoveTagsChipDialog> {
     );
   }
 }
+
+
+
+
+

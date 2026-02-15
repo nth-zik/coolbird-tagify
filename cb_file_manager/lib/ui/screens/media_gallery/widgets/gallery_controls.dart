@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 
 class GalleryControls extends StatelessWidget {
@@ -26,17 +27,17 @@ class GalleryControls extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
               decoration: BoxDecoration(
-                color: Colors.blue.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.search, size: 20),
+                  const Icon(PhosphorIconsLight.magnifyingGlass, size: 20),
                   const SizedBox(width: 8),
                   Text('${l10n.search}: "$searchQuery"'),
                   const Spacer(),
                   IconButton(
-                    icon: const Icon(Icons.clear, size: 20),
+                    icon: const Icon(PhosphorIconsLight.x, size: 20),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                     onPressed: onClearSearch,
@@ -64,7 +65,7 @@ class GalleryControls extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      isMasonry ? Icons.view_quilt_rounded : Icons.grid_view,
+                      isMasonry ? PhosphorIconsLight.gridFour : PhosphorIconsLight.squaresFour,
                       color: Colors.white,
                       size: 18,
                     ),
@@ -83,3 +84,7 @@ class GalleryControls extends StatelessWidget {
     );
   }
 }
+
+
+
+

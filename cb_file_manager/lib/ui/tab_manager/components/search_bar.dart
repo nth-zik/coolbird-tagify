@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Thêm import để xử lý sự kiện bàn phím
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
@@ -178,20 +178,14 @@ class _SearchBarState extends State<SearchBar> {
           left: offset.dx + 12,
           width: size.width - 24,
           child: Material(
-            elevation: 8,
+            elevation: 0,
             borderRadius: BorderRadius.circular(16),
             color: Colors.transparent,
             child: Container(
               decoration: BoxDecoration(
                 color: isDark ? Colors.grey[850] : theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                boxShadow: [],
                 border: Border.all(
                   color: theme.colorScheme.outline.withValues(alpha: 0.2),
                   width: 1,
@@ -222,11 +216,11 @@ class _SearchBarState extends State<SearchBar> {
                         // Nút đóng overlay
                         InkWell(
                           onTap: _removeOverlay,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16.0),
                           child: Padding(
                             padding: const EdgeInsets.all(4.0),
                             child: Icon(
-                              remix.Remix.close_line,
+                              PhosphorIconsLight.x,
                               size: 16,
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
@@ -271,7 +265,7 @@ class _SearchBarState extends State<SearchBar> {
                                   child: Row(
                                     children: [
                                       Icon(
-                                        remix.Remix.shopping_bag_3_line,
+                                        PhosphorIconsLight.shoppingBagOpen,
                                         size: 16,
                                         color: isSelected
                                             ? theme.colorScheme.primary
@@ -296,7 +290,7 @@ class _SearchBarState extends State<SearchBar> {
                                       ),
                                       if (isSelected)
                                         Icon(
-                                          remix.Remix.arrow_right_line,
+                                          PhosphorIconsLight.arrowRight,
                                           size: 14,
                                           color: theme.colorScheme.primary,
                                         ),
@@ -482,13 +476,7 @@ class _SearchBarState extends State<SearchBar> {
       decoration: BoxDecoration(
         color: isDark ? Colors.grey[850] : theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: [],
         border: Border.all(
           color: _isSearchingTags
               ? theme.colorScheme.primary.withValues(alpha: 0.5)
@@ -507,12 +495,12 @@ class _SearchBarState extends State<SearchBar> {
             },
             child: _isSearchingTags
                 ? Icon(
-                    remix.Remix.shopping_bag_3_line,
+                    PhosphorIconsLight.shoppingBagOpen,
                     key: const ValueKey('tagIcon'),
                     color: theme.colorScheme.primary,
                   )
                 : Icon(
-                    remix.Remix.search_line,
+                    PhosphorIconsLight.magnifyingGlass,
                     key: const ValueKey('searchIcon'),
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -599,7 +587,7 @@ class _SearchBarState extends State<SearchBar> {
                 child: Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: Icon(
-                    remix.Remix.information_line,
+                    PhosphorIconsLight.info,
                     color: theme.colorScheme.onSurfaceVariant,
                     size: 20,
                   ),
@@ -627,7 +615,7 @@ class _SearchBarState extends State<SearchBar> {
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Icon(
-                      remix.Remix.list_unordered,
+                      PhosphorIconsLight.listBullets,
                       color: theme.colorScheme.primary,
                       size: 20,
                     ),
@@ -654,7 +642,7 @@ class _SearchBarState extends State<SearchBar> {
                     duration: const Duration(milliseconds: 1000),
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(16.0),
                     ),
                     margin: const EdgeInsets.all(8),
                   ),
@@ -670,13 +658,13 @@ class _SearchBarState extends State<SearchBar> {
                     duration: const Duration(milliseconds: 300),
                     child: _isGlobalSearch
                         ? Icon(
-                            remix.Remix.global_line,
+                            PhosphorIconsLight.globe,
                             key: const ValueKey('globalIcon'),
                             color: theme.colorScheme.primary,
                             size: 20,
                           )
                         : Icon(
-                            remix.Remix.folder_3_line,
+                            PhosphorIconsLight.folder,
                             key: const ValueKey('folderIcon'),
                             size: 20,
                             color: theme.colorScheme.onSurfaceVariant,
@@ -696,7 +684,7 @@ class _SearchBarState extends State<SearchBar> {
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Icon(
-                  remix.Remix.search_line,
+                  PhosphorIconsLight.magnifyingGlass,
                   color: theme.colorScheme.primary,
                   size: 20,
                 ),
@@ -715,7 +703,7 @@ class _SearchBarState extends State<SearchBar> {
                 child: Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: Icon(
-                    remix.Remix.close_line,
+                    PhosphorIconsLight.x,
                     color: theme.colorScheme.onSurfaceVariant,
                     size: 20,
                   ),
@@ -729,3 +717,10 @@ class _SearchBarState extends State<SearchBar> {
     );
   }
 }
+
+
+
+
+
+
+

@@ -1,4 +1,4 @@
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter/material.dart';
 
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
@@ -27,7 +27,7 @@ class NetworkFolderContextMenu {
         PopupMenuItem(
           onTap: onRefresh,
           child: ListTile(
-            leading: const Icon(remix.Remix.refresh_line),
+            leading: Icon(PhosphorIconsLight.arrowsClockwise),
             title: Text(l10n.refresh),
           ),
         ),
@@ -35,19 +35,23 @@ class NetworkFolderContextMenu {
         PopupMenuItem(
           onTap: onCreateFolder,
           child: ListTile(
-            leading: const Icon(remix.Remix.folder_add_line),
+            leading: Icon(PhosphorIconsLight.folderPlus),
             title: Text(l10n.newFolder),
           ),
         ),
         PopupMenuItem(
           onTap: onUploadFile,
           child: ListTile(
-            leading: const Icon(remix.Remix.upload_line),
+            leading: Icon(PhosphorIconsLight.uploadSimple),
             title: Text(l10n.uploadFile),
           ),
         ),
       ],
-      elevation: 8.0,
+      elevation: 0,
     );
   }
 }
+
+
+
+

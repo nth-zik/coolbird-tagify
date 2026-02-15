@@ -5,6 +5,7 @@ import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/core/service_locator.dart';
 import 'package:cb_file_manager/ui/controllers/operation_progress_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class OperationProgressOverlay extends StatefulWidget {
   const OperationProgressOverlay({Key? key}) : super(key: key);
@@ -142,7 +143,7 @@ class _OperationProgressStatusBar extends StatelessWidget {
         accent = theme.colorScheme.primary;
         break;
       case OperationProgressStatus.success:
-        accent = Colors.green;
+        accent = theme.colorScheme.tertiary;
         break;
       case OperationProgressStatus.error:
         accent = theme.colorScheme.error;
@@ -158,28 +159,25 @@ class _OperationProgressStatusBar extends StatelessWidget {
     final IconData icon;
     switch (entry.status) {
       case OperationProgressStatus.running:
-        icon = Icons.sync;
+        icon = PhosphorIconsLight.arrowsClockwise;
         break;
       case OperationProgressStatus.success:
-        icon = Icons.check_circle_outline;
+        icon = PhosphorIconsLight.checkCircle;
         break;
       case OperationProgressStatus.error:
-        icon = Icons.error_outline;
+        icon = PhosphorIconsLight.warningCircle;
         break;
     }
 
     return Material(
-      elevation: 10,
+      elevation: 0,
       color: Colors.transparent,
       child: Container(
         margin: const EdgeInsets.all(10),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: bg,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: theme.colorScheme.outline.withValues(alpha: 0.22),
-          ),
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
           children: [
@@ -218,7 +216,7 @@ class _OperationProgressStatusBar extends StatelessWidget {
             if (!entry.isRunning)
               IconButton(
                 onPressed: onDismiss,
-                icon: const Icon(Icons.close, size: 18),
+                icon: const Icon(PhosphorIconsLight.x, size: 18),
               ),
           ],
         ),
@@ -345,7 +343,7 @@ class _ProgressWindowContent extends StatelessWidget {
         accent = theme.colorScheme.primary;
         break;
       case OperationProgressStatus.success:
-        accent = Colors.green;
+        accent = theme.colorScheme.tertiary;
         break;
       case OperationProgressStatus.error:
         accent = theme.colorScheme.error;
@@ -363,21 +361,21 @@ class _ProgressWindowContent extends StatelessWidget {
     final IconData icon;
     switch (entry.status) {
       case OperationProgressStatus.running:
-        icon = Icons.sync;
+        icon = PhosphorIconsLight.arrowsClockwise;
         break;
       case OperationProgressStatus.success:
-        icon = Icons.check_circle_outline;
+        icon = PhosphorIconsLight.checkCircle;
         break;
       case OperationProgressStatus.error:
-        icon = Icons.error_outline;
+        icon = PhosphorIconsLight.warningCircle;
         break;
     }
 
     return Material(
-      elevation: 10,
+      elevation: 0,
       color: Colors.transparent,
-      shadowColor: Colors.black.withValues(alpha: 0.5),
-      borderRadius: BorderRadius.circular(8),
+      shadowColor: theme.shadowColor.withValues(alpha: 0.5),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
         width: 400,
         constraints: const BoxConstraints(
@@ -385,12 +383,8 @@ class _ProgressWindowContent extends StatelessWidget {
           maxHeight: 180,
         ),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF2D2D2D) : Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-            width: 1,
-          ),
+          color: isDark ? theme.colorScheme.surfaceContainerHigh : theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -448,7 +442,7 @@ class _ProgressWindowContent extends StatelessWidget {
                               ? null
                               : entry.progressFraction,
                           minHeight: 8,
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(16.0),
                         ),
                         if (!entry.isIndeterminate) ...[
                           const SizedBox(height: 8),
@@ -492,8 +486,8 @@ class _WindowTitleBar extends StatelessWidget {
     return Container(
       height: 40,
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.grey.shade100,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+        color: isDark ? theme.colorScheme.surfaceContainerHighest : theme.colorScheme.surfaceContainerLow,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
       ),
       child: Row(
         children: [
@@ -510,13 +504,13 @@ class _WindowTitleBar extends StatelessWidget {
           ),
           // Minimize button
           _TitleBarButton(
-            icon: Icons.minimize,
+            icon: PhosphorIconsLight.minus,
             onPressed: onMinimize,
             tooltip: 'Minimize',
           ),
           // Close button (only enabled when operation is finished)
           _TitleBarButton(
-            icon: Icons.close,
+            icon: PhosphorIconsLight.x,
             onPressed: onClose,
             tooltip: 'Close',
             enabled: onClose != null,
@@ -549,7 +543,7 @@ class _TitleBarButton extends StatelessWidget {
       message: tooltip,
       child: InkWell(
         onTap: enabled ? onPressed : null,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(16.0),
         child: Container(
           width: 32,
           height: 32,
@@ -566,3 +560,7 @@ class _TitleBarButton extends StatelessWidget {
     );
   }
 }
+
+
+
+

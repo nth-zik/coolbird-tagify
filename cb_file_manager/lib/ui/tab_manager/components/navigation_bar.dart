@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../core/tab_manager.dart';
 import 'address_bar_menu.dart';
 import 'path_autocomplete_text_field.dart';
@@ -66,7 +66,7 @@ class _PathNavigationBarState extends State<PathNavigationBar> {
     return Row(
       children: [
         IconButton(
-          icon: const Icon(remix.Remix.arrow_left_line),
+          icon: const Icon(PhosphorIconsLight.arrowLeft),
           onPressed: _canNavigateBack
               ? () => BlocProvider.of<TabManagerBloc>(context)
                   .backNavigationToPath(widget.tabId)
@@ -74,7 +74,7 @@ class _PathNavigationBarState extends State<PathNavigationBar> {
           tooltip: 'Go back',
         ),
         IconButton(
-          icon: const Icon(remix.Remix.arrow_right_line),
+          icon: const Icon(PhosphorIconsLight.arrowRight),
           onPressed: _canNavigateForward
               ? () => BlocProvider.of<TabManagerBloc>(context)
                   .forwardNavigationToPath(widget.tabId)
@@ -84,7 +84,7 @@ class _PathNavigationBarState extends State<PathNavigationBar> {
 
         // Special display for network paths
         if (widget.isNetworkPath) ...[
-          const Icon(remix.Remix.wifi_line),
+          const Icon(PhosphorIconsLight.wifiHigh),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -107,7 +107,7 @@ class _PathNavigationBarState extends State<PathNavigationBar> {
                   horizontal: 12.0,
                 ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.0),
+                  borderRadius: BorderRadius.circular(16.0),
                   borderSide: BorderSide.none,
                 ),
                 filled: true,
@@ -159,3 +159,8 @@ class _PathNavigationBarState extends State<PathNavigationBar> {
     }
   }
 }
+
+
+
+
+

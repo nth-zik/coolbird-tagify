@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class ThumbnailStrip extends StatefulWidget {
   final List<File> images;
@@ -93,10 +94,10 @@ class _ThumbnailStripState extends State<ThumbnailStrip> {
             margin: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
             decoration: BoxDecoration(
               border: Border.all(
-                color: isCurrentImage ? Colors.blue : Colors.transparent,
+                color: isCurrentImage ? Theme.of(context).colorScheme.primary : Colors.transparent,
                 width: 2.0,
               ),
-              borderRadius: BorderRadius.circular(4.0),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: FutureBuilder<Uint8List?>(
               future: widget.loadAndCacheImage(file),
@@ -105,7 +106,7 @@ class _ThumbnailStripState extends State<ThumbnailStrip> {
                   return Container(
                     width: 54,
                     height: 54,
-                    color: Colors.grey[800],
+                    color: Theme.of(context).colorScheme.onSurface,
                     child: const Center(
                       child: CircularProgressIndicator(
                         color: Colors.white70,
@@ -117,15 +118,15 @@ class _ThumbnailStripState extends State<ThumbnailStrip> {
                   return Container(
                     width: 54,
                     height: 54,
-                    color: Colors.grey[800],
+                    color: Theme.of(context).colorScheme.onSurface,
                     child: const Icon(
-                      Icons.broken_image,
+                      PhosphorIconsLight.imageBroken,
                       color: Colors.white70,
                     ),
                   );
                 } else {
                   return ClipRRect(
-                    borderRadius: BorderRadius.circular(2.0),
+                    borderRadius: BorderRadius.circular(16.0),
                     child: Opacity(
                       opacity: isCurrentImage ? 1.0 : 0.7,
                       child: Image.memory(
@@ -146,3 +147,8 @@ class _ThumbnailStripState extends State<ThumbnailStrip> {
     );
   }
 }
+
+
+
+
+

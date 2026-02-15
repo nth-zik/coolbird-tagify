@@ -33,7 +33,7 @@ Container(
   ),
 )
 
-Icon(Icons.close, color: Colors.red)
+Icon(PhosphorIconsRegular.x, color: Colors.red)
 border: Border.all(color: Color(0xFF123456))
 ```
 
@@ -50,7 +50,7 @@ Container(
   ),
 )
 
-Icon(Icons.close, color: theme.colorScheme.error)
+Icon(PhosphorIconsRegular.x, color: theme.colorScheme.error)
 border: Border.all(color: theme.dividerColor)
 ```
 
@@ -255,17 +255,17 @@ ClipRRect(
 
 ### Use Remix Icons with `_line` Suffix
 ```dart
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 // ✅ CORRECT - Use _line icons
-Icon(remix.Remix.close_line)
-Icon(remix.Remix.add_line)
-Icon(remix.Remix.folder_3_line)
-Icon(remix.Remix.file_list_2_line)
+Icon(PhosphorIconsRegular.x)
+Icon(PhosphorIconsRegular.plus)
+Icon(PhosphorIconsRegular.folder)
+Icon(PhosphorIconsRegular.files)
 
 // ❌ WRONG - Don't use _fill unless specifically needed
-Icon(remix.Remix.close_fill)
-Icon(remix.Remix.folder_3_fill)
+Icon(PhosphorIconsFill.xCircle)
+Icon(PhosphorIconsFill.folder)
 ```
 
 ### Icon Sizes
@@ -277,9 +277,9 @@ const iconLarge = 24.0;
 const iconXLarge = 48.0;
 
 // Usage
-Icon(remix.Remix.close_line, size: 20)
-Icon(remix.Remix.folder_3_line, size: 22)
-Icon(remix.Remix.file_list_2_line, size: 48)
+Icon(PhosphorIconsRegular.x, size: 20)
+Icon(PhosphorIconsRegular.folder, size: 22)
+Icon(PhosphorIconsRegular.files, size: 48)
 ```
 
 ## Typography
@@ -369,7 +369,7 @@ Container(
 ```dart
 IconButton(
   icon: Icon(
-    remix.Remix.close_line,
+    PhosphorIconsRegular.x,
     color: theme.colorScheme.onSurface,
   ),
   tooltip: localizations.close,
@@ -381,7 +381,7 @@ IconButton(
 ```dart
 TextButton.icon(
   icon: Icon(
-    remix.Remix.close_circle_line,
+    PhosphorIconsRegular.xCircle,
     color: theme.colorScheme.error,
     size: 20,
   ),
@@ -400,7 +400,7 @@ TextButton.icon(
 ```dart
 FloatingActionButton.extended(
   onPressed: () {},
-  icon: const Icon(remix.Remix.add_line),
+  icon: const Icon(PhosphorIconsRegular.plus),
   label: Text(localizations.addNewTab),
   backgroundColor: theme.colorScheme.primary,
 )
@@ -420,7 +420,7 @@ Material(
     child: Padding(
       padding: const EdgeInsets.all(8.0),  // Makes it easier to tap
       child: Icon(
-        remix.Remix.close_line,
+        PhosphorIconsRegular.x,
         size: 20,
         color: theme.colorScheme.error,
       ),
@@ -437,7 +437,7 @@ AppBar(
   backgroundColor: theme.scaffoldBackgroundColor,
   leading: IconButton(
     icon: Icon(
-      remix.Remix.close_line,
+      PhosphorIconsRegular.x,
       color: theme.colorScheme.onSurface,
     ),
     tooltip: localizations.close,
@@ -549,10 +549,10 @@ Good examples of theme usage:
 3. **Using fill icons**
    ```dart
    // ❌ WRONG
-   Icon(remix.Remix.close_fill)
+   Icon(PhosphorIconsFill.xCircle)
    
    // ✅ CORRECT
-   Icon(remix.Remix.close_line)
+   Icon(PhosphorIconsRegular.x)
    ```
 
 4. **Small touch targets**
@@ -561,12 +561,12 @@ Good examples of theme usage:
    IconButton(
      padding: EdgeInsets.zero,
      constraints: BoxConstraints(),
-     icon: Icon(Icons.close, size: 12),
+     icon: Icon(PhosphorIconsRegular.x, size: 12),
    )
    
    // ✅ CORRECT
    IconButton(
-     icon: Icon(remix.Remix.close_line, size: 20),
+     icon: Icon(PhosphorIconsRegular.x, size: 20),
      padding: EdgeInsets.all(8.0),
    )
    ```
@@ -597,3 +597,4 @@ Good examples of theme usage:
    - Same spacing for similar elements
    - Same border radius for cards
    - Same icon sizes for similar contexts
+

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../config/languages/app_localizations.dart';
 import '../../../bloc/network_browsing/network_browsing_bloc.dart';
@@ -35,6 +35,7 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(title: Text(l10n.networkConnections)),
       body: BlocBuilder<NetworkBrowsingBloc, NetworkBrowsingState>(
@@ -48,8 +49,8 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(remix.Remix.alert_line,
-                      size: 48, color: Colors.red),
+                  Icon(PhosphorIconsLight.warning,
+                      size: 48, color: theme.colorScheme.error),
                   const SizedBox(height: 16),
                   Text(l10n.errorWithMessage(
                       state.errorMessage ?? l10n.unknownError)),
@@ -78,7 +79,7 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
                   padding: const EdgeInsets.fromLTRB(16.0, 24.0, 16.0, 8.0),
                   child: Text(
                     l10n.activeConnectionsTitle,
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: theme.textTheme.titleLarge,
                   ),
                 ),
                 _buildActiveConnections(state.connections),
@@ -90,7 +91,7 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
                   padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 8.0),
                   child: Text(
                     l10n.availableServices,
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: theme.textTheme.titleLarge,
                   ),
                 ),
                 _buildAvailableServices(state.services ?? []),
@@ -103,13 +104,14 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
         heroTag: null, // Disable hero animation to avoid conflicts
         onPressed: () => _showConnectionDialog(context),
         tooltip: l10n.addConnection,
-        child: const Icon(remix.Remix.add_line),
+        child: Icon(PhosphorIconsLight.plus),
       ),
     );
   }
 
   Widget _buildActiveConnections(Map<String, NetworkServiceBase> connections) {
     final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
     if (connections.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
@@ -117,17 +119,17 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(remix.Remix.wifi_off_line,
-                  size: 48, color: Colors.grey),
+              Icon(PhosphorIconsLight.wifiSlash,
+                  size: 48, color: theme.colorScheme.onSurfaceVariant),
               const SizedBox(height: 16),
               Text(
                 l10n.noActiveNetworkConnections,
-                style: const TextStyle(color: Colors.grey),
+                style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 8),
               Text(
                 l10n.useAddButtonToAddConnection,
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
+                style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 12),
               ),
             ],
           ),
@@ -160,12 +162,12 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
         return ListTile(
           leading: Icon(
             service.serviceIcon,
-            color: Theme.of(context).primaryColor,
+            color: theme.colorScheme.primary,
           ),
           title: Text(displayName, overflow: TextOverflow.ellipsis),
           subtitle: Text(subtitle),
           trailing: IconButton(
-            icon: const Icon(remix.Remix.close_circle_line, color: Colors.red),
+            icon: Icon(PhosphorIconsLight.xCircle, color: theme.colorScheme.error),
             onPressed: () => _disconnectService(path),
             tooltip: l10n.disconnect,
           ),
@@ -177,6 +179,7 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
 
   Widget _buildAvailableServices(List<NetworkServiceBase> services) {
     final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
     if (services.isEmpty) {
       return Padding(
         padding: const EdgeInsets.all(16.0),
@@ -194,7 +197,7 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
         return ListTile(
           leading: Icon(
             service.serviceIcon,
-            color: Theme.of(context).primaryColor,
+            color: theme.colorScheme.primary,
           ),
           title: Text(service.serviceName),
           subtitle: Text(service.serviceDescription),
@@ -287,3 +290,6 @@ class _NetworkConnectionScreenState extends State<NetworkConnectionScreen> {
     }
   }
 }
+
+
+

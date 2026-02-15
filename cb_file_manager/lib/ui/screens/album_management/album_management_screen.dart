@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/models/objectbox/album.dart';
 import 'package:cb_file_manager/services/album_service.dart';
 import 'package:cb_file_manager/ui/utils/base_screen.dart';
@@ -163,25 +164,25 @@ class _AlbumManagementScreenState extends State<AlbumManagementScreen> {
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(16),
                   color: album.colorTheme != null
                       ? Color(int.parse(
                           album.colorTheme!.replaceFirst('#', '0xFF')))
-                      : Colors.grey[300],
+                      : Theme.of(context).colorScheme.outlineVariant,
                 ),
                 child: album.coverImagePath != null &&
                         File(album.coverImagePath!).existsSync()
                     ? ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(16),
                         child: Image.file(
                           File(album.coverImagePath!),
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
-                            return const Icon(Icons.photo_album, size: 30);
+                            return Icon(PhosphorIconsLight.imageSquare, size: 30);
                           },
                         ),
                       )
-                    : const Icon(Icons.photo_album,
+                    : Icon(PhosphorIconsLight.imageSquare,
                         size: 30, color: Colors.white),
               ),
               const SizedBox(width: 16),
@@ -205,7 +206,7 @@ class _AlbumManagementScreenState extends State<AlbumManagementScreen> {
                         album.description!,
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey[600],
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -219,7 +220,7 @@ class _AlbumManagementScreenState extends State<AlbumManagementScreen> {
                           '$fileCount ${fileCount == 1 ? 'image' : 'images'}',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[500],
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         );
                       },
@@ -241,7 +242,7 @@ class _AlbumManagementScreenState extends State<AlbumManagementScreen> {
                     value: 'delete',
                     child: Row(
                       children: [
-                        const Icon(Icons.delete, color: Colors.red),
+                        const Icon(PhosphorIconsLight.trash, color: Colors.red),
                         const SizedBox(width: 8),
                         Text(
                           AppLocalizations.of(context)!.delete,
@@ -265,14 +266,14 @@ class _AlbumManagementScreenState extends State<AlbumManagementScreen> {
       title: 'Albums',
       actions: [
         IconButton(
-          icon: Icon(_isGridView ? Icons.view_list : Icons.grid_view),
+          icon: Icon(_isGridView ? PhosphorIconsLight.listBullets : PhosphorIconsLight.gridFour),
           tooltip: _isGridView ? 'List view' : 'Grid view',
           onPressed: () {
             setState(() => _isGridView = !_isGridView);
           },
         ),
         IconButton(
-          icon: const Icon(Icons.add),
+          icon: Icon(PhosphorIconsLight.plus),
           onPressed: _showCreateAlbumDialog,
           tooltip: 'Create Album',
         ),
@@ -285,11 +286,11 @@ class _AlbumManagementScreenState extends State<AlbumManagementScreen> {
             }
           },
           itemBuilder: (context) => [
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'refresh',
               child: Row(
                 children: [
-                  Icon(Icons.refresh),
+                  Icon(PhosphorIconsLight.arrowClockwise),
                   SizedBox(width: 8),
                   Text('Refresh'),
                 ],
@@ -311,16 +312,16 @@ class _AlbumManagementScreenState extends State<AlbumManagementScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        Icons.photo_album_outlined,
+                        PhosphorIconsLight.imageSquare,
                         size: 64,
-                        color: Colors.grey[400],
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                       const SizedBox(height: 16),
                       Text(
                         'No albums yet',
                         style: TextStyle(
                           fontSize: 18,
-                          color: Colors.grey[600],
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -328,14 +329,14 @@ class _AlbumManagementScreenState extends State<AlbumManagementScreen> {
                         'Create your first album to organize your images',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey[500],
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton.icon(
                         onPressed: _showCreateAlbumDialog,
-                        icon: const Icon(Icons.add),
+                        icon: Icon(PhosphorIconsLight.plus),
                         label: const Text('Create Album'),
                       ),
                     ],
@@ -379,7 +380,7 @@ class _AlbumManagementScreenState extends State<AlbumManagementScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: _showCreateAlbumDialog,
         tooltip: 'Create Album',
-        child: const Icon(Icons.add),
+        child: Icon(PhosphorIconsLight.plus),
       ),
     );
   }
@@ -398,9 +399,9 @@ class _AlbumManagementScreenState extends State<AlbumManagementScreen> {
           tabBloc.add(AddTab(path: path, name: album.name, switchToTab: true));
         }
       },
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16),
       child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -438,31 +439,31 @@ class _AlbumManagementScreenState extends State<AlbumManagementScreen> {
                         }
                       },
                       itemBuilder: (context) => [
-                        const PopupMenuItem(
+                        PopupMenuItem(
                           value: 'set_cover',
                           child: Row(
                             children: [
-                              Icon(Icons.image, size: 16),
+                              Icon(PhosphorIconsLight.image, size: 16),
                               SizedBox(width: 8),
                               Text('Set Cover…')
                             ],
                           ),
                         ),
-                        const PopupMenuItem(
+                        PopupMenuItem(
                           value: 'random_cover',
                           child: Row(
                             children: [
-                              Icon(Icons.shuffle, size: 16),
+                              Icon(PhosphorIconsLight.shuffle, size: 16),
                               SizedBox(width: 8),
                               Text('Random Cover')
                             ],
                           ),
                         ),
-                        const PopupMenuItem(
+                        PopupMenuItem(
                           value: 'delete',
                           child: Row(
                             children: [
-                              Icon(Icons.delete, size: 16, color: Colors.red),
+                              Icon(PhosphorIconsLight.trash, size: 16, color: Colors.red),
                               SizedBox(width: 8),
                               Text('Delete')
                             ],
@@ -493,7 +494,7 @@ class _AlbumManagementScreenState extends State<AlbumManagementScreen> {
                       final count = snapshot.data ?? 0;
                       return Text(
                         '$count ${count == 1 ? 'image' : 'images'}',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
                       );
                     },
                   ),
@@ -514,7 +515,7 @@ class _AlbumManagementScreenState extends State<AlbumManagementScreen> {
         File(album.coverImagePath!),
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) =>
-            const Icon(Icons.photo_album, size: 30),
+            Icon(PhosphorIconsLight.imageSquare, size: 30),
       );
     }
 
@@ -526,7 +527,7 @@ class _AlbumManagementScreenState extends State<AlbumManagementScreen> {
           return SkeletonHelper.box(
             width: double.infinity,
             height: double.infinity,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(16),
           );
         }
         final files = (snapshot.data as List?) ?? [];
@@ -534,7 +535,7 @@ class _AlbumManagementScreenState extends State<AlbumManagementScreen> {
           return SkeletonHelper.box(
             width: double.infinity,
             height: double.infinity,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(16),
           );
         }
         final idx = album.id % files.length;
@@ -543,14 +544,14 @@ class _AlbumManagementScreenState extends State<AlbumManagementScreen> {
           return SkeletonHelper.box(
             width: double.infinity,
             height: double.infinity,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(16),
           );
         }
         return Image.file(
           File(path),
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) =>
-              const Icon(Icons.photo_album, size: 30),
+              Icon(PhosphorIconsLight.imageSquare, size: 30),
         );
       },
     );
@@ -591,12 +592,12 @@ class _AlbumManagementScreenState extends State<AlbumManagementScreen> {
                       Navigator.of(context).pop();
                     },
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(16),
                       child: Image.file(
                         File(p),
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) =>
-                            const Icon(Icons.broken_image),
+                            Icon(PhosphorIconsLight.imageBroken),
                       ),
                     ),
                   );
@@ -621,3 +622,6 @@ class _AlbumManagementScreenState extends State<AlbumManagementScreen> {
     }
   }
 }
+
+
+

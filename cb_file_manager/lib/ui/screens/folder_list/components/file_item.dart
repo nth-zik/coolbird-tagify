@@ -10,7 +10,7 @@ import 'package:cb_file_manager/ui/screens/media_gallery/image_viewer_screen.dar
 import 'package:cb_file_manager/ui/screens/media_gallery/video_player_full_screen.dart';
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart'; // Import TagManager để lắng nghe thay đổi
 import 'package:flutter/material.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
@@ -19,8 +19,6 @@ import 'package:cb_file_manager/bloc/selection/selection_event.dart';
 import 'package:cb_file_manager/ui/dialogs/open_with_dialog.dart';
 import 'package:cb_file_manager/helpers/files/external_app_helper.dart';
 import 'package:cb_file_manager/helpers/files/file_icon_helper.dart';
-// Import app theme
-import 'package:cb_file_manager/config/app_theme.dart';
 import 'package:cb_file_manager/ui/widgets/tag_chip.dart'; // Import the new TagChip widget
 import '../../../components/common/shared_file_context_menu.dart';
 import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart'; // Import ThumbnailLoader
@@ -241,7 +239,7 @@ class _FileItemState extends State<FileItem> {
           SnackBar(
             content: Text(
                 AppLocalizations.of(context)!.errorDeletingTag(e.toString())),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -405,7 +403,7 @@ class _FileItemState extends State<FileItem> {
                     decoration: BoxDecoration(
                       color: backgroundColor,
                       borderRadius: widget.isDesktopMode
-                          ? BorderRadius.circular(12)
+                          ? BorderRadius.circular(16)
                           : BorderRadius.zero,
                     ),
                     child: Stack(
@@ -630,26 +628,26 @@ class _FileItemContentState extends State<_FileItemContent> {
         height: 48,
         child: isVideo || isImage
             ? ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(16.0),
                 child: ThumbnailLoader(
                   filePath: widget.file.path,
                   isVideo: isVideo,
                   isImage: isImage,
                   width: 48,
                   height: 48,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(16.0),
                   fallbackBuilder: () {
                     final theme = Theme.of(context);
                     return Container(
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(16.0),
                         color: theme.colorScheme.surfaceContainerHighest
                             .withValues(alpha: 0.3),
                       ),
                       child: Icon(
                         isVideo
-                            ? remix.Remix.video_line
-                            : remix.Remix.image_line,
+                            ? PhosphorIconsLight.videoCamera
+                            : PhosphorIconsLight.image,
                         size: 36,
                         color: theme.colorScheme.primary,
                       ),
@@ -668,12 +666,12 @@ class _FileItemContentState extends State<_FileItemContent> {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(16.0),
                       color: theme.colorScheme.surfaceContainerHighest
                           .withValues(alpha: 0.3),
                     ),
                     child: Icon(
-                      remix.Remix.file_3_line,
+                      PhosphorIconsLight.file,
                       size: 36,
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -700,8 +698,8 @@ class _FileItemContentState extends State<_FileItemContent> {
               children: [
                 Text(sizeText, style: Theme.of(context).textTheme.bodySmall),
                 const SizedBox(width: 12),
-                const Icon(remix.Remix.calendar_line,
-                    size: 12, color: Colors.grey),
+                Icon(PhosphorIconsLight.calendar,
+                    size: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
                 const SizedBox(width: 4),
                 Text(modifiedText,
                     style: Theme.of(context).textTheme.bodySmall),
@@ -721,8 +719,8 @@ class _FileItemContentState extends State<_FileItemContent> {
             children: [
               Text(sizeText, style: Theme.of(context).textTheme.bodySmall),
               const SizedBox(width: 12),
-              const Icon(remix.Remix.calendar_line,
-                  size: 12, color: Colors.grey),
+              Icon(PhosphorIconsLight.calendar,
+                  size: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
               const SizedBox(width: 4),
               Text(modifiedText, style: Theme.of(context).textTheme.bodySmall),
             ],
@@ -785,16 +783,16 @@ class _FileItemContentState extends State<_FileItemContent> {
         ),
         if (widget.showFileTags && widget.fileTags.isNotEmpty) ...[
           const SizedBox(width: 16),
-          const Icon(remix.Remix.bookmark_line,
-              size: 14, color: AppTheme.primaryBlue),
+          Icon(PhosphorIconsLight.bookmark,
+              size: 14, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: 4),
           if (tagsToShow.isEmpty)
             // If no tags fit, show count
             Text(
               AppLocalizations.of(context)!.tagCount(widget.fileTags.length),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: AppTheme.primaryBlue,
+                color: Theme.of(context).colorScheme.primary,
               ),
             )
           else if (tagsToShow.length == widget.fileTags.length)
@@ -839,9 +837,9 @@ class _FileItemContentState extends State<_FileItemContent> {
                       )),
                   Text(
                     '+${widget.fileTags.length - tagsToShow.length}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppTheme.primaryBlue,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                 ],
@@ -862,3 +860,7 @@ class _FileItemContentState extends State<_FileItemContent> {
     return file.path.split(Platform.pathSeparator).last;
   }
 }
+
+
+
+

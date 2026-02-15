@@ -1,7 +1,6 @@
-import 'dart:ui'; // Import for ImageFilter
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import './utils/route.dart';
 import './tab_manager/core/tab_main_screen.dart';
 import 'package:cb_file_manager/ui/screens/settings/settings_screen.dart';
@@ -59,30 +58,31 @@ class _CBDrawerContent extends StatelessWidget {
 
     return Drawer(
       elevation: 0,
-      backgroundColor: theme.scaffoldBackgroundColor.withValues(alpha: 0.85),
+      backgroundColor: theme.colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
-          topRight: Radius.circular(16),
-          bottomRight: Radius.circular(16),
+          topRight: Radius.circular(20),
+          bottomRight: Radius.circular(20),
         ),
       ),
       child: ClipRRect(
         borderRadius: const BorderRadius.only(
-          topRight: Radius.circular(16),
-          bottomRight: Radius.circular(16),
+          topRight: Radius.circular(20),
+          bottomRight: Radius.circular(20),
         ),
-        child: Stack(
-          children: [
-            // BackdropFilter for blur effect
-            BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
-              child: Container(
-                color: Colors.transparent,
-              ),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                theme.colorScheme.surface,
+                theme.colorScheme.surfaceContainerLowest.withValues(alpha: 0.85),
+              ],
             ),
-            // Original drawer content
-            Column(
-              children: [
+          ),
+          child: Column(
+            children: [
                 // Modern drawer header
                 DrawerHeaderWidget(
                   isPinned: isPinned,
@@ -93,16 +93,14 @@ class _CBDrawerContent extends StatelessWidget {
                 Expanded(
                   child: ListView(
                     padding:
-                        const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                        const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                     children: [
                       // Main navigation items
                       DrawerNavigationItem(
-                        icon: remix.Remix.home_3_line,
+                        icon: PhosphorIconsLight.house,
                         title: context.tr.home,
                         onTap: () => _navigateTo(context, '#home', 'Home'),
                       ),
-
-                      const SizedBox(height: 8),
 
                       // Storage section with expansion
                       StorageSectionWidget(
@@ -114,45 +112,58 @@ class _CBDrawerContent extends StatelessWidget {
 
                       const SizedBox(height: 8),
 
+                      DrawerNavigationItem(
+                        icon: PhosphorIconsLight.image,
+                        title: context.tr.imageGallery,
+                        onTap: () => _navigateTo(
+                          context,
+                          '#gallery',
+                          context.tr.imageGallery,
+                        ),
+                      ),
+
+                      DrawerNavigationItem(
+                        icon: PhosphorIconsLight.videoCamera,
+                        title: context.tr.videoGallery,
+                        onTap: () => _navigateTo(
+                          context,
+                          '#video',
+                          context.tr.videoGallery,
+                        ),
+                      ),
+
+                      const SizedBox(height: 8),
+
                       // Tags section
                       DrawerNavigationItem(
-                        icon: remix.Remix.price_tag_3_line,
+                        icon: PhosphorIconsLight.tag,
                         title: context.tr.tags,
                         onTap: () => _navigateTo(context, '#tags', 'Tags'),
                       ),
 
                       DrawerNavigationItem(
-                        icon: remix.Remix.wifi_line,
+                        icon: PhosphorIconsLight.wifiHigh,
                         title: context.tr.networksMenu,
                         onTap: () => _navigateTo(
                             context, '#network', context.tr.networkTab),
                       ),
 
                       Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                         child: Divider(
                           height: 1,
                           thickness: 1,
-                          color: theme.dividerTheme.color,
+                          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
                         ),
                       ),
 
                       // Settings and info section
                       DrawerNavigationItem(
-                        icon: remix.Remix.settings_3_line,
+                        icon: PhosphorIconsLight.gear,
                         title: context.tr.settings,
                         onTap: () {
                           if (!isPinned) RouteUtils.safePopDialog(context);
                           _showSettingsDialog(parentContext);
-                        },
-                      ),
-
-                      DrawerNavigationItem(
-                        icon: remix.Remix.information_line,
-                        title: context.tr.about,
-                        onTap: () {
-                          if (!isPinned) RouteUtils.safePopDialog(context);
-                          _showAboutDialog(parentContext);
                         },
                       ),
                     ],
@@ -161,9 +172,8 @@ class _CBDrawerContent extends StatelessWidget {
 
                 // Footer with app info
                 _buildDrawerFooter(theme),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -244,7 +254,7 @@ class _CBDrawerContent extends StatelessWidget {
 
   Widget _buildDrawerFooter(ThemeData theme) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -285,39 +295,6 @@ class _CBDrawerContent extends StatelessWidget {
     );
   }
 
-  void _showAboutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(context.tr.appTitle),
-        content: FutureBuilder<String>(
-          future: _getFullVersion(),
-          builder: (context, snapshot) {
-            final versionText = snapshot.data ?? '';
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                    'A powerful file manager with tagging capabilities.'),
-                const SizedBox(height: 16),
-                Text('Version: $versionText'),
-                const SizedBox(height: 8),
-                const Text('Developed by COOLBIRDZIK - ngtanhung41@gmail.com'),
-              ],
-            );
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => RouteUtils.safePopDialog(context),
-            child: Text(context.tr.close),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<String> _getFullVersion() async {
     final info = await PackageInfo.fromPlatform();
     final version = info.version.trim();
@@ -334,3 +311,5 @@ class _CBDrawerContent extends StatelessWidget {
     return '$version.$build';
   }
 }
+
+

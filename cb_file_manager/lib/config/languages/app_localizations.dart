@@ -187,6 +187,12 @@ abstract class AppLocalizations {
   String get systemThemeDescription;
   String get lightThemeDescription;
   String get darkThemeDescription;
+  String get themeOnboardingTitle;
+  String get themeOnboardingDescription;
+  String get themeOnboardingLightLabel;
+  String get themeOnboardingDarkLabel;
+  String get themeOnboardingMoreThemesMessage;
+  String get themeOnboardingContinue;
   String get vietnameseLanguage;
   String get englishLanguage;
 

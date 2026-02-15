@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'address_bar_menu.dart';
 
 class PathNavigationBar extends StatefulWidget {
@@ -91,14 +92,14 @@ class _PathNavigationBarState extends State<PathNavigationBar> {
             color: _isHovering
                 ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
                 : Colors.transparent,
-            borderRadius: BorderRadius.circular(8.0),
+            borderRadius: BorderRadius.circular(16.0),
           ),
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             shrinkWrap: true,
             itemCount: pathSegments.length,
             separatorBuilder: (context, index) =>
-                const Icon(Icons.chevron_right, size: 18.0),
+                const Icon(PhosphorIconsLight.caretRight, size: 18.0),
             itemBuilder: (context, index) {
               final segment = pathSegments[index];
               if (index == 0 && segment.isEmpty) {
@@ -109,7 +110,7 @@ class _PathNavigationBarState extends State<PathNavigationBar> {
                   .join(Platform.pathSeparator);
               return InkWell(
                 onTap: () => widget.onPathSubmitted(segmentPath),
-                borderRadius: BorderRadius.circular(4.0),
+                borderRadius: BorderRadius.circular(16.0),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 8.0, vertical: 4.0),
@@ -131,7 +132,7 @@ class _PathNavigationBarState extends State<PathNavigationBar> {
       height: 40.0,
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(8.0),
+        borderRadius: BorderRadius.circular(16.0),
         border: Border.all(
           color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
           width: 1.5,
@@ -179,3 +180,8 @@ class _PathNavigationBarState extends State<PathNavigationBar> {
     );
   }
 }
+
+
+
+
+

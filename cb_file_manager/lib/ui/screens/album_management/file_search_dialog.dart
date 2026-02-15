@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/services/album_service.dart';
 import 'package:cb_file_manager/ui/utils/route.dart';
 import 'package:path/path.dart' as path;
@@ -173,16 +174,16 @@ class _FileSearchDialogState extends State<FileSearchDialog> {
           width: 50,
           height: 50,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(4),
-            color: Colors.grey[200],
+            borderRadius: BorderRadius.circular(16),
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(16),
             child: Image.file(
               file,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
-                return const Icon(Icons.broken_image, color: Colors.grey);
+                return Icon(PhosphorIconsLight.imageBroken, color: Theme.of(context).colorScheme.onSurfaceVariant);
               },
             ),
           ),
@@ -199,7 +200,7 @@ class _FileSearchDialogState extends State<FileSearchDialog> {
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontSize: 12,
-            color: Colors.grey[600],
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
         trailing: Checkbox(
@@ -223,15 +224,15 @@ class _FileSearchDialogState extends State<FileSearchDialog> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor,
+                color: Theme.of(context).colorScheme.primary,
                 borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(4),
-                  topRight: Radius.circular(4),
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
                 ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.search, color: Colors.white),
+                  Icon(PhosphorIconsLight.magnifyingGlass, color: Colors.white),
                   const SizedBox(width: 8),
                   const Expanded(
                     child: Text(
@@ -244,7 +245,7 @@ class _FileSearchDialogState extends State<FileSearchDialog> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
+                    icon: Icon(PhosphorIconsLight.x, color: Colors.white),
                     onPressed: () => RouteUtils.safePopDialog(context),
                   ),
                 ],
@@ -257,10 +258,10 @@ class _FileSearchDialogState extends State<FileSearchDialog> {
                 controller: _searchController,
                 decoration: InputDecoration(
                   hintText: 'Search for images...',
-                  prefixIcon: const Icon(Icons.search),
+                  prefixIcon: Icon(PhosphorIconsLight.magnifyingGlass),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear),
+                          icon: Icon(PhosphorIconsLight.x),
                           onPressed: () {
                             _searchController.clear();
                           },
@@ -280,7 +281,7 @@ class _FileSearchDialogState extends State<FileSearchDialog> {
                     Text(
                       '${_selectedFiles.length} of ${_searchResults.length} selected',
                       style: TextStyle(
-                        color: Colors.grey[600],
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontSize: 14,
                       ),
                     ),
@@ -306,9 +307,9 @@ class _FileSearchDialogState extends State<FileSearchDialog> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
-                                Icons.image_search,
+                                PhosphorIconsLight.magnifyingGlass,
                                 size: 64,
-                                color: Colors.grey[400],
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
                               const SizedBox(height: 16),
                               Text(
@@ -317,7 +318,7 @@ class _FileSearchDialogState extends State<FileSearchDialog> {
                                     : 'No images found',
                                 style: TextStyle(
                                   fontSize: 16,
-                                  color: Colors.grey[600],
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
                               ),
                               if (_currentSearchQuery?.isNotEmpty == true)
@@ -325,7 +326,7 @@ class _FileSearchDialogState extends State<FileSearchDialog> {
                                   'Try a different search term',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: Colors.grey[500],
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                                   ),
                                 ),
                             ],
@@ -343,7 +344,7 @@ class _FileSearchDialogState extends State<FileSearchDialog> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 border: Border(
-                  top: BorderSide(color: Colors.grey[300]!),
+                  top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
                 ),
               ),
               child: Row(
@@ -370,3 +371,6 @@ class _FileSearchDialogState extends State<FileSearchDialog> {
     );
   }
 }
+
+
+

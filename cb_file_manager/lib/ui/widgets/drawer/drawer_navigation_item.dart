@@ -17,25 +17,27 @@ class DrawerNavigationItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final cs = theme.colorScheme;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 3),
       child: ListTile(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
         leading: Icon(
           icon,
-          size: 22,
-          color: theme.colorScheme.primary,
+          size: 20,
+          color: cs.primary,
         ),
         title: Text(
           title,
           style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-            color: theme.textTheme.titleMedium?.color,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: cs.onSurface,
           ),
         ),
         trailing: trailing,

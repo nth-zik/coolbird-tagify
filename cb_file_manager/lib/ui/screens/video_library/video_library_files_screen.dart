@@ -24,7 +24,7 @@ import 'package:cb_file_manager/ui/tab_manager/components/index.dart'
     as tab_components;
 import 'package:cb_file_manager/ui/tab_manager/components/tag_dialogs.dart'
     as tag_dialogs;
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class VideoLibraryFilesScreen extends StatefulWidget {
   final VideoLibrary library;
@@ -352,15 +352,8 @@ class _VideoLibraryFilesScreenState extends State<VideoLibraryFilesScreen>
       height: 48,
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey[850] : theme.colorScheme.surface,
+        color: isDark ? theme.colorScheme.surfaceContainerHighest : theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
         border: Border.all(
           color: theme.colorScheme.outline.withValues(alpha: 0.3),
           width: 1,
@@ -370,7 +363,7 @@ class _VideoLibraryFilesScreenState extends State<VideoLibraryFilesScreen>
         children: [
           const SizedBox(width: 4),
           Icon(
-            remix.Remix.search_line,
+            PhosphorIconsLight.magnifyingGlass,
             color: theme.colorScheme.onSurfaceVariant,
           ),
           Expanded(
@@ -398,17 +391,17 @@ class _VideoLibraryFilesScreenState extends State<VideoLibraryFilesScreen>
           ),
           if (_searchQuery.isNotEmpty)
             IconButton(
-              icon: const Icon(remix.Remix.close_line, size: 18),
+              icon: const Icon(PhosphorIconsLight.x, size: 18),
               tooltip: l10n.clearSearch,
               onPressed: _clearSearch,
             ),
           IconButton(
-            icon: const Icon(remix.Remix.search_line, size: 18),
+            icon: const Icon(PhosphorIconsLight.magnifyingGlass, size: 18),
             tooltip: l10n.search,
             onPressed: () => _applySearch(_searchController.text),
           ),
           IconButton(
-            icon: const Icon(remix.Remix.close_line, size: 18),
+            icon: const Icon(PhosphorIconsLight.x, size: 18),
             tooltip: l10n.close,
             onPressed: _closeSearchBar,
           ),
@@ -565,7 +558,7 @@ class _VideoLibraryFilesScreenState extends State<VideoLibraryFilesScreen>
       floatingActionButton: FloatingActionButton(
         heroTag: null, // Disable hero animation to avoid conflicts
         onPressed: toggleSelectionMode,
-        child: const Icon(remix.Remix.checkbox_line),
+        child: const Icon(PhosphorIconsLight.checkSquare),
       ),
     );
   }
@@ -613,11 +606,11 @@ class _VideoLibraryFilesScreenState extends State<VideoLibraryFilesScreen>
               .withValues(alpha: 0.3),
           child: Row(
             children: [
-              const Icon(Icons.search, size: 18),
+              const Icon(PhosphorIconsLight.magnifyingGlass, size: 18),
               const SizedBox(width: 8),
               Expanded(child: Text(l10n.searchingFor(_searchQuery))),
               IconButton(
-                icon: const Icon(Icons.close),
+                icon: const Icon(PhosphorIconsLight.x),
                 tooltip: l10n.clearSearch,
                 onPressed: _clearSearch,
               ),
@@ -682,3 +675,6 @@ class _VideoLibraryFilesScreenState extends State<VideoLibraryFilesScreen>
     tag_dialogs.showDeleteTagDialog(context, filePath, tags);
   }
 }
+
+
+

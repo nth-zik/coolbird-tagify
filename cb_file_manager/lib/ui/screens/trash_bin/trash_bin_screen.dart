@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/helpers/files/trash_manager.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
@@ -111,7 +111,8 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
               ),
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(true),
-                child: Text(l10n.delete, style: const TextStyle(color: Colors.red)),
+                child: Text(l10n.delete,
+                    style: TextStyle(color: Theme.of(context).colorScheme.error)),
               ),
             ],
           ),
@@ -177,7 +178,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(true),
                 child: Text(l10n.emptyTrashButton,
-                    style: const TextStyle(color: Colors.red)),
+                    style: TextStyle(color: Theme.of(context).colorScheme.error)),
               ),
             ],
           ),
@@ -301,7 +302,8 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
               ),
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(true),
-                child: Text(l10n.delete, style: const TextStyle(color: Colors.red)),
+                child: Text(l10n.delete,
+                    style: TextStyle(color: Theme.of(context).colorScheme.error)),
               ),
             ],
           ),
@@ -405,34 +407,34 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
         actions: [
           if (isSelectionMode) ...[
             IconButton(
-              icon: const Icon(remix.Remix.checkbox_line),
+              icon: Icon(PhosphorIconsLight.checkSquare),
               tooltip: l10n.selectAll,
               onPressed: _selectAll,
             ),
             IconButton(
-              icon: const Icon(remix.Remix.refresh_line),
+              icon: Icon(PhosphorIconsLight.arrowsClockwise),
               tooltip: l10n.restoreSelected,
               onPressed: selectedPaths.isEmpty ? null : _restoreSelectedItems,
             ),
             IconButton(
-              icon: const Icon(remix.Remix.delete_bin_2_line),
+              icon: Icon(PhosphorIconsLight.trash),
               tooltip: l10n.deleteSelected,
               onPressed: selectedPaths.isEmpty ? null : _deleteSelectedItems,
             ),
           ] else ...[
             IconButton(
-              icon: const Icon(remix.Remix.checkbox_line),
+              icon: Icon(PhosphorIconsLight.checkSquare),
               tooltip: l10n.selectItems,
               onPressed: _trashItems.isEmpty ? null : _toggleSelectionMode,
             ),
             if (Platform.isWindows && _showSystemOptions)
               IconButton(
-                icon: const Icon(remix.Remix.external_link_line),
+                icon: Icon(PhosphorIconsLight.arrowSquareOut),
                 tooltip: l10n.openRecycleBin,
                 onPressed: _openSystemRecycleBin,
               ),
             IconButton(
-              icon: const Icon(remix.Remix.delete_bin_line),
+              icon: Icon(PhosphorIconsLight.trash),
               tooltip: l10n.emptyTrashTooltip,
               onPressed: _trashItems.isEmpty ? null : _emptyTrash,
             ),
@@ -486,21 +488,21 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                remix.Remix.alert_line,
-                color: Colors.red,
+              Icon(
+                PhosphorIconsLight.warning,
+                color: Theme.of(context).colorScheme.error,
                 size: 48,
               ),
               const SizedBox(height: 16),
               Text(
                 _getErrorMessage(l10n),
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.red),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: _loadTrashItems,
-                icon: const Icon(remix.Remix.refresh_line),
+                icon: Icon(PhosphorIconsLight.arrowsClockwise),
                 label: Text(l10n.tryAgain),
               ),
             ],
@@ -514,10 +516,10 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              remix.Remix.delete_bin_2_line,
+            Icon(
+              PhosphorIconsLight.trash,
               size: 64,
-              color: Colors.grey,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             const SizedBox(height: 16),
             Text(
@@ -530,14 +532,14 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
             const SizedBox(height: 8),
             Text(
               l10n.itemsDeletedWillAppearHere,
-              style: const TextStyle(
-                color: Colors.grey,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: _loadTrashItems,
-              icon: const Icon(remix.Remix.refresh_line),
+              icon: Icon(PhosphorIconsLight.arrowsClockwise),
               label: Text(l10n.refresh),
             ),
           ],
@@ -554,7 +556,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
           final isSelected = selectedPaths.contains(item.trashFileName);
 
           return ListTile(
-            leading: _getFileIcon(item.displayNameValue),
+            leading: _getFileIcon(context, item.displayNameValue),
             title: Text(
               item.displayNameValue,
               style: item.isSystemTrashItem
@@ -583,7 +585,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
                               _formatFileSize(item.size)),
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[600],
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                         if (item.isSystemTrashItem) ...[
@@ -593,7 +595,7 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
                                 horizontal: 4, vertical: 1),
                             decoration: BoxDecoration(
                               color: Theme.of(context).colorScheme.primaryContainer,
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(16.0),
                             ),
                             child: Text(
                               l10n.systemLabel,
@@ -625,12 +627,12 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            icon: const Icon(remix.Remix.refresh_line, size: 20),
+                            icon: Icon(PhosphorIconsLight.arrowsClockwise, size: 20),
                             tooltip: l10n.restoreTooltip,
                             onPressed: () => _restoreItem(item),
                           ),
                           IconButton(
-                            icon: const Icon(remix.Remix.delete_bin_2_line, size: 20),
+                            icon: Icon(PhosphorIconsLight.trash, size: 20),
                             tooltip: l10n.deletePermanentlyTooltip,
                             onPressed: () => _deleteItem(item),
                           ),
@@ -653,28 +655,30 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
     );
   }
 
-  Widget _getFileIcon(String fileName) {
+  Widget _getFileIcon(BuildContext context, String fileName) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     // Use FileTypeUtils to determine file type
     if (FileTypeUtils.isImageFile(fileName)) {
-      return const CircleAvatar(
-        backgroundColor: Colors.blue,
-        child: Icon(remix.Remix.image_line, color: Colors.white),
+      return CircleAvatar(
+        backgroundColor: colorScheme.primary,
+        child: Icon(PhosphorIconsLight.image, color: colorScheme.onPrimary),
       );
     }
 
     // Video file
     if (FileTypeUtils.isVideoFile(fileName)) {
-      return const CircleAvatar(
-        backgroundColor: Colors.red,
-        child: Icon(remix.Remix.video_line, color: Colors.white),
+      return CircleAvatar(
+        backgroundColor: colorScheme.error,
+        child: Icon(PhosphorIconsLight.videoCamera, color: colorScheme.onPrimary),
       );
     }
 
     // Audio file
     if (FileTypeUtils.isAudioFile(fileName)) {
-      return const CircleAvatar(
-        backgroundColor: Colors.purple,
-        child: Icon(remix.Remix.music_2_line, color: Colors.white),
+      return CircleAvatar(
+        backgroundColor: colorScheme.tertiary,
+        child: Icon(PhosphorIconsLight.musicNotes, color: colorScheme.onPrimary),
       );
     }
 
@@ -682,16 +686,20 @@ class _TrashBinScreenState extends State<TrashBinScreen> with SelectionMixin {
     if (FileTypeUtils.isDocumentFile(fileName) ||
         FileTypeUtils.isSpreadsheetFile(fileName) ||
         FileTypeUtils.isPresentationFile(fileName)) {
-      return const CircleAvatar(
-        backgroundColor: Colors.orange,
-        child: Icon(remix.Remix.file_text_line, color: Colors.white),
+      return CircleAvatar(
+        backgroundColor: colorScheme.secondary,
+        child: Icon(PhosphorIconsLight.fileText, color: colorScheme.onPrimary),
       );
     }
 
     // Default icon
-    return const CircleAvatar(
-      backgroundColor: Colors.grey,
-      child: Icon(remix.Remix.file_3_line, color: Colors.white),
+    return CircleAvatar(
+      backgroundColor: colorScheme.onSurfaceVariant,
+      child: Icon(PhosphorIconsLight.file, color: colorScheme.onPrimary),
     );
   }
 }
+
+
+
+

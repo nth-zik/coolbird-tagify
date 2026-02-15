@@ -133,7 +133,7 @@ TextButton(
 )
 
 IconButton(
-  icon: Icon(Icons.close),
+  icon: Icon(PhosphorIconsRegular.x),
   tooltip: localizations.close,
   onPressed: () {},
 )
@@ -163,7 +163,7 @@ AppBar(
   title: Text(localizations.tabManager),
   actions: [
     IconButton(
-      icon: Icon(Icons.search),
+      icon: Icon(PhosphorIconsRegular.magnifyingGlass),
       tooltip: localizations.search,
       onPressed: () {},
     ),
@@ -176,7 +176,7 @@ AppBar(
 Center(
   child: Column(
     children: [
-      Icon(Icons.folder_open, size: 64),
+      Icon(PhosphorIconsRegular.folderOpen, size: 64),
       SizedBox(height: 16),
       Text(
         localizations.noTabsOpen,

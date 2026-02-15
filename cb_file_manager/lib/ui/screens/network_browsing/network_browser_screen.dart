@@ -5,6 +5,7 @@ import 'dart:async'; // Add this import for Completer
 import 'package:cb_file_manager/helpers/ui/frame_timing_optimizer.dart';
 import '../../components/common/shared_action_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 // Import for mouse buttons
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/helpers/core/user_preferences.dart';
@@ -699,14 +700,14 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
         // Selection mode actions
         actions.addAll([
           IconButton(
-            icon: const Icon(Icons.close),
+            icon: const Icon(PhosphorIconsLight.x),
             onPressed: _clearSelection,
           ),
           Text(AppLocalizations.of(context)!
               .itemsSelected(selectionState.selectedCount)),
           const Spacer(),
           IconButton(
-            icon: const Icon(Icons.select_all),
+            icon: const Icon(PhosphorIconsLight.checks),
             tooltip: AppLocalizations.of(context)!.selectAll,
             onPressed: () {
               // Implement select all logic
@@ -739,16 +740,16 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
           decoration: InputDecoration(
             hintText: AppLocalizations.of(context)!.searchHintText,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(16.0),
               borderSide: BorderSide.none,
             ),
             filled: true,
             fillColor:
                 Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
             contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-            prefixIcon: const Icon(Icons.search, size: 20),
+            prefixIcon: const Icon(PhosphorIconsLight.magnifyingGlass, size: 20),
             suffixIcon: IconButton(
-              icon: const Icon(Icons.close),
+              icon: const Icon(PhosphorIconsLight.x),
               onPressed: () {
                 setState(() {
                   _showSearchBar = false;
@@ -764,7 +765,7 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
     return Row(
       children: [
         IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(PhosphorIconsLight.arrowLeft),
           onPressed: () async {
             await _handleBackButton();
           },
@@ -781,7 +782,7 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
                     .colorScheme
                     .surface
                     .withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(16.0),
               ),
               child: Text(
                 _currentPath,
@@ -861,7 +862,7 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.folder_open, size: 64, color: Colors.grey),
+                const Icon(PhosphorIconsLight.folderOpen, size: 64, color: Colors.grey),
                 const SizedBox(height: 16),
                 Text(
                   AppLocalizations.of(context)!.emptyFolder,
@@ -869,7 +870,7 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
-                  icon: const Icon(Icons.refresh),
+                  icon: const Icon(PhosphorIconsLight.arrowsClockwise),
                   label: Text(AppLocalizations.of(context)!.refresh),
                   onPressed: _refreshFileList,
                 ),
@@ -1187,7 +1188,7 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
     return FloatingActionButton(
       heroTag: null, // Disable hero animation to avoid conflicts
       onPressed: _refreshFileList,
-      child: const Icon(Icons.refresh),
+      child: const Icon(PhosphorIconsLight.arrowsClockwise),
     );
   }
 
@@ -1416,3 +1417,8 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
     );
   }
 }
+
+
+
+
+

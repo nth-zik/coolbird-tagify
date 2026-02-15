@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as path;
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
@@ -160,13 +160,13 @@ class _FileGridItemState extends State<FileGridItem> {
           child: Container(
             decoration: BoxDecoration(
               color: cardBackgroundColor,
-              borderRadius: BorderRadius.circular(8.0),
+              borderRadius: BorderRadius.circular(16.0),
             ),
             child: Column(
               children: [
                 Expanded(
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8.0),
+                    borderRadius: BorderRadius.circular(16.0),
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
@@ -250,8 +250,8 @@ class _FileGridItemState extends State<FileGridItem> {
                               child: Padding(
                                 padding: const EdgeInsets.all(4.0),
                                 child: Icon(
-                                  remix.Remix.checkbox_circle_line,
-                                  color: theme.primaryColor,
+                                  PhosphorIconsLight.checkCircle,
+                                  color: theme.colorScheme.primary,
                                   size: 24,
                                 ),
                               ),
@@ -347,14 +347,14 @@ class _FileGridItemState extends State<FileGridItem> {
           (tag) => Container(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
             decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(8),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(16.0),
             ),
             child: Text(
               tag,
               style: TextStyle(
                 fontSize: 8,
-                color: Theme.of(context).primaryColor,
+                color: Theme.of(context).colorScheme.primary,
                 fontWeight: FontWeight.w500,
               ),
               maxLines: 1,
@@ -366,14 +366,14 @@ class _FileGridItemState extends State<FileGridItem> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
             decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(8),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(16.0),
             ),
             child: Text(
               '+${fileTags.length - 2}',
               style: TextStyle(
                 fontSize: 8,
-                color: Theme.of(context).primaryColor,
+                color: Theme.of(context).colorScheme.primary,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -382,3 +382,7 @@ class _FileGridItemState extends State<FileGridItem> {
     );
   }
 }
+
+
+
+

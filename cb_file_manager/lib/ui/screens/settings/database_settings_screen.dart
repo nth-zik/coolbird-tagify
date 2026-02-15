@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/models/database/database_manager.dart';
 import 'package:cb_file_manager/helpers/core/user_preferences.dart';
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
@@ -330,7 +331,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                const Icon(Icons.storage, size: 24),
+                const Icon(PhosphorIconsLight.hardDrives, size: 24),
                 const SizedBox(width: 16),
                 Text(
                   context.tr.databaseStorage,
@@ -356,7 +357,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
                   : context.tr.jsonStorage,
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[600],
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -376,7 +377,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                const Icon(Icons.cloud_sync, size: 24),
+                const Icon(PhosphorIconsLight.cloudArrowUp, size: 24),
                 const SizedBox(width: 16),
                 Text(
                   context.tr.cloudSync,
@@ -404,7 +405,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
                   : context.tr.enableObjectBoxForCloud,
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[600],
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -414,13 +415,13 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton.icon(
-                  icon: const Icon(Icons.cloud_upload),
+                  icon: const Icon(PhosphorIconsLight.cloudArrowUp),
                   label: Text(context.tr.syncToCloud),
                   onPressed:
                       _isCloudSyncEnabled && !_isSyncing ? _syncToCloud : null,
                 ),
                 ElevatedButton.icon(
-                  icon: const Icon(Icons.cloud_download),
+                  icon: const Icon(PhosphorIconsLight.cloudArrowDown),
                   label: Text(context.tr.syncFromCloud),
                   onPressed: _isCloudSyncEnabled && !_isSyncing
                       ? _syncFromCloud
@@ -450,7 +451,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                const Icon(Icons.import_export, size: 24),
+                const Icon(PhosphorIconsLight.arrowsDownUp, size: 24),
                 const SizedBox(width: 16),
                 Text(
                   context.tr.importExportDatabase,
@@ -466,16 +467,16 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Text(
               context.tr.backupRestoreDescription,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ),
           ListTile(
             title: Text(context.tr.exportDatabase),
             subtitle: Text(context.tr.exportDescription),
-            leading: const Icon(Icons.upload_file),
+            leading: const Icon(PhosphorIconsLight.uploadSimple),
             onTap: () async {
               try {
                 // Ask the user to choose where to save the file
@@ -505,7 +506,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
                         SnackBar(
                           content: Text(context.tr.exportFailed),
                           behavior: SnackBarBehavior.floating,
-                          backgroundColor: Colors.red,
+                          backgroundColor: Theme.of(context).colorScheme.error,
                         ),
                       );
                     }
@@ -517,7 +518,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
                     SnackBar(
                       content: Text(context.tr.errorExporting + e.toString()),
                       behavior: SnackBarBehavior.floating,
-                      backgroundColor: Colors.red,
+                      backgroundColor: Theme.of(context).colorScheme.error,
                     ),
                   );
                 }
@@ -527,7 +528,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
           ListTile(
             title: Text(context.tr.importDatabase),
             subtitle: Text(context.tr.importDescription),
-            leading: const Icon(Icons.file_download),
+            leading: const Icon(PhosphorIconsLight.downloadSimple),
             onTap: () async {
               try {
                 // Open file picker to select the database export file
@@ -558,7 +559,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
                         SnackBar(
                           content: Text(context.tr.importFailed),
                           behavior: SnackBarBehavior.floating,
-                          backgroundColor: Colors.red,
+                          backgroundColor: Theme.of(context).colorScheme.error,
                         ),
                       );
                     }
@@ -579,7 +580,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
                     SnackBar(
                       content: Text(context.tr.errorImporting + e.toString()),
                       behavior: SnackBarBehavior.floating,
-                      backgroundColor: Colors.red,
+                      backgroundColor: Theme.of(context).colorScheme.error,
                     ),
                   );
                 }
@@ -602,7 +603,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                const Icon(Icons.bar_chart, size: 24),
+                const Icon(PhosphorIconsLight.chartBar, size: 24),
                 const SizedBox(width: 16),
                 Text(
                   context.tr.databaseStatistics,
@@ -660,9 +661,9 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
                               Theme.of(context).colorScheme.primary,
                           child: Text(
                             '${entry.value}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: Colors.white,
+                              color: Theme.of(context).colorScheme.onPrimary,
                             ),
                           ),
                         ),
@@ -674,7 +675,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
             padding: const EdgeInsets.all(16),
             child: Center(
               child: OutlinedButton.icon(
-                icon: const Icon(Icons.refresh),
+                icon: const Icon(PhosphorIconsLight.arrowsClockwise),
                 label: Text(context.tr.refreshStatistics),
                 onPressed: () async {
                   setState(() {
@@ -693,3 +694,6 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
     );
   }
 }
+
+
+

@@ -350,6 +350,20 @@ class EnglishLocalizations implements AppLocalizations {
   @override
   String get darkThemeDescription => 'Dark interface for all screens';
   @override
+  String get themeOnboardingTitle => 'Choose your theme';
+  @override
+  String get themeOnboardingDescription =>
+      'Pick your default appearance before entering the app.';
+  @override
+  String get themeOnboardingLightLabel => 'Light';
+  @override
+  String get themeOnboardingDarkLabel => 'Dark';
+  @override
+  String get themeOnboardingMoreThemesMessage =>
+      'More themes are available in Settings.';
+  @override
+  String get themeOnboardingContinue => 'Continue';
+  @override
   String get vietnameseLanguage => 'Vietnamese';
   @override
   String get englishLanguage => 'English';

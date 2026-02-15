@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../../config/languages/app_localizations.dart';
 
@@ -115,7 +116,7 @@ class VideoPlayerErrorWidget extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline, color: Colors.red, size: 64),
+          const Icon(PhosphorIconsLight.warningCircle, color: Colors.red, size: 64),
           const SizedBox(height: 16),
           Text(
             'Error playing media',
@@ -205,7 +206,7 @@ class _VideoPlayerLoadingWidgetState extends State<VideoPlayerLoadingWidget> {
       primaryColor: primaryColor,
       progressColor: progressColor,
       strokeWidth: 3,
-      icon: Icons.play_arrow,
+      icon: PhosphorIconsLight.play,
       iconSize: 24,
       stackOverlays: [
         TweenAnimationBuilder<double>(
@@ -221,13 +222,7 @@ class _VideoPlayerLoadingWidgetState extends State<VideoPlayerLoadingWidget> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: primaryColor.withValues(alpha: 0.8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: primaryColor.withValues(alpha: 0.3),
-                      blurRadius: 10,
-                      spreadRadius: 2,
-                    ),
-                  ],
+                  boxShadow: [],
                 ),
               ),
             );
@@ -294,7 +289,7 @@ class _VideoPlayerVlcPlaceholderState extends State<VideoPlayerVlcPlaceholder> {
               primaryColor: Colors.orange,
               progressColor: Colors.orange.withValues(alpha: 0.6),
               strokeWidth: 2,
-              icon: Icons.play_circle_outline,
+              icon: PhosphorIconsLight.playCircle,
               iconSize: 20,
             ),
             const SizedBox(height: 16),
@@ -334,3 +329,8 @@ class _VideoPlayerVlcPlaceholderState extends State<VideoPlayerVlcPlaceholder> {
     );
   }
 }
+
+
+
+
+

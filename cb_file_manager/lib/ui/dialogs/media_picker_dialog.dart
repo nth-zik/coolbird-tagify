@@ -7,7 +7,7 @@ import 'package:cb_file_manager/ui/components/common/skeleton.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 typedef MediaPickerFileMatcher = bool Function(String path);
@@ -380,7 +380,7 @@ class _MediaPickerDialogState extends State<_MediaPickerDialog> {
         IconButton(
           onPressed: _canNavigateUp ? _navigateUp : null,
           tooltip: l10n.parentFolder,
-          icon: const Icon(Icons.arrow_upward),
+          icon: const Icon(PhosphorIconsLight.arrowUp),
         ),
         Expanded(
           child: Tooltip(
@@ -402,7 +402,7 @@ class _MediaPickerDialogState extends State<_MediaPickerDialog> {
         IconButton(
           onPressed: _loadEntries,
           tooltip: l10n.refresh,
-          icon: const Icon(Icons.refresh),
+          icon: const Icon(PhosphorIconsLight.arrowsClockwise),
         ),
       ],
     );
@@ -425,7 +425,7 @@ class _MediaPickerDialogState extends State<_MediaPickerDialog> {
             },
             decoration: InputDecoration(
               hintText: l10n.search,
-              prefixIcon: const Icon(Icons.search),
+              prefixIcon: const Icon(PhosphorIconsLight.magnifyingGlass),
               suffixIcon: _searchQuery.isEmpty
                   ? null
                   : IconButton(
@@ -435,10 +435,10 @@ class _MediaPickerDialogState extends State<_MediaPickerDialog> {
                           _searchQuery = '';
                         });
                       },
-                      icon: const Icon(Icons.clear),
+                      icon: const Icon(PhosphorIconsLight.x),
                     ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(16.0),
               ),
               isDense: true,
             ),
@@ -484,11 +484,11 @@ class _MediaPickerDialogState extends State<_MediaPickerDialog> {
                         index == 0 ? MediaPickerViewMode.grid : MediaPickerViewMode.list;
                   });
                 },
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(16.0),
                 constraints: const BoxConstraints(minHeight: 36, minWidth: 44),
                 children: const [
-                  Icon(Icons.grid_view),
-                  Icon(Icons.view_list),
+                  Icon(PhosphorIconsLight.squaresFour),
+                  Icon(PhosphorIconsLight.listBullets),
                 ],
               ),
           ],
@@ -642,13 +642,13 @@ class _DirectoryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       dense: true,
-      leading: const Icon(remix.Remix.folder_3_line, color: Colors.amber),
+      leading: const Icon(PhosphorIconsLight.folder, color: Colors.amber),
       title: Text(
         name,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
-      trailing: const Icon(Icons.chevron_right),
+      trailing: const Icon(PhosphorIconsLight.caretRight),
       onTap: onTap,
     );
   }
@@ -672,13 +672,13 @@ class _FileGridTile extends StatelessWidget {
     final fileName = path.basename(file.path);
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16.0),
               child: _FilePreview(
                 file: file,
                 isVideo: _isVideo,
@@ -727,7 +727,7 @@ class _FileListTile extends StatelessWidget {
     return ListTile(
       dense: true,
       leading: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16.0),
         child: SizedBox(
           width: 56,
           height: 56,
@@ -805,7 +805,7 @@ Widget _fallbackTile({
       color: Colors.blueGrey[900],
       child: const Center(
         child: Icon(
-          remix.Remix.video_line,
+          PhosphorIconsLight.videoCamera,
           color: Colors.white70,
           size: 36,
         ),
@@ -818,7 +818,7 @@ Widget _fallbackTile({
       color: Colors.black12,
       child: const Center(
         child: Icon(
-          remix.Remix.image_line,
+          PhosphorIconsLight.image,
           color: Colors.blueGrey,
           size: 36,
         ),
@@ -830,7 +830,7 @@ Widget _fallbackTile({
     color: Colors.black12,
     child: const Center(
       child: Icon(
-        remix.Remix.file_3_line,
+        PhosphorIconsLight.file,
         color: Colors.blueGrey,
         size: 36,
       ),
@@ -941,7 +941,7 @@ class _PickerVideoThumbnailState extends State<_PickerVideoThumbnail> {
           right: 6,
           bottom: 6,
           child: Icon(
-            remix.Remix.play_circle_line,
+            PhosphorIconsLight.playCircle,
             color: Colors.white,
             size: 20,
           ),
@@ -964,10 +964,16 @@ class _PickerVideoThumbnailState extends State<_PickerVideoThumbnail> {
       return ShimmerBox(
         width: double.infinity,
         height: double.infinity,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(16.0),
       );
     }
 
     return _fallbackTile(isVideo: true, isImage: false);
   }
 }
+
+
+
+
+
+

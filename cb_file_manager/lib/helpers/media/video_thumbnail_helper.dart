@@ -12,7 +12,7 @@ import 'package:video_thumbnail/video_thumbnail.dart';
 import 'package:path/path.dart' as path;
 import 'package:cb_file_manager/helpers/core/user_preferences.dart';
 import 'package:cb_file_manager/helpers/core/app_path_helper.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import 'fc_native_video_thumbnail.dart';
 
@@ -1652,7 +1652,7 @@ class VideoThumbnailHelper {
     defaultFallback() => Container(
           color: Colors.grey[300],
           child: const Center(
-            child: Icon(Icons.movie, size: 40, color: Colors.grey),
+            child: Icon(PhosphorIconsLight.filmStrip, size: 40, color: Colors.grey),
           ),
         );
 
@@ -1718,7 +1718,7 @@ class VideoThumbnailHelper {
                     // Add video play icon overlay
                     const Center(
                       child: Icon(
-                        remix.Remix.play_circle_line,
+                        PhosphorIconsLight.playCircle,
                         color: Colors.white,
                         size: 32,
                       ),
@@ -2315,3 +2315,8 @@ class _ThumbnailRequest {
     this.thumbnailSize,
   });
 }
+
+
+
+
+

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'dart:io';
 import 'dart:async';
 
@@ -892,17 +893,17 @@ class StreamingHelper {
   /// Lấy icon phù hợp cho loại file
   IconData getFileIcon(String filePath) {
     if (FileTypeUtils.isVideoFile(filePath)) {
-      return Icons.video_file;
+      return PhosphorIconsLight.videoCamera;
     } else if (FileTypeUtils.isAudioFile(filePath)) {
-      return Icons.audio_file;
+      return PhosphorIconsLight.musicNote;
     } else if (FileTypeUtils.isImageFile(filePath)) {
-      return Icons.image;
+      return PhosphorIconsLight.image;
     } else if (FileTypeUtils.isDocumentFile(filePath) ||
         FileTypeUtils.isSpreadsheetFile(filePath) ||
         FileTypeUtils.isPresentationFile(filePath)) {
-      return Icons.description;
+      return PhosphorIconsLight.fileText;
     } else {
-      return Icons.insert_drive_file;
+      return PhosphorIconsLight.file;
     }
   }
 
@@ -925,3 +926,7 @@ class StreamingHelper {
         filePath.toLowerCase().endsWith('.pdf');
   }
 }
+
+
+
+

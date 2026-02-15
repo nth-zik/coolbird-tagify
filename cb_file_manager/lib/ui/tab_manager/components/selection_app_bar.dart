@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'tag_dialogs.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 
@@ -50,7 +50,7 @@ class SelectionAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       title: Text(l10n.itemsSelected(selectedCount)),
       leading: IconButton(
-        icon: const Icon(remix.Remix.close_line),
+        icon: const Icon(PhosphorIconsLight.x),
         onPressed: onClearSelection,
         tooltip: l10n.cancel,
       ),
@@ -72,32 +72,32 @@ class SelectionAppBar extends StatelessWidget implements PreferredSizeWidget {
               PopupMenuItem<String>(
                 value: 'add_tags',
                 child: ListTile(
-                  leading: const Icon(remix.Remix.add_circle_line),
+                  leading: const Icon(PhosphorIconsLight.plusCircle),
                   title: Text(l10n.addTag),
                 ),
               ),
               PopupMenuItem<String>(
                 value: 'remove_tags',
                 child: ListTile(
-                  leading: const Icon(remix.Remix.close_circle_line),
+                  leading: const Icon(PhosphorIconsLight.xCircle),
                   title: Text(l10n.removeTag),
                 ),
               ),
               PopupMenuItem<String>(
                 value: 'manage_all_tags',
                 child: ListTile(
-                  leading: const Icon(remix.Remix.settings_2_line),
+                  leading: const Icon(PhosphorIconsLight.gear),
                   title: Text(l10n.manageTags),
                 ),
               ),
             ],
-            icon: const Icon(remix.Remix.shopping_bag_3_line),
+            icon: const Icon(PhosphorIconsLight.shoppingBagOpen),
             tooltip: l10n.manageTags,
           ),
 
         // Delete button always shown
         IconButton(
-          icon: const Icon(remix.Remix.delete_bin_2_line),
+          icon: const Icon(PhosphorIconsLight.trash),
           onPressed: () => showDeleteConfirmationDialog(context),
           tooltip: l10n.moveToTrash,
         ),
@@ -105,3 +105,7 @@ class SelectionAppBar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 }
+
+
+
+

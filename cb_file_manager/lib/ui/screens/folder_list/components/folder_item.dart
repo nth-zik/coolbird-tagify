@@ -6,7 +6,7 @@ import '../../../components/common/shared_file_context_menu.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../bloc/selection/selection_bloc.dart';
 import '../../../../bloc/selection/selection_event.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../components/common/optimized_interaction_handler.dart';
 import '../../../utils/item_interaction_style.dart';
 
@@ -167,7 +167,7 @@ class _FolderItemState extends State<FolderItem> {
                 decoration: BoxDecoration(
                   color: backgroundColor,
                   borderRadius: widget.isDesktopMode
-                      ? BorderRadius.circular(12)
+                      ? BorderRadius.circular(16.0)
                       : BorderRadius.zero,
                 ),
                 child: Stack(
@@ -181,13 +181,13 @@ class _FolderItemState extends State<FolderItem> {
                             width: 48,
                             height: 48,
                             decoration: BoxDecoration(
-                              color: Colors.amber.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(8),
+                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(16.0),
                             ),
                             child: Center(
                               child: Icon(
-                                remix.Remix.folder_3_line,
-                                color: Colors.amber[600],
+                                PhosphorIconsLight.folder,
+                                color: Theme.of(context).colorScheme.primary,
                                 size: 28,
                               ),
                             ),
@@ -338,3 +338,7 @@ class _FolderItemState extends State<FolderItem> {
     );
   }
 }
+
+
+
+

@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cb_file_manager/helpers/core/io_extensions.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:cb_file_manager/ui/controllers/inline_rename_controller.dart';
 import 'package:cb_file_manager/ui/widgets/inline_rename_field.dart';
@@ -165,8 +165,8 @@ class _FolderDetailsItemState extends State<FolderDetailsItem> {
                             horizontal: 12.0, vertical: 10.0),
                         child: Row(
                           children: [
-                            const Icon(remix.Remix.folder_3_line,
-                                color: Colors.amber),
+                            Icon(PhosphorIconsLight.folder,
+                                color: Theme.of(context).colorScheme.primary),
                             const SizedBox(width: 12),
                             Expanded(
                               child: _buildNameWidget(context),
@@ -397,3 +397,6 @@ class _FolderInteractionLayerState extends State<_FolderInteractionLayer> {
     );
   }
 }
+
+
+

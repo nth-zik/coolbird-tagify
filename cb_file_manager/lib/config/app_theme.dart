@@ -51,7 +51,7 @@ class AppTheme {
       colorScheme: colorScheme,
       brightness: Brightness.light,
       options: const ThemeOptions(
-        borderRadius: 8.0,
+        borderRadius: 20.0,
         elevation: 0.0,
         useMaterial3: true,
         cardElevation: 0.0,
@@ -75,7 +75,7 @@ class AppTheme {
       colorScheme: colorScheme,
       brightness: Brightness.dark,
       options: const ThemeOptions(
-        borderRadius: 8.0,
+        borderRadius: 20.0,
         elevation: 0.0,
         useMaterial3: true,
         cardElevation: 0.0,

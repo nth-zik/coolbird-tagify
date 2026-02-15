@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
 import 'dart:io';
-import 'package:path_provider/path_provider.dart';
 import 'package:cb_file_manager/helpers/core/filesystem_utils.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/config/translation_helper.dart';
@@ -62,20 +61,35 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isLightMode = theme.brightness == Brightness.light;
     final localizations = AppLocalizations.of(context)!;
     final size = MediaQuery.of(context).size;
 
+    final backgroundGradientColors = isLightMode
+        ? <Color>[
+            cs.surfaceContainerLowest,
+            cs.surfaceContainerLow,
+            Color.alphaBlend(
+              cs.primary.withValues(alpha: 0.04),
+              cs.surfaceContainer,
+            ),
+          ]
+        : <Color>[
+            cs.surface,
+            cs.surface.withValues(alpha: 0.8),
+            cs.primaryContainer.withValues(alpha: 0.1),
+          ];
+
     return Scaffold(
+      backgroundColor:
+          isLightMode ? cs.surfaceContainerLowest : theme.scaffoldBackgroundColor,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              theme.colorScheme.surface,
-              theme.colorScheme.surface.withValues(alpha: 0.8),
-              theme.colorScheme.primaryContainer.withValues(alpha: 0.1),
-            ],
+            colors: backgroundGradientColors,
           ),
         ),
         child: FadeTransition(
@@ -117,6 +131,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildWelcomeSection(ThemeData theme) {
     final cs = theme.colorScheme;
+    final isLightMode = theme.brightness == Brightness.light;
+    final welcomeGradientColors = isLightMode
+        ? <Color>[
+            Color.alphaBlend(
+              cs.primary.withValues(alpha: 0.09),
+              cs.surfaceContainerHigh,
+            ),
+            Color.alphaBlend(
+              cs.primary.withValues(alpha: 0.05),
+              cs.surfaceContainer,
+            ),
+          ]
+        : <Color>[
+            cs.primaryContainer,
+            cs.primaryContainer.withValues(alpha: 0.8),
+          ];
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(32),
@@ -124,28 +155,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            cs.primaryContainer,
-            cs.primaryContainer.withValues(alpha: 0.8),
-          ],
+          colors: welcomeGradientColors,
         ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: cs.outline.withValues(alpha: 0.1),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: cs.shadow.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-          BoxShadow(
-            color: cs.primary.withValues(alpha: 0.05),
-            blurRadius: 40,
-            offset: const Offset(0, 16),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,16 +176,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ],
                   ),
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: cs.primary.withValues(alpha: 0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
                 ),
                 child: Icon(
-                  remix.Remix.home_3_line,
+                  PhosphorIconsLight.house,
                   color: cs.onPrimary,
                   size: 28,
                 ),
@@ -208,16 +213,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: cs.surface.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: cs.outline.withValues(alpha: 0.1),
-              ),
+              color: isLightMode
+                  ? cs.surfaceContainerHighest.withValues(alpha: 0.75)
+                  : cs.surface.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: Row(
               children: [
                 Icon(
-                  remix.Remix.lightbulb_line,
+                  PhosphorIconsLight.lightbulb,
                   color: cs.primary,
                   size: 20,
                 ),
@@ -323,40 +327,40 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   theme,
                   context.tr.newTabAction,
                   context.tr.newTabActionDesc,
-                  remix.Remix.add_circle_line,
-                  [Colors.indigo, Colors.indigo.shade300],
+                  PhosphorIconsLight.plusCircle,
+                  [theme.colorScheme.primary, theme.colorScheme.primary.withValues(alpha: 0.7)],
                   () => _openNewTab(),
                 ),
                 _buildActionCard(
                   theme,
                   localizations.browseFiles,
                   localizations.browseFilesDescription,
-                  remix.Remix.folder_3_line,
-                  [Colors.blue, Colors.blue.shade300],
+                  PhosphorIconsLight.folder,
+                  [theme.colorScheme.primary, theme.colorScheme.primary.withValues(alpha: 0.7)],
                   () => _navigateToPath(''),
                 ),
                 _buildActionCard(
                   theme,
                   localizations.imageGallery,
                   localizations.manageMediaDescription,
-                  remix.Remix.image_line,
-                  [Colors.purple, Colors.purple.shade300],
+                  PhosphorIconsLight.image,
+                  [theme.colorScheme.tertiary, theme.colorScheme.tertiary.withValues(alpha: 0.7)],
                   () => _openImageGallery(),
                 ),
                 _buildActionCard(
                   theme,
                   localizations.videoGallery,
                   localizations.manageMediaDescription,
-                  remix.Remix.video_line,
-                  [Colors.orange, Colors.orange.shade300],
+                  PhosphorIconsLight.videoCamera,
+                  [theme.colorScheme.secondary, theme.colorScheme.secondary.withValues(alpha: 0.7)],
                   () => _openVideoGallery(),
                 ),
                 _buildActionCard(
                   theme,
                   context.tr.tagsAction,
                   context.tr.tagsActionDesc,
-                  remix.Remix.price_tag_3_line,
-                  [Colors.green, Colors.green.shade300],
+                  PhosphorIconsLight.tag,
+                  [theme.colorScheme.primary, theme.colorScheme.primary.withValues(alpha: 0.7)],
                   () => _openTagsTab(),
                 ),
               ],
@@ -408,7 +412,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         end: Alignment.bottomRight,
                         colors: gradientColors,
                       ),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                     child: Icon(
                       icon,
@@ -471,10 +475,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   gradient: LinearGradient(
                     colors: [cs.primary, cs.primary.withValues(alpha: 0.8)],
                   ),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(
-                  remix.Remix.star_line,
+                  PhosphorIconsLight.star,
                   color: cs.onPrimary,
                   size: 20,
                 ),
@@ -492,31 +496,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           const SizedBox(height: 24),
           _buildFeatureItem(
             theme,
-            remix.Remix.folder_3_line,
+            PhosphorIconsLight.folder,
             localizations.fileManagement,
             localizations.fileManagementDescription,
-            Colors.blue,
+            theme.colorScheme.primary,
           ),
           _buildFeatureItem(
             theme,
-            remix.Remix.price_tag_3_line,
+            PhosphorIconsLight.tag,
             localizations.smartTagging,
             localizations.smartTaggingDescription,
-            Colors.green,
+            theme.colorScheme.tertiary,
           ),
           _buildFeatureItem(
             theme,
-            remix.Remix.image_line,
+            PhosphorIconsLight.image,
             localizations.mediaGallery,
             localizations.mediaGalleryDescription,
-            Colors.purple,
+            theme.colorScheme.secondary,
           ),
           _buildFeatureItem(
             theme,
-            remix.Remix.wifi_line,
+            PhosphorIconsLight.wifiHigh,
             localizations.networkSupport,
             localizations.networkSupportDescription,
-            Colors.orange,
+            theme.colorScheme.primary,
           ),
         ],
       ),
@@ -535,7 +539,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: [
@@ -543,7 +547,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: accentColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: Icon(
               icon,
@@ -699,3 +703,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 }
+
+
+

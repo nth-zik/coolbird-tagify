@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'dart:async';
 import '../../../services/network_browsing/optimized_smb_service.dart';
 
@@ -131,7 +132,7 @@ class _StreamingPerformanceWidgetState
                                 child:
                                     CircularProgressIndicator(strokeWidth: 2),
                               )
-                            : const Icon(Icons.speed, size: 16),
+                            : const Icon(PhosphorIconsLight.speedometer, size: 16),
                         label:
                             Text(_isBenchmarking ? 'Testing...' : 'Benchmark'),
                         style: ElevatedButton.styleFrom(
@@ -142,8 +143,8 @@ class _StreamingPerformanceWidgetState
                     const SizedBox(width: 8),
                     Icon(
                       widget.isStreaming
-                          ? Icons.play_circle
-                          : Icons.pause_circle,
+                          ? PhosphorIconsLight.playCircle
+                          : PhosphorIconsLight.pauseCircle,
                       color: widget.isStreaming ? Colors.green : Colors.grey,
                     ),
                   ],
@@ -254,7 +255,7 @@ class _StreamingPerformanceWidgetState
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: Colors.red.shade50,
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(16.0),
             ),
             child: Text(
               'Error: $error',
@@ -283,7 +284,7 @@ class _StreamingPerformanceWidgetState
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: Colors.blue.shade50,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(16.0),
           ),
           child: Column(
             children: [
@@ -348,3 +349,8 @@ class _StreamingPerformanceWidgetState
     );
   }
 }
+
+
+
+
+

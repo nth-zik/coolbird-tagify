@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Thêm import cho SystemUiOverlayStyle
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:io'; // Thêm import cho Platform
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../core/tab_manager.dart';
 import '../core/tab_data.dart';
 import '../core/tab_thumbnail_service.dart';
@@ -119,7 +119,7 @@ class MobileTabView extends StatelessWidget {
         children: [
           // Nút menu
           IconButton(
-            icon: Icon(remix.Remix.menu_line, color: textColor),
+            icon: Icon(PhosphorIconsLight.list, color: textColor),
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
 
@@ -142,7 +142,7 @@ class MobileTabView extends StatelessWidget {
 
           // Nút tạo tab mới nhanh (đặt trước nút số lượng tab)
           IconButton(
-            icon: Icon(remix.Remix.add_line, color: textColor),
+            icon: Icon(PhosphorIconsLight.plus, color: textColor),
             tooltip: 'New tab',
             onPressed: onAddNewTab,
           ),
@@ -176,7 +176,7 @@ class MobileTabView extends StatelessWidget {
         children: [
           // Nút menu để mở drawer
           IconButton(
-            icon: Icon(remix.Remix.menu_line, color: textColor),
+            icon: Icon(PhosphorIconsLight.list, color: textColor),
             onPressed: () {
               // Mở Scaffold drawer
               Scaffold.of(context).openDrawer();
@@ -197,7 +197,7 @@ class MobileTabView extends StatelessWidget {
 
           // Nút thêm tab mới nhanh (đặt trước nút số lượng tab)
           IconButton(
-            icon: Icon(remix.Remix.add_line, color: textColor),
+            icon: Icon(PhosphorIconsLight.plus, color: textColor),
             tooltip: 'New tab',
             onPressed: onAddNewTab,
           ),
@@ -237,7 +237,7 @@ class MobileTabView extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Icon(
-              remix.Remix.file_3_line,
+              PhosphorIconsLight.file,
               size: 16,
               color: textColor,
             ),
@@ -288,7 +288,7 @@ class MobileTabView extends StatelessWidget {
                     backgroundColor: theme.scaffoldBackgroundColor,
                     leading: IconButton(
                       icon: Icon(
-                        remix.Remix.close_line,
+                        PhosphorIconsLight.x,
                         color: theme.colorScheme.onSurface,
                       ),
                       tooltip: localizations.close,
@@ -305,7 +305,7 @@ class MobileTabView extends StatelessWidget {
                     actions: [
                       PopupMenuButton<String>(
                         icon: Icon(
-                          remix.Remix.more_2_line,
+                          PhosphorIconsLight.dotsThree,
                           color: theme.colorScheme.onSurface,
                         ),
                         tooltip: localizations.moreOptions,
@@ -319,7 +319,7 @@ class MobileTabView extends StatelessWidget {
                             child: Row(
                               children: [
                                 Icon(
-                                  remix.Remix.add_line,
+                                  PhosphorIconsLight.plus,
                                   size: 20,
                                   color: theme.colorScheme.primary,
                                 ),
@@ -340,7 +340,7 @@ class MobileTabView extends StatelessWidget {
                               child: Row(
                                 children: [
                                   Icon(
-                                    remix.Remix.close_circle_line,
+                                    PhosphorIconsLight.xCircle,
                                     size: 20,
                                     color: theme.colorScheme.error,
                                   ),
@@ -398,7 +398,7 @@ class MobileTabView extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                remix.Remix.file_list_3_line,
+                PhosphorIconsLight.files,
                 size: 64,
                 color: theme.colorScheme.primary,
               ),
@@ -498,8 +498,8 @@ class MobileTabView extends StatelessWidget {
                 children: [
                   Icon(
                     tab.isPinned
-                        ? remix.Remix.pushpin_fill
-                        : remix.Remix.folder_3_line,
+                        ? PhosphorIconsLight.pushPin
+                        : PhosphorIconsLight.folder,
                     size: 20,
                     color: isActive
                         ? theme.colorScheme.primary
@@ -530,7 +530,7 @@ class MobileTabView extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.all(4.0),
                       child: Icon(
-                        remix.Remix.close_line,
+                        PhosphorIconsLight.x,
                         size: 18,
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -546,7 +546,7 @@ class MobileTabView extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surfaceContainerHighest
                         .withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16.0),
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: tab.thumbnail != null
@@ -605,39 +605,39 @@ class MobileTabView extends StatelessWidget {
   IconData _getPreviewIcon(String path) {
     // System paths
     if (path.startsWith('#')) {
-      if (path == '#home') return remix.Remix.home_4_line;
+      if (path == '#home') return PhosphorIconsLight.house;
       if (path == '#gallery' || path.startsWith('#album')) {
-        return remix.Remix.image_2_line;
+        return PhosphorIconsLight.image;
       }
-      if (path == '#video') return remix.Remix.video_line;
-      if (path == '#tags') return remix.Remix.price_tag_3_line;
+      if (path == '#video') return PhosphorIconsLight.videoCamera;
+      if (path == '#tags') return PhosphorIconsLight.tag;
       if (path == '#network' || path.startsWith('#network/')) {
-        return remix.Remix.server_line;
+        return PhosphorIconsLight.hardDrives;
       }
-      if (path == '#smb') return remix.Remix.folder_shared_line;
-      return remix.Remix.apps_line;
+      if (path == '#smb') return PhosphorIconsLight.folder;
+      return PhosphorIconsLight.squaresFour;
     }
 
     // Regular folder paths
-    if (path.isEmpty) return remix.Remix.hard_drive_2_line;
+    if (path.isEmpty) return PhosphorIconsLight.hardDrives;
 
     // Check for common folders
     final lowerPath = path.toLowerCase();
-    if (lowerPath.contains('download')) return remix.Remix.download_2_line;
+    if (lowerPath.contains('download')) return PhosphorIconsLight.downloadSimple;
     if (lowerPath.contains('picture') ||
         lowerPath.contains('photo') ||
         lowerPath.contains('dcim')) {
-      return remix.Remix.image_2_line;
+      return PhosphorIconsLight.image;
     }
     if (lowerPath.contains('video') || lowerPath.contains('movie')) {
-      return remix.Remix.video_line;
+      return PhosphorIconsLight.videoCamera;
     }
     if (lowerPath.contains('music') || lowerPath.contains('audio')) {
-      return remix.Remix.music_2_line;
+      return PhosphorIconsLight.musicNote;
     }
-    if (lowerPath.contains('document')) return remix.Remix.file_text_line;
+    if (lowerPath.contains('document')) return PhosphorIconsLight.fileText;
 
-    return remix.Remix.folder_3_line;
+    return PhosphorIconsLight.folder;
   }
 
   Widget _buildEmptyTabsView(BuildContext context) {
@@ -829,7 +829,7 @@ class MobileTabView extends StatelessWidget {
                       const Spacer(),
                       // Nút đóng
                       IconButton(
-                        icon: Icon(remix.Remix.close_line, color: textColor),
+                        icon: Icon(PhosphorIconsLight.x, color: textColor),
                         onPressed: () => Navigator.pop(newContext),
                       ),
                     ],
@@ -847,7 +847,7 @@ class MobileTabView extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: theme.colorScheme.surfaceContainerHighest
                           .withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(8.0),
+                      borderRadius: BorderRadius.circular(16.0),
                     ),
                     child: Text(
                       tab.path.isEmpty ? 'Drives' : tab.path,
@@ -889,7 +889,7 @@ class MobileTabView extends StatelessWidget {
 
                       return ListTile(
                         leading: Icon(
-                          index == 0 ? Icons.computer : Icons.folder,
+                          index == 0 ? PhosphorIconsLight.desktop : PhosphorIconsLight.folder,
                           color: theme.colorScheme.primary,
                         ),
                         title: Text(
@@ -1099,12 +1099,12 @@ class AddressBarWidget extends StatelessWidget {
         decoration: BoxDecoration(
           // Nền rõ ràng cho thanh địa chỉ (đồng nhất dark)
           color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(12.0),
+          borderRadius: BorderRadius.circular(16.0),
         ),
         child: Row(
           children: [
             Icon(
-              remix.Remix.search_line,
+              PhosphorIconsLight.magnifyingGlass,
               size: 18,
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -1119,7 +1119,7 @@ class AddressBarWidget extends StatelessWidget {
               ),
             ),
             Icon(
-              remix.Remix.arrow_down_s_line,
+              PhosphorIconsLight.caretDown,
               size: 20,
               color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
             ),
@@ -1129,3 +1129,9 @@ class AddressBarWidget extends StatelessWidget {
     );
   }
 }
+
+
+
+
+
+

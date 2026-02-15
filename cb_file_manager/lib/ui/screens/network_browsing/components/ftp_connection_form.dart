@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/services/network_browsing/ftp_client/ftp_client.dart';
 import 'package:cb_file_manager/bloc/network_browsing/network_browsing_bloc.dart';
@@ -186,12 +187,12 @@ class _FtpConnectionFormState extends State<FtpConnectionForm> {
                     ButtonSegment(
                       value: true,
                       label: Text(l10n.passive),
-                      icon: const Icon(Icons.security),
+                      icon: const Icon(PhosphorIconsLight.shieldCheck),
                     ),
                     ButtonSegment(
                       value: false,
                       label: Text(l10n.active),
-                      icon: const Icon(Icons.settings_ethernet),
+                      icon: const Icon(PhosphorIconsLight.network),
                     ),
                   ],
                   selected: {_usePassiveMode},
@@ -210,12 +211,12 @@ class _FtpConnectionFormState extends State<FtpConnectionForm> {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.errorContainer,
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(16.0),
               ),
               child: Row(
                 children: [
                   Icon(
-                    Icons.error_outline,
+                    PhosphorIconsLight.warningCircle,
                     color: Theme.of(context).colorScheme.error,
                   ),
                   const SizedBox(width: 8),
@@ -259,3 +260,8 @@ class _FtpConnectionFormState extends State<FtpConnectionForm> {
     );
   }
 }
+
+
+
+
+

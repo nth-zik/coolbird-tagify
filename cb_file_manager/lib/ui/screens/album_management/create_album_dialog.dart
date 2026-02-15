@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/models/objectbox/album.dart';
 import 'package:cb_file_manager/services/album_service.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
@@ -161,7 +162,7 @@ class _CreateAlbumDialogState extends State<CreateAlbumDialog> {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w500,
-            color: Colors.grey[700],
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
         const SizedBox(height: 12),
@@ -182,15 +183,15 @@ class _CreateAlbumDialogState extends State<CreateAlbumDialog> {
                 decoration: BoxDecoration(
                   border: Border.all(
                     color: _selectedColor == null
-                        ? Colors.blue
-                        : Colors.grey[300]!,
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.outlineVariant,
                     width: _selectedColor == null ? 3 : 1,
                   ),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Icon(
-                  Icons.clear,
-                  color: Colors.grey,
+                child: Icon(
+                  PhosphorIconsLight.x,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   size: 20,
                 ),
               ),
@@ -214,19 +215,10 @@ class _CreateAlbumDialogState extends State<CreateAlbumDialog> {
                       width: 3,
                     ),
                     borderRadius: BorderRadius.circular(20),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.3),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ]
-                        : null,
                   ),
                   child: isSelected
-                      ? const Icon(
-                          Icons.check,
+                      ? Icon(
+                          PhosphorIconsLight.check,
                           color: Colors.white,
                           size: 20,
                         )
@@ -324,3 +316,6 @@ class _CreateAlbumDialogState extends State<CreateAlbumDialog> {
     );
   }
 }
+
+
+

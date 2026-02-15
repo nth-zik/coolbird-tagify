@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/widgets/tags_overlay.dart';
 
@@ -68,7 +69,7 @@ class GalleryMasonryTile extends StatelessWidget {
     return Stack(
       children: [
         ClipRRect(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(16),
           child: Container(
             color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
             child: AspectRatio(
@@ -80,10 +81,10 @@ class GalleryMasonryTile extends StatelessWidget {
                   isVideo: false,
                   isImage: true,
                   fit: BoxFit.cover,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(16),
                   fallbackBuilder: () => Center(
                     child: Icon(
-                      Icons.broken_image,
+                      PhosphorIconsLight.imageBroken,
                       size: 32,
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -103,8 +104,8 @@ class GalleryMasonryTile extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
             decoration: BoxDecoration(
               borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(10),
-                bottomRight: Radius.circular(10),
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(16),
               ),
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
@@ -140,7 +141,7 @@ class GalleryMasonryTile extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                isSelected ? Icons.check_circle : Icons.circle_outlined,
+                isSelected ? PhosphorIconsLight.checkCircle : PhosphorIconsLight.circle,
                 color: isSelected
                     ? theme.colorScheme.primary
                     : theme.colorScheme.onSurface,
@@ -152,3 +153,7 @@ class GalleryMasonryTile extends StatelessWidget {
     );
   }
 }
+
+
+
+

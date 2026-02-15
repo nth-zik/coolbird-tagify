@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 
 /// A reusable widget for displaying a list of directories with remove functionality
@@ -24,7 +25,7 @@ class DirectoryListWidget extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Text(
           emptyMessage ?? localizations.noVideoSources,
@@ -39,7 +40,7 @@ class DirectoryListWidget extends StatelessWidget {
       constraints: const BoxConstraints(maxHeight: 200),
       decoration: BoxDecoration(
         border: Border.all(color: theme.dividerColor),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: ListView.builder(
         shrinkWrap: true,
@@ -48,13 +49,13 @@ class DirectoryListWidget extends StatelessWidget {
           final directory = directories[index];
           return ListTile(
             dense: true,
-            leading: const Icon(Icons.folder),
+            leading: const Icon(PhosphorIconsLight.folder),
             title: Text(
               directory,
               overflow: TextOverflow.ellipsis,
             ),
             trailing: IconButton(
-              icon: const Icon(Icons.close),
+              icon: const Icon(PhosphorIconsLight.x),
               onPressed: () => onRemove(directory),
               tooltip: localizations.removeVideoSource,
             ),
@@ -64,5 +65,8 @@ class DirectoryListWidget extends StatelessWidget {
     );
   }
 }
+
+
+
 
 

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/models/objectbox/album.dart';
 import 'package:cb_file_manager/services/album_service.dart';
 import 'package:cb_file_manager/ui/utils/base_screen.dart';
@@ -473,11 +474,11 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (localRoots.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.only(bottom: 8.0),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
                         child: Text(
                           'No locations selected. Add folders to scan for this album.',
-                          style: TextStyle(color: Colors.grey),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                         ),
                       ),
                     Flexible(
@@ -488,12 +489,12 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                           final p = localRoots[index];
                           return ListTile(
                             dense: true,
-                            leading: const Icon(Icons.folder),
+                            leading: Icon(PhosphorIconsLight.folder),
                             title: Text(p,
                                 maxLines: 1, overflow: TextOverflow.ellipsis),
                             trailing: IconButton(
-                              icon: const Icon(Icons.delete,
-                                  color: Colors.redAccent),
+                              icon: Icon(PhosphorIconsLight.trash,
+                                  color: Theme.of(context).colorScheme.error),
                               onPressed: () {
                                 setState(() {
                                   localRoots.removeAt(index);
@@ -519,7 +520,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                             });
                           }
                         },
-                        icon: const Icon(Icons.add),
+                        icon: Icon(PhosphorIconsLight.plus),
                         label: const Text('Add folder'),
                       ),
                     ),
@@ -594,9 +595,9 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
         title: const Text('Search in Album'),
         content: TextField(
           autofocus: true,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             hintText: 'Enter image name...',
-            prefixIcon: Icon(Icons.search),
+            prefixIcon: Icon(PhosphorIconsLight.magnifyingGlass),
           ),
           controller: TextEditingController(text: query),
           onChanged: (value) => query = value,
@@ -697,7 +698,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
             child: const Text('Remove'),
           ),
         ],
@@ -818,7 +819,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
         appBar: AppBar(
           title: Text('${_selectedFilePaths.length} selected'),
           leading: IconButton(
-            icon: const Icon(Icons.close),
+            icon: Icon(PhosphorIconsLight.x),
             onPressed: () {
               setState(() {
                 _isSelectionMode = false;
@@ -828,13 +829,13 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
           ),
           actions: [
             IconButton(
-              icon: const Icon(Icons.remove_circle),
+              icon: Icon(PhosphorIconsLight.minusCircle),
               tooltip: 'Remove from album',
               onPressed:
                   _selectedFilePaths.isEmpty ? null : _removeSelectedFiles,
             ),
             IconButton(
-              icon: const Icon(Icons.select_all),
+              icon: Icon(PhosphorIconsLight.checkSquare),
               tooltip: 'Select all',
               onPressed: () {
                 setState(() {
@@ -858,7 +859,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
       actions: [
         // Quick selection toggle
         IconButton(
-          icon: const Icon(Icons.checklist),
+          icon: Icon(PhosphorIconsLight.checks),
           tooltip: 'Select Images',
           onPressed: () {
             setState(() {
@@ -868,13 +869,13 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
         ),
         // Search in album
         IconButton(
-          icon: const Icon(Icons.search),
+          icon: Icon(PhosphorIconsLight.magnifyingGlass),
           tooltip: 'Search',
           onPressed: _showSearchDialog,
         ),
         // Grid size control
           IconButton(
-            icon: const Icon(Icons.grid_view),
+            icon: Icon(PhosphorIconsLight.squaresFour),
             tooltip: 'Grid Size',
             onPressed: () => SharedActionBar.showGridSizeDialog(
               context,
@@ -895,13 +896,13 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
           ),
         // Shuffle toggle
         IconButton(
-          icon: const Icon(Icons.shuffle),
+          icon: Icon(PhosphorIconsLight.shuffle),
           color: _isShuffled ? Theme.of(context).colorScheme.primary : null,
           tooltip: _isShuffled ? 'Unshuffle' : 'Shuffle',
           onPressed: _toggleShuffle,
         ),
         IconButton(
-          icon: const Icon(Icons.add),
+          icon: Icon(PhosphorIconsLight.plus),
           onPressed: _showAddFilesMenu,
           tooltip: 'Add images',
         ),
@@ -943,52 +944,52 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
             }
           },
           itemBuilder: (context) => [
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'edit',
               child: Row(
                 children: [
-                  Icon(Icons.edit),
+                  Icon(PhosphorIconsLight.pencilSimple),
                   SizedBox(width: 8),
                   Text('Edit Album'),
                 ],
               ),
             ),
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'select',
               child: Row(
                 children: [
-                  Icon(Icons.checklist),
+                  Icon(PhosphorIconsLight.checks),
                   SizedBox(width: 8),
                   Text('Select Images'),
                 ],
               ),
             ),
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'shuffle',
               child: Row(
                 children: [
-                  Icon(Icons.shuffle),
+                  Icon(PhosphorIconsLight.shuffle),
                   SizedBox(width: 8),
                   Text('Shuffle'),
                 ],
               ),
             ),
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'clear_search',
               child: Row(
                 children: [
-                  Icon(Icons.clear),
+                  Icon(PhosphorIconsLight.x),
                   SizedBox(width: 8),
                   Text('Clear Search'),
                 ],
               ),
             ),
             if (_isSmartAlbum)
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'manage_rules',
                 child: Row(
                   children: [
-                    Icon(Icons.rule),
+                    Icon(PhosphorIconsLight.faders),
                     SizedBox(width: 8),
                     Text('Manage Rules'),
                   ],
@@ -1009,11 +1010,11 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                     .colorScheme
                     .secondaryContainer
                     .withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.auto_awesome, size: 18),
+                  Icon(PhosphorIconsLight.sparkle, size: 18),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Column(
@@ -1030,7 +1031,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                   ),
                   TextButton.icon(
                     onPressed: _showManageSourcesDialog,
-                    icon: const Icon(Icons.folder_open),
+                    icon: Icon(PhosphorIconsLight.folderOpen),
                     label: const Text('Sources'),
                   ),
                   if (_isBackgroundProcessing)
@@ -1042,7 +1043,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                           _progressStatus = 'Canceled';
                         });
                       },
-                      icon: const Icon(Icons.close),
+                      icon: Icon(PhosphorIconsLight.x),
                       label: const Text('Cancel'),
                     ),
                   const SizedBox(width: 8),
@@ -1055,7 +1056,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                         _scanSmartAlbumImages();
                       }
                     },
-                    icon: const Icon(Icons.refresh),
+                    icon: Icon(PhosphorIconsLight.arrowsClockwise),
                     label: const Text('Rescan'),
                   ),
                   TextButton.icon(
@@ -1074,7 +1075,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                         await _refreshSmartStatus();
                       }
                     },
-                    icon: const Icon(Icons.rule),
+                    icon: Icon(PhosphorIconsLight.faders),
                     label: const Text('Rules'),
                   ),
                 ],
@@ -1092,13 +1093,13 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.search, size: 18),
+                    Icon(PhosphorIconsLight.magnifyingGlass, size: 18),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text('Search: "$_searchQuery"'),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.clear, size: 18),
+                      icon: Icon(PhosphorIconsLight.x, size: 18),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                       onPressed: () {
@@ -1127,7 +1128,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                     value: (_totalProgress > 0)
                         ? _currentProgress / _totalProgress
                         : null,
-                    backgroundColor: Colors.grey[300],
+                    backgroundColor: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.2),
                   ),
                 ],
               ),
@@ -1144,9 +1145,9 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.photo_library_outlined,
+                          PhosphorIconsLight.images,
                           size: 64,
-                          color: Colors.grey[400],
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -1155,7 +1156,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                               : 'No images match your search',
                           style: TextStyle(
                             fontSize: 18,
-                            color: Colors.grey[600],
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -1163,14 +1164,14 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                           'Add images to start building your album',
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.grey[500],
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 24),
                         ElevatedButton.icon(
                           onPressed: _showAddFilesMenu,
-                          icon: const Icon(Icons.add_photo_alternate_outlined),
+                          icon: Icon(PhosphorIconsLight.images),
                           label: const Text('Add Images'),
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
@@ -1241,8 +1242,11 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddFilesMenu,
         tooltip: 'Add images',
-        child: const Icon(Icons.add),
+        child: Icon(PhosphorIconsLight.plus),
       ),
     );
   }
 }
+
+
+

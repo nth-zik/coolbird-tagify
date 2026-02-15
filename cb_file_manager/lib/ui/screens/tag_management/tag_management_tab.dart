@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/ui/screens/system_screen.dart';
 import 'package:cb_file_manager/ui/screens/tag_management/tag_management_screen.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -23,7 +24,7 @@ class TagManagementTab extends StatelessWidget {
     return SystemScreen(
       title: 'Tags',
       systemId: '#tags',
-      icon: Icons.tag,
+      icon: PhosphorIconsLight.tag,
       child: TagManagementScreen(
         startingDirectory: '',
         onTagSelected: (tag) => _openTagSearchTab(context, tag),
@@ -66,7 +67,10 @@ class TagManagementTab extends StatelessWidget {
       context,
       systemId: '#tags',
       title: 'Tags',
-      icon: Icons.tag,
+      icon: PhosphorIconsLight.tag,
     );
   }
 }
+
+
+

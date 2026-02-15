@@ -5,7 +5,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
@@ -57,7 +57,7 @@ class FolderContextMenu {
           context: context,
           value: 'view',
           title: l10n.viewModeTooltip,
-          icon: Icons.visibility_outlined,
+          icon: PhosphorIconsLight.eye,
           builder: (BuildContext context) {
             return <PopupMenuEntry<ViewMode>>[
               _buildCheckedPopupMenuItem(
@@ -91,7 +91,7 @@ class FolderContextMenu {
           context: context,
           value: 'sort',
           title: l10n.sortByTooltip,
-          icon: Icons.sort_outlined,
+          icon: PhosphorIconsLight.sortAscending,
           builder: (BuildContext context) {
             final l10n = AppLocalizations.of(context)!;
             return <PopupMenuEntry<SortOption>>[
@@ -138,28 +138,28 @@ class FolderContextMenu {
         PopupMenuItem<String>(
           value: 'refresh',
           child: _buildIconMenuItemContent(
-              title: l10n.refresh, icon: remix.Remix.refresh_line),
+              title: l10n.refresh, icon: PhosphorIconsLight.arrowsClockwise),
         ),
         PopupMenuItem<String>(
           value: 'new_folder',
           child: _buildIconMenuItemContent(
-              title: l10n.newFolder, icon: remix.Remix.folder_add_line),
+              title: l10n.newFolder, icon: PhosphorIconsLight.folderPlus),
         ),
         PopupMenuItem<String>(
           value: 'new_file',
           child: _buildIconMenuItemContent(
-              title: 'New File', icon: remix.Remix.file_add_line),
+              title: 'New File', icon: PhosphorIconsLight.filePlus),
         ),
         PopupMenuItem<String>(
           value: 'paste',
           child: _buildIconMenuItemContent(
-              title: l10n.pasteHere, icon: Icons.content_paste_outlined),
+              title: l10n.pasteHere, icon: PhosphorIconsLight.clipboard),
         ),
         const PopupMenuDivider(),
         PopupMenuItem<String>(
           value: 'properties',
           child: _buildIconMenuItemContent(
-              title: l10n.properties, icon: Icons.info_outline),
+              title: l10n.properties, icon: PhosphorIconsLight.info),
         ),
       ],
     ).then((String? value) async {
@@ -232,7 +232,7 @@ class FolderContextMenu {
         top: subMenuTop,
         width: subMenuWidth,
         child: Material(
-          elevation: 8.0,
+          elevation: 0,
           color: Theme.of(anchorContext).canvasColor,
           shape: const RoundedRectangleBorder(
               borderRadius: BorderRadius.all(Radius.circular(8.0))),
@@ -323,7 +323,7 @@ class FolderContextMenu {
         Icon(icon, size: 20),
         const SizedBox(width: 12),
         Expanded(child: Text(title)),
-        if (hasTrailingArrow) const Icon(Icons.arrow_right, size: 20),
+        if (hasTrailingArrow) const Icon(PhosphorIconsLight.arrowRight, size: 20),
       ],
     );
   }
@@ -340,7 +340,7 @@ class FolderContextMenu {
         children: [
           Expanded(child: Text(title)),
           if (isChecked)
-            const Icon(Icons.check, size: 18)
+            const Icon(PhosphorIconsLight.check, size: 18)
           else
             const SizedBox(width: 18),
         ],
@@ -635,3 +635,9 @@ class FolderContextMenu {
     }
   }
 }
+
+
+
+
+
+

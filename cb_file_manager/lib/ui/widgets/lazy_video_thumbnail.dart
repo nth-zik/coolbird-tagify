@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import '../../helpers/media/video_thumbnail_helper.dart';
 import 'package:visibility_detector/visibility_detector.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/ui/utils/scroll_velocity_notifier.dart';
 
 /// A widget that efficiently displays a video thumbnail with lazy loading
@@ -525,7 +525,7 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
                                   horizontal: 6, vertical: 3),
                               decoration: BoxDecoration(
                                 color: Colors.black.withValues(alpha: 0.7),
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.circular(16.0),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -653,7 +653,7 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
                   // Add video play icon overlay
                   const Center(
                     child: Icon(
-                      remix.Remix.play_circle_line,
+                      PhosphorIconsLight.playCircle,
                       color: Colors.white,
                       size: 32,
                     ),
@@ -693,7 +693,7 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
                         // Add video play icon overlay for local videos
                         const Center(
                           child: Icon(
-                            remix.Remix.play_circle_line,
+                            PhosphorIconsLight.playCircle,
                             color: Colors.white,
                             size: 32,
                           ),
@@ -711,3 +711,8 @@ class _LazyVideoThumbnailState extends State<LazyVideoThumbnail>
     );
   }
 }
+
+
+
+
+

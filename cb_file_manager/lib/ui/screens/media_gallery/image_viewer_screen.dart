@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:vector_math/vector_math_64.dart' show Vector3;
 import 'package:path/path.dart' as pathlib;
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/helpers/ui/frame_timing_optimizer.dart';
 import '../../components/video/thumbnail_strip.dart';
 import 'package:cb_file_manager/helpers/files/trash_manager.dart';
@@ -387,8 +387,8 @@ class ImageViewerScreenState extends State<ImageViewerScreen>
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('MOVE TO TRASH',
-                style: TextStyle(color: Colors.red)),
+            child: Text('MOVE TO TRASH',
+                style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
         ],
       ),
@@ -665,7 +665,7 @@ class ImageViewerScreenState extends State<ImageViewerScreen>
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(Icons.broken_image, size: 80, color: Colors.white.withAlpha(179)),
+        Icon(PhosphorIconsLight.imageBroken, size: 80, color: Colors.white.withAlpha(179)),
         const SizedBox(height: 16),
         Text('Failed to display image',
             style: TextStyle(color: Colors.white.withAlpha(179))),
@@ -749,7 +749,7 @@ class ImageViewerScreenState extends State<ImageViewerScreen>
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         IconButton(
-                          icon: const Icon(remix.Remix.arrow_left_line),
+                          icon: const Icon(PhosphorIconsLight.arrowLeft),
                           color: Colors.white,
                           tooltip: 'Back',
                           onPressed: () => RouteUtils.safePopDialog(context),
@@ -798,19 +798,19 @@ class ImageViewerScreenState extends State<ImageViewerScreen>
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(remix.Remix.share_line, size: 20),
+                          icon: const Icon(PhosphorIconsLight.shareFat, size: 20),
                           tooltip: 'Share',
                           color: Colors.white,
                           onPressed: _shareImage,
                         ),
                         IconButton(
-                          icon: const Icon(remix.Remix.information_line, size: 20),
+                          icon: const Icon(PhosphorIconsLight.info, size: 20),
                           tooltip: 'Info',
                           color: Colors.white,
                           onPressed: () => _showImageInfo(context, _allImages[_currentIndex]),
                         ),
                         PopupMenuButton<String>(
-                          color: Colors.grey[900],
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                           iconColor: Colors.white,
                           onSelected: (value) {
                             switch (value) {
@@ -1005,7 +1005,7 @@ class ImageViewerScreenState extends State<ImageViewerScreen>
                           children: [
                           if (_allImages.length > 1)
                             IconButton(
-                              icon: const Icon(remix.Remix.arrow_left_line, size: 22),
+                              icon: const Icon(PhosphorIconsLight.arrowLeft, size: 22),
                               tooltip: 'Previous',
                               color: Colors.white,
                               padding: const EdgeInsets.all(8),
@@ -1020,7 +1020,7 @@ class ImageViewerScreenState extends State<ImageViewerScreen>
                                   : null,
                             ),
                           IconButton(
-                            icon: const Icon(remix.Remix.subtract_line, size: 22),
+                            icon: const Icon(PhosphorIconsLight.minus, size: 22),
                             tooltip: 'Zoom out',
                             color: Colors.white,
                             padding: const EdgeInsets.all(8),
@@ -1028,7 +1028,7 @@ class ImageViewerScreenState extends State<ImageViewerScreen>
                             onPressed: _zoomOut,
                           ),
                           IconButton(
-                            icon: const Icon(remix.Remix.refresh_line, size: 22),
+                            icon: const Icon(PhosphorIconsLight.arrowsClockwise, size: 22),
                             tooltip: 'Reset view',
                             color: Colors.white,
                             padding: const EdgeInsets.all(8),
@@ -1036,7 +1036,7 @@ class ImageViewerScreenState extends State<ImageViewerScreen>
                             onPressed: _zoomReset,
                           ),
                           IconButton(
-                            icon: const Icon(remix.Remix.add_line, size: 22),
+                            icon: const Icon(PhosphorIconsLight.plus, size: 22),
                             tooltip: 'Zoom in',
                             color: Colors.white,
                             padding: const EdgeInsets.all(8),
@@ -1044,7 +1044,7 @@ class ImageViewerScreenState extends State<ImageViewerScreen>
                             onPressed: _zoomIn,
                           ),
                           IconButton(
-                            icon: const Icon(remix.Remix.information_line, size: 22),
+                            icon: const Icon(PhosphorIconsLight.info, size: 22),
                             tooltip: 'Info',
                             color: Colors.white,
                             padding: const EdgeInsets.all(8),
@@ -1052,7 +1052,7 @@ class ImageViewerScreenState extends State<ImageViewerScreen>
                             onPressed: () => _showImageInfo(context, _allImages[_currentIndex]),
                           ),
                           IconButton(
-                            icon: const Icon(remix.Remix.share_line, size: 22),
+                            icon: const Icon(PhosphorIconsLight.shareFat, size: 22),
                             tooltip: 'Share',
                             color: Colors.white,
                             padding: const EdgeInsets.all(8),
@@ -1060,7 +1060,7 @@ class ImageViewerScreenState extends State<ImageViewerScreen>
                             onPressed: _shareImage,
                           ),
                           IconButton(
-                            icon: const Icon(remix.Remix.delete_bin_line, size: 22),
+                            icon: const Icon(PhosphorIconsLight.trash, size: 22),
                             tooltip: 'Delete',
                             color: Colors.white,
                             padding: const EdgeInsets.all(8),
@@ -1070,8 +1070,8 @@ class ImageViewerScreenState extends State<ImageViewerScreen>
                           IconButton(
                             icon: Icon(
                               _isFullscreen
-                                  ? remix.Remix.fullscreen_exit_line
-                                  : remix.Remix.fullscreen_line,
+                                  ? PhosphorIconsLight.arrowsIn
+                                  : PhosphorIconsLight.arrowsOut,
                               size: 22,
                             ),
                             tooltip: _isFullscreen ? 'Exit fullscreen' : 'Fullscreen',
@@ -1083,8 +1083,8 @@ class ImageViewerScreenState extends State<ImageViewerScreen>
                           IconButton(
                             icon: Icon(
                               _slideshowPlaying
-                                  ? remix.Remix.pause_line
-                                  : remix.Remix.play_line,
+                                  ? PhosphorIconsLight.pause
+                                  : PhosphorIconsLight.play,
                               size: 22,
                             ),
                             tooltip: _slideshowPlaying ? 'Pause slideshow' : 'Play slideshow',
@@ -1095,7 +1095,7 @@ class ImageViewerScreenState extends State<ImageViewerScreen>
                           ),
                           if (_allImages.length > 1)
                             IconButton(
-                              icon: const Icon(remix.Remix.arrow_right_line, size: 22),
+                              icon: const Icon(PhosphorIconsLight.arrowRight, size: 22),
                               tooltip: 'Next',
                               color: Colors.white,
                               padding: const EdgeInsets.all(8),
@@ -1170,7 +1170,7 @@ class ImageViewerScreenState extends State<ImageViewerScreen>
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              Icons.broken_image,
+                              PhosphorIconsLight.imageBroken,
                               size: 80,
                               color: Colors.white.withAlpha(179),
                             ),
@@ -1213,7 +1213,7 @@ class ImageViewerScreenState extends State<ImageViewerScreen>
                   // Brightness slider
                   Row(
                     children: [
-                      const Icon(remix.Remix.sun_line, color: Colors.white, size: 20),
+                      const Icon(PhosphorIconsLight.sun, color: Colors.white, size: 20),
                       const SizedBox(width: 16),
                       Expanded(
                         child: Slider(
@@ -1234,7 +1234,7 @@ class ImageViewerScreenState extends State<ImageViewerScreen>
                   // Contrast slider
                   Row(
                     children: [
-                      const Icon(remix.Remix.palette_line,
+                      const Icon(PhosphorIconsLight.palette,
                           color: Colors.white, size: 20),
                       const SizedBox(width: 16),
                       Expanded(
@@ -1265,12 +1265,12 @@ class ImageViewerScreenState extends State<ImageViewerScreen>
                           });
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red.shade800,
+                          backgroundColor: Theme.of(context).colorScheme.error,
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 8),
                           minimumSize: const Size(100, 36),
                         ),
-                        icon: const Icon(remix.Remix.refresh_line, size: 18),
+                        icon: const Icon(PhosphorIconsLight.arrowsClockwise, size: 18),
                         label: const Text('Reset'),
                       ),
                       const SizedBox(width: 16),
@@ -1290,7 +1290,7 @@ class ImageViewerScreenState extends State<ImageViewerScreen>
                               horizontal: 12, vertical: 8),
                           minimumSize: const Size(100, 36),
                         ),
-                        icon: const Icon(remix.Remix.save_3_line, size: 18),
+                        icon: const Icon(PhosphorIconsLight.floppyDisk, size: 18),
                         label: const Text('Save Copy'),
                       ),
                     ],
@@ -1362,3 +1362,6 @@ class ImageViewerScreenState extends State<ImageViewerScreen>
     return '${(bytes / pow(1024, i)).toStringAsFixed(1)} ${suffixes[i]}';
   }
 }
+
+
+

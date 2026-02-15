@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/permission_state_service.dart';
+import '../../screens/onboarding/theme_onboarding_screen.dart';
 import '../../screens/permissions/permission_explainer_screen.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path_provider/path_provider.dart';
@@ -49,6 +51,9 @@ class TabMainScreen extends StatefulWidget {
 }
 
 class _TabMainScreenState extends State<TabMainScreen> {
+  static const String _themeOnboardingDoneKey =
+      'theme_onboarding_completed_v1';
+
   late TabManagerBloc _tabManagerBloc;
   late NetworkBrowsingBloc _networkBrowsingBloc;
   bool _checkedPerms = false;
@@ -101,30 +106,91 @@ class _TabMainScreenState extends State<TabMainScreen> {
       }
       if (_checkedPerms) return;
       _checkedPerms = true;
-      final hasStorage =
-          await PermissionStateService.instance.hasStorageOrPhotosPermission();
-      final hasAllFiles = Platform.isAndroid
-          ? await PermissionStateService.instance.hasAllFilesAccessPermission()
-          : true;
-      final hasInstallPackages = Platform.isAndroid
-          ? await PermissionStateService.instance.hasInstallPackagesPermission()
-          : true;
-      final hasLocal =
-          await PermissionStateService.instance.hasLocalNetworkPermission();
-      final needsExplainer = !hasStorage ||
-          !hasAllFiles ||
-          !hasInstallPackages ||
-          (Platform.isIOS ? !hasLocal : false);
-      if (needsExplainer) {
-        if (!mounted) return;
-        await Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => const PermissionExplainerScreen(),
-            fullscreenDialog: true,
+      await _runStartupOnboardingAndPermissionFlow();
+    });
+  }
+
+  bool _isDesktopPlatform() {
+    return Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+  }
+
+  bool _isSecondaryDesktopWindow() {
+    if (!_isDesktopPlatform()) return false;
+    return Platform.environment[WindowStartupPayload.envSecondaryWindowKey] ==
+        '1';
+  }
+
+  Future<void> _runStartupOnboardingAndPermissionFlow() async {
+    await _showThemeOnboardingIfNeeded();
+    if (!mounted) return;
+
+    // Desktop skips permission screen entirely.
+    if (_isDesktopPlatform()) return;
+
+    await _showPermissionExplainerIfNeeded();
+  }
+
+  Future<void> _showThemeOnboardingIfNeeded() async {
+    // Secondary windows must not interrupt primary flow with onboarding.
+    if (_isSecondaryDesktopWindow()) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final completed = prefs.getBool(_themeOnboardingDoneKey) ?? false;
+    if (completed) return;
+
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          backgroundColor: theme.colorScheme.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: 760,
+              maxHeight: 720,
+            ),
+            child: ThemeOnboardingScreen(
+              embedded: true,
+              onCompleted: () => Navigator.of(dialogContext).pop(),
+            ),
           ),
         );
-      }
-    });
+      },
+    );
+
+    await prefs.setBool(_themeOnboardingDoneKey, true);
+  }
+
+  Future<void> _showPermissionExplainerIfNeeded() async {
+    final hasStorage =
+        await PermissionStateService.instance.hasStorageOrPhotosPermission();
+    final hasAllFiles = Platform.isAndroid
+        ? await PermissionStateService.instance.hasAllFilesAccessPermission()
+        : true;
+    final hasInstallPackages = Platform.isAndroid
+        ? await PermissionStateService.instance.hasInstallPackagesPermission()
+        : true;
+    final hasLocal =
+        await PermissionStateService.instance.hasLocalNetworkPermission();
+    final needsExplainer = !hasStorage ||
+        !hasAllFiles ||
+        !hasInstallPackages ||
+        (Platform.isIOS ? !hasLocal : false);
+
+    if (!needsExplainer || !mounted) return;
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const PermissionExplainerScreen(),
+        fullscreenDialog: true,
+      ),
+    );
   }
 
   @override
@@ -236,7 +302,7 @@ class _NativeDropHoverOverlayState extends State<_NativeDropHoverOverlay>
                     padding: const EdgeInsets.all(5),
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16.0),
                         border: Border.all(color: frameColor, width: 1.6),
                       ),
                     ),
@@ -252,13 +318,7 @@ class _NativeDropHoverOverlayState extends State<_NativeDropHoverOverlay>
                       borderRadius: BorderRadius.circular(11),
                       color: stripFillColor,
                       border: Border.all(color: stripBorderColor, width: 1.8),
-                      boxShadow: [
-                        BoxShadow(
-                          color: baseColor.withValues(alpha: pulse),
-                          blurRadius: 18,
-                          spreadRadius: 0.5,
-                        ),
-                      ],
+                      boxShadow: [],
                     ),
                   ),
                 ),
@@ -286,3 +346,5 @@ class _NativeDropHoverOverlayState extends State<_NativeDropHoverOverlay>
     );
   }
 }
+
+

@@ -41,7 +41,7 @@ class ThumbnailContent extends StatelessWidget {
                 height: double.infinity,
                 fit: BoxFit.contain,
                 isPriority: true,
-                borderRadius: BorderRadius.circular(8.0),
+                borderRadius: BorderRadius.circular(16.0),
                 showLoadingIndicator: true, // Re-enable skeleton loading
                 fallbackBuilder: () => Icon(
                   icon,
@@ -56,3 +56,4 @@ class ThumbnailContent extends StatelessWidget {
     );
   }
 }
+

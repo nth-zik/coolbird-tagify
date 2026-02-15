@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../../config/languages/app_localizations.dart';
 import '../../../utils/route.dart';
@@ -128,7 +129,7 @@ class _StreamingImageViewerState extends State<StreamingImageViewer> {
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
-            icon: const Icon(Icons.close),
+            icon: const Icon(PhosphorIconsLight.x),
             onPressed:
                 widget.onClose ?? () => RouteUtils.safePopDialog(context),
           ),
@@ -156,7 +157,7 @@ class _StreamingImageViewerState extends State<StreamingImageViewer> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, color: Colors.red, size: 64),
+            const Icon(PhosphorIconsLight.warningCircle, color: Colors.red, size: 64),
             const SizedBox(height: 16),
             Text(
               l10n.errorLoadingImage,
@@ -199,7 +200,7 @@ class _StreamingImageViewerState extends State<StreamingImageViewer> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.broken_image, color: Colors.red, size: 64),
+                    const Icon(PhosphorIconsLight.imageBroken, color: Colors.red, size: 64),
                     const SizedBox(height: 16),
                     Text(
                       l10n.failedToDisplayImage,
@@ -222,3 +223,7 @@ class _StreamingImageViewerState extends State<StreamingImageViewer> {
     );
   }
 }
+
+
+
+

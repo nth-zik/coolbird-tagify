@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter/services.dart';
 import '../../../components/common/shared_file_context_menu.dart';
 import 'package:cb_file_manager/helpers/files/file_type_registry.dart';
@@ -214,7 +214,7 @@ class _FileDetailsItemState extends State<FileDetailsItem> {
                               Padding(
                                 padding: const EdgeInsets.only(left: 4.0),
                                 child: Icon(
-                                  remix.Remix.bookmark_line,
+                                  PhosphorIconsLight.bookmark,
                                   size: 16,
                                   color:
                                       Theme.of(context).colorScheme.secondary,
@@ -488,3 +488,6 @@ class _OptimizedFileIconState extends State<_OptimizedFileIcon>
     );
   }
 }
+
+
+

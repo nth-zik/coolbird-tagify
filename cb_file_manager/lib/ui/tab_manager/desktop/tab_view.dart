@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/config/translation_helper.dart';
 import '../core/tab_manager.dart';
 import '../core/tab_data.dart';
@@ -41,7 +41,7 @@ class TabView extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(
-            remix.Remix.file_3_line,
+            PhosphorIconsLight.file,
             size: 64,
             color: Colors.grey,
           ),
@@ -57,7 +57,7 @@ class TabView extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
-            icon: const Icon(remix.Remix.add_line),
+            icon: const Icon(PhosphorIconsLight.plus),
             label: Text(context.tr.newTabButton),
             onPressed: () => onAddNewTab?.call(),
           ),
@@ -93,7 +93,7 @@ class TabView extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: const Icon(remix.Remix.add_line),
+            icon: const Icon(PhosphorIconsLight.plus),
             tooltip: context.tr.newTabButton,
             onPressed: () => onAddNewTab?.call(),
           ),
@@ -125,7 +125,7 @@ class TabView extends StatelessWidget {
         child: Row(
           children: [
             Icon(
-              tab.isPinned ? remix.Remix.pushpin_line : tab.icon,
+              tab.isPinned ? PhosphorIconsLight.pushPin : tab.icon,
               size: 16,
               color: isActive
                   ? Theme.of(context).primaryColor
@@ -144,10 +144,10 @@ class TabView extends StatelessWidget {
             const SizedBox(width: 4),
             InkWell(
               onTap: () => tabBloc.add(CloseTab(tab.id)),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16.0),
               child: const Padding(
                 padding: EdgeInsets.all(4.0),
-                child: Icon(remix.Remix.close_line, size: 14),
+                child: Icon(PhosphorIconsLight.x, size: 14),
               ),
             ),
           ],
@@ -178,3 +178,8 @@ class TabView extends StatelessWidget {
     );
   }
 }
+
+
+
+
+

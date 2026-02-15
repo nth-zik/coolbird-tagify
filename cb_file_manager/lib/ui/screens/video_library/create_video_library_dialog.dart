@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/services/video_library_service.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/ui/screens/video_library/widgets/video_library_helpers.dart';
@@ -149,7 +150,7 @@ class _CreateVideoLibraryDialogState extends State<CreateVideoLibraryDialog> {
                         ),
                       ),
                       child: isSelected
-                          ? const Icon(Icons.check, color: Colors.white)
+                          ? const Icon(PhosphorIconsLight.check, color: Colors.white)
                           : null,
                     ),
                   );
@@ -167,7 +168,7 @@ class _CreateVideoLibraryDialogState extends State<CreateVideoLibraryDialog> {
                   ),
                   TextButton.icon(
                     onPressed: _pickDirectory,
-                    icon: const Icon(Icons.add),
+                    icon: const Icon(PhosphorIconsLight.plus),
                     label: Text(localizations.addVideoSource),
                   ),
                 ],
@@ -209,3 +210,6 @@ class _CreateVideoLibraryDialogState extends State<CreateVideoLibraryDialog> {
     );
   }
 }
+
+
+

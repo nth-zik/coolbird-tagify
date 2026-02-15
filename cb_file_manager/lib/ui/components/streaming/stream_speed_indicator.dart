@@ -146,13 +146,7 @@ class _StreamSpeedIndicatorState extends State<StreamSpeedIndicator>
               : Colors.grey.withValues(alpha: 0.3),
           width: 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -206,7 +200,7 @@ class _StreamSpeedIndicatorState extends State<StreamSpeedIndicator>
                   color: _isActive
                       ? Colors.green.withValues(alpha: 0.2)
                       : Colors.grey.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16.0),
                 ),
                 child: Text(
                   _isActive ? 'LIVE' : 'IDLE',
@@ -273,10 +267,10 @@ class _StreamSpeedIndicatorState extends State<StreamSpeedIndicator>
               height: 30,
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(16.0),
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(16.0),
                 child: CustomPaint(
                   size: const Size(double.infinity, 30),
                   painter: SpeedGraphPainter(_speedHistory),
@@ -348,3 +342,5 @@ class SpeedGraphPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
+
+

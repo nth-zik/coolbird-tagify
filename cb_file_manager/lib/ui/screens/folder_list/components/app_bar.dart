@@ -4,7 +4,7 @@ import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
 import 'package:cb_file_manager/ui/tab_manager/components/tag_dialogs.dart';
 import 'package:cb_file_manager/helpers/files/file_icon_helper.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String currentPath;
@@ -91,15 +91,15 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
         // Action buttons for selection mode
         TextButton.icon(
-          icon: const Icon(remix.Remix.add_circle_line, size: 18),
+          icon: const Icon(PhosphorIconsLight.plusCircle, size: 18),
           label: const Text('Tag'),
           onPressed: () => showBatchAddTagDialog(context, selectedFiles),
         ),
         TextButton.icon(
-          icon: const Icon(remix.Remix.delete_bin_2_line, size: 18),
+          icon: const Icon(PhosphorIconsLight.trash, size: 18),
           label: const Text('Delete'),
           style: TextButton.styleFrom(
-            foregroundColor: Colors.red[400],
+            foregroundColor: Theme.of(context).colorScheme.error,
           ),
           onPressed: () {
             BlocProvider.of<FolderListBloc>(context)
@@ -108,7 +108,7 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
           },
         ),
         IconButton(
-          icon: const Icon(remix.Remix.close_line, size: 24),
+          icon: const Icon(PhosphorIconsLight.x, size: 24),
           tooltip: 'Cancel selection',
           onPressed: clearSelection,
         ),
@@ -119,7 +119,7 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
         // View toggle button
         IconButton(
           icon: Icon(
-            isGridView ? remix.Remix.list_unordered : remix.Remix.grid_line,
+            isGridView ? PhosphorIconsLight.list : PhosphorIconsLight.squaresFour,
             size: 24,
           ),
           tooltip: isGridView ? 'Switch to list view' : 'Switch to grid view',
@@ -149,16 +149,16 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
         // Search button
         IconButton(
-          icon: const Icon(remix.Remix.search_line, size: 24),
+          icon: const Icon(PhosphorIconsLight.magnifyingGlass, size: 24),
           tooltip: 'Search',
           onPressed: showSearchScreen,
         ),
         // More actions menu
         PopupMenuButton<String>(
-          icon: const Icon(remix.Remix.more_2_line, size: 24),
-          elevation: 2,
+          icon: const Icon(PhosphorIconsLight.dotsThreeVertical, size: 24),
+          elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
           ),
           onSelected: (value) async {
             switch (value) {
@@ -190,7 +190,7 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
               value: 'refresh',
               child: Row(
                 children: [
-                  Icon(remix.Remix.refresh_line,
+                  Icon(PhosphorIconsLight.arrowsClockwise,
                       size: 20, color: theme.iconTheme.color),
                   const SizedBox(width: 12),
                   const Text('Refresh'),
@@ -201,7 +201,7 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
               value: 'select_all',
               child: Row(
                 children: [
-                  Icon(remix.Remix.checkbox_line,
+                  Icon(PhosphorIconsLight.checkSquare,
                       size: 20, color: theme.iconTheme.color),
                   const SizedBox(width: 12),
                   const Text('Select All'),
@@ -212,7 +212,7 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
               value: 'manage_tags',
               child: Row(
                 children: [
-                  Icon(remix.Remix.price_tag_3_line,
+                  Icon(PhosphorIconsLight.tag,
                       size: 20, color: theme.iconTheme.color),
                   const SizedBox(width: 12),
                   const Text('Manage Tags'),
@@ -223,7 +223,7 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
               value: 'debug_apk',
               child: Row(
                 children: [
-                  Icon(remix.Remix.settings_2_line,
+                  Icon(PhosphorIconsLight.gear,
                       size: 20, color: theme.iconTheme.color),
                   const SizedBox(width: 12),
                   const Text('Debug APK Icons'),
@@ -240,3 +240,7 @@ class FolderListAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
+
+
+
+

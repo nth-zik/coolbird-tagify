@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import '../../utils/route.dart';
 
@@ -13,7 +13,7 @@ Future<void> showSearchTipsDialog(BuildContext context) async {
     builder: (context) => AlertDialog(
       title: Row(
         children: [
-          Icon(remix.Remix.information_line, color: theme.colorScheme.primary),
+          Icon(PhosphorIconsLight.info, color: theme.colorScheme.primary),
           const SizedBox(width: 8),
           Text(l10n.searchTipsTitle),
         ],
@@ -24,31 +24,31 @@ Future<void> showSearchTipsDialog(BuildContext context) async {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _SearchTipItem(
-              icon: remix.Remix.text,
+              icon: PhosphorIconsLight.textT,
               title: l10n.searchByFilename,
               description: l10n.searchByFilenameDesc,
             ),
             const Divider(),
             _SearchTipItem(
-              icon: remix.Remix.shopping_bag_3_line,
+              icon: PhosphorIconsLight.shoppingBagOpen,
               title: l10n.searchByTags,
               description: l10n.searchByTagsDesc,
             ),
             const Divider(),
             _SearchTipItem(
-              icon: remix.Remix.hashtag,
+              icon: PhosphorIconsLight.hash,
               title: l10n.searchMultipleTags,
               description: l10n.searchMultipleTagsDesc,
             ),
             const Divider(),
             _SearchTipItem(
-              icon: remix.Remix.global_line,
+              icon: PhosphorIconsLight.globe,
               title: l10n.globalSearch,
               description: l10n.globalSearchDesc,
             ),
             const Divider(),
             _SearchTipItem(
-              icon: remix.Remix.menu_line,
+              icon: PhosphorIconsLight.list,
               title: l10n.searchShortcuts,
               description: l10n.searchShortcutsDesc,
             ),
@@ -107,4 +107,8 @@ class _SearchTipItem extends StatelessWidget {
     );
   }
 }
+
+
+
+
 

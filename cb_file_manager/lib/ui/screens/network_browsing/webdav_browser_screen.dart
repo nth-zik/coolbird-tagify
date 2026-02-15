@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../config/languages/app_localizations.dart';
 import '../../../bloc/network_browsing/network_browsing_bloc.dart';
@@ -266,6 +266,7 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
   }
 
   void _updateConnection(NetworkCredentials oldCredentials) {
+    final theme = Theme.of(context);
     try {
       final additionalOptions = {
         'basePath': _basePathController.text.trim(),
@@ -285,7 +286,7 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(AppLocalizations.of(context)!.connectionUpdatedSuccess),
-          backgroundColor: Colors.green,
+          backgroundColor: theme.colorScheme.tertiary,
         ),
       );
     } catch (e) {
@@ -293,7 +294,7 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
         SnackBar(
           content: Text(
               '${AppLocalizations.of(context)!.failedToUpdateConnection}: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: theme.colorScheme.error,
         ),
       );
     }
@@ -301,6 +302,7 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
 
   void _deleteConnection(NetworkCredentials credentials) {
     final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -320,7 +322,7 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(l10n.connectionDeletedSuccess),
-                    backgroundColor: Colors.green,
+                    backgroundColor: theme.colorScheme.tertiary,
                   ),
                 );
               } catch (e) {
@@ -328,7 +330,7 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
                   SnackBar(
                     content: Text(
                         '${l10n.failedToDeleteConnection}: $e'),
-                    backgroundColor: Colors.red,
+                    backgroundColor: theme.colorScheme.error,
                   ),
                 );
               }
@@ -373,6 +375,7 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
   }
 
   void _addDLPTestConnection() {
+    final theme = Theme.of(context);
     try {
       final additionalOptions = {
         'basePath': '/webdav',
@@ -392,7 +395,7 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(AppLocalizations.of(context)!.sampleConnectionAddedSuccess),
-          backgroundColor: Colors.green,
+          backgroundColor: theme.colorScheme.tertiary,
         ),
       );
     } catch (e) {
@@ -400,7 +403,7 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
         SnackBar(
           content: Text(
               '${AppLocalizations.of(context)!.failedToAddSampleConnection}: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: theme.colorScheme.error,
         ),
       );
     }
@@ -409,19 +412,20 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
     return SystemScreen(
       title: l10n.webdavConnections,
       systemId: '#webdav',
-      icon: remix.Remix.global_line,
+      icon: PhosphorIconsLight.globe,
       showAppBar: true,
       actions: [
         IconButton(
-          icon: const Icon(remix.Remix.refresh_line),
+          icon: Icon(PhosphorIconsLight.arrowsClockwise),
           onPressed: _refreshData,
           tooltip: l10n.refresh,
         ),
         IconButton(
-          icon: const Icon(remix.Remix.add_line),
+          icon: Icon(PhosphorIconsLight.plus),
           onPressed: _connectToWebDAVServer,
           tooltip: l10n.addConnection,
         ),
@@ -439,22 +443,22 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    remix.Remix.global_line,
+                    PhosphorIconsLight.globe,
                     size: 64,
-                    color: Colors.grey.shade400,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(height: 16),
                   Text(
                     l10n.noWebdavConnections,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: Colors.grey.shade600,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     l10n.addConnectionOrSampleToStart,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey.shade500,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                   ),
                   const SizedBox(height: 24),
@@ -463,13 +467,13 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
                     children: [
                       ElevatedButton.icon(
                         onPressed: _connectToWebDAVServer,
-                        icon: const Icon(Icons.add),
+                        icon: Icon(PhosphorIconsLight.plus),
                         label: Text(l10n.addConnection),
                       ),
                       const SizedBox(width: 16),
                       ElevatedButton.icon(
                         onPressed: _addSampleConnection,
-                        icon: const Icon(Icons.add_circle_outline),
+                        icon: Icon(PhosphorIconsLight.plusCircle),
                         label: Text(l10n.addSample),
                       ),
                     ],
@@ -487,7 +491,7 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
                   padding: const EdgeInsets.symmetric(
                       vertical: 8.0, horizontal: 8.0),
                   child: Text(l10n.activeConnections,
-                      style: Theme.of(context).textTheme.titleSmall),
+                      style: theme.textTheme.titleSmall),
                 ),
                 ...activeConnections.map(_buildActiveConnectionItem),
                 const Divider(),
@@ -497,7 +501,7 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
                   padding: const EdgeInsets.symmetric(
                       vertical: 8.0, horizontal: 8.0),
                   child: Text(l10n.savedConnections,
-                      style: Theme.of(context).textTheme.titleSmall),
+                      style: theme.textTheme.titleSmall),
                 ),
                 ..._savedCredentials.map(_buildSavedConnectionItem),
               ],
@@ -511,13 +515,14 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
   Widget _buildActiveConnectionItem(
       MapEntry<String, NetworkServiceBase> entry) {
     final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
     String host = l10n.unknown;
     try {
       host = Uri.parse(entry.value.basePath).host;
     } catch (_) {}
 
     return ListTile(
-      leading: const Icon(remix.Remix.global_line, color: Colors.green),
+      leading: Icon(PhosphorIconsLight.globe, color: theme.colorScheme.tertiary),
       title: Text(host),
       subtitle: Text(l10n.connecting),
       onTap: () => _openTabForConnection(entry.key, host),
@@ -526,9 +531,10 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
 
   Widget _buildSavedConnectionItem(NetworkCredentials credentials) {
     final isConnecting = _connectingCredentialIds.contains(credentials.id);
+    final theme = Theme.of(context);
 
     return ListTile(
-      leading: const Icon(remix.Remix.global_line, color: Colors.blue),
+      leading: Icon(PhosphorIconsLight.globe, color: theme.colorScheme.primary),
       title: Text(credentials.host),
       subtitle: Builder(
         builder: (ctx) {
@@ -558,18 +564,18 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
                 )
               else ...[
                 IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.orange),
+                  icon: Icon(PhosphorIconsLight.pencilSimple, color: theme.colorScheme.secondary),
                   onPressed: () => _editConnection(credentials),
                   tooltip: loc.editConnection,
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
+                  icon: Icon(PhosphorIconsLight.trash, color: theme.colorScheme.error),
                   onPressed: () => _deleteConnection(credentials),
                   tooltip: loc.deleteConnection,
                 ),
                 IconButton(
-                  icon: const Icon(remix.Remix.arrow_right_circle_line,
-                      color: Colors.green),
+                  icon: Icon(PhosphorIconsLight.arrowCircleRight,
+                      color: theme.colorScheme.tertiary),
                   onPressed: () => _connectWithSavedCredentials(credentials),
                   tooltip: loc.connect,
                 ),
@@ -598,3 +604,6 @@ class _WebDAVBrowserScreenState extends State<WebDAVBrowserScreen>
     }
   }
 }
+
+
+

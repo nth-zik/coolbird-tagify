@@ -11,7 +11,7 @@ class ThemeOptions {
   final double buttonElevation;
 
   const ThemeOptions({
-    this.borderRadius = 8.0,
+    this.borderRadius = 20.0,
     this.elevation = 0.0,
     this.useMaterial3 = true,
     this.centerTitle = true,
@@ -22,6 +22,10 @@ class ThemeOptions {
 
 /// Factory class for creating consistent theme configurations
 class ThemeFactory {
+  static Color _blend(Color base, Color tint, double alpha) {
+    return Color.alphaBlend(tint.withValues(alpha: alpha), base);
+  }
+
   /// Creates a complete ThemeData from a color scheme and brightness
   static ThemeData createTheme({
     required ColorScheme colorScheme,
@@ -30,17 +34,30 @@ class ThemeFactory {
   }) {
     final opts = options ?? const ThemeOptions();
     final bool isLight = brightness == Brightness.light;
+    final Color scaffoldColor = isLight
+        ? _blend(colorScheme.surface, colorScheme.primary, 0.035)
+        : colorScheme.surface;
+    final Color appBarColor = isLight
+        ? _blend(colorScheme.surface, colorScheme.primary, 0.02)
+        : colorScheme.surface;
+    final Color cardColor = isLight
+        ? _blend(colorScheme.surface, Colors.black, 0.01)
+        : colorScheme.surface;
+    final Color inputFillColor = isLight
+        ? _blend(colorScheme.surface, Colors.black, 0.015)
+        : colorScheme.surface;
+    final Color lightBorder = Colors.black.withValues(alpha: 0.08);
 
     return ThemeData(
       useMaterial3: opts.useMaterial3,
       brightness: brightness,
       primaryColor: colorScheme.primary,
-      scaffoldBackgroundColor: colorScheme.surface,
+      scaffoldBackgroundColor: scaffoldColor,
       colorScheme: colorScheme,
       
       // AppBar Theme
       appBarTheme: AppBarTheme(
-        backgroundColor: colorScheme.surface,
+        backgroundColor: appBarColor,
         foregroundColor: isLight ? colorScheme.primary : colorScheme.onSurface,
         elevation: opts.elevation,
         centerTitle: opts.centerTitle,
@@ -98,60 +115,58 @@ class ThemeFactory {
         foregroundColor: colorScheme.onPrimary,
         elevation: opts.elevation > 0 ? 2 : opts.elevation,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(24),
         ),
       ),
 
       // Card Theme
       cardTheme: CardThemeData(
         elevation: opts.cardElevation,
-        color: colorScheme.surface,
+        color: cardColor,
         margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(
-            color: (isLight ? Colors.grey : Colors.grey).withValues(alpha: 0.1),
-            width: 1,
-          ),
+          borderRadius: BorderRadius.circular(20),
         ),
       ),
 
       // PopupMenu Theme
       popupMenuTheme: PopupMenuThemeData(
-        color: colorScheme.surface,
+        color: cardColor,
         elevation: opts.elevation > 0 ? 2 : opts.elevation,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(20),
         ),
       ),
 
       // Divider Theme
       dividerTheme: DividerThemeData(
         thickness: 0.5,
-        color: isLight ? const Color(0xFFEEEEEE) : Colors.grey.withValues(alpha: 0.2),
+        color: isLight
+            ? Colors.black.withValues(alpha: 0.08)
+            : Colors.grey.withValues(alpha: 0.2),
       ),
 
       // InputDecoration Theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: colorScheme.surface,
+        fillColor: inputFillColor,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(opts.borderRadius),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(
-            color: Colors.grey.withValues(alpha: 0.2),
+            color: isLight ? lightBorder : Colors.grey.withValues(alpha: 0.15),
             width: 1,
           ),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(opts.borderRadius),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(
-            color: Colors.grey.withValues(alpha: 0.2),
+            color: isLight ? lightBorder : Colors.grey.withValues(alpha: 0.15),
             width: 1,
           ),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(opts.borderRadius),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(
             color: colorScheme.primary.withValues(alpha: 0.5),
             width: 1,
@@ -161,19 +176,19 @@ class ThemeFactory {
 
       // Dialog Theme
       dialogTheme: DialogThemeData(
-        backgroundColor: colorScheme.surface,
+        backgroundColor: cardColor,
         elevation: opts.elevation,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(24),
         ),
       ),
 
       // BottomSheet Theme
       bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: colorScheme.surface,
-        modalBackgroundColor: colorScheme.surface,
+        backgroundColor: cardColor,
+        modalBackgroundColor: cardColor,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         elevation: opts.elevation,
       ),
@@ -213,11 +228,15 @@ class ThemeFactory {
 
       // Icon Theme
       iconTheme: IconThemeData(
-        color: isLight ? Colors.black54 : Colors.white70,
+        color: isLight
+            ? colorScheme.onSurface.withValues(alpha: 0.72)
+            : Colors.white70,
       ),
 
       // Divider Color
-      dividerColor: isLight ? Colors.grey.shade300 : Colors.grey.shade700,
+      dividerColor: isLight
+          ? Colors.black.withValues(alpha: 0.12)
+          : Colors.grey.shade700,
     );
   }
 
@@ -233,8 +252,9 @@ class ThemeFactory {
       brightness: brightness,
     );
 
+    final resolvedSurface = surface ?? background ?? baseScheme.surface;
     return baseScheme.copyWith(
-      surface: surface ?? baseScheme.surface,
+      surface: resolvedSurface,
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 
@@ -101,7 +102,7 @@ class _VideoTagFilterBarState extends State<VideoTagFilterBar> {
             child: Row(
               children: [
                 Icon(
-                  Icons.filter_list,
+                  PhosphorIconsLight.funnelSimple,
                   size: 20,
                   color: theme.colorScheme.primary,
                 ),
@@ -147,7 +148,7 @@ class _VideoTagFilterBarState extends State<VideoTagFilterBar> {
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: TextButton.icon(
                 onPressed: _clearAllTags,
-                icon: const Icon(Icons.clear, size: 18),
+                icon: const Icon(PhosphorIconsLight.x, size: 18),
                 label: Text(localizations.clearTagFilter),
                 style: TextButton.styleFrom(
                   foregroundColor: theme.colorScheme.error,
@@ -159,3 +160,7 @@ class _VideoTagFilterBarState extends State<VideoTagFilterBar> {
     );
   }
 }
+
+
+
+

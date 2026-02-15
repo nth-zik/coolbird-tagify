@@ -2,7 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:flutter/services.dart'; // Added import for HapticFeedback
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 // Import app theme
 import 'package:window_manager/window_manager.dart'; // Import window_manager
 import 'dart:io'; // Import dart:io for Platform check
@@ -82,14 +82,9 @@ class _ScrollableTabBarState extends State<ScrollableTabBar> {
     final isDarkMode = theme.brightness == Brightness.dark;
 
     // Modern tab colors
-    final tabBackgroundColor = isDarkMode
-        ? theme.scaffoldBackgroundColor.withAlpha((0.8 * 255).round())
-        : theme.scaffoldBackgroundColor.withAlpha((0.7 * 255).round());
-    final activeTabColor =
-        isDarkMode ? theme.colorScheme.surface : theme.colorScheme.surface;
-    final hoverColor = isDarkMode
-        ? theme.colorScheme.surface.withAlpha((0.8 * 255).round())
-        : theme.colorScheme.surface.withAlpha((0.8 * 255).round());
+    final tabBackgroundColor = theme.scaffoldBackgroundColor;
+    final activeTabColor = theme.scaffoldBackgroundColor;
+    final hoverColor = theme.colorScheme.surfaceContainerHigh;
 
     Widget windowCaptionButtons = Platform.isWindows
         ? WindowCaptionButtons(theme: theme)
@@ -98,20 +93,14 @@ class _ScrollableTabBarState extends State<ScrollableTabBar> {
     // Main container for the entire bar
     return Container(
       height: Platform.isWindows
-          ? 48
+          ? 50
           : null, // Provide a specific height for the custom title bar on Windows
       decoration: BoxDecoration(
         color: tabBackgroundColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha((0.02 * 255).round()),
-            blurRadius: 1,
-            offset: const Offset(0, 1),
-          ),
-        ],
+        boxShadow: [],
       ),
       margin: Platform.isWindows
-          ? const EdgeInsets.only(bottom: 1)
+          ? EdgeInsets.zero
           : const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       padding: EdgeInsets.zero,
       child: Row(
@@ -528,7 +517,7 @@ class _ModernTabBarState extends State<_ModernTabBar> {
                     margin:
                         const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16.0),
                       color: widget.theme.colorScheme.primary
                           .withValues(alpha: 0.10),
                     ),
@@ -554,13 +543,7 @@ class _ModernTabBarState extends State<_ModernTabBar> {
                     decoration: BoxDecoration(
                       color: widget.theme.colorScheme.primary,
                       borderRadius: BorderRadius.circular(999),
-                      boxShadow: [
-                        BoxShadow(
-                          color: widget.theme.colorScheme.primary
-                              .withValues(alpha: 0.45),
-                          blurRadius: 10,
-                        ),
-                      ],
+                      boxShadow: [],
                     ),
                   ),
                 ),
@@ -601,12 +584,11 @@ class _ModernTabBarState extends State<_ModernTabBar> {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = widget.theme.brightness == Brightness.dark;
     final isDesktop =
         Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 5, 4, 5),
+      padding: const EdgeInsets.fromLTRB(0, 4, 4, 0),
       child: Listener(
         key: _tabStripKey,
         onPointerDown: (e) {
@@ -785,20 +767,13 @@ class _ModernTabBarState extends State<_ModernTabBar> {
                                   child: DecoratedBox(
                                     decoration: BoxDecoration(
                                       color: widget.activeTabColor,
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(16.0),
                                       border: Border.all(
                                         color: widget.theme.colorScheme.primary
                                             .withValues(alpha: 0.35),
                                         width: 0.8,
                                       ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black
-                                              .withAlpha((0.14 * 255).round()),
-                                          blurRadius: 14,
-                                          offset: const Offset(0, 8),
-                                        ),
-                                      ],
+                                      boxShadow: [],
                                     ),
                                     child: Center(
                                       child: DefaultTextStyle.merge(
@@ -832,33 +807,9 @@ class _ModernTabBarState extends State<_ModernTabBar> {
                           margin: const EdgeInsets.only(left: 4, right: 4),
                           child: MouseRegion(
                             cursor: SystemMouseCursors.click,
-                            child: _OptimizedButtonInteraction(
-                              onTap: () {
-                                widget.onAddTabPressed?.call();
-                                HapticFeedback.lightImpact();
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                width: 36,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: isDarkMode
-                                      ? Colors.white
-                                          .withAlpha((0.08 * 255).round())
-                                      : Colors.black
-                                          .withAlpha((0.05 * 255).round()),
-                                ),
-                                child: Center(
-                                  child: Icon(
-                                    remix.Remix.add_line,
-                                    size: 18,
-                                    color: isDarkMode
-                                        ? Colors.white70
-                                        : widget.theme.colorScheme.primary,
-                                  ),
-                                ),
-                              ),
+                            child: _CaptionStyleAddTabButton(
+                              theme: widget.theme,
+                              onPressed: widget.onAddTabPressed,
                             ),
                           ),
                         ),
@@ -867,6 +818,62 @@ class _ModernTabBarState extends State<_ModernTabBar> {
                   ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CaptionStyleAddTabButton extends StatefulWidget {
+  final ThemeData theme;
+  final VoidCallback? onPressed;
+
+  const _CaptionStyleAddTabButton({
+    required this.theme,
+    required this.onPressed,
+  });
+
+  @override
+  State<_CaptionStyleAddTabButton> createState() =>
+      _CaptionStyleAddTabButtonState();
+}
+
+class _CaptionStyleAddTabButtonState extends State<_CaptionStyleAddTabButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = widget.theme.brightness == Brightness.dark;
+    final baseIconColor = isDark
+        ? Colors.white.withValues(alpha: 0.8)
+        : widget.theme.colorScheme.primary;
+    final idleBg = isDark
+        ? Colors.white.withValues(alpha: 0.03)
+        : widget.theme.colorScheme.primary.withValues(alpha: 0.05);
+    final hoverBg = isDark
+        ? widget.theme.colorScheme.onSurface.withValues(alpha: 0.10)
+        : widget.theme.colorScheme.onSurface.withValues(alpha: 0.12);
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: _OptimizedButtonInteraction(
+        onTap: () {
+          widget.onPressed?.call();
+          HapticFeedback.lightImpact();
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: _isHovered ? hoverBg : idleBg,
+            borderRadius: BorderRadius.circular(16.0),
+          ),
+          child: Icon(
+            PhosphorIconsLight.plus,
+            size: 18,
+            color: baseIconColor,
           ),
         ),
       ),
@@ -956,21 +963,16 @@ class _ModernTabState extends State<_ModernTab>
   @override
   Widget build(BuildContext context) {
     const tabWidth = 210.0;
+    const tabHeight = 40.0;
     final isDarkMode = widget.theme.brightness == Brightness.dark;
-    final primaryColor = widget.theme.colorScheme.primary;
-    final dividerColor = isDarkMode
-        ? Colors.white.withAlpha((0.16 * 255).round())
-        : Colors.black.withAlpha((0.12 * 255).round());
-
+    final cs = widget.theme.colorScheme;
+    final primaryColor = cs.primary;
     final hoverColor = isDarkMode
-        ? Colors.white.withAlpha((0.04 * 255).round())
-        : Colors.black.withAlpha((0.04 * 255).round());
-    final selectedFillColor = primaryColor.withAlpha(
-      ((isDarkMode ? 0.20 : 0.14) * 255).round(),
-    );
-    final selectedBorderColor = primaryColor.withAlpha(
-      ((isDarkMode ? 0.75 : 0.65) * 255).round(),
-    );
+        ? cs.surfaceContainerHighest.withValues(alpha: 0.75)
+        : cs.surfaceContainerHighest.withValues(alpha: 0.95);
+    final selectedFillColor = primaryColor.withValues(alpha: isDarkMode ? 0.22 : 0.12);
+    final activeFillColor = widget.theme.colorScheme.surface;
+    const inactiveFillColor = Colors.transparent;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -979,9 +981,11 @@ class _ModernTabState extends State<_ModernTab>
       child: AnimatedBuilder(
         animation: _animation,
         builder: (context, child) {
-          final tabScale = widget.isSelected
-              ? 1.015
-              : (widget.isActive ? 1.006 : (_isHovered ? 1.003 : 1.0));
+          final effectiveLabelColor = widget.isSelected
+              ? cs.onSurface
+              : (widget.isActive
+                  ? cs.onSurface
+                  : cs.onSurfaceVariant.withValues(alpha: isDarkMode ? 0.94 : 1.0));
 
           return _OptimizedTabInteraction(
             onPrimaryDown: widget.onPrimaryDown,
@@ -990,118 +994,76 @@ class _ModernTabState extends State<_ModernTab>
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                AnimatedScale(
-                  scale: tabScale,
-                  duration: const Duration(milliseconds: 140),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
                   curve: Curves.easeOutCubic,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 160),
-                    curve: Curves.easeOutCubic,
-                    width: tabWidth,
-                    height: 38,
-                    margin:
-                        const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: widget.isSelected
-                          ? selectedFillColor
-                          : (widget.isActive
-                              ? widget.activeTabColor
-                              : (_isHovered && !_isCloseButtonHovered
-                                  ? widget.hoverColor
-                                  : Colors.transparent)),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: widget.isSelected
-                            ? selectedBorderColor
-                            : (widget.isActive
-                                ? (isDarkMode
-                                    ? Colors.white.withAlpha(
-                                        (0.1 * 255).round(),
-                                      )
-                                    : Colors.black
-                                        .withAlpha((0.05 * 255).round()))
-                                : Colors.transparent),
-                        width: widget.isSelected ? 0.9 : 0.5,
-                      ),
-                      boxShadow: (widget.isActive || widget.isSelected)
-                          ? [
-                              BoxShadow(
-                                color: Colors.black
-                                    .withAlpha((0.03 * 255).round()),
-                                blurRadius: widget.isSelected ? 4 : 2,
-                                offset: const Offset(0, 1),
-                              ),
-                            ]
-                          : null,
+                  width: tabWidth,
+                  height: tabHeight,
+                  margin: const EdgeInsets.only(left: 2, right: 2, top: 6),
+                  clipBehavior: Clip.hardEdge,
+                  decoration: BoxDecoration(
+                    color: widget.isSelected
+                        ? selectedFillColor
+                        : (widget.isActive
+                            ? activeFillColor
+                            : (_isHovered && !_isCloseButtonHovered
+                                ? hoverColor
+                                : inactiveFillColor)),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(10),
+                      topRight: Radius.circular(10),
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Stack(
-                        children: [
-                          // Tab content
-                          Positioned.fill(
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 12),
-                              child: DefaultTextStyle(
-                                style: TextStyle(
-                                  color: widget.labelColor,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                ).merge(widget.labelStyle),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Expanded(
-                                      child: Padding(
-                                        padding:
-                                            const EdgeInsets.only(right: 24.0),
-                                        child: Center(child: widget.child),
-                                      ),
+                  ),
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: IconTheme(
+                            data: IconThemeData(
+                              color: effectiveLabelColor,
+                              size: 16,
+                            ),
+                            child: DefaultTextStyle(
+                              style: TextStyle(
+                                color: effectiveLabelColor,
+                                fontSize: 13,
+                                fontWeight:
+                                    widget.isActive ? FontWeight.w600 : FontWeight.w500,
+                              ).merge(widget.labelStyle),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(right: 24.0),
+                                      child: Center(child: widget.child),
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-
-                          // Hover effect - only show when not hovering the close button
-                          if (_isHovered &&
-                              !_isCloseButtonHovered &&
-                              !widget.isActive)
-                            Positioned.fill(
-                              child: Material(
-                                color: hoverColor,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-
-                          // Active tab indicator - subtle left border
-                          if (widget.isActive)
-                            Positioned(
-                              left: 0,
-                              top: 6,
-                              bottom: 6,
-                              width: 3,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: primaryColor,
-                                  borderRadius: const BorderRadius.horizontal(
-                                    right: Radius.circular(4),
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
+                        ),
                       ),
-                    ),
+                      if (widget.isActive)
+                        Positioned(
+                          left: 8,
+                          right: 8,
+                          top: 0,
+                          height: 2,
+                          child: ColoredBox(
+                            color: cs.primary.withValues(alpha: isDarkMode ? 0.75 : 0.65),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
 
                 // Close button - positioned on top of tab
                 if (widget.onClose != null)
                   Positioned(
-                    top: (38 - 22) / 2, // Center vertically in the tab
+                    top: (tabHeight - 22) / 2,
                     right: 12, // Position from right edge
                     child: AnimatedOpacity(
                       opacity: (_isHovered || widget.isActive) ? 1.0 : 0.5,
@@ -1133,29 +1095,15 @@ class _ModernTabState extends State<_ModernTab>
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
-                                remix.Remix.close_line,
+                                PhosphorIconsLight.x,
                                 size: 16,
-                                color: isDarkMode
-                                    ? Colors.white
-                                        .withAlpha((0.7 * 255).round())
-                                    : Colors.black
-                                        .withAlpha((0.5 * 255).round()),
+                                color: widget.isActive
+                                    ? cs.onSurface
+                                    : cs.onSurfaceVariant,
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                  ),
-                if (widget.showRightDivider)
-                  Positioned(
-                    right: -2,
-                    top: 9,
-                    bottom: 9,
-                    child: IgnorePointer(
-                      child: Container(
-                        width: 1,
-                        color: dividerColor,
                       ),
                     ),
                   ),
@@ -1333,3 +1281,9 @@ class _NativeTabDragHandleState extends State<_NativeTabDragHandle> {
     );
   }
 }
+
+
+
+
+
+

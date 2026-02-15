@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -213,18 +213,6 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
           color: cs.outline.withValues(alpha: 0.1),
           width: 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: cs.shadow.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-          BoxShadow(
-            color: cs.primary.withValues(alpha: 0.05),
-            blurRadius: 40,
-            offset: const Offset(0, 16),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -243,16 +231,9 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                     ],
                   ),
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: cs.primary.withValues(alpha: 0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
                 ),
                 child: Icon(
-                  remix.Remix.gallery_line,
+                  PhosphorIconsLight.images,
                   color: cs.onPrimary,
                   size: 28,
                 ),
@@ -406,16 +387,16 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                   PlatformPaths.isDesktop
                       ? _localizations.browseAllYourPictures
                       : _localizations.browseAllYourPhotos,
-                  remix.Remix.image_line,
-                  [Colors.indigo, Colors.indigo.shade300],
+                  PhosphorIconsLight.image,
+                  [theme.colorScheme.primary, theme.colorScheme.primary.withValues(alpha: 0.7)],
                   () => _navigateToAllImages(),
                 ),
                 _buildActionCard(
                   theme,
                   'Albums',
                   _localizations.organizeInAlbums,
-                  remix.Remix.album_line,
-                  [Colors.purple, Colors.purple.shade300],
+                  PhosphorIconsLight.folder,
+                  [theme.colorScheme.tertiary, theme.colorScheme.tertiary.withValues(alpha: 0.7)],
                   () => _navigateToAlbums(),
                 ),
                 _buildActionCard(
@@ -424,8 +405,8 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                   PlatformPaths.isDesktop
                       ? _localizations.picturesFolder
                       : _localizations.photosFromCamera,
-                  remix.Remix.camera_line,
-                  [Colors.green, Colors.green.shade300],
+                  PhosphorIconsLight.camera,
+                  [theme.colorScheme.tertiary, theme.colorScheme.tertiary.withValues(alpha: 0.7)],
                   () => _navigateToCamera(),
                 ),
                 _buildActionCard(
@@ -434,8 +415,8 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                   PlatformPaths.isDesktop
                       ? _localizations.downloadedFiles
                       : _localizations.downloadedImages,
-                  remix.Remix.download_line,
-                  [Colors.orange, Colors.orange.shade300],
+                  PhosphorIconsLight.downloadSimple,
+                  [theme.colorScheme.secondary, theme.colorScheme.secondary.withValues(alpha: 0.7)],
                   () => _navigateToDownloads(),
                 ),
               ],
@@ -477,13 +458,6 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                 border: Border.all(
                   color: theme.colorScheme.outline.withValues(alpha: 0.1),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: theme.colorScheme.shadow.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -497,7 +471,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                         end: Alignment.bottomRight,
                         colors: gradientColors,
                       ),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                     child: Icon(
                       icon,
@@ -590,7 +564,9 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
             ),
             const Spacer(),
             IconButton(
-              icon: const Icon(Icons.settings),
+              icon: Icon(PhosphorIconsLight.gear,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
               onPressed: () => _openFeaturedAlbumsSettings(),
               tooltip: _localizations.configureFeaturedAlbums,
             ),
@@ -612,7 +588,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
             child: Column(
               children: [
                 Icon(
-                  remix.Remix.album_line,
+                  PhosphorIconsLight.folder,
                   size: 48,
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
                 ),
@@ -680,13 +656,6 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
             border: Border.all(
               color: theme.colorScheme.outline.withValues(alpha: 0.1),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: theme.colorScheme.shadow.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -704,10 +673,10 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                           theme.colorScheme.secondary.withValues(alpha: 0.8),
                         ],
                       ),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                     child: Icon(
-                      remix.Remix.album_fill,
+                      PhosphorIconsLight.folder,
                       size: 20,
                       color: theme.colorScheme.onSecondary,
                     ),
@@ -715,7 +684,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                   const Spacer(),
                   PopupMenuButton<String>(
                     icon: Icon(
-                      remix.Remix.more_line,
+                      PhosphorIconsLight.dotsThreeVertical,
                       size: 16,
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
@@ -729,7 +698,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                         value: 'remove',
                         child: Row(
                           children: [
-                            const Icon(remix.Remix.star_line, size: 16),
+                            Icon(PhosphorIconsLight.star, size: 16),
                             const SizedBox(width: 8),
                             Text(_localizations.removeFromFeatured),
                           ],
@@ -784,13 +753,6 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
         border: Border.all(
           color: theme.colorScheme.outline.withValues(alpha: 0.1),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.shadow.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -798,7 +760,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
           Row(
             children: [
               Icon(
-                remix.Remix.bar_chart_line,
+                PhosphorIconsLight.chartBar,
                 color: theme.colorScheme.primary,
                 size: 24,
               ),
@@ -824,8 +786,8 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                     theme,
                     _localizations.totalImages,
                     '$_totalImages',
-                    remix.Remix.image_line,
-                    Colors.blue,
+                    PhosphorIconsLight.image,
+                    theme.colorScheme.primary,
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -834,8 +796,8 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
                     theme,
                     _localizations.albums,
                     '0', // TODO: Get actual album count
-                    remix.Remix.album_line,
-                    Colors.purple,
+                    PhosphorIconsLight.folder,
+                    theme.colorScheme.tertiary,
                   ),
                 ),
               ],
@@ -856,7 +818,7 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1020,3 +982,6 @@ class _GalleryHubScreenState extends State<GalleryHubScreen>
     _loadFeaturedAlbums();
   }
 }
+
+
+

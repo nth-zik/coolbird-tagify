@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class BreadcrumbNavigation extends StatelessWidget {
   final String currentPath;
@@ -28,7 +28,7 @@ class BreadcrumbNavigation extends StatelessWidget {
         breadcrumbs.add(
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 4.0),
-            child: Icon(remix.Remix.arrow_right_s_line, size: 16),
+            child: Icon(PhosphorIconsLight.caretRight, size: 16),
           ),
         );
       }
@@ -39,7 +39,7 @@ class BreadcrumbNavigation extends StatelessWidget {
           child: Text(
             displayName,
             style: TextStyle(
-              color: isLast ? Colors.grey[700] : Colors.blue,
+              color: isLast ? Theme.of(context).colorScheme.onSurfaceVariant : Theme.of(context).colorScheme.primary,
               fontWeight: isLast ? FontWeight.bold : FontWeight.normal,
             ),
           ),
@@ -49,9 +49,9 @@ class BreadcrumbNavigation extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(4.0),
-        border: Border.all(color: Colors.grey[300]!),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16.0),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
       ),
       margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
       child: SingleChildScrollView(
@@ -160,3 +160,6 @@ class BreadcrumbItem {
 
   BreadcrumbItem(this.path, this.displayName);
 }
+
+
+

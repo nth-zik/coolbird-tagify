@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 
 /// Reusable Windows/Mac/Linux window caption buttons: Minimize, Maximize/Restore, Close
@@ -37,7 +37,7 @@ class WindowCaptionButtons extends StatelessWidget {
         children: [
           const SizedBox(width: 8),
           _CaptionButton(
-            icon: remix.Remix.subtract_line,
+            icon: PhosphorIconsLight.minus,
             tooltip: 'Minimize',
             theme: effectiveTheme,
             onPressed: () async {
@@ -47,7 +47,7 @@ class WindowCaptionButtons extends StatelessWidget {
             },
           ),
           _CaptionButton(
-            icon: remix.Remix.checkbox_blank_line, // Will be replaced dynamically
+            icon: PhosphorIconsLight.square, // Will be replaced dynamically
             tooltip: 'Maximize',
             theme: effectiveTheme,
             listensMaximize: true,
@@ -63,7 +63,7 @@ class WindowCaptionButtons extends StatelessWidget {
             },
           ),
           _CaptionButton(
-            icon: remix.Remix.close_line,
+            icon: PhosphorIconsLight.x,
             tooltip: 'Close',
             isCloseButton: true,
             theme: effectiveTheme,
@@ -135,7 +135,7 @@ class _CaptionButtonState extends State<_CaptionButton> {
       final isMax = await windowManager.isMaximized();
       if (!mounted) return;
       setState(() {
-        _dynamicIcon = isMax ? remix.Remix.fullscreen_exit_line : remix.Remix.fullscreen_line;
+        _dynamicIcon = isMax ? PhosphorIconsLight.cornersIn : PhosphorIconsLight.cornersOut;
         _dynamicTooltip = isMax ? 'Restore' : 'Maximize';
       });
     } catch (_) {}
@@ -144,15 +144,19 @@ class _CaptionButtonState extends State<_CaptionButton> {
   @override
   Widget build(BuildContext context) {
     final isDark = widget.theme.brightness == Brightness.dark;
-    final baseIconColor = isDark ? Colors.white70 : Colors.black54;
+    final baseIconColor = isDark
+        ? Colors.white.withValues(alpha: 0.8)
+        : widget.theme.colorScheme.primary;
+    final idleBg = isDark
+        ? Colors.white.withValues(alpha: 0.03)
+        : widget.theme.colorScheme.primary.withValues(alpha: 0.05);
     final hoverBg = widget.isCloseButton
-        ? Colors.red.withValues(alpha: 0.9)
+        ? widget.theme.colorScheme.error
         : (isDark
-            ? Colors.white.withValues(alpha: 0.10)
-            : Colors.black.withValues(alpha: 0.08));
-    final hoverIconColor = widget.isCloseButton
-        ? Colors.white
-        : (isDark ? Colors.white : Colors.black);
+            ? widget.theme.colorScheme.onSurface.withValues(alpha: 0.10)
+            : widget.theme.colorScheme.onSurface.withValues(alpha: 0.12));
+    final hoverIconColor =
+        widget.isCloseButton ? widget.theme.colorScheme.onError : widget.theme.colorScheme.onSurface;
 
     return Tooltip(
       message: _dynamicTooltip ?? widget.tooltip,
@@ -170,12 +174,12 @@ class _CaptionButtonState extends State<_CaptionButton> {
             splashColor: Colors.transparent,
             highlightColor: Colors.transparent,
             hoverColor: Colors.transparent,
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(16.0),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
               decoration: BoxDecoration(
-                color: _isHovered ? hoverBg : Colors.transparent,
-                borderRadius: BorderRadius.circular(4),
+                color: _isHovered ? hoverBg : idleBg,
+                borderRadius: BorderRadius.circular(16.0),
               ),
               child: Icon(
                 _dynamicIcon ?? widget.icon,
@@ -201,4 +205,8 @@ class _WindowStateListener extends WindowListener {
   @override
   void onWindowRestore() => onChange();
 }
+
+
+
+
 

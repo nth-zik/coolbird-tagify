@@ -8,7 +8,7 @@ import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
 import 'package:cb_file_manager/ui/utils/base_screen.dart';
 import 'package:cb_file_manager/ui/screens/video_library/widgets/video_library_helpers.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 /// Video Hub Screen - Main screen for managing video libraries
 class VideoHubScreen extends StatefulWidget {
@@ -86,7 +86,7 @@ class _VideoHubScreenState extends State<VideoHubScreen> {
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: FilledButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: Theme.of(context).colorScheme.error,
             ),
             child: Text(localizations.delete),
           ),
@@ -136,7 +136,7 @@ class _VideoHubScreenState extends State<VideoHubScreen> {
       title: localizations.videoHubTitle,
       actions: [
         IconButton(
-          icon: const Icon(Icons.add_rounded),
+          icon: const Icon(PhosphorIconsLight.plus),
           onPressed: _showCreateLibraryDialog,
           tooltip: localizations.createVideoLibrary,
         ),
@@ -153,7 +153,7 @@ class _VideoHubScreenState extends State<VideoHubScreen> {
               value: 'refresh',
               child: Row(
                 children: [
-                  const Icon(Icons.refresh),
+                  const Icon(PhosphorIconsLight.arrowClockwise),
                   const SizedBox(width: 8),
                   Text(localizations.refresh),
                 ],
@@ -226,19 +226,12 @@ class _VideoHubScreenState extends State<VideoHubScreen> {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.primary.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
-            remix.Remix.movie_2_line,
+            PhosphorIconsLight.filmStrip,
             size: 48,
             color: theme.colorScheme.primary,
           ),
@@ -264,7 +257,7 @@ class _VideoHubScreenState extends State<VideoHubScreen> {
               theme,
               localizations.videoLibraries,
               '${_libraries.length}',
-              remix.Remix.folder_video_line,
+              PhosphorIconsLight.folderOpen,
               theme.colorScheme.primary,
             ),
           ),
@@ -274,7 +267,7 @@ class _VideoHubScreenState extends State<VideoHubScreen> {
               theme,
               localizations.totalVideos,
               '$_totalVideos',
-              remix.Remix.film_line,
+              PhosphorIconsLight.videoCamera,
               theme.colorScheme.tertiary,
             ),
           ),
@@ -294,7 +287,7 @@ class _VideoHubScreenState extends State<VideoHubScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: color.withValues(alpha: 0.3),
           width: 1,
@@ -306,7 +299,7 @@ class _VideoHubScreenState extends State<VideoHubScreen> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: Icon(icon, color: color, size: 24),
           ),
@@ -352,13 +345,13 @@ class _VideoHubScreenState extends State<VideoHubScreen> {
         final videoCount = snapshot.data ?? 0;
 
         return Card(
-          elevation: 2,
+          elevation: 0,
           child: InkWell(
             onTap: () => _navigateToLibrary(library),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
             child: Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 gradient: LinearGradient(
                   colors: [
                     cardColor.withValues(alpha: 0.3),
@@ -378,7 +371,7 @@ class _VideoHubScreenState extends State<VideoHubScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Icon(
-                          remix.Remix.movie_2_fill,
+                          PhosphorIconsLight.filmStrip,
                           color: cardColor,
                           size: 32,
                         ),
@@ -395,7 +388,7 @@ class _VideoHubScreenState extends State<VideoHubScreen> {
                               value: 'settings',
                               child: Row(
                                 children: [
-                                  const Icon(Icons.settings),
+                                  const Icon(PhosphorIconsLight.gear),
                                   const SizedBox(width: 8),
                                   Text(localizations.settings),
                                 ],
@@ -405,7 +398,7 @@ class _VideoHubScreenState extends State<VideoHubScreen> {
                               value: 'delete',
                               child: Row(
                                 children: [
-                                  const Icon(Icons.delete, color: Colors.red),
+                                  Icon(PhosphorIconsLight.trash, color: Theme.of(context).colorScheme.error),
                                   const SizedBox(width: 8),
                                   Text(localizations.delete),
                                 ],
@@ -453,14 +446,14 @@ class _VideoHubScreenState extends State<VideoHubScreen> {
                     decoration: BoxDecoration(
                       color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                       borderRadius: const BorderRadius.only(
-                        bottomLeft: Radius.circular(12),
-                        bottomRight: Radius.circular(12),
+                        bottomLeft: Radius.circular(16),
+                        bottomRight: Radius.circular(16),
                       ),
                     ),
                     child: Row(
                       children: [
                         Icon(
-                          remix.Remix.film_line,
+                          PhosphorIconsLight.videoCamera,
                           size: 16,
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -489,7 +482,7 @@ class _VideoHubScreenState extends State<VideoHubScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            remix.Remix.movie_2_line,
+            PhosphorIconsLight.filmStrip,
             size: 80,
             color: theme.colorScheme.outline,
           ),
@@ -508,7 +501,7 @@ class _VideoHubScreenState extends State<VideoHubScreen> {
           const SizedBox(height: 24),
           FilledButton.icon(
             onPressed: _showCreateLibraryDialog,
-            icon: const Icon(Icons.add),
+            icon: const Icon(PhosphorIconsLight.plus),
             label: Text(localizations.createVideoLibrary),
           ),
         ],
@@ -516,3 +509,6 @@ class _VideoHubScreenState extends State<VideoHubScreen> {
     );
   }
 }
+
+
+

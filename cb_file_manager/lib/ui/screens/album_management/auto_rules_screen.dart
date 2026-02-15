@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cb_file_manager/services/album_auto_rule_service.dart';
 import 'package:cb_file_manager/services/album_service.dart';
 import 'package:cb_file_manager/models/objectbox/album.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class AutoRulesScreen extends StatefulWidget {
   final int? scopedAlbumId;
@@ -99,6 +99,7 @@ class _AutoRulesScreenState extends State<AutoRulesScreen> {
   }
 
   Future<void> _deleteRule(AlbumAutoRule rule) async {
+    final theme = Theme.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -112,7 +113,8 @@ class _AutoRulesScreenState extends State<AutoRulesScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(
+                foregroundColor: theme.colorScheme.error),
             child: const Text('Delete'),
           ),
         ],
@@ -136,7 +138,7 @@ class _AutoRulesScreenState extends State<AutoRulesScreen> {
             : 'Auto Album Rules'),
         actions: [
           IconButton(
-            icon: const Icon(remix.Remix.add_line),
+            icon: Icon(PhosphorIconsLight.plus),
             onPressed: _showCreateRuleDialog,
             tooltip: 'Create New Rule',
           ),
@@ -157,7 +159,7 @@ class _AutoRulesScreenState extends State<AutoRulesScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            remix.Remix.magic_line,
+            PhosphorIconsLight.sparkle,
             size: 64,
             color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
           ),
@@ -181,7 +183,7 @@ class _AutoRulesScreenState extends State<AutoRulesScreen> {
           const SizedBox(height: 32),
           ElevatedButton.icon(
             onPressed: _showCreateRuleDialog,
-            icon: const Icon(remix.Remix.add_line),
+            icon: Icon(PhosphorIconsLight.plus),
             label: const Text('Create Your First Rule'),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -197,17 +199,17 @@ class _AutoRulesScreenState extends State<AutoRulesScreen> {
       {
         'title': 'Screenshots',
         'description': 'Files containing "screenshot" → Screenshots album',
-        'icon': remix.Remix.screenshot_line,
+        'icon': PhosphorIconsLight.screencast,
       },
       {
         'title': 'Camera Photos',
         'description': 'Files starting with "IMG_" → Camera album',
-        'icon': remix.Remix.camera_line,
+        'icon': PhosphorIconsLight.camera,
       },
       {
         'title': 'Edited Photos',
         'description': 'Files ending with "_edited" → Edited album',
-        'icon': remix.Remix.image_edit_line,
+        'icon': PhosphorIconsLight.imageSquare,
       },
     ];
 
@@ -226,7 +228,7 @@ class _AutoRulesScreenState extends State<AutoRulesScreen> {
               decoration: BoxDecoration(
                 color: theme.colorScheme.surfaceContainerHighest
                     .withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: theme.colorScheme.outline.withValues(alpha: 0.2),
                 ),
@@ -280,6 +282,7 @@ class _AutoRulesScreenState extends State<AutoRulesScreen> {
 
   Widget _buildRuleCard(ThemeData theme, AlbumAutoRule rule) {
     return Card(
+      elevation: 0,
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -321,21 +324,21 @@ class _AutoRulesScreenState extends State<AutoRulesScreen> {
                     }
                   },
                   itemBuilder: (context) => [
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'edit',
                       child: Row(
                         children: [
-                          Icon(remix.Remix.edit_line, size: 16),
+                          Icon(PhosphorIconsLight.pencilSimple, size: 16),
                           SizedBox(width: 8),
                           Text('Edit'),
                         ],
                       ),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'delete',
                       child: Row(
                         children: [
-                          Icon(remix.Remix.delete_bin_line, size: 16),
+                          Icon(PhosphorIconsLight.trash, size: 16),
                           SizedBox(width: 8),
                           Text('Delete'),
                         ],
@@ -351,7 +354,7 @@ class _AutoRulesScreenState extends State<AutoRulesScreen> {
               decoration: BoxDecoration(
                 color: theme.colorScheme.surfaceContainerHighest
                     .withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -359,7 +362,7 @@ class _AutoRulesScreenState extends State<AutoRulesScreen> {
                   Row(
                     children: [
                       Icon(
-                        remix.Remix.filter_line,
+                        PhosphorIconsLight.funnelSimple,
                         size: 16,
                         color:
                             theme.colorScheme.onSurface.withValues(alpha: 0.7),
@@ -391,7 +394,7 @@ class _AutoRulesScreenState extends State<AutoRulesScreen> {
                   theme,
                   'Matches',
                   rule.matchCount.toString(),
-                  remix.Remix.check_line,
+                  PhosphorIconsLight.check,
                 ),
                 const SizedBox(width: 8),
                 if (rule.lastTriggered != null)
@@ -399,7 +402,7 @@ class _AutoRulesScreenState extends State<AutoRulesScreen> {
                     theme,
                     'Last triggered',
                     _formatDate(rule.lastTriggered!),
-                    remix.Remix.time_line,
+                    PhosphorIconsLight.clock,
                   ),
               ],
             ),
@@ -415,7 +418,7 @@ class _AutoRulesScreenState extends State<AutoRulesScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -545,13 +548,13 @@ class _CreateAutoRuleDialogState extends State<CreateAutoRuleDialog> {
                 color: theme.colorScheme.surfaceContainerHighest
                     .withValues(alpha: 0.3),
                 borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(12),
-                  topRight: Radius.circular(12),
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
                 ),
               ),
               child: Row(
                 children: [
-                  Icon(remix.Remix.magic_line,
+                  Icon(PhosphorIconsLight.sparkle,
                       color: theme.colorScheme.primary),
                   const SizedBox(width: 12),
                   const Text(
@@ -561,7 +564,7 @@ class _CreateAutoRuleDialogState extends State<CreateAutoRuleDialog> {
                   const Spacer(),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
+                    icon: Icon(PhosphorIconsLight.x),
                   ),
                 ],
               ),
@@ -600,8 +603,8 @@ class _CreateAutoRuleDialogState extends State<CreateAutoRuleDialog> {
                 color: theme.colorScheme.surfaceContainerHighest
                     .withValues(alpha: 0.1),
                 borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(12),
-                  bottomRight: Radius.circular(12),
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
                 ),
               ),
               child: Row(
@@ -657,14 +660,14 @@ class _CreateAutoRuleDialogState extends State<CreateAutoRuleDialog> {
   Widget _buildTemplateCard(ThemeData theme, Map<String, dynamic> template) {
     return InkWell(
       onTap: () => _applyTemplate(template),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
         width: 260,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           border: Border.all(
               color: theme.colorScheme.outline.withValues(alpha: 0.3)),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -856,7 +859,7 @@ class _CreateAutoRuleDialogState extends State<CreateAutoRuleDialog> {
           decoration: BoxDecoration(
             color: theme.colorScheme.surfaceContainerHighest
                 .withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: theme.colorScheme.outline.withValues(alpha: 0.2),
             ),
@@ -878,9 +881,13 @@ class _CreateAutoRuleDialogState extends State<CreateAutoRuleDialog> {
                   child: Row(
                     children: [
                       Icon(
-                        matches ? Icons.check_circle : Icons.cancel,
+                        matches
+                            ? PhosphorIconsLight.checkCircle
+                            : PhosphorIconsLight.xCircle,
                         size: 16,
-                        color: matches ? Colors.green : Colors.grey,
+                        color: matches
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurfaceVariant,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
@@ -1033,13 +1040,14 @@ class _EditAutoRuleDialogState extends State<EditAutoRuleDialog> {
                 color: theme.colorScheme.surfaceContainerHighest
                     .withValues(alpha: 0.3),
                 borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(12),
-                  topRight: Radius.circular(12),
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
                 ),
               ),
               child: Row(
                 children: [
-                  Icon(remix.Remix.edit_line, color: theme.colorScheme.primary),
+                  Icon(PhosphorIconsLight.pencilSimple,
+                      color: theme.colorScheme.primary),
                   const SizedBox(width: 12),
                   const Text(
                     'Edit Auto Rule',
@@ -1048,7 +1056,7 @@ class _EditAutoRuleDialogState extends State<EditAutoRuleDialog> {
                   const Spacer(),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
+                    icon: Icon(PhosphorIconsLight.x),
                   ),
                 ],
               ),
@@ -1085,8 +1093,8 @@ class _EditAutoRuleDialogState extends State<EditAutoRuleDialog> {
                 color: theme.colorScheme.surfaceContainerHighest
                     .withValues(alpha: 0.1),
                 borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(12),
-                  bottomRight: Radius.circular(12),
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
                 ),
               ),
               child: Row(
@@ -1218,7 +1226,7 @@ class _EditAutoRuleDialogState extends State<EditAutoRuleDialog> {
           decoration: BoxDecoration(
             color: theme.colorScheme.surfaceContainerHighest
                 .withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: theme.colorScheme.outline.withValues(alpha: 0.2),
             ),
@@ -1240,9 +1248,13 @@ class _EditAutoRuleDialogState extends State<EditAutoRuleDialog> {
                   child: Row(
                     children: [
                       Icon(
-                        matches ? Icons.check_circle : Icons.cancel,
+                        matches
+                            ? PhosphorIconsLight.checkCircle
+                            : PhosphorIconsLight.xCircle,
                         size: 16,
-                        color: matches ? Colors.green : Colors.grey,
+                        color: matches
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurfaceVariant,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
@@ -1346,3 +1358,6 @@ class _EditAutoRuleDialogState extends State<EditAutoRuleDialog> {
     }
   }
 }
+
+
+

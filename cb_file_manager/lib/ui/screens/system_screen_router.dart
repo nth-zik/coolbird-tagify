@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/ui/screens/tag_management/tag_management_tab.dart';
 import 'package:cb_file_manager/ui/tab_manager/core/tabbed_folder/tabbed_folder_list_screen.dart';
 import 'package:cb_file_manager/ui/screens/network_browsing/network_connection_screen.dart';
@@ -248,10 +248,10 @@ class SystemScreenRouter {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
-                    remix.Remix.upload_cloud_2_line,
+                  Icon(
+                    PhosphorIconsLight.cloudArrowUp,
                     size: 64,
-                    color: Colors.blue,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -332,10 +332,10 @@ class SystemScreenRouter {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.error_outline,
+          Icon(
+            PhosphorIconsLight.warningCircle,
             size: 64,
-            color: Colors.red,
+            color: Theme.of(context).colorScheme.error,
           ),
           const SizedBox(height: 16),
           Text(
@@ -419,3 +419,6 @@ class SystemScreenRouter {
     }
   }
 }
+
+
+

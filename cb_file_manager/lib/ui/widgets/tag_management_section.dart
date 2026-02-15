@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
 import 'package:cb_file_manager/ui/widgets/chips_input.dart';
 import 'package:cb_file_manager/helpers/tags/tag_color_manager.dart';
@@ -240,7 +241,8 @@ class _TagManagementSectionState extends State<TagManagementSection> {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
 
     return Stack(
       clipBehavior:
@@ -259,23 +261,23 @@ class _TagManagementSectionState extends State<TagManagementSection> {
                   values: _selectedTags,
                   decoration: InputDecoration(
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                       borderSide: const BorderSide(
                         color: Colors.transparent,
                         width: 0,
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                       borderSide: const BorderSide(
                         color: Colors.transparent,
                         width: 0,
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16.0),
                       borderSide: BorderSide(
-                        color: Theme.of(context).primaryColor.withValues(alpha: 0.5),
+                        color: theme.colorScheme.primary.withValues(alpha: 0.5),
                         width: 1,
                       ),
                     ),
@@ -287,11 +289,11 @@ class _TagManagementSectionState extends State<TagManagementSection> {
                     hintStyle: const TextStyle(
                       fontSize: 18,
                     ),
-                    prefixIcon: const Icon(Icons.local_offer, size: 24),
+                    prefixIcon: const Icon(PhosphorIconsLight.tag, size: 24),
                     filled: true,
                     fillColor: isDarkMode
-                        ? Colors.grey[800]!.withValues(alpha: 0.7)
-                        : Colors.grey[100]!.withValues(alpha: 0.7),
+                        ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.7)
+                        : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                   ),
                   style: const TextStyle(fontSize: 18),
                   onChanged: (updatedTags) async {
@@ -347,49 +349,33 @@ class _TagManagementSectionState extends State<TagManagementSection> {
             right: 0,
             child: Material(
               color: Colors.transparent,
-              elevation: 24,
-              shadowColor: Colors.black87,
-              borderRadius: BorderRadius.circular(8),
+              elevation: 0,
+              borderRadius: BorderRadius.circular(16),
               child: Container(
                 constraints: const BoxConstraints(maxHeight: 250),
                 decoration: BoxDecoration(
-                  color: isDarkMode ? Colors.grey[850] : Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      blurRadius: 10,
-                      spreadRadius: 2,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                  border: Border.all(
-                    color:
-                        Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
-                    width: 1.5,
-                  ),
+                  color: isDarkMode ? theme.colorScheme.surfaceContainerHigh : theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(16),
                   child: Container(
-                    color: isDarkMode ? Colors.grey[850] : Colors.white,
+                    color: isDarkMode ? theme.colorScheme.surfaceContainerHigh : theme.colorScheme.surface,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primary
+                          color: theme.colorScheme.primary
                               .withValues(alpha: 0.1),
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 10),
                           child: Row(
                             children: [
                               Icon(
-                                Icons.search,
+                                PhosphorIconsLight.magnifyingGlass,
                                 size: 18,
-                                color: Theme.of(context).colorScheme.primary,
+                                color: theme.colorScheme.primary,
                               ),
                               const SizedBox(width: 8),
                               Text(
@@ -397,7 +383,7 @@ class _TagManagementSectionState extends State<TagManagementSection> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
-                                  color: Theme.of(context).colorScheme.primary,
+                                  color: theme.colorScheme.primary,
                                 ),
                               ),
                               const Spacer(),
@@ -409,9 +395,9 @@ class _TagManagementSectionState extends State<TagManagementSection> {
                                   });
                                 },
                                 child: Icon(
-                                  Icons.close,
+                                  PhosphorIconsLight.x,
                                   size: 20,
-                                  color: Theme.of(context).colorScheme.primary,
+                                  color: theme.colorScheme.primary,
                                 ),
                               ),
                             ],
@@ -420,7 +406,7 @@ class _TagManagementSectionState extends State<TagManagementSection> {
                         Divider(
                             height: 1,
                             thickness: 1,
-                            color: Colors.grey.withValues(alpha: 0.2)),
+                            color: theme.dividerColor),
                         Expanded(
                           // Wrap ListView.builder with Expanded
                           child: ListView.builder(
@@ -447,7 +433,7 @@ class _TagManagementSectionState extends State<TagManagementSection> {
                                   child: ListTile(
                                     dense: true,
                                     leading:
-                                        const Icon(Icons.local_offer, size: 20),
+                                        const Icon(PhosphorIconsLight.tag, size: 20),
                                     title: Text(
                                       suggestion,
                                       style: const TextStyle(fontSize: 16),
@@ -503,3 +489,7 @@ class _TagManagementSectionState extends State<TagManagementSection> {
     );
   }
 }
+
+
+
+

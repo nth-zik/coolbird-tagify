@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../helpers/files/file_icon_helper.dart';
 import '../../widgets/thumbnail_loader.dart';
 import '../../widgets/lazy_video_thumbnail.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 /// A reusable widget for optimized touch/mouse interactions
 /// that handles tap, double-tap, long-press and secondary tap events without delay
@@ -122,7 +122,7 @@ class OptimizedFileIcon extends StatefulWidget {
     this.isVideo = false,
     this.isImage = false,
     this.size = 24,
-    this.fallbackIcon = remix.Remix.file_3_line,
+    this.fallbackIcon = PhosphorIconsLight.file,
     this.fallbackColor,
     this.borderRadius,
   }) : super(key: key);
@@ -242,3 +242,6 @@ class FileUtils {
     }
   }
 }
+
+
+

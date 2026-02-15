@@ -7,7 +7,7 @@ import 'package:cb_file_manager/helpers/media/video_thumbnail_helper.dart';
 import 'package:cb_file_manager/helpers/network/network_thumbnail_helper.dart';
 import 'package:cb_file_manager/ui/widgets/lazy_video_thumbnail.dart';
 import 'package:cb_file_manager/ui/utils/scroll_velocity_notifier.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 /// Memory pool để tái sử dụng image objects và giảm memory fragmentation
 class ImageMemoryPool {
@@ -766,7 +766,7 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
                 // Add video play icon overlay
                 const Center(
                   child: Icon(
-                    remix.Remix.play_circle_line,
+                    PhosphorIconsLight.playCircle,
                     color: Colors.white,
                     size: 32,
                   ),
@@ -1047,23 +1047,27 @@ class _ThumbnailLoaderState extends State<ThumbnailLoader>
       return Container(
         color: Colors.black12,
         child: const Center(
-          child: Icon(remix.Remix.video_line, size: 36, color: Colors.red),
+          child: Icon(PhosphorIconsLight.videoCamera, size: 36, color: Colors.red),
         ),
       );
     } else if (widget.isImage) {
       return Container(
         color: Colors.black12,
         child: const Center(
-          child: Icon(remix.Remix.image_line, size: 36, color: Colors.blue),
+          child: Icon(PhosphorIconsLight.image, size: 36, color: Colors.blue),
         ),
       );
     } else {
       return Container(
         color: Colors.black12,
         child: const Center(
-          child: Icon(remix.Remix.file_3_line, size: 36, color: Colors.grey),
+          child: Icon(PhosphorIconsLight.file, size: 36, color: Colors.grey),
         ),
       );
     }
   }
 }
+
+
+
+

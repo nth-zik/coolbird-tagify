@@ -114,7 +114,7 @@ class _SkeletonState extends State<Skeleton>
           width: widget.width,
           height: widget.height,
           decoration: BoxDecoration(
-            borderRadius: widget.borderRadius ?? BorderRadius.circular(10),
+            borderRadius: widget.borderRadius ?? BorderRadius.circular(16),
             gradient: LinearGradient(
               begin: Alignment(-1.2 + shift, -0.3),
               end: Alignment(1.2 + shift, 0.3),
@@ -126,10 +126,6 @@ class _SkeletonState extends State<Skeleton>
                 baseColor
               ],
               stops: const [0.0, 0.35, 0.5, 0.65, 1.0],
-            ),
-            border: Border.all(
-              color: cs.outlineVariant.withValues(alpha: 0.08),
-              width: 0.6,
             ),
           ),
         );
@@ -194,7 +190,7 @@ class _SkeletonState extends State<Skeleton>
     return ShimmerBox(
       width: widget.width ?? double.infinity,
       height: widget.height ?? double.infinity,
-      borderRadius: widget.borderRadius ?? BorderRadius.circular(8),
+      borderRadius: widget.borderRadius ?? BorderRadius.circular(16.0),
     );
   }
 
@@ -251,16 +247,8 @@ class _SkeletonListItem extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
       padding: const EdgeInsets.all(12.0),
       decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark
-            ? Colors.grey[800]?.withValues(alpha: 0.3)
-            : Colors.grey[100]?.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? Colors.white.withValues(alpha: 0.05)
-              : Colors.black.withValues(alpha: 0.05),
-          width: 0.5,
-        ),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: [
@@ -279,7 +267,7 @@ class _SkeletonListItem extends StatelessWidget {
                 ShimmerBox(
                   width: double.infinity,
                   height: 18, // Always use album size
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(16.0),
                   controller: controller,
                   delay:
                       Duration(milliseconds: (index * 80 + 40).clamp(0, 840)),
@@ -288,7 +276,7 @@ class _SkeletonListItem extends StatelessWidget {
                 ShimmerBox(
                   width: MediaQuery.of(context).size.width * 0.6,
                   height: 16, // Always use album size
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(16.0),
                   controller: controller,
                   delay:
                       Duration(milliseconds: (index * 80 + 80).clamp(0, 880)),
@@ -314,7 +302,7 @@ class _SkeletonListItem extends StatelessWidget {
       return RepaintBoundary(
         child: Card(
           margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-          elevation: 1,
+          elevation: 0,
           child: content,
         ),
       );
@@ -340,16 +328,8 @@ class _SkeletonGridItem extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(8.0),
         decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? Colors.grey[800]?.withValues(alpha: 0.2)
-              : Colors.grey[50]?.withValues(alpha: 0.8),
+          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white.withValues(alpha: 0.05)
-                : Colors.black.withValues(alpha: 0.05),
-            width: 0.5,
-          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -357,7 +337,7 @@ class _SkeletonGridItem extends StatelessWidget {
             Expanded(
               child: ClipRRect(
                 borderRadius:
-                    BorderRadius.circular(12), // Always use album style
+                    BorderRadius.circular(16.0), // Always use album style
                 child: ShimmerBox(
                   width: double.infinity,
                   height: double.infinity,
@@ -370,7 +350,7 @@ class _SkeletonGridItem extends StatelessWidget {
             ShimmerBox(
               width: double.infinity,
               height: 16, // Always use album size
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(16.0),
               controller: controller,
               delay: Duration(milliseconds: (index * 60 + 30).clamp(0, 630)),
             ),
@@ -378,7 +358,7 @@ class _SkeletonGridItem extends StatelessWidget {
             ShimmerBox(
               width: 100, // Always use album size
               height: 14, // Always use album size
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(16.0),
               controller: controller,
               delay: Duration(milliseconds: (index * 60 + 60).clamp(0, 660)),
             ),
@@ -408,19 +388,11 @@ class _SkeletonMasonryItem extends StatelessWidget {
         aspectRatio: aspectRatio,
         child: Container(
           decoration: BoxDecoration(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.grey[800]?.withValues(alpha: 0.2)
-                : Colors.grey[50]?.withValues(alpha: 0.8),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.white.withValues(alpha: 0.05)
-                  : Colors.black.withValues(alpha: 0.05),
-              width: 0.5,
-            ),
+            color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
             child: ShimmerBox(
               width: double.infinity,
               height: double.infinity,
@@ -503,7 +475,7 @@ class _ShimmerBoxState extends State<ShimmerBox>
         height: widget.height,
         decoration: BoxDecoration(
           color: baseColor,
-          borderRadius: widget.borderRadius ?? BorderRadius.circular(8),
+          borderRadius: widget.borderRadius ?? BorderRadius.circular(16.0),
         ),
       );
     }
@@ -516,7 +488,7 @@ class _ShimmerBoxState extends State<ShimmerBox>
           width: widget.width,
           height: widget.height,
           decoration: BoxDecoration(
-            borderRadius: widget.borderRadius ?? BorderRadius.circular(8),
+            borderRadius: widget.borderRadius ?? BorderRadius.circular(16.0),
             gradient: LinearGradient(
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
@@ -543,3 +515,4 @@ Color _skeletonColor(BuildContext context) {
   return theme.colorScheme.surfaceContainerHighest
       .withValues(alpha: theme.brightness == Brightness.dark ? 0.35 : 0.6);
 }
+

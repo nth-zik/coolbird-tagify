@@ -347,6 +347,20 @@ class VietnameseLocalizations implements AppLocalizations {
   @override
   String get darkThemeDescription => 'Giao diện tối cho tất cả màn hình';
   @override
+  String get themeOnboardingTitle => 'Chọn giao diện';
+  @override
+  String get themeOnboardingDescription =>
+      'Chọn giao diện mặc định trước khi vào ứng dụng.';
+  @override
+  String get themeOnboardingLightLabel => 'Sáng';
+  @override
+  String get themeOnboardingDarkLabel => 'Tối';
+  @override
+  String get themeOnboardingMoreThemesMessage =>
+      'Bạn có thể chọn thêm nhiều giao diện khác trong Cài đặt.';
+  @override
+  String get themeOnboardingContinue => 'Tiếp tục';
+  @override
   String get vietnameseLanguage => 'Tiếng Việt';
   @override
   String get englishLanguage => 'Tiếng Anh';

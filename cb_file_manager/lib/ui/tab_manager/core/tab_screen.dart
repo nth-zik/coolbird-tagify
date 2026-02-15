@@ -4,7 +4,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart'; // Import for keyboard shortcuts
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:io';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/helpers/ui/frame_timing_optimizer.dart';
 import 'tab_manager.dart';
 import 'tab_data.dart';
@@ -473,8 +473,27 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                         // Modern AppBar, always present on tablet/desktop for custom title bar
                         appBar: isTablet
                             ? AppBar(
+                                automaticallyImplyLeading: false,
                                 elevation: 0,
                                 backgroundColor: theme.scaffoldBackgroundColor,
+                                leading: !_isDrawerPinned
+                                    ? IconButton(
+                                        icon: Icon(
+                                          PhosphorIconsLight.list,
+                                          color: isDarkMode
+                                              ? Colors.white
+                                                  .withValues(alpha: 0.9)
+                                              : theme.colorScheme.onSurface,
+                                          size: 22,
+                                        ),
+                                        tooltip: MaterialLocalizations.of(
+                                                context)
+                                            .openAppDrawerTooltip,
+                                        onPressed: () => _scaffoldKey
+                                            .currentState
+                                            ?.openDrawer(),
+                                      )
+                                    : null,
                                 // Always show ScrollableTabBar in the title for Windows (isTablet)
                                 // It handles its own content (tabs or add button) and window controls.
                                 title: KeyedSubtree(
@@ -604,11 +623,9 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                                                   ],
                                                   Icon(
                                                     tab.isPinned
-                                                        ? remix
-                                                            .Remix.pushpin_fill
+                                                        ? PhosphorIconsLight.pushPin
                                                         : tab.icon ??
-                                                            remix.Remix
-                                                                .folder_3_line,
+                                                            PhosphorIconsLight.folder,
                                                     size: 16,
                                                   ),
                                                   const SizedBox(width: 8),
@@ -634,21 +651,18 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                                     padding: const EdgeInsets.only(right: 8.0),
                                     child: IconButton(
                                       icon: Icon(
-                                        remix.Remix.more_2_line,
+                                        PhosphorIconsLight.dotsThree,
                                         color: isDarkMode
-                                            ? Colors.white
-                                                .withValues(alpha: 0.8)
+                                            ? Colors.white.withValues(alpha: 0.8)
                                             : theme.colorScheme.primary,
                                         size: 22,
                                       ),
                                       style: IconButton.styleFrom(
                                         shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(10),
+                                          borderRadius: BorderRadius.circular(16.0),
                                         ),
                                         backgroundColor: isDarkMode
-                                            ? Colors.white
-                                                .withValues(alpha: 0.03)
+                                            ? Colors.white.withValues(alpha: 0.03)
                                             : theme.colorScheme.primary
                                                 .withValues(alpha: 0.05),
                                       ),
@@ -709,13 +723,13 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                                     null, // Disable hero animation to avoid conflicts
                                 onPressed: _handleAddNewTab,
                                 tooltip: context.tr.newFolder,
-                                elevation: 2,
+                                elevation: 0,
                                 backgroundColor: theme.colorScheme.primary,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: const Icon(
-                                  remix.Remix.add_line,
+                                  PhosphorIconsLight.plus,
                                   size: 24,
                                 ),
                               )
@@ -919,7 +933,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                       : (isDarkMode
                           ? Colors.white.withAlpha((0.06 * 255).round())
                           : Colors.black.withAlpha((0.04 * 255).round())),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16.0),
                 ),
                 child: child,
               );
@@ -939,13 +953,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                 decoration: BoxDecoration(
                   color: bg,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withAlpha((0.12 * 255).round()),
-                      blurRadius: 24,
-                      offset: const Offset(0, 12),
-                    ),
-                  ],
+                  boxShadow: [],
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -971,7 +979,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                     buildTarget(
                       child: Row(
                         children: [
-                          const Icon(Icons.open_in_new, size: 18),
+                          const Icon(PhosphorIconsLight.arrowSquareOut, size: 18),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
@@ -1015,7 +1023,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                           child: buildTarget(
                             child: Row(
                               children: [
-                                const Icon(Icons.window, size: 18),
+                                const Icon(PhosphorIconsLight.appWindow, size: 18),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
@@ -1329,7 +1337,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                     const Spacer(),
                     IconButton(
                       icon: Icon(
-                        remix.Remix.close_line,
+                        PhosphorIconsLight.x,
                         size: 20,
                         color: textColor?.withValues(alpha: 0.7),
                       ),
@@ -1340,7 +1348,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                             ? Colors.white.withValues(alpha: 0.05)
                             : Colors.black.withValues(alpha: 0.05),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(16.0),
                         ),
                       ),
                     ),
@@ -1351,7 +1359,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
               // Option items
               _buildOptionItem(
                 context,
-                icon: remix.Remix.add_circle_line,
+                icon: PhosphorIconsLight.plusCircle,
                 text: context.tr.addNewTab,
                 onTap: () {
                   RouteUtils.safePopDialog(context);
@@ -1360,7 +1368,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
               ),
               _buildOptionItem(
                 context,
-                icon: remix.Remix.close_line,
+                icon: PhosphorIconsLight.x,
                 text: context.tr.closeTab,
                 onTap: () {
                   RouteUtils.safePopDialog(context);
@@ -1371,7 +1379,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
               // Add 'Close all tabs' option
               _buildOptionItem(
                 context,
-                icon: remix.Remix.close_circle_line,
+                icon: PhosphorIconsLight.xCircle,
                 text: context.tr.closeAllTabs,
                 onTap: () {
                   RouteUtils.safePopDialog(context);
@@ -1381,7 +1389,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
               if (_isDesktop)
                 _buildOptionItem(
                   context,
-                  icon: remix.Remix.window_2_line,
+                  icon: PhosphorIconsLight.appWindow,
                   text: context.tr.newWindow,
                   onTap: () async {
                     RouteUtils.safePopDialog(context);
@@ -1391,7 +1399,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
               if (_isDesktop)
                 _buildOptionItem(
                   context,
-                  icon: Icons.call_merge,
+                  icon: PhosphorIconsLight.gitMerge,
                   text: context.tr.mergeWindowIntoThis,
                   onTap: () async {
                     RouteUtils.safePopDialog(context);
@@ -1400,7 +1408,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                 ),
               _buildOptionItem(
                 context,
-                icon: remix.Remix.settings_3_line,
+                icon: PhosphorIconsLight.gear,
                 text: context.tr.settings,
                 onTap: () {
                   RouteUtils.safePopDialog(context);
@@ -1445,7 +1453,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16.0),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         child: Row(
@@ -1457,7 +1465,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                 color: isDarkMode
                     ? theme.colorScheme.primary.withValues(alpha: 0.1)
                     : theme.colorScheme.primary.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(16.0),
               ),
               child: Icon(
                 icon,
@@ -1508,3 +1516,11 @@ class _ResolvedTabMoveSelection {
     required this.payloads,
   });
 }
+
+
+
+
+
+
+
+

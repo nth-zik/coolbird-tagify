@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'external_app_helper.dart';
 import 'windows_app_icon.dart';
 import 'package:cb_file_manager/helpers/files/file_type_registry.dart';
@@ -37,13 +37,13 @@ class FileIconHelper {
 
     // For images and videos, return a generic icon
     if (_isImageFile(extension)) {
-      final icon = Icon(remix.Remix.image_line, size: size, color: Colors.blue);
+      final icon = Icon(PhosphorIconsLight.image, size: size, color: Colors.blue);
       _iconCache[cacheKey] = icon;
       return icon;
     }
 
     if (_isVideoFile(extension)) {
-      final icon = Icon(remix.Remix.video_line, size: size, color: Colors.red);
+      final icon = Icon(PhosphorIconsLight.videoCamera, size: size, color: Colors.red);
       _iconCache[cacheKey] = icon;
       return icon;
     }
@@ -83,7 +83,7 @@ class FileIconHelper {
           AppLogger.debug('APK_ICON_DEBUG:No app info returned for APK, using fallback');
           // Use fallback APK icon
           final Widget fallbackIcon = Icon(
-            remix.Remix.smartphone_line,
+            PhosphorIconsLight.deviceMobile,
             size: size,
             color: Colors.green,
           );
@@ -240,7 +240,7 @@ class FileIconHelper {
     // Test creating a simple APK icon
     AppLogger.debug('APK_ICON_DEBUG:Testing simple APK icon creation...');
     const testIcon = Icon(
-      remix.Remix.smartphone_line,
+      PhosphorIconsLight.deviceMobile,
       size: 24,
       color: Colors.green,
     );
@@ -270,3 +270,7 @@ class FileIconHelper {
     return FileTypeRegistry.isCategory(extension, FileCategory.video);
   }
 }
+
+
+
+

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
 import 'package:cb_file_manager/helpers/core/user_preferences.dart';
 import 'package:cb_file_manager/models/database/database_manager.dart';
@@ -79,7 +80,7 @@ Popular Tags: $popularTags
         title: const Text('Debug Tags'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(PhosphorIconsLight.arrowsClockwise),
             onPressed: _loadDebugInfo,
           ),
         ],
@@ -181,6 +182,9 @@ Popular Tags: $popularTags
     );
   }
 }
+
+
+
 
 
 

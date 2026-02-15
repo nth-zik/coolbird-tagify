@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import 'network_service_base.dart';
 
@@ -69,7 +69,7 @@ class WebDAVService implements NetworkServiceBase {
   String get serviceDescription => 'Web Distributed Authoring and Versioning';
 
   @override
-  IconData get serviceIcon => remix.Remix.global_line;
+  IconData get serviceIcon => PhosphorIconsLight.globe;
 
   @override
   bool isAvailable() => true; // Available on all platforms
@@ -748,3 +748,7 @@ class WebDAVResponse {
     required this.headers,
   });
 }
+
+
+
+

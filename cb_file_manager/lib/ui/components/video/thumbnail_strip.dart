@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter/gestures.dart'; // Thêm import cho gesture detector
 
 class ThumbnailStrip extends StatefulWidget {
@@ -130,7 +131,7 @@ class _ThumbnailStripState extends State<ThumbnailStrip> {
                     color: isSelected ? Colors.blue : Colors.transparent,
                     width: 2.0,
                   ),
-                  borderRadius: BorderRadius.circular(4.0),
+                  borderRadius: BorderRadius.circular(16.0),
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(2.0),
@@ -173,7 +174,7 @@ class _ThumbnailStripState extends State<ThumbnailStrip> {
                 height: widget.thumbnailSize,
                 color: Colors.grey[800],
                 child: const Icon(
-                  Icons.broken_image,
+                  PhosphorIconsLight.imageBroken,
                   color: Colors.white70,
                 ),
               );
@@ -184,3 +185,8 @@ class _ThumbnailStripState extends State<ThumbnailStrip> {
     );
   }
 }
+
+
+
+
+

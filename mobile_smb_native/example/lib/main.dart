@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:mobile_smb_native/mobile_smb_native.dart';
 
 void main() {
@@ -294,7 +295,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           ),
                           IconButton(
                             onPressed: (_platformStatus['nativeAvailable'] ?? false) ? _listDirectory : null,
-                            icon: const Icon(Icons.refresh),
+                            icon: const Icon(PhosphorIconsRegular.arrowsClockwise),
                           ),
                         ],
                       ),
@@ -314,7 +315,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       final file = _files[index];
                       return ListTile(
                         leading: Icon(
-                          file.isDirectory ? Icons.folder : Icons.insert_drive_file,
+                          file.isDirectory ? PhosphorIconsRegular.folder : PhosphorIconsRegular.file,
                         ),
                         title: Text(file.name),
                         subtitle: Text(

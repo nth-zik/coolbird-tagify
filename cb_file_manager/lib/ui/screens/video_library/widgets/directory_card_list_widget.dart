@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 
 /// A reusable widget for displaying directories as cards (used in settings screen)
@@ -37,10 +38,10 @@ class DirectoryCardListWidget extends StatelessWidget {
       children: directories.map((directory) {
         return Card(
           child: ListTile(
-            leading: const Icon(Icons.folder),
+            leading: const Icon(PhosphorIconsLight.folder),
             title: Text(directory),
             trailing: IconButton(
-              icon: const Icon(Icons.delete),
+              icon: const Icon(PhosphorIconsLight.trash),
               onPressed: () => onRemove(directory),
               tooltip: localizations.removeVideoSource,
             ),
@@ -50,5 +51,9 @@ class DirectoryCardListWidget extends StatelessWidget {
     );
   }
 }
+
+
+
+
 
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/services/network_browsing/optimized_smb_service.dart';
 import '../components/streaming/stream_speed_indicator.dart';
 import '../utils/route.dart';
@@ -106,7 +107,7 @@ class _StreamingPerformanceDialogState
                 ),
                 IconButton(
                   onPressed: () => RouteUtils.safePopDialog(context),
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(PhosphorIconsLight.x),
                 ),
               ],
             ),
@@ -258,7 +259,7 @@ class _StreamingPerformanceDialogState
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.speed, size: 16),
+                      : const Icon(PhosphorIconsLight.speedometer, size: 16),
                   label: Text(_isBenchmarking ? 'Testing...' : 'Run Test'),
                 ),
               ],
@@ -287,7 +288,7 @@ class _StreamingPerformanceDialogState
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.red.shade50,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(16.0),
         ),
         child: Text(
           'Error: $error',
@@ -307,7 +308,7 @@ class _StreamingPerformanceDialogState
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16.0),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -360,3 +361,8 @@ class _StreamingPerformanceDialogState
     );
   }
 }
+
+
+
+
+

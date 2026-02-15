@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../../config/languages/app_localizations.dart';
 
@@ -76,7 +77,7 @@ class VideoPlayerAdvancedMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert, color: Colors.white, size: 24),
+      icon: const Icon(PhosphorIconsLight.dotsThreeVertical, color: Colors.white, size: 24),
       color: Colors.black.withValues(alpha: 0.9),
       tooltip: 'Advanced Controls',
       onSelected: (String value) {
@@ -111,7 +112,7 @@ class VideoPlayerAdvancedMenu extends StatelessWidget {
         PopupMenuItem<String>(
           value: 'screenshot',
           child: _VideoPlayerMenuTile(
-            icon: Icons.photo_camera,
+            icon: PhosphorIconsLight.camera,
             title: AppLocalizations.of(context)!.takeScreenshot,
           ),
         ),
@@ -119,7 +120,7 @@ class VideoPlayerAdvancedMenu extends StatelessWidget {
           const PopupMenuItem<String>(
             value: 'audio_tracks',
             child: _VideoPlayerMenuTile(
-              icon: Icons.audiotrack,
+              icon: PhosphorIconsLight.musicNotes,
               title: 'Audio Tracks',
             ),
           ),
@@ -127,7 +128,7 @@ class VideoPlayerAdvancedMenu extends StatelessWidget {
           value: 'subtitles',
           enabled: hasSubtitles,
           child: _VideoPlayerMenuTile(
-            icon: Icons.subtitles,
+            icon: PhosphorIconsLight.subtitles,
             title: 'Subtitles',
             iconColor: hasSubtitles ? Colors.white : Colors.grey,
             titleColor: hasSubtitles ? Colors.white : Colors.grey,
@@ -136,7 +137,7 @@ class VideoPlayerAdvancedMenu extends StatelessWidget {
         PopupMenuItem<String>(
           value: 'speed',
           child: _VideoPlayerMenuTile(
-            icon: Icons.speed,
+            icon: PhosphorIconsLight.speedometer,
             title: 'Playback Speed (${playbackSpeed}x)',
           ),
         ),
@@ -144,22 +145,22 @@ class VideoPlayerAdvancedMenu extends StatelessWidget {
           value: 'pip',
           child: _VideoPlayerMenuTile(
             icon: isPictureInPicture
-                ? Icons.picture_in_picture_alt
-                : Icons.picture_in_picture,
+                ? PhosphorIconsLight.pictureInpicture
+                : PhosphorIconsLight.pictureInpicture,
             title: isPictureInPicture ? 'Exit PiP' : 'Picture in Picture',
           ),
         ),
         const PopupMenuItem<String>(
           value: 'filters',
           child: _VideoPlayerMenuTile(
-            icon: Icons.tune,
+            icon: PhosphorIconsLight.slidersHorizontal,
             title: 'Video Filters',
           ),
         ),
         PopupMenuItem<String>(
           value: 'sleep_timer',
           child: _VideoPlayerMenuTile(
-            icon: Icons.bedtime,
+            icon: PhosphorIconsLight.moon,
             title: sleepDuration != null ? 'Sleep Timer (Active)' : 'Sleep Timer',
             iconColor: sleepDuration != null ? Colors.orange : Colors.white,
             titleColor: sleepDuration != null ? Colors.orange : Colors.white,
@@ -169,7 +170,7 @@ class VideoPlayerAdvancedMenu extends StatelessWidget {
         const PopupMenuItem<String>(
           value: 'settings',
           child: _VideoPlayerMenuTile(
-            icon: Icons.settings,
+            icon: PhosphorIconsLight.gear,
             title: 'Video Settings',
           ),
         ),
@@ -177,3 +178,8 @@ class VideoPlayerAdvancedMenu extends StatelessWidget {
     );
   }
 }
+
+
+
+
+

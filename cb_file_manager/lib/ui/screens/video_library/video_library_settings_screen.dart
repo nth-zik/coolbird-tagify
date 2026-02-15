@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/models/objectbox/video_library.dart';
 import 'package:cb_file_manager/models/objectbox/video_library_config.dart';
 import 'package:cb_file_manager/services/video_library_service.dart';
@@ -151,7 +152,7 @@ class _VideoLibrarySettingsScreenState
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      Icon(Icons.movie, color: theme.colorScheme.primary),
+                      Icon(PhosphorIconsLight.filmStrip, color: theme.colorScheme.primary),
                       const SizedBox(width: 8),
                       Text(
                         '${_config!.fileCount} ${localizations.videos.toLowerCase()}',
@@ -177,7 +178,7 @@ class _VideoLibrarySettingsScreenState
           // Add Source Button
           Card(
             child: ListTile(
-              leading: const Icon(Icons.add_circle_outline),
+              leading: const Icon(PhosphorIconsLight.plusCircle),
               title: Text(localizations.addVideoSource),
               onTap: _addDirectory,
             ),
@@ -218,7 +219,7 @@ class _VideoLibrarySettingsScreenState
           // Video Extensions (Display only for now)
           Card(
             child: ListTile(
-              leading: const Icon(Icons.video_file),
+              leading: const Icon(PhosphorIconsLight.videoCamera),
               title: Text(localizations.videoExtensions),
               subtitle: Text(_config!.fileExtensions),
             ),
@@ -229,7 +230,7 @@ class _VideoLibrarySettingsScreenState
           // Actions
           FilledButton.icon(
             onPressed: _rescanLibrary,
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(PhosphorIconsLight.arrowsClockwise),
             label: Text(localizations.rescanLibrary),
           ),
         ],
@@ -237,3 +238,7 @@ class _VideoLibrarySettingsScreenState
     );
   }
 }
+
+
+
+

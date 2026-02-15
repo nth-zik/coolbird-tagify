@@ -4,7 +4,7 @@ import 'dart:async';
 
 import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:image/image.dart' as img;
@@ -121,7 +121,7 @@ class SMBService implements ISmbService {
   String get serviceDescription => 'Windows Shared Folders (SMB via Win32)';
 
   @override
-  IconData get serviceIcon => remix.Remix.folder_3_line;
+  IconData get serviceIcon => PhosphorIconsLight.folder;
 
   @override
   bool isAvailable() => Platform.isWindows;
@@ -857,3 +857,7 @@ class SMBService implements ISmbService {
     }
   }
 }
+
+
+
+

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Thêm import cho SystemUiOverlayStyle
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:io'; // Thêm import cho Platform
-import 'package:remixicon/remixicon.dart' as remix; 
+import 'package:phosphor_flutter/phosphor_flutter.dart'; 
 import 'core/tab_manager.dart';
 import 'core/tab_data.dart';
 import '../screens/settings/settings_screen.dart';
@@ -105,7 +105,7 @@ class MobileTabView extends StatelessWidget {
         children: [
           // Nút menu
           IconButton(
-            icon: Icon(remix.Remix.menu_line, color: textColor),
+            icon: Icon(PhosphorIconsLight.list, color: textColor),
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
 
@@ -128,7 +128,7 @@ class MobileTabView extends StatelessWidget {
 
           // Nút tạo tab mới nhanh (đặt trước nút số lượng tab)
           IconButton(
-            icon: Icon(remix.Remix.add_line, color: textColor),
+            icon: Icon(PhosphorIconsLight.plus, color: textColor),
             tooltip: 'New tab',
             onPressed: onAddNewTab,
           ),
@@ -138,7 +138,7 @@ class MobileTabView extends StatelessWidget {
 
           // Nút menu tùy chọn
           IconButton(
-            icon: Icon(remix.Remix.more_2_line, color: textColor),
+            icon: Icon(PhosphorIconsLight.dotsThree, color: textColor),
             onPressed: () => _showMobileTabOptions(context),
           ),
         ],
@@ -168,7 +168,7 @@ class MobileTabView extends StatelessWidget {
         children: [
           // Nút menu để mở drawer
           IconButton(
-            icon: Icon(remix.Remix.menu_line, color: textColor),
+            icon: Icon(PhosphorIconsLight.list, color: textColor),
             onPressed: () {
               // Mở Scaffold drawer
               Scaffold.of(context).openDrawer();
@@ -189,7 +189,7 @@ class MobileTabView extends StatelessWidget {
 
           // Nút thêm tab mới nhanh (đặt trước nút số lượng tab)
           IconButton(
-            icon: Icon(remix.Remix.add_line, color: textColor),
+            icon: Icon(PhosphorIconsLight.plus, color: textColor),
             tooltip: 'New tab',
             onPressed: onAddNewTab,
           ),
@@ -199,7 +199,7 @@ class MobileTabView extends StatelessWidget {
 
           // Nút menu tùy chọn
           IconButton(
-            icon: Icon(remix.Remix.more_2_line, color: textColor),
+            icon: Icon(PhosphorIconsLight.dotsThree, color: textColor),
             onPressed: () {
               _showMobileTabOptions(context);
             },
@@ -266,7 +266,7 @@ class MobileTabView extends StatelessWidget {
                   children: [
                     // Thêm tab mới
                     ListTile(
-                      leading: const Icon(remix.Remix.add_line),
+                      leading: const Icon(PhosphorIconsLight.plus),
                       title: const Text('Thêm tab mới'),
                       onTap: () {
                         Navigator.pop(bottomSheetContext);
@@ -277,7 +277,7 @@ class MobileTabView extends StatelessWidget {
                     // Làm mới tab hiện tại
                     if (activeTab != null)
                       ListTile(
-                        leading: const Icon(remix.Remix.refresh_line),
+                        leading: const Icon(PhosphorIconsLight.arrowsClockwise),
                         title: const Text('Làm mới tab'),
                         onTap: () {
                           Navigator.pop(bottomSheetContext);
@@ -289,7 +289,7 @@ class MobileTabView extends StatelessWidget {
                     // Xem thông tin chi tiết về tab
                     if (activeTab != null)
                       ListTile(
-                        leading: const Icon(remix.Remix.information_line),
+                        leading: const Icon(PhosphorIconsLight.info),
                         title: const Text('Thông tin tab'),
                         onTap: () {
                           Navigator.pop(bottomSheetContext);
@@ -300,7 +300,7 @@ class MobileTabView extends StatelessWidget {
                     // Đóng tất cả các tab
                     if (state.tabs.isNotEmpty)
                       ListTile(
-                        leading: const Icon(remix.Remix.close_line),
+                        leading: const Icon(PhosphorIconsLight.x),
                         title: const Text('Đóng tất cả các tab'),
                         onTap: () {
                           RouteUtils.safePopDialog(bottomSheetContext);
@@ -318,7 +318,7 @@ class MobileTabView extends StatelessWidget {
 
                     // Cài đặt
                     ListTile(
-                      leading: const Icon(remix.Remix.settings_3_line),
+                      leading: const Icon(PhosphorIconsLight.gear),
                       title: const Text('Cài đặt'),
                       onTap: () {
                         RouteUtils.safePopDialog(bottomSheetContext);
@@ -487,7 +487,7 @@ class MobileTabView extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Icon(
-              remix.Remix.file_3_line,
+              PhosphorIconsLight.file,
               size: 16,
               color: textColor,
             ),
@@ -540,7 +540,7 @@ class MobileTabView extends StatelessWidget {
                         const Spacer(),
                         // Nút thêm tab mới
                         IconButton(
-                          icon: const Icon(remix.Remix.add_line),
+                          icon: const Icon(PhosphorIconsLight.plus),
                           tooltip: 'Add new tab',
                           onPressed: () {
                             Navigator.pop(newContext); // Đóng bottom sheet
@@ -623,7 +623,7 @@ class MobileTabView extends StatelessWidget {
         : theme.dividerColor.withValues(alpha: 0.3);
 
     return InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16.0),
       onTap: () {
         if (!isActive) {
           BlocProvider.of<TabManagerBloc>(context).add(SwitchToTab(tab.id));
@@ -633,15 +633,9 @@ class MobileTabView extends StatelessWidget {
       child: Ink(
         decoration: BoxDecoration(
           color: theme.cardColor,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16.0),
           border: Border.all(color: borderColor),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: [],
         ),
         child: Stack(
           children: [
@@ -651,14 +645,14 @@ class MobileTabView extends StatelessWidget {
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16.0),
                   onTap: () {
                     BlocProvider.of<TabManagerBloc>(context)
                         .add(CloseTab(tab.id));
                   },
                   child: const Padding(
                     padding: EdgeInsets.all(6.0),
-                    child: Icon(Icons.close, size: 16),
+                    child: Icon(PhosphorIconsLight.x, size: 16),
                   ),
                 ),
               ),
@@ -671,7 +665,7 @@ class MobileTabView extends StatelessWidget {
                   Row(
                     children: [
                       Icon(
-                        tab.isPinned ? remix.Remix.pushpin_fill : remix.Remix.folder_3_line,
+                        tab.isPinned ? PhosphorIconsLight.pushPin : PhosphorIconsLight.folder,
                         size: 18,
                         color: isActive
                             ? theme.colorScheme.primary
@@ -701,11 +695,11 @@ class MobileTabView extends StatelessWidget {
                       decoration: BoxDecoration(
                         color:
                             theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(16.0),
                       ),
                       alignment: Alignment.center,
                       child: Icon(
-                        remix.Remix.file_text_line,
+                        PhosphorIconsLight.fileText,
                         size: 28,
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -744,7 +738,7 @@ class MobileTabView extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(
-            remix.Remix.file_3_line,
+            PhosphorIconsLight.file,
             size: 64,
             color: Colors.grey,
           ),
@@ -760,7 +754,7 @@ class MobileTabView extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
-            icon: const Icon(remix.Remix.add_line),
+            icon: const Icon(PhosphorIconsLight.plus),
             label: const Text('New Tab'),
             onPressed: onAddNewTab,
           ),
@@ -904,7 +898,7 @@ class MobileTabView extends StatelessWidget {
                       const Spacer(),
                       // Nút đóng
                       IconButton(
-                        icon: Icon(remix.Remix.close_line, color: textColor),
+                        icon: Icon(PhosphorIconsLight.x, color: textColor),
                         onPressed: () => Navigator.pop(newContext),
                       ),
                     ],
@@ -921,7 +915,7 @@ class MobileTabView extends StatelessWidget {
                     padding: const EdgeInsets.all(8.0),
                     decoration: BoxDecoration(
                       color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
-                      borderRadius: BorderRadius.circular(8.0),
+                      borderRadius: BorderRadius.circular(16.0),
                     ),
                     child: Text(
                       tab.path.isEmpty ? 'Drives' : tab.path,
@@ -963,7 +957,7 @@ class MobileTabView extends StatelessWidget {
 
                       return ListTile(
                         leading: Icon(
-                          index == 0 ? Icons.computer : Icons.folder,
+                          index == 0 ? PhosphorIconsLight.desktop : PhosphorIconsLight.folder,
                           color: theme.colorScheme.primary,
                         ),
                         title: Text(
@@ -1180,12 +1174,12 @@ class AddressBarWidget extends StatelessWidget {
         decoration: BoxDecoration(
           // Nền rõ ràng cho thanh địa chỉ (đồng nhất dark)
           color: isDarkMode ? const Color(0xFF0F2C4C) : Colors.grey[200],
-          borderRadius: BorderRadius.circular(12.0),
+          borderRadius: BorderRadius.circular(16.0),
         ),
         child: Row(
           children: [
             Icon(
-              remix.Remix.search_line,
+              PhosphorIconsLight.magnifyingGlass,
               size: 18,
               color: isDarkMode ? Colors.white70 : Colors.black87,
             ),
@@ -1200,7 +1194,7 @@ class AddressBarWidget extends StatelessWidget {
               ),
             ),
             Icon(
-              remix.Remix.arrow_down_s_line,
+              PhosphorIconsLight.caretDown,
               size: 20,
               color: isDarkMode ? Colors.white54 : Colors.black54,
             ),
@@ -1210,3 +1204,10 @@ class AddressBarWidget extends StatelessWidget {
     );
   }
 }
+
+
+
+
+
+
+

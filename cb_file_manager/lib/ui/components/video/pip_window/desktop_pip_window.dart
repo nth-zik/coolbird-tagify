@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:window_manager/window_manager.dart';
@@ -431,7 +432,7 @@ class _DesktopPipWindowState extends State<DesktopPipWindow>
                           border: Border.all(color: Colors.white24, width: 1),
                         ),
                         child: const Icon(
-                          Icons.open_in_full,
+                          PhosphorIconsLight.cornersOut,
                           size: 12,
                           color: Colors.white70,
                         ),
@@ -483,7 +484,7 @@ class _DesktopPipWindowState extends State<DesktopPipWindow>
         child: Row(
           children: [
             const SizedBox(width: 4),
-            const Icon(Icons.picture_in_picture_alt,
+            const Icon(PhosphorIconsLight.pictureInpicture,
                 color: Colors.white70, size: 16),
             const SizedBox(width: 6),
             Expanded(
@@ -501,7 +502,7 @@ class _DesktopPipWindowState extends State<DesktopPipWindow>
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
-              icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow,
+              icon: Icon(_isPlaying ? PhosphorIconsLight.pause : PhosphorIconsLight.play,
                   color: Colors.white, size: 18),
               onPressed: () async {
                 if (_player == null) return;
@@ -519,7 +520,7 @@ class _DesktopPipWindowState extends State<DesktopPipWindow>
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
-              icon: const Icon(Icons.close, color: Colors.white, size: 18),
+              icon: const Icon(PhosphorIconsLight.x, color: Colors.white, size: 18),
               onPressed: () async {
                 try {
                   await windowManager.close();
@@ -648,8 +649,8 @@ class _DesktopPipWindowState extends State<DesktopPipWindow>
                 constraints: const BoxConstraints(),
                 icon: Icon(
                   _isPlaying
-                      ? Icons.pause_circle_filled
-                      : Icons.play_circle_fill,
+                      ? PhosphorIconsLight.pauseCircle
+                      : PhosphorIconsLight.playCircle,
                   color: Colors.white,
                   size: 28,
                 ),
@@ -699,7 +700,7 @@ class _DesktopPipWindowState extends State<DesktopPipWindow>
               Text(_formatTime(_duration),
                   style: const TextStyle(color: Colors.white70, fontSize: 12)),
               const SizedBox(width: 8),
-              const Icon(Icons.volume_up, color: Colors.white, size: 18),
+              const Icon(PhosphorIconsLight.speakerHigh, color: Colors.white, size: 18),
               const SizedBox(width: 4),
               SizedBox(
                 width: 90,
@@ -810,3 +811,8 @@ extension _IpcHelpers on _DesktopPipWindowState {
     } catch (_) {}
   }
 }
+
+
+
+
+

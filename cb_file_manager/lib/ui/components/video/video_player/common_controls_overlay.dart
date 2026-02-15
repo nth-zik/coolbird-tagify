@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import 'video_player_utils.dart';
 
@@ -76,31 +77,31 @@ class CommonVideoControlsOverlay extends StatelessWidget {
           Row(
             children: [
               IconButton(
-                icon: Icon(hasPrev ? Icons.skip_previous : Icons.skip_previous,
+                icon: Icon(hasPrev ? PhosphorIconsLight.skipBack : PhosphorIconsLight.skipBack,
                     color: hasPrev ? Colors.white : Colors.white24, size: 26),
                 onPressed: hasPrev ? onPrev : null,
               ),
               IconButton(
-                icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow,
+                icon: Icon(isPlaying ? PhosphorIconsLight.pause : PhosphorIconsLight.play,
                     color: Colors.white, size: 32),
                 onPressed: onPlayPause,
               ),
               IconButton(
-                icon: Icon(hasNext ? Icons.skip_next : Icons.skip_next,
+                icon: Icon(hasNext ? PhosphorIconsLight.skipForward : PhosphorIconsLight.skipForward,
                     color: hasNext ? Colors.white : Colors.white24, size: 26),
                 onPressed: hasNext ? onNext : null,
               ),
               const Spacer(),
               if (onScreenshot != null)
                 IconButton(
-                  icon: const Icon(Icons.photo_camera,
+                  icon: const Icon(PhosphorIconsLight.camera,
                       color: Colors.white, size: 22),
                   onPressed: onScreenshot,
                 ),
               if (onVolumeChange != null)
                 Row(
                   children: [
-                    const Icon(Icons.volume_up, color: Colors.white, size: 18),
+                    const Icon(PhosphorIconsLight.speakerHigh, color: Colors.white, size: 18),
                     SizedBox(
                       width: 100,
                       child: Slider(
@@ -116,7 +117,7 @@ class CommonVideoControlsOverlay extends StatelessWidget {
                 ),
               if (onToggleFullscreen != null)
                 IconButton(
-                  icon: const Icon(Icons.fullscreen,
+                  icon: const Icon(PhosphorIconsLight.cornersOut,
                       color: Colors.white, size: 22),
                   onPressed: onToggleFullscreen,
                 ),
@@ -127,3 +128,6 @@ class CommonVideoControlsOverlay extends StatelessWidget {
     );
   }
 }
+
+
+

@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../config/languages/app_localizations.dart';
 import '../../../bloc/network_browsing/network_browsing_bloc.dart';
@@ -250,6 +250,7 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
 
   Future<void> _deleteSavedHost(String host) async {
     final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -262,7 +263,7 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(l10n.delete, style: const TextStyle(color: Colors.red)),
+            child: Text(l10n.delete, style: TextStyle(color: theme.colorScheme.error)),
           ),
         ],
       ),
@@ -297,7 +298,7 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                   content: Text(l10n.connectionNotFoundToDelete(host)),
-                  backgroundColor: Colors.orange),
+                  backgroundColor: theme.colorScheme.secondary),
             );
           }
         }
@@ -408,6 +409,7 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return BlocProvider.value(
       value: _localBloc,
       child: BlocBuilder<NetworkBrowsingBloc, NetworkBrowsingState>(
@@ -498,7 +500,7 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
                         },
                         optionsViewBuilder: (context, onSelected, options) {
                           return Material(
-                            elevation: 4.0,
+                            elevation: 0,
                             child: ListView.builder(
                               padding: EdgeInsets.zero,
                               itemCount: options.length,
@@ -511,7 +513,7 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       IconButton(
-                                        icon: const Icon(remix.Remix.edit_line,
+                                        icon: Icon(PhosphorIconsLight.pencilSimple,
                                             size: 16),
                                         onPressed: () {
                                           // Stop dropdown from closing
@@ -557,8 +559,8 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
                           suffixIcon: IconButton(
                             icon: Icon(
                               _showPassword
-                                  ? remix.Remix.eye_line
-                                  : remix.Remix.eye_off_line,
+                                  ? PhosphorIconsLight.eye
+                                  : PhosphorIconsLight.eyeSlash,
                             ),
                             onPressed: isLoading
                                 ? null
@@ -642,19 +644,19 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.red.shade50,
-                            border: Border.all(color: Colors.red.shade200),
-                            borderRadius: BorderRadius.circular(8),
+                            color: theme.colorScheme.error.withOpacity(0.1),
+                            border: Border.all(color: theme.colorScheme.error.withOpacity(0.3)),
+                            borderRadius: BorderRadius.circular(16),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.error,
-                                  color: Colors.red.shade600, size: 20),
+                              Icon(PhosphorIconsLight.warning,
+                                  color: theme.colorScheme.error, size: 20),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   state.errorMessage!,
-                                  style: TextStyle(color: Colors.red.shade700),
+                                  style: TextStyle(color: theme.colorScheme.error),
                                 ),
                               ),
                             ],
@@ -747,11 +749,11 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
                             }
                           },
                 child: isLoading
-                    ? const SizedBox(
+                    ? SizedBox(
                         height: 20,
                         width: 20,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
+                            strokeWidth: 2, color: theme.colorScheme.onPrimary),
                       )
                     : Text(l10n.connect),
               ),
@@ -762,3 +764,7 @@ class _NetworkConnectionDialogState extends State<NetworkConnectionDialog> {
     );
   }
 }
+
+
+
+

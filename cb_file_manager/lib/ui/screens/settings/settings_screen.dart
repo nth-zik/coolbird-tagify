@@ -9,12 +9,15 @@ import 'package:cb_file_manager/helpers/network/network_thumbnail_helper.dart';
 import 'package:cb_file_manager/helpers/network/win32_smb_helper.dart';
 import 'package:cb_file_manager/helpers/core/app_path_helper.dart';
 import 'package:cb_file_manager/ui/screens/settings/database_settings_screen.dart';
-import 'package:cb_file_manager/ui/screens/settings/theme_settings_screen.dart';
 import 'package:cb_file_manager/ui/utils/format_utils.dart';
+import 'package:cb_file_manager/config/theme_config.dart';
+import 'package:cb_file_manager/providers/theme_provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:provider/provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -26,7 +29,6 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final UserPreferences _preferences = UserPreferences.instance;
   final LanguageController _languageController = LanguageController();
-  late ThemePreference _themePreference;
   late String _currentLanguageCode;
   late bool _isLoading = true;
 
@@ -44,6 +46,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // Use system default app for video (false = in-app player by default)
   late bool _useSystemDefaultForVideo;
+  bool _isThemeExpanded = false;
+  bool _isLanguageExpanded = false;
+  String _appVersion = '';
+
+  static const String _appAuthor = 'COOLBIRDZIK - ngtanhung41@gmail.com';
 
   // Cache clearing states
   final bool _isClearingVideoCache = false;
@@ -66,12 +73,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _loadPreferences();
     _loadCacheInfo();
+    _loadAppInfo();
+  }
+
+  Future<void> _loadAppInfo() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      final version = info.version.trim();
+      final build = info.buildNumber.trim();
+      final fullVersion = build.isEmpty ? version : '$version.$build';
+      if (!mounted) return;
+      setState(() {
+        _appVersion = fullVersion;
+      });
+    } catch (e) {
+      debugPrint('Error loading app info: $e');
+    }
   }
 
   Future<void> _loadPreferences() async {
     try {
       await _preferences.init();
-      final theme = await _preferences.getThemePreference();
       final percentage = await _preferences.getVideoThumbnailPercentage();
       final thumbnailMode = await _preferences.getThumbnailMode();
       final maxConcurrency = await _preferences.getMaxThumbnailConcurrency();
@@ -82,7 +104,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       if (mounted) {
         setState(() {
-          _themePreference = theme;
           _currentLanguageCode = _languageController.currentLocale.languageCode;
           _videoThumbnailPercentage = percentage;
           _thumbnailMode = thumbnailMode;
@@ -125,7 +146,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           behavior: SnackBarBehavior.floating,
           width: 200,
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
       );
     }
@@ -149,7 +170,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           behavior: SnackBarBehavior.floating,
           width: 320,
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
       );
     }
@@ -174,7 +195,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           behavior: SnackBarBehavior.floating,
           width: 200,
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
       );
     }
@@ -206,7 +227,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           behavior: SnackBarBehavior.floating,
           width: 200,
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
       );
     }
@@ -226,7 +247,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           behavior: SnackBarBehavior.floating,
           width: 280,
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
       );
     }
@@ -253,7 +274,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             behavior: SnackBarBehavior.floating,
             width: 320,
             shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
         );
       }
@@ -264,12 +285,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SnackBar(
             content: Text(
                 '${AppLocalizations.of(context)!.errorClearingThumbnail}$e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
             duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
             width: 320,
             shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
         );
       }
@@ -373,37 +394,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildQuickSettingsSection() {
     return _buildSectionCard(
       title: AppLocalizations.of(context)!.interface,
-      icon: remix.Remix.settings_3_line,
+      icon: PhosphorIconsLight.gear,
       children: [
-        _buildCompactSettingTile(
-          title: AppLocalizations.of(context)!.language,
-          subtitle: _currentLanguageCode == 'vi'
-              ? AppLocalizations.of(context)!.vietnameseLanguage
-              : AppLocalizations.of(context)!.englishLanguage,
-          icon: remix.Remix.global_line,
-          onTap: () => _showLanguageDialog(),
-        ),
-        _buildCompactSettingTile(
-          title: AppLocalizations.of(context)!.theme,
-          subtitle: _getThemeDisplayName(),
-          icon: remix.Remix.palette_line,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const ThemeSettingsScreen(),
-              ),
-            );
-          },
-        ),
+        _buildLanguageCollapseTile(),
+        _buildThemeCollapseTile(),
         _buildCompactSettingTile(
           title: AppLocalizations.of(context)!.showFileTags,
           subtitle: AppLocalizations.of(context)!.showFileTagsToggleDescription,
-          icon: remix.Remix.price_tag_3_line,
+          icon: PhosphorIconsLight.tag,
           trailing: Switch(
             value: _showFileTags,
             onChanged: _updateShowFileTags,
           ),
+        ),
+        _buildCompactSettingTile(
+          title: AppLocalizations.of(context)!.aboutApp,
+          subtitle:
+              '${AppLocalizations.of(context)!.appDescription} • v${_appVersion.isEmpty ? '-' : _appVersion} • $_appAuthor',
+          icon: PhosphorIconsLight.info,
         ),
       ],
     );
@@ -412,13 +420,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildMediaSettingsSection() {
     return _buildSectionCard(
       title: AppLocalizations.of(context)!.videoThumbnails,
-      icon: remix.Remix.video_line,
+      icon: PhosphorIconsLight.videoCamera,
       children: [
         _buildCompactSettingTile(
           title: AppLocalizations.of(context)!.useSystemDefaultForVideo,
           subtitle:
               AppLocalizations.of(context)!.useSystemDefaultForVideoDescription,
-          icon: remix.Remix.external_link_line,
+          icon: PhosphorIconsLight.arrowSquareOut,
           trailing: Switch(
             value: _useSystemDefaultForVideo,
             onChanged: _updateUseSystemDefaultForVideo,
@@ -442,7 +450,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       title: AppLocalizations.of(context)!.thumbnailModeFast,
                       description: AppLocalizations.of(context)!
                           .thumbnailModeFastDescription,
-                      icon: remix.Remix.flashlight_line,
+                      icon: PhosphorIconsLight.lightning,
                       isSelected: _thumbnailMode == 'fast',
                       onTap: () => _updateThumbnailMode('fast'),
                     ),
@@ -453,7 +461,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       title: AppLocalizations.of(context)!.thumbnailModeCustom,
                       description: AppLocalizations.of(context)!
                           .thumbnailModeCustomDescription,
-                      icon: remix.Remix.settings_3_line,
+                      icon: PhosphorIconsLight.gear,
                       isSelected: _thumbnailMode == 'custom',
                       onTap: () => _updateThumbnailMode('custom'),
                     ),
@@ -482,15 +490,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
                         color: Theme.of(context)
-                            .primaryColor
+                            .colorScheme.primary
                             .withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
                         '$_videoThumbnailPercentage%',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Theme.of(context).primaryColor,
+                          color: Theme.of(context).colorScheme.primary,
                           fontSize: 12,
                         ),
                       ),
@@ -517,7 +525,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   AppLocalizations.of(context)!.thumbnailDescription,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[600],
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -541,14 +549,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     decoration: BoxDecoration(
                       color:
-                          Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
+                          Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
                       '$_maxConcurrency',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Theme.of(context).primaryColor,
+                        color: Theme.of(context).colorScheme.primary,
                         fontSize: 12,
                       ),
                     ),
@@ -575,7 +583,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 AppLocalizations.of(context)!.maxConcurrencyDescription,
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey[600],
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -599,12 +607,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isSelected
-              ? theme.primaryColor.withValues(alpha: 0.1)
+              ? theme.colorScheme.primary.withValues(alpha: 0.1)
               : theme.colorScheme.surfaceContainerHighest
                   .withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? theme.primaryColor : Colors.transparent,
+            color: isSelected ? theme.colorScheme.primary : Colors.transparent,
             width: 2,
           ),
         ),
@@ -617,7 +625,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon,
                   size: 20,
                   color:
-                      isSelected ? theme.primaryColor : theme.iconTheme.color,
+                      isSelected ? theme.colorScheme.primary : theme.iconTheme.color,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -625,15 +633,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title,
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: isSelected ? theme.primaryColor : null,
+                      color: isSelected ? theme.colorScheme.primary : null,
                     ),
                   ),
                 ),
                 if (isSelected)
                   Icon(
-                    remix.Remix.checkbox_circle_fill,
+                    PhosphorIconsLight.checkCircle,
                     size: 18,
-                    color: theme.primaryColor,
+                    color: theme.colorScheme.primary,
                   ),
               ],
             ),
@@ -642,7 +650,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               description,
               style: TextStyle(
                 fontSize: 11,
-                color: Colors.grey[600],
+                color: theme.colorScheme.onSurfaceVariant,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -656,7 +664,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildCacheManagementSection() {
     return _buildSectionCard(
       title: AppLocalizations.of(context)!.cacheManagement,
-      icon: remix.Remix.brush_line,
+      icon: PhosphorIconsLight.broom,
       children: [
         // Cache info summary
         Container(
@@ -667,12 +675,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 .colorScheme
                 .surfaceContainerHighest
                 .withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
             children: [
               Icon(
-                remix.Remix.information_line,
+                PhosphorIconsLight.info,
                 size: 16,
                 color: Theme.of(context).colorScheme.primary,
               ),
@@ -722,7 +730,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                             );
                           },
-                    icon: const Icon(remix.Remix.refresh_line, size: 14),
+                    icon: const Icon(PhosphorIconsLight.arrowsClockwise, size: 14),
                     label: Text(
                       AppLocalizations.of(context)!.refreshCacheInfo,
                       style: const TextStyle(fontSize: 12),
@@ -754,21 +762,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 10),
               _buildCacheStatRow(
-                icon: remix.Remix.cloud_line,
+                icon: PhosphorIconsLight.cloud,
                 label: AppLocalizations.of(context)!.networkThumbnails,
                 bytes: _networkThumbnailBytes,
                 files: _networkThumbnailFiles,
               ),
               const SizedBox(height: 6),
               _buildCacheStatRow(
-                icon: remix.Remix.video_line,
+                icon: PhosphorIconsLight.videoCamera,
                 label: AppLocalizations.of(context)!.videoThumbnailsCache,
                 bytes: _videoThumbnailBytes,
                 files: _videoThumbnailFiles,
               ),
               const SizedBox(height: 6),
               _buildCacheStatRow(
-                icon: remix.Remix.folder_reduce_line,
+                icon: PhosphorIconsLight.folderMinus,
                 label: AppLocalizations.of(context)!.tempFiles,
                 bytes: _tempFilesBytes,
                 files: _tempFilesCount,
@@ -787,20 +795,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               _buildCacheButton(
                 label: AppLocalizations.of(context)!.clearVideoThumbnailsCache,
-                icon: remix.Remix.video_line,
+                icon: PhosphorIconsLight.videoCamera,
                 isLoading: _isClearingVideoCache,
                 onTap: _clearVideoThumbnailCache,
               ),
               _buildCacheButton(
                 label:
                     AppLocalizations.of(context)!.clearNetworkThumbnailsCache,
-                icon: remix.Remix.cloud_line,
+                icon: PhosphorIconsLight.cloud,
                 isLoading: _isClearingNetworkCache,
                 onTap: _clearNetworkCache,
               ),
               _buildCacheButton(
                 label: AppLocalizations.of(context)!.clearTempFilesCache,
-                icon: remix.Remix.folder_reduce_line,
+                icon: PhosphorIconsLight.folderMinus,
                 isLoading: _isClearingTempFiles,
                 onTap: _clearTempFiles,
               ),
@@ -822,11 +830,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     height: 16,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(remix.Remix.delete_bin_2_line),
+                : const Icon(PhosphorIconsLight.trash),
             label: Text(AppLocalizations.of(context)!.clearAllCache),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.withValues(alpha: 0.1),
-              foregroundColor: Colors.red,
+              backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
+              foregroundColor: Theme.of(context).colorScheme.error,
               elevation: 0,
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
@@ -839,12 +847,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildDatabaseSection() {
     return _buildSectionCard(
       title: AppLocalizations.of(context)!.databaseSettings,
-      icon: remix.Remix.database_2_line,
+      icon: PhosphorIconsLight.database,
       children: [
         _buildCompactSettingTile(
           title: AppLocalizations.of(context)!.databaseSettings,
           subtitle: AppLocalizations.of(context)!.databaseDescription,
-          icon: remix.Remix.settings_3_line,
+          icon: PhosphorIconsLight.gear,
           onTap: () {
             Navigator.push(
               context,
@@ -857,19 +865,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _buildCompactSettingTile(
           title: AppLocalizations.of(context)!.exportSettings,
           subtitle: AppLocalizations.of(context)!.exportDescription,
-          icon: remix.Remix.upload_line,
+          icon: PhosphorIconsLight.uploadSimple,
           onTap: _exportSettings,
         ),
         _buildCompactSettingTile(
           title: AppLocalizations.of(context)!.importSettings,
           subtitle: AppLocalizations.of(context)!.importDescription,
-          icon: remix.Remix.download_line,
+          icon: PhosphorIconsLight.downloadSimple,
           onTap: _importSettings,
         ),
         _buildCompactSettingTile(
           title: AppLocalizations.of(context)!.settingsData,
           subtitle: AppLocalizations.of(context)!.viewManageSettings,
-          icon: remix.Remix.pie_chart_line,
+          icon: PhosphorIconsLight.chartPie,
           onTap: _showSettingsData,
         ),
       ],
@@ -884,10 +892,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
-        ),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -900,13 +905,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color:
-                        Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                        Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(
                     icon,
                     size: 20,
-                    color: Theme.of(context).primaryColor,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -943,13 +948,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       subtitle: Text(
         subtitle,
-        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+        style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
       trailing: trailing ??
           (onTap != null
-              ? const Icon(remix.Remix.arrow_right_s_line, size: 16)
+              ? const Icon(PhosphorIconsLight.caretRight, size: 16)
               : null),
       onTap: onTap,
     );
@@ -982,15 +987,149 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  String _getThemeDisplayName() {
-    switch (_themePreference) {
-      case ThemePreference.system:
-        return AppLocalizations.of(context)!.systemMode;
-      case ThemePreference.light:
-        return AppLocalizations.of(context)!.lightMode;
-      case ThemePreference.dark:
-        return AppLocalizations.of(context)!.darkMode;
-    }
+  Widget _buildThemeCollapseTile() {
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, _) {
+        final theme = Theme.of(context);
+        final currentTheme = themeProvider.currentTheme;
+        final currentThemeName =
+            ThemeConfig.themeNames[currentTheme] ?? currentTheme.name;
+
+        return Theme(
+          data: theme.copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            childrenPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            initiallyExpanded: _isThemeExpanded,
+            onExpansionChanged: (expanded) {
+              setState(() {
+                _isThemeExpanded = expanded;
+              });
+            },
+            leading: const Icon(PhosphorIconsLight.palette, size: 20),
+            title: Text(
+              AppLocalizations.of(context)!.theme,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
+            subtitle: Text(
+              currentThemeName,
+              style: TextStyle(
+                fontSize: 12,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: AnimatedRotation(
+              duration: const Duration(milliseconds: 180),
+              turns: _isThemeExpanded ? 0.5 : 0,
+              child: const Icon(PhosphorIconsLight.caretDown, size: 16),
+            ),
+            children: AppThemeType.values.map((themeType) {
+              final title = ThemeConfig.themeNames[themeType] ?? themeType.name;
+              return RadioListTile<AppThemeType>(
+                dense: true,
+                value: themeType,
+                groupValue: currentTheme,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                title: Text(
+                  title,
+                  style: const TextStyle(fontSize: 13),
+                ),
+                onChanged: (value) {
+                  if (value == null) return;
+                  context.read<ThemeProvider>().setTheme(value);
+                },
+              );
+            }).toList(growable: false),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLanguageCollapseTile() {
+    final theme = Theme.of(context);
+    final languageLabel = _currentLanguageCode == 'vi'
+        ? AppLocalizations.of(context)!.vietnameseLanguage
+        : AppLocalizations.of(context)!.englishLanguage;
+
+    return Theme(
+      data: theme.copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        childrenPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        initiallyExpanded: _isLanguageExpanded,
+        onExpansionChanged: (expanded) {
+          setState(() {
+            _isLanguageExpanded = expanded;
+          });
+        },
+        leading: const Icon(PhosphorIconsLight.globe, size: 20),
+        title: Text(
+          AppLocalizations.of(context)!.language,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+        ),
+        subtitle: Text(
+          languageLabel,
+          style: TextStyle(
+            fontSize: 12,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: AnimatedRotation(
+          duration: const Duration(milliseconds: 180),
+          turns: _isLanguageExpanded ? 0.5 : 0,
+          child: const Icon(PhosphorIconsLight.caretDown, size: 16),
+        ),
+        children: [
+          _buildLanguageOptionTile(
+            title: AppLocalizations.of(context)!.vietnameseLanguage,
+            value: LanguageController.vietnamese,
+            flagEmoji: '🇻🇳',
+          ),
+          _buildLanguageOptionTile(
+            title: AppLocalizations.of(context)!.englishLanguage,
+            value: LanguageController.english,
+            flagEmoji: '🇬🇧',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLanguageOptionTile({
+    required String title,
+    required String value,
+    required String flagEmoji,
+  }) {
+    final isSelected = _currentLanguageCode == value;
+    return ListTile(
+      dense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+      title: Row(
+        children: [
+          Text(flagEmoji),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 13),
+          ),
+        ],
+      ),
+      trailing: isSelected
+          ? Icon(
+              PhosphorIconsLight.checkCircle,
+              color: Theme.of(context).colorScheme.primary,
+              size: 18,
+            )
+          : null,
+      onTap: () => _updateLanguage(value),
+    );
   }
 
   bool get _isAnyCacheClearing =>
@@ -998,57 +1137,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _isClearingNetworkCache ||
       _isClearingTempFiles ||
       _isClearingCache;
-
-  void _showLanguageDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.language),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildLanguageOption(
-              title: AppLocalizations.of(context)!.vietnameseLanguage,
-              value: LanguageController.vietnamese,
-              flagEmoji: '🇻🇳',
-            ),
-            _buildLanguageOption(
-              title: AppLocalizations.of(context)!.englishLanguage,
-              value: LanguageController.english,
-              flagEmoji: '🇬🇧',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLanguageOption({
-    required String title,
-    required String value,
-    required String flagEmoji,
-  }) {
-    final isSelected = _currentLanguageCode == value;
-
-    return ListTile(
-      title: Row(
-        children: [
-          Text(flagEmoji),
-          const SizedBox(width: 8),
-          Text(title),
-        ],
-      ),
-      trailing: isSelected
-          ? Icon(remix.Remix.checkbox_circle_line,
-              color: Theme.of(context).primaryColor)
-          : null,
-      onTap: () {
-        _updateLanguage(value);
-        Navigator.pop(context);
-      },
-      selected: isSelected,
-    );
-  }
 
   Future<void> _clearNetworkCache() async {
     setState(() {
@@ -1074,7 +1162,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             content:
                 Text('${AppLocalizations.of(context)!.errorClearingCache}$e'),
             behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -1111,7 +1199,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             content:
                 Text('${AppLocalizations.of(context)!.errorClearingCache}$e'),
             behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -1152,7 +1240,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             content:
                 Text('${AppLocalizations.of(context)!.errorClearingCache}$e'),
             behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -1194,7 +1282,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               SnackBar(
                 content: Text(AppLocalizations.of(context)!.exportFailed),
                 behavior: SnackBarBehavior.floating,
-                backgroundColor: Colors.red,
+                backgroundColor: Theme.of(context).colorScheme.error,
               ),
             );
           }
@@ -1207,7 +1295,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             content: Text(
                 AppLocalizations.of(context)!.errorExporting + e.toString()),
             behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -1233,7 +1321,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SnackBar(
               content: Text(AppLocalizations.of(context)!.importFailed),
               behavior: SnackBarBehavior.floating,
-              backgroundColor: Colors.orange,
+              backgroundColor: Theme.of(context).colorScheme.tertiary,
             ),
           );
         }
@@ -1245,7 +1333,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             content: Text(
                 AppLocalizations.of(context)!.errorImporting + e.toString()),
             behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -1334,3 +1422,6 @@ class _DirectoryStats {
 
   const _DirectoryStats({required this.fileCount, required this.totalBytes});
 }
+
+
+

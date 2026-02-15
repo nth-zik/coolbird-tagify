@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as pathlib;
 import 'package:flutter/services.dart';
 import '../../components/video/video_player/video_player.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/ui/widgets/tag_management_section.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
@@ -80,12 +80,11 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
     final bool isVideo = FileTypeUtils.isVideoFile(widget.file.path);
     final bool isAudio = FileTypeUtils.isAudioFile(widget.file.path);
 
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final Color bgColor = isDarkMode ? Colors.grey[900]! : Colors.grey[100]!;
-    final Color cardColor = isDarkMode ? Colors.grey[850]! : Colors.white;
-    final Color textColor = isDarkMode ? Colors.white : Colors.black87;
-    final Color secondaryTextColor =
-        isDarkMode ? Colors.grey[400]! : Colors.grey[700]!;
+    final theme = Theme.of(context);
+    final Color bgColor = theme.colorScheme.surface;
+    final Color cardColor = theme.cardColor;
+    final Color textColor = theme.colorScheme.onSurface;
+    final Color secondaryTextColor = theme.colorScheme.onSurfaceVariant;
 
     return BaseScreen(
       title: _inAndroidPip ? '' : localizations.properties,
@@ -93,7 +92,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
       actions: [
         if (!_inAndroidPip)
           IconButton(
-            icon: const Icon(remix.Remix.external_link_line),
+            icon: const Icon(PhosphorIconsLight.arrowSquareOut),
             tooltip: localizations.openWith,
             onPressed: () {
               _showOpenWithDialog();
@@ -101,7 +100,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
           ),
         if (!_inAndroidPip)
           IconButton(
-            icon: const Icon(remix.Remix.share_line),
+            icon: const Icon(PhosphorIconsLight.shareFat),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -122,15 +121,8 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
               if (isImage || isVideo || isAudio)
                 Container(
                   width: double.infinity,
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: Colors.black,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
                   ),
                   child: Column(
                     children: [
@@ -147,10 +139,10 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Card(
-                  elevation: 2,
+                  elevation: 0,
                   color: cardColor,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
@@ -172,10 +164,10 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Card(
-                  elevation: 2,
+                  elevation: 0,
                   color: cardColor,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
@@ -185,7 +177,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
                         Row(
                           children: [
                             Icon(
-                              remix.Remix.bookmark_line,
+                              PhosphorIconsLight.bookmark,
                               color: textColor,
                               size: 20,
                             ),
@@ -221,17 +213,17 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Card(
-                  elevation: 2,
+                  elevation: 0,
                   color: cardColor,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Column(
                       children: [
                         ListTile(
-                          leading: Icon(remix.Remix.external_link_line,
+                          leading: Icon(PhosphorIconsLight.arrowSquareOut,
                               color: textColor),
                           title: Text(localizations.openWith,
                               style: TextStyle(color: textColor)),
@@ -239,8 +231,8 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
                         ),
                         const Divider(height: 1),
                         ListTile(
-                          leading:
-                              Icon(remix.Remix.apps_line, color: textColor),
+                          leading: Icon(PhosphorIconsLight.squaresFour,
+                              color: textColor),
                           title: Text(localizations.chooseDefaultApp,
                               style: TextStyle(color: textColor)),
                           onTap: () => _showOpenWithDialog(
@@ -249,7 +241,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
                         ),
                         const Divider(height: 1),
                         ListTile(
-                          leading: Icon(remix.Remix.file_text_line,
+                          leading: Icon(PhosphorIconsLight.fileText,
                               color: textColor),
                           title: Text(localizations.createCopy,
                               style: TextStyle(color: textColor)),
@@ -263,10 +255,10 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
                         ),
                         const Divider(height: 1),
                         ListTile(
-                          leading: Icon(remix.Remix.delete_bin_2_line,
-                              color: Colors.red[300]),
+                          leading: Icon(PhosphorIconsLight.trash,
+                              color: theme.colorScheme.error),
                           title: Text(localizations.deleteFile,
-                              style: TextStyle(color: Colors.red[300])),
+                              style: TextStyle(color: theme.colorScheme.error)),
                           onTap: () {
                             // Delete functionality
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -290,31 +282,31 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
   }
 
   Widget _buildHeaderSection() {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final Color textColor = isDarkMode ? Colors.white : Colors.black87;
+    final theme = Theme.of(context);
+    final Color textColor = theme.colorScheme.onSurface;
 
     IconData fileIcon;
     Color iconColor;
 
     // Set icon based on file type using FileTypeUtils
     if (FileTypeUtils.isImageFile(widget.file.path)) {
-      fileIcon = remix.Remix.image_line;
-      iconColor = Colors.blue;
+      fileIcon = PhosphorIconsLight.image;
+      iconColor = theme.colorScheme.primary;
     } else if (FileTypeUtils.isVideoFile(widget.file.path)) {
-      fileIcon = remix.Remix.video_line;
-      iconColor = Colors.red;
+      fileIcon = PhosphorIconsLight.videoCamera;
+      iconColor = theme.colorScheme.error;
     } else if (FileTypeUtils.isAudioFile(widget.file.path)) {
-      fileIcon = remix.Remix.music_2_line;
-      iconColor = Colors.purple;
+      fileIcon = PhosphorIconsLight.musicNotes;
+      iconColor = theme.colorScheme.tertiary;
     } else if (FileTypeUtils.isDocumentFile(widget.file.path)) {
-      fileIcon = remix.Remix.file_text_line;
-      iconColor = Colors.blue;
+      fileIcon = PhosphorIconsLight.fileText;
+      iconColor = theme.colorScheme.primary;
     } else if (FileTypeUtils.isSpreadsheetFile(widget.file.path)) {
-      fileIcon = remix.Remix.grid_line;
-      iconColor = Colors.green;
+      fileIcon = PhosphorIconsLight.squaresFour;
+      iconColor = theme.colorScheme.tertiary;
     } else {
-      fileIcon = remix.Remix.file_3_line;
-      iconColor = Colors.grey;
+      fileIcon = PhosphorIconsLight.file;
+      iconColor = theme.colorScheme.onSurfaceVariant;
     }
 
     return Row(
@@ -323,7 +315,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: iconColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Icon(
             fileIcon,
@@ -350,7 +342,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
                 widget.file.extension().toUpperCase(),
                 style: TextStyle(
                   fontSize: 14,
-                  color: isDarkMode ? Colors.grey[400] : Colors.grey[700],
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -377,7 +369,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.broken_image,
+                  const Icon(PhosphorIconsLight.imageBroken,
                       size: 64, color: Colors.white54),
                   const SizedBox(height: 16),
                   Text(
@@ -416,7 +408,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.videocam,
+                      const Icon(PhosphorIconsLight.videoCamera,
                           size: 64, color: Colors.white54),
                       const SizedBox(height: 8),
                       Text(
@@ -460,20 +452,21 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
 
   Widget _buildAudioPreview() {
     final localizations = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
-      color: Colors.grey[900],
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.purple.withValues(alpha: 0.2),
+              color: theme.colorScheme.tertiary.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
-            child: const Icon(remix.Remix.music_2_line,
-                size: 64, color: Colors.purpleAccent),
+            child: Icon(PhosphorIconsLight.musicNotes,
+                size: 64, color: theme.colorScheme.tertiary),
           ),
           const SizedBox(height: 16),
           Text(
@@ -486,7 +479,7 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               IconButton(
-                icon: const Icon(Icons.skip_previous, color: Colors.white),
+                icon: const Icon(PhosphorIconsLight.skipBack, color: Colors.white),
                 iconSize: 36,
                 onPressed: () {},
               ),
@@ -502,13 +495,13 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
                 style: ElevatedButton.styleFrom(
                   shape: const CircleBorder(),
                   padding: const EdgeInsets.all(20),
-                  backgroundColor: Colors.purpleAccent,
+                  backgroundColor: theme.colorScheme.tertiary,
                 ),
-                child: const Icon(Icons.play_arrow, size: 32),
+                child: const Icon(PhosphorIconsLight.play, size: 32),
               ),
               const SizedBox(width: 16),
               IconButton(
-                icon: const Icon(Icons.skip_next, color: Colors.white),
+                icon: const Icon(PhosphorIconsLight.skipForward, color: Colors.white),
                 iconSize: 36,
                 onPressed: () {},
               ),
@@ -549,24 +542,24 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
         return Column(
           children: [
             _buildDetailRow(localizations.fileSize, fileSize,
-                Icons.storage_outlined, textColor, secondaryTextColor),
+                PhosphorIconsLight.hardDrives, textColor, secondaryTextColor),
             const Divider(height: 24),
             _buildDetailRow(
                 localizations.fileLocation,
                 pathlib.dirname(widget.file.path),
-                Icons.folder_outlined,
+                PhosphorIconsLight.folder,
                 textColor,
                 secondaryTextColor),
             const Divider(height: 24),
             _buildDetailRow(
                 localizations.fileCreated,
                 stat.changed.toString().split('.')[0],
-                Icons.date_range_outlined,
+                PhosphorIconsLight.calendarBlank,
                 textColor,
                 secondaryTextColor),
             const Divider(height: 24),
             _buildDetailRow(localizations.fileModified, formattedDate,
-                Icons.edit_calendar_outlined, textColor, secondaryTextColor),
+                PhosphorIconsLight.pencilSimple, textColor, secondaryTextColor),
           ],
         );
       },
@@ -614,3 +607,6 @@ class _FileDetailsScreenState extends State<FileDetailsScreen> {
     );
   }
 }
+
+
+

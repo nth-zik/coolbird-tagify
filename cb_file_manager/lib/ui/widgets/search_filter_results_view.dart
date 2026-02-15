@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
@@ -154,8 +154,8 @@ class SearchFilterResultsView extends StatelessWidget {
               children: [
                 Icon(
                   currentSearchTag != null
-                      ? remix.Remix.shopping_bag_3_line
-                      : remix.Remix.search_line,
+                      ? PhosphorIconsLight.shoppingBagOpen
+                      : PhosphorIconsLight.magnifyingGlass,
                   color: Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(width: 8.0),
@@ -163,7 +163,7 @@ class SearchFilterResultsView extends StatelessWidget {
                   child: Text(noResultsMessage),
                 ),
                 IconButton(
-                  icon: const Icon(remix.Remix.close_line),
+                  icon: const Icon(PhosphorIconsLight.x),
                   onPressed: () {
                     // If this is a search tag tab, close it instead of clearing search
                     if (currentPath.startsWith('#search?tag=')) {
@@ -186,7 +186,7 @@ class SearchFilterResultsView extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(remix.Remix.search_line,
+                const Icon(PhosphorIconsLight.magnifyingGlass,
                     size: 64, color: Colors.grey),
                 const SizedBox(height: 16),
                 Text(
@@ -216,7 +216,7 @@ class SearchFilterResultsView extends StatelessWidget {
               .withValues(alpha: 0.3),
           child: Row(
             children: [
-              const Icon(remix.Remix.filter_3_line, size: 16),
+              const Icon(PhosphorIconsLight.funnelSimple, size: 16),
               const SizedBox(width: 8),
               Text(l10n.filteredBy(displayFilter)),
               const Spacer(),
@@ -270,3 +270,7 @@ class SearchFilterResultsView extends StatelessWidget {
     }
   }
 }
+
+
+
+

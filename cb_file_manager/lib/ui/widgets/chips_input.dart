@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class ChipsInput<T> extends StatefulWidget {
   const ChipsInput({
@@ -273,8 +274,8 @@ class _TagInputChipState extends State<TagInputChip>
     // Use theme colors to better match app design
     final Color tagColor =
         theme.colorScheme.primary.withValues(alpha: isDark ? 0.7 : 0.8);
-    final Color tagTextColor = isDark ? Colors.white : Colors.white;
-    final Color iconColor = isDark ? Colors.white70 : Colors.white70;
+    final Color tagTextColor = theme.colorScheme.onPrimary;
+    final Color iconColor = theme.colorScheme.onPrimary.withValues(alpha: 0.7);
 
     return AnimatedBuilder(
       animation: _controller,
@@ -290,16 +291,7 @@ class _TagInputChipState extends State<TagInputChip>
                 onExit: (_) => setState(() => isHovered = false),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
-                  decoration: BoxDecoration(
-                    boxShadow: [
-                      if (isHovered && !isDeleting)
-                        BoxShadow(
-                          color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                          spreadRadius: 1,
-                          blurRadius: 4,
-                        )
-                    ],
-                  ),
+                  decoration: const BoxDecoration(),
                   child: Material(
                     color: Colors.transparent,
                     child: InputChip(
@@ -314,7 +306,7 @@ class _TagInputChipState extends State<TagInputChip>
                         ),
                       ),
                       avatar: Icon(
-                        Icons.local_offer,
+                        PhosphorIconsLight.tag,
                         size: 14,
                         color: iconColor,
                       ),
@@ -323,21 +315,15 @@ class _TagInputChipState extends State<TagInputChip>
                           ? tagColor.withValues(alpha: 0.9)
                           : tagColor,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        side: BorderSide(
-                          width: 1,
-                          color: isDark
-                              ? Colors.white.withValues(alpha: isHovered ? 0.2 : 0.15)
-                              : Colors.black
-                                  .withValues(alpha: isHovered ? 0.1 : 0.05),
-                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        side: BorderSide.none,
                       ),
-                      elevation: isHovered && !isDeleting ? 2 : 0,
-                      shadowColor: Colors.black.withValues(alpha: 0.2),
+                      elevation: 0,
+                      shadowColor: Colors.transparent,
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       onDeleted: isDeleting ? null : _handleDelete,
                       deleteIcon: Icon(
-                        Icons.close_rounded,
+                        PhosphorIconsLight.x,
                         size: 16,
                         color: iconColor,
                       ),
@@ -363,3 +349,6 @@ class _TagInputChipState extends State<TagInputChip>
     );
   }
 }
+
+
+

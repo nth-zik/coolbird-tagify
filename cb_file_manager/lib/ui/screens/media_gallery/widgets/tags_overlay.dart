@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/ui/widgets/tag_chip.dart';
 
 class TagsOverlay extends StatelessWidget {
@@ -46,12 +47,12 @@ class TagsOverlay extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.label_outline, color: Colors.white, size: 12),
+              const Icon(PhosphorIconsLight.tag, color: Colors.white, size: 12),
               const SizedBox(width: 2),
               Text(
                 '${tags.length}',
@@ -86,7 +87,7 @@ class TagsOverlay extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.4),
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Wrap(
           spacing: 4,
@@ -98,3 +99,7 @@ class TagsOverlay extends StatelessWidget {
     );
   }
 }
+
+
+
+

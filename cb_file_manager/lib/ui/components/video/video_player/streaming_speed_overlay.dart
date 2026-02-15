@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../../services/streaming/streaming_speed_monitor.dart';
 import 'video_player_utils.dart';
@@ -172,18 +173,12 @@ class _StreamingSpeedOverlayState extends State<StreamingSpeedOverlay>
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16.0),
         border: Border.all(
           color: Colors.white.withValues(alpha: 0.2),
           width: 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -193,7 +188,7 @@ class _StreamingSpeedOverlayState extends State<StreamingSpeedOverlay>
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.speed,
+                PhosphorIconsLight.speedometer,
                 color: textColor,
                 size: 16,
               ),
@@ -210,7 +205,7 @@ class _StreamingSpeedOverlayState extends State<StreamingSpeedOverlay>
               GestureDetector(
                 onTap: widget.onToggleSpeedInfo,
                 child: Icon(
-                  Icons.close,
+                  PhosphorIconsLight.x,
                   color: textColor.withValues(alpha: 0.7),
                   size: 14,
                 ),
@@ -282,7 +277,7 @@ class StreamingSpeedToggleButton extends StatelessWidget {
           ),
         ),
         child: Icon(
-          isVisible ? Icons.speed : Icons.speed_outlined,
+          isVisible ? PhosphorIconsLight.speedometer : PhosphorIconsLight.speedometer,
           color: iconColor,
           size: 20,
         ),
@@ -290,3 +285,9 @@ class StreamingSpeedToggleButton extends StatelessWidget {
     );
   }
 }
+
+
+
+
+
+

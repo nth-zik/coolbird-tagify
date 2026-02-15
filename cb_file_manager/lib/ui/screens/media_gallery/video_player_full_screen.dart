@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as pathlib;
 import 'package:window_manager/window_manager.dart';
@@ -161,7 +162,7 @@ class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
                     if (widget.file != null)
                       IconButton(
                         icon:
-                            const Icon(Icons.info_outline, color: Colors.white70),
+                            const Icon(PhosphorIconsLight.info, color: Colors.white70),
                         onPressed: () => _showVideoInfo(context),
                       ),
                   ],
@@ -280,3 +281,7 @@ class _VideoPlayerFullScreenState extends State<VideoPlayerFullScreen> {
     );
   }
 }
+
+
+
+

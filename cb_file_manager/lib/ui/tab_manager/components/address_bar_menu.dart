@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 /// Menu ba chấm trong thanh địa chỉ với các action dynamic tùy theo màn hình
 class AddressBarMenu extends StatelessWidget {
@@ -19,7 +19,7 @@ class AddressBarMenu extends StatelessWidget {
     }
 
     return PopupMenuButton<AddressBarMenuItem>(
-      icon: const Icon(remix.Remix.more_2_line, size: 20),
+      icon: const Icon(PhosphorIconsLight.dotsThree, size: 20),
       tooltip: tooltip ?? 'Tùy chọn',
       onSelected: (item) {
         item.onTap();
@@ -57,7 +57,7 @@ class AddressBarMenu extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.primary,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(16.0),
                   ),
                   child: Text(
                     item.badge!,
@@ -102,7 +102,7 @@ class AddressBarMenuItems {
   }) {
     return AddressBarMenuItem(
       title: 'Tìm kiếm',
-      icon: remix.Remix.search_line,
+      icon: PhosphorIconsLight.magnifyingGlass,
       onTap: onTap,
       enabled: enabled,
     );
@@ -115,7 +115,7 @@ class AddressBarMenuItems {
   }) {
     return AddressBarMenuItem(
       title: 'Sắp xếp',
-      icon: remix.Remix.settings_3_line,
+      icon: PhosphorIconsLight.gear,
       onTap: onTap,
       enabled: enabled,
     );
@@ -128,7 +128,7 @@ class AddressBarMenuItems {
   }) {
     return AddressBarMenuItem(
       title: 'Làm mới',
-      icon: remix.Remix.refresh_line,
+      icon: PhosphorIconsLight.arrowsClockwise,
       onTap: onTap,
       enabled: enabled,
     );
@@ -141,7 +141,7 @@ class AddressBarMenuItems {
   }) {
     return AddressBarMenuItem(
       title: 'Thông tin',
-      icon: remix.Remix.information_line,
+      icon: PhosphorIconsLight.info,
       onTap: onTap,
       enabled: enabled,
     );
@@ -154,7 +154,7 @@ class AddressBarMenuItems {
   }) {
     return AddressBarMenuItem(
       title: 'Xóa',
-      icon: remix.Remix.delete_bin_2_line,
+      icon: PhosphorIconsLight.trash,
       onTap: onTap,
       enabled: enabled,
     );
@@ -167,7 +167,7 @@ class AddressBarMenuItems {
   }) {
     return AddressBarMenuItem(
       title: 'Thay đổi màu',
-      icon: remix.Remix.palette_line,
+      icon: PhosphorIconsLight.palette,
       onTap: onTap,
       enabled: enabled,
     );
@@ -180,9 +180,14 @@ class AddressBarMenuItems {
   }) {
     return AddressBarMenuItem(
       title: 'Mở trong tab mới',
-      icon: remix.Remix.grid_line,
+      icon: PhosphorIconsLight.squaresFour,
       onTap: onTap,
       enabled: enabled,
     );
   }
 }
+
+
+
+
+

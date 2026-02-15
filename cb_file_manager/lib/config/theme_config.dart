@@ -50,18 +50,18 @@ class ThemeConfig {
     final colorScheme = ThemeFactory.createColorScheme(
       seedColor: primaryColor,
       brightness: Brightness.light,
-      background: Colors.white,
-      surface: Colors.white,
+      background: const Color(0xFFF5F7FA),
+      surface: const Color(0xFFFAFBFD),
     );
 
     return ThemeFactory.createTheme(
       colorScheme: colorScheme,
       brightness: Brightness.light,
       options: const ThemeOptions(
-        borderRadius: 8.0,
+        borderRadius: 20.0,
         elevation: 0.0,
         useMaterial3: true,
-        cardElevation: 2.0,
+        cardElevation: 0.0,
       ),
     );
   }
@@ -79,10 +79,10 @@ class ThemeConfig {
       colorScheme: colorScheme,
       brightness: Brightness.dark,
       options: const ThemeOptions(
-        borderRadius: 8.0,
+        borderRadius: 20.0,
         elevation: 0.0,
         useMaterial3: true,
-        cardElevation: 2.0,
+        cardElevation: 0.0,
       ),
     );
   }
@@ -100,10 +100,10 @@ class ThemeConfig {
       colorScheme: colorScheme,
       brightness: Brightness.dark,
       options: const ThemeOptions(
-        borderRadius: 8.0,
+        borderRadius: 20.0,
         elevation: 0.0,
         useMaterial3: true,
-        cardElevation: 2.0,
+        cardElevation: 0.0,
       ),
     );
   }
@@ -114,18 +114,18 @@ class ThemeConfig {
     final colorScheme = ThemeFactory.createColorScheme(
       seedColor: blueColor,
       brightness: Brightness.light,
-      background: const Color(0xFFF3F8FF),
-      surface: Colors.white,
+      background: const Color(0xFFF2F6FC),
+      surface: const Color(0xFFF8FBFF),
     );
 
     return ThemeFactory.createTheme(
       colorScheme: colorScheme,
       brightness: Brightness.light,
       options: const ThemeOptions(
-        borderRadius: 8.0,
+        borderRadius: 20.0,
         elevation: 0.0,
         useMaterial3: true,
-        cardElevation: 2.0,
+        cardElevation: 0.0,
       ),
     );
   }
@@ -136,18 +136,18 @@ class ThemeConfig {
     final colorScheme = ThemeFactory.createColorScheme(
       seedColor: greenColor,
       brightness: Brightness.light,
-      background: const Color(0xFFF1F8E9),
-      surface: Colors.white,
+      background: const Color(0xFFF3F8F1),
+      surface: const Color(0xFFF8FCF6),
     );
 
     return ThemeFactory.createTheme(
       colorScheme: colorScheme,
       brightness: Brightness.light,
       options: const ThemeOptions(
-        borderRadius: 8.0,
+        borderRadius: 20.0,
         elevation: 0.0,
         useMaterial3: true,
-        cardElevation: 2.0,
+        cardElevation: 0.0,
       ),
     );
   }
@@ -158,18 +158,18 @@ class ThemeConfig {
     final colorScheme = ThemeFactory.createColorScheme(
       seedColor: purpleColor,
       brightness: Brightness.light,
-      background: const Color(0xFFF3E5F5),
-      surface: Colors.white,
+      background: const Color(0xFFF6EFF8),
+      surface: const Color(0xFFFCF9FD),
     );
 
     return ThemeFactory.createTheme(
       colorScheme: colorScheme,
       brightness: Brightness.light,
       options: const ThemeOptions(
-        borderRadius: 8.0,
+        borderRadius: 20.0,
         elevation: 0.0,
         useMaterial3: true,
-        cardElevation: 2.0,
+        cardElevation: 0.0,
       ),
     );
   }
@@ -180,18 +180,18 @@ class ThemeConfig {
     final colorScheme = ThemeFactory.createColorScheme(
       seedColor: orangeColor,
       brightness: Brightness.light,
-      background: const Color(0xFFFFF3E0),
-      surface: Colors.white,
+      background: const Color(0xFFFFF5E8),
+      surface: const Color(0xFFFFFBF5),
     );
 
     return ThemeFactory.createTheme(
       colorScheme: colorScheme,
       brightness: Brightness.light,
       options: const ThemeOptions(
-        borderRadius: 8.0,
+        borderRadius: 20.0,
         elevation: 0.0,
         useMaterial3: true,
-        cardElevation: 2.0,
+        cardElevation: 0.0,
       ),
     );
   }

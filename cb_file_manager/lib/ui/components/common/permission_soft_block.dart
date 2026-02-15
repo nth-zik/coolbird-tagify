@@ -21,15 +21,16 @@ class PermissionSoftBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
-      color: Colors.black.withValues(alpha: 0.6),
+      color: theme.shadowColor.withValues(alpha: 0.6),
       child: Center(
         child: Container(
           constraints: const BoxConstraints(maxWidth: 420),
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(12),
+            color: theme.cardColor,
+            borderRadius: BorderRadius.circular(20),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,

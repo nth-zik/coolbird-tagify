@@ -11,6 +11,7 @@ import '../../../../bloc/selection/selection_bloc.dart';
 import '../../../../bloc/selection/selection_event.dart';
 import 'folder_thumbnail.dart';
 import '../../../components/common/optimized_interaction_handler.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../utils/item_interaction_style.dart';
 
 class FolderGridItem extends StatefulWidget {
@@ -88,7 +89,6 @@ class _FolderGridItemState extends State<FolderGridItem> {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final bool isBeingCut = ItemInteractionStyle.isBeingCut(widget.folder.path);
 
     // Colors for item background and thumbnail overlay (used by both mobile & desktop)
@@ -126,7 +126,7 @@ class _FolderGridItemState extends State<FolderGridItem> {
 
               return Container(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8.0),
+                  borderRadius: BorderRadius.circular(16.0),
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(cardRadius),
@@ -162,13 +162,6 @@ class _FolderGridItemState extends State<FolderGridItem> {
                                         decoration: BoxDecoration(
                                           borderRadius: BorderRadius.circular(
                                               thumbRadius),
-                                          border: Border.all(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .onSurface
-                                                .withValues(alpha: 0.12),
-                                            width: 1.0,
-                                          ),
                                         ),
                                         child: ClipRRect(
                                           borderRadius: BorderRadius.circular(
@@ -200,9 +193,9 @@ class _FolderGridItemState extends State<FolderGridItem> {
                                                       badgeRadius),
                                             ),
                                             child: Icon(
-                                              Icons.folder,
+                                              PhosphorIconsLight.folder,
                                               size: badgeIconSize,
-                                              color: Colors.amber[600],
+                                              color: Theme.of(context).colorScheme.primary,
                                             ),
                                           ),
                                         ),
@@ -222,7 +215,6 @@ class _FolderGridItemState extends State<FolderGridItem> {
                                     const EdgeInsets.symmetric(horizontal: 4),
                                 child: _buildNameWidget(
                                   context,
-                                  isDarkMode,
                                   fontSize: fontSize,
                                 ),
                               ),
@@ -285,7 +277,7 @@ class _FolderGridItemState extends State<FolderGridItem> {
           child: Container(
             decoration: BoxDecoration(
               color: backgroundColor,
-              borderRadius: BorderRadius.circular(8.0),
+              borderRadius: BorderRadius.circular(16.0),
             ),
             child: Stack(
               children: [
@@ -302,14 +294,7 @@ class _FolderGridItemState extends State<FolderGridItem> {
                             // Framed thumbnail to imply "folder" without outlining whole card
                             Container(
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8.0),
-                                border: Border.all(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurface
-                                      .withValues(alpha: 0.12),
-                                  width: 1.0,
-                                ),
+                                borderRadius: BorderRadius.circular(16.0),
                                 // Slight background so folder thumbnails read as containers
                                 color: Theme.of(context)
                                     .colorScheme
@@ -317,7 +302,7 @@ class _FolderGridItemState extends State<FolderGridItem> {
                                     .withValues(alpha: 0.02),
                               ),
                               child: ClipRRect(
-                                borderRadius: BorderRadius.circular(8.0),
+                                borderRadius: BorderRadius.circular(16.0),
                                 child: FolderThumbnail(folder: widget.folder),
                               ),
                             ),
@@ -340,19 +325,12 @@ class _FolderGridItemState extends State<FolderGridItem> {
                                       .surface
                                       .withValues(alpha: 0.9),
                                   borderRadius: BorderRadius.circular(6.0),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color:
-                                          Colors.black.withValues(alpha: 0.06),
-                                      blurRadius: 6,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
+                                  boxShadow: [],
                                 ),
                                 child: Icon(
-                                  Icons.folder,
+                                  PhosphorIconsLight.folder,
                                   size: 14,
-                                  color: Colors.amber[600],
+                                  color: Theme.of(context).colorScheme.primary,
                                 ),
                               ),
                             ),
@@ -367,7 +345,7 @@ class _FolderGridItemState extends State<FolderGridItem> {
                       child: Center(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: _buildNameWidget(context, isDarkMode),
+                          child: _buildNameWidget(context),
                         ),
                       ),
                     ),
@@ -433,8 +411,7 @@ class _FolderGridItemState extends State<FolderGridItem> {
   }
 
   Widget _buildNameWidget(
-    BuildContext context,
-    bool isDarkMode, {
+    BuildContext context, {
     double fontSize = 12.0,
   }) {
     // Check if this item is being renamed inline (desktop only)
@@ -449,7 +426,7 @@ class _FolderGridItemState extends State<FolderGridItem> {
       overflow: TextOverflow.ellipsis,
       style: TextStyle(
         fontSize: fontSize,
-        color: isDarkMode ? Colors.white : Colors.black87,
+        color: Theme.of(context).colorScheme.onSurface,
         fontWeight: _visuallySelected ? FontWeight.bold : FontWeight.w500,
       ),
     );
@@ -467,7 +444,7 @@ class _FolderGridItemState extends State<FolderGridItem> {
               onCancel: () => renameController.cancelRename(),
               textStyle: TextStyle(
                 fontSize: fontSize,
-                color: isDarkMode ? Colors.white : Colors.black87,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontWeight:
                     _visuallySelected ? FontWeight.bold : FontWeight.w500,
               ),
@@ -482,3 +459,8 @@ class _FolderGridItemState extends State<FolderGridItem> {
     return textWidget;
   }
 }
+
+
+
+
+

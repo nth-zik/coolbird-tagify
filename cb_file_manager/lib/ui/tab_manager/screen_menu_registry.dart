@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
 
 /// Menu item cho dynamic menu system
@@ -19,7 +19,7 @@ class ScreenMenuItem {
   /// Tạo divider item
   const ScreenMenuItem.divider()
       : title = '',
-        icon = Icons.horizontal_rule,
+        icon = PhosphorIconsLight.minus,
         onTap = _emptyCallback,
         isDivider = true;
 
@@ -49,37 +49,37 @@ class ScreenMenuRegistry {
       const ScreenMenuItem.divider(),
       ScreenMenuItem(
         title: 'Tạo thẻ mới',
-        icon: remix.Remix.add_line,
+        icon: PhosphorIconsLight.plus,
         onTap: () => _TagManagementHelper.showCreateTagDialog(context),
       ),
       ScreenMenuItem(
         title: 'Tìm kiếm thẻ',
-        icon: remix.Remix.search_line,
+        icon: PhosphorIconsLight.magnifyingGlass,
         onTap: () => _TagManagementHelper.showTagSearchDialog(context),
       ),
       ScreenMenuItem(
         title: 'Thông tin quản lý thẻ',
-        icon: remix.Remix.information_line,
+        icon: PhosphorIconsLight.info,
         onTap: () => _TagManagementHelper.showTagManagementInfo(context),
       ),
       ScreenMenuItem(
         title: 'Làm mới danh sách thẻ',
-        icon: remix.Remix.refresh_line,
+        icon: PhosphorIconsLight.arrowsClockwise,
         onTap: () => _TagManagementHelper.refreshTagManagement(context),
       ),
       ScreenMenuItem(
         title: 'Sắp xếp thẻ',
-        icon: remix.Remix.settings_3_line,
+        icon: PhosphorIconsLight.gear,
         onTap: () => _TagManagementHelper.showTagSortOptions(context),
       ),
       ScreenMenuItem(
         title: 'Chế độ lưới',
-        icon: remix.Remix.grid_line,
+        icon: PhosphorIconsLight.squaresFour,
         onTap: () => _TagManagementHelper.toggleViewMode(context),
       ),
       ScreenMenuItem(
         title: 'Chế độ danh sách',
-        icon: remix.Remix.list_unordered,
+        icon: PhosphorIconsLight.listBullets,
         onTap: () => _TagManagementHelper.toggleViewMode(context),
       ),
     ];
@@ -91,27 +91,27 @@ class ScreenMenuRegistry {
       const ScreenMenuItem.divider(),
       ScreenMenuItem(
         title: 'Tạo thư mục mới',
-        icon: remix.Remix.folder_add_line,
+        icon: PhosphorIconsLight.folderPlus,
         onTap: () => _FileBrowserHelper.createNewFolder(context),
       ),
       ScreenMenuItem(
         title: 'Tạo file mới',
-        icon: remix.Remix.file_add_line,
+        icon: PhosphorIconsLight.filePlus,
         onTap: () => _FileBrowserHelper.createNewFile(context),
       ),
       ScreenMenuItem(
         title: 'Dán file',
-        icon: remix.Remix.file_copy_line,
+        icon: PhosphorIconsLight.copy,
         onTap: () => _FileBrowserHelper.pasteFiles(context),
       ),
       ScreenMenuItem(
         title: 'Sắp xếp',
-        icon: remix.Remix.settings_3_line,
+        icon: PhosphorIconsLight.gear,
         onTap: () => _FileBrowserHelper.showSortOptions(context),
       ),
       ScreenMenuItem(
         title: 'Thay đổi chế độ xem',
-        icon: remix.Remix.grid_line,
+        icon: PhosphorIconsLight.squaresFour,
         onTap: () => _FileBrowserHelper.toggleViewMode(context),
       ),
     ];
@@ -123,17 +123,17 @@ class ScreenMenuRegistry {
       const ScreenMenuItem.divider(),
       ScreenMenuItem(
         title: 'Xuất cài đặt',
-        icon: remix.Remix.download_line,
+        icon: PhosphorIconsLight.downloadSimple,
         onTap: () => _SettingsHelper.exportSettings(context),
       ),
       ScreenMenuItem(
         title: 'Nhập cài đặt',
-        icon: remix.Remix.upload_line,
+        icon: PhosphorIconsLight.uploadSimple,
         onTap: () => _SettingsHelper.importSettings(context),
       ),
       ScreenMenuItem(
         title: 'Đặt lại cài đặt',
-        icon: remix.Remix.refresh_line,
+        icon: PhosphorIconsLight.arrowsClockwise,
         onTap: () => _SettingsHelper.resetSettings(context),
       ),
     ];
@@ -145,17 +145,17 @@ class ScreenMenuRegistry {
       const ScreenMenuItem.divider(),
       ScreenMenuItem(
         title: 'Thêm kết nối mới',
-        icon: remix.Remix.add_line,
+        icon: PhosphorIconsLight.plus,
         onTap: () => _NetworkHelper.addNewConnection(context),
       ),
       ScreenMenuItem(
         title: 'Quét mạng',
-        icon: remix.Remix.search_line,
+        icon: PhosphorIconsLight.magnifyingGlass,
         onTap: () => _NetworkHelper.scanNetwork(context),
       ),
       ScreenMenuItem(
         title: 'Làm mới danh sách',
-        icon: remix.Remix.refresh_line,
+        icon: PhosphorIconsLight.arrowsClockwise,
         onTap: () => _NetworkHelper.refreshConnections(context),
       ),
     ];
@@ -202,7 +202,7 @@ class _TagManagementHelper {
           controller: tagController,
           decoration: const InputDecoration(
             hintText: 'Nhập tên thẻ...',
-            prefixIcon: Icon(Icons.tag),
+            prefixIcon: Icon(PhosphorIconsLight.tag),
           ),
           autofocus: true,
           textInputAction: TextInputAction.done,
@@ -266,7 +266,7 @@ class _TagManagementHelper {
         content: TextField(
           decoration: const InputDecoration(
             hintText: 'Nhập tên thẻ...',
-            prefixIcon: Icon(Icons.search),
+            prefixIcon: Icon(PhosphorIconsLight.magnifyingGlass),
           ),
           autofocus: true,
           onSubmitted: (value) {
@@ -327,7 +327,7 @@ class _TagManagementHelper {
           children: [
             ListTile(
               title: const Text('Theo tên (A-Z)'),
-              leading: const Icon(Icons.sort_by_alpha),
+              leading: const Icon(PhosphorIconsLight.sortAscending),
               onTap: () {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -337,7 +337,7 @@ class _TagManagementHelper {
             ),
             ListTile(
               title: const Text('Theo độ phổ biến'),
-              leading: const Icon(Icons.trending_up),
+              leading: const Icon(PhosphorIconsLight.trendUp),
               onTap: () {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -347,7 +347,7 @@ class _TagManagementHelper {
             ),
             ListTile(
               title: const Text('Theo thời gian gần đây'),
-              leading: const Icon(Icons.history),
+              leading: const Icon(PhosphorIconsLight.clockCounterClockwise),
               onTap: () {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -452,3 +452,8 @@ class _NetworkHelper {
     );
   }
 }
+
+
+
+
+

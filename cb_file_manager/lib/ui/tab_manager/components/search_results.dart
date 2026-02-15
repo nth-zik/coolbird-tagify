@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 // Add this import for mouse buttons
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/components/index.dart'
@@ -110,7 +111,7 @@ class _SearchResultsViewState extends State<SearchResultsView> {
                   child: Text(_getSearchTitle(context)),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(PhosphorIconsLight.x),
                   onPressed: widget.onClearSearch,
                   tooltip: AppLocalizations.of(context)!.clearSearch,
                 ),
@@ -134,23 +135,23 @@ class _SearchResultsViewState extends State<SearchResultsView> {
   IconData _getSearchIcon() {
     final state = widget.state;
     if (state.currentSearchTag != null) {
-      return Icons.local_offer;
+      return PhosphorIconsLight.tag;
     } else if (state.currentSearchQuery != null) {
-      return Icons.search;
+      return PhosphorIconsLight.magnifyingGlass;
     } else if (state.currentMediaSearch != null) {
       switch (state.currentMediaSearch!) {
         // Using non-null assertion since we checked it's not null
         case MediaType.image:
-          return Icons.photo;
+          return PhosphorIconsLight.image;
         case MediaType.video:
-          return Icons.movie;
+          return PhosphorIconsLight.filmStrip;
         case MediaType.audio:
-          return Icons.audio_file;
+          return PhosphorIconsLight.musicNote;
         case MediaType.document:
-          return Icons.description;
+          return PhosphorIconsLight.fileText;
       }
     }
-    return Icons.search; // Default icon
+    return PhosphorIconsLight.magnifyingGlass; // Default icon
   }
 
   // Tạo tiêu đề dựa trên loại tìm kiếm
@@ -271,7 +272,7 @@ class _SearchResultsViewState extends State<SearchResultsView> {
         } else if (entity is Directory) {
           // Hiển thị thư mục trong kết quả tìm kiếm
           return ListTile(
-            leading: const Icon(Icons.folder, color: Colors.amber),
+            leading: const Icon(PhosphorIconsLight.folder, color: Colors.amber),
             // Show only folder name instead of full path
             title: Text(entity.path.split(Platform.pathSeparator).last),
             // Keep subtitle as full path for reference
@@ -340,12 +341,12 @@ class _SearchResultsViewState extends State<SearchResultsView> {
             child: Container(
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(16.0),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.folder, size: 48, color: Colors.amber),
+                  const Icon(PhosphorIconsLight.folder, size: 48, color: Colors.amber),
                   const SizedBox(height: 8),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4.0),
@@ -368,3 +369,8 @@ class _SearchResultsViewState extends State<SearchResultsView> {
     );
   }
 }
+
+
+
+
+

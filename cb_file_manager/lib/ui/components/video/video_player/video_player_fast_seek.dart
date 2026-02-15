@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 /// Mobile long-press overlay: left = rewind, right = fast forward.
 class FastSeekGestureOverlay extends StatelessWidget {
@@ -88,15 +89,15 @@ class FastSeekIndicator extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               decoration: BoxDecoration(
                 color: Colors.black54,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(16.0),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     fastSeekingForward
-                        ? Icons.fast_forward
-                        : Icons.fast_rewind,
+                        ? PhosphorIconsLight.fastForward
+                        : PhosphorIconsLight.rewind,
                     color: Colors.white,
                     size: 32,
                   ),
@@ -118,3 +119,7 @@ class FastSeekIndicator extends StatelessWidget {
     );
   }
 }
+
+
+
+

@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:mobile_smb_native/mobile_smb_native.dart';
 import 'network_service_base.dart';
 import 'package:cb_file_manager/services/network_credentials_service.dart';
@@ -32,7 +32,7 @@ class MobileSMBService implements ISmbService {
   String get serviceDescription => 'Mobile SMB File Sharing';
 
   @override
-  dynamic get serviceIcon => remix.Remix.folder_3_line;
+  dynamic get serviceIcon => PhosphorIconsLight.folder;
 
   @override
   bool isAvailable() => Platform.isAndroid || Platform.isIOS;
@@ -829,3 +829,7 @@ class MobileSMBService implements ISmbService {
     }
   }
 }
+
+
+
+

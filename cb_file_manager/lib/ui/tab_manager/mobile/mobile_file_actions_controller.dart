@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 
@@ -149,7 +150,7 @@ class MobileFileActionsController {
         ),
       ),
       trailing: isSelected
-          ? Icon(Icons.check, color: theme.colorScheme.primary)
+          ? Icon(PhosphorIconsLight.check, color: theme.colorScheme.primary)
           : null,
       onTap: () {
         Navigator.pop(context);
@@ -206,9 +207,9 @@ class MobileFileActionsController {
 
                 // View mode options (mobile only: list & grid)
                 _buildViewModeOption(
-                    context, ViewMode.list, 'Danh sách', Icons.view_list),
+                    context, ViewMode.list, 'Danh sách', PhosphorIconsLight.listBullets),
                 _buildViewModeOption(
-                    context, ViewMode.grid, 'Lưới', Icons.grid_view),
+                    context, ViewMode.grid, 'Lưới', PhosphorIconsLight.squaresFour),
 
                 const SizedBox(height: 16),
               ],
@@ -237,7 +238,7 @@ class MobileFileActionsController {
         ),
       ),
       trailing: isSelected
-          ? Icon(Icons.check, color: theme.colorScheme.primary)
+          ? Icon(PhosphorIconsLight.check, color: theme.colorScheme.primary)
           : null,
       onTap: () {
         Navigator.pop(context);
@@ -292,7 +293,7 @@ class MobileFileActionsController {
 
             // More options
             ListTile(
-              leading: const Icon(Icons.select_all),
+              leading: const Icon(PhosphorIconsLight.checks),
               title: Text(localizations.selectMultiple ?? 'Chọn nhiều file'),
               onTap: () {
                 Navigator.pop(context);
@@ -304,7 +305,7 @@ class MobileFileActionsController {
                 (currentViewMode == ViewMode.grid ||
                     currentViewMode == ViewMode.gridPreview))
               ListTile(
-                leading: const Icon(Icons.photo_size_select_large),
+                leading: const Icon(PhosphorIconsLight.rectangle),
                 title: Text(localizations.gridSize ?? 'Kích thước lưới'),
                 onTap: () {
                   Navigator.pop(context);
@@ -314,7 +315,7 @@ class MobileFileActionsController {
 
             if (onManageTagsPressed != null)
               ListTile(
-                leading: const Icon(Icons.label),
+                leading: const Icon(PhosphorIconsLight.tag),
                 title: Text(localizations.tagManagement),
                 onTap: () {
                   Navigator.pop(context);
@@ -325,14 +326,14 @@ class MobileFileActionsController {
             // Masonry toggle option
             ListTile(
               leading: Icon(
-                Icons.view_quilt,
+                PhosphorIconsLight.gridFour,
                 color: isMasonryLayout
                     ? theme.colorScheme.primary
                     : theme.iconTheme.color,
               ),
               title: const Text('Masonry layout (Pinterest)'),
               trailing: isMasonryLayout
-                  ? Icon(Icons.check, color: theme.colorScheme.primary)
+                  ? Icon(PhosphorIconsLight.check, color: theme.colorScheme.primary)
                   : null,
               onTap: () {
                 Navigator.pop(context);
@@ -368,20 +369,14 @@ class MobileFileActionsController {
       padding: const EdgeInsets.symmetric(horizontal: 2.0),
       decoration: BoxDecoration(
         color: theme.scaffoldBackgroundColor,
-        boxShadow: [
-          BoxShadow(
-            color: theme.shadowColor.withValues(alpha: 0.05),
-            blurRadius: 2,
-            offset: const Offset(0, 1),
-          ),
-        ],
+        boxShadow: [],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           // Search button - opens simple inline search
           IconButton(
-            icon: const Icon(Icons.search, size: 20),
+            icon: const Icon(PhosphorIconsLight.magnifyingGlass, size: 20),
             tooltip: localizations.search,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
@@ -390,7 +385,7 @@ class MobileFileActionsController {
 
           // Sort button
           IconButton(
-            icon: const Icon(Icons.sort, size: 20),
+            icon: const Icon(PhosphorIconsLight.sortAscending, size: 20),
             tooltip: localizations.sort,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
@@ -403,8 +398,8 @@ class MobileFileActionsController {
           IconButton(
             icon: Icon(
               effectiveViewMode == ViewMode.grid
-                  ? Icons.view_list
-                  : Icons.grid_view,
+                  ? PhosphorIconsLight.listBullets
+                  : PhosphorIconsLight.squaresFour,
               size: 20,
             ),
             tooltip: localizations.listViewMode,
@@ -418,7 +413,7 @@ class MobileFileActionsController {
           // Masonry layout toggle
           IconButton(
             icon: Icon(
-              Icons.view_quilt,
+              PhosphorIconsLight.gridFour,
               size: 20,
               color: isMasonryLayout
                   ? theme.colorScheme.primary
@@ -435,7 +430,7 @@ class MobileFileActionsController {
 
           // Refresh button
           IconButton(
-            icon: const Icon(Icons.refresh, size: 20),
+            icon: const Icon(PhosphorIconsLight.arrowsClockwise, size: 20),
             tooltip: localizations.refresh,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
@@ -446,7 +441,7 @@ class MobileFileActionsController {
 
           // More options button
           IconButton(
-            icon: const Icon(Icons.more_vert, size: 20),
+            icon: const Icon(PhosphorIconsLight.dotsThreeVertical, size: 20),
             tooltip: localizations.moreOptions,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
@@ -476,13 +471,7 @@ class MobileFileActionsController {
             margin: const EdgeInsets.only(top: 44), // Below action bar
             decoration: BoxDecoration(
               color: theme.scaffoldBackgroundColor,
-              boxShadow: [
-                BoxShadow(
-                  color: theme.shadowColor.withValues(alpha: 0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              boxShadow: [],
             ),
             child: StatefulBuilder(
               builder: (context, setState) => Column(
@@ -496,7 +485,7 @@ class MobileFileActionsController {
                       children: [
                         // Back button to close search
                         IconButton(
-                          icon: const Icon(Icons.arrow_back, size: 20),
+                          icon: const Icon(PhosphorIconsLight.arrowLeft, size: 20),
                           padding: EdgeInsets.zero,
                           constraints:
                               const BoxConstraints(minWidth: 40, minHeight: 40),
@@ -539,7 +528,7 @@ class MobileFileActionsController {
                         // Clear button
                         if (searchController.text.isNotEmpty)
                           IconButton(
-                            icon: const Icon(Icons.clear, size: 18),
+                            icon: const Icon(PhosphorIconsLight.x, size: 18),
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(
                                 minWidth: 32, minHeight: 32),
@@ -562,3 +551,8 @@ class MobileFileActionsController {
     );
   }
 }
+
+
+
+
+

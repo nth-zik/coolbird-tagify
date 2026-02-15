@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/config/translation_helper.dart';
 
 import '../../../bloc/network_browsing/network_browsing_bloc.dart';
@@ -166,19 +166,20 @@ class _FTPBrowserScreenState extends State<FTPBrowserScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return SystemScreen(
       title: context.tr.ftpConnections,
       systemId: '#ftp',
-      icon: remix.Remix.upload_cloud_2_line,
+      icon: PhosphorIconsLight.cloudArrowUp,
       showAppBar: true,
       actions: [
         IconButton(
-          icon: const Icon(remix.Remix.refresh_line),
+          icon: Icon(PhosphorIconsLight.arrowsClockwise),
           onPressed: _refreshData,
           tooltip: context.tr.refreshData,
         ),
         IconButton(
-          icon: const Icon(remix.Remix.add_line),
+          icon: Icon(PhosphorIconsLight.plus),
           onPressed: _connectToFTPServer,
           tooltip: context.tr.addConnection,
         ),
@@ -202,7 +203,7 @@ class _FTPBrowserScreenState extends State<FTPBrowserScreen>
                   padding: const EdgeInsets.symmetric(
                       vertical: 8.0, horizontal: 8.0),
                   child: Text(context.tr.activeConnections,
-                      style: Theme.of(context).textTheme.titleSmall),
+                      style: theme.textTheme.titleSmall),
                 ),
                 ...activeConnections.map(_buildActiveConnectionItem),
                 const Divider(),
@@ -212,7 +213,7 @@ class _FTPBrowserScreenState extends State<FTPBrowserScreen>
                   padding: const EdgeInsets.symmetric(
                       vertical: 8.0, horizontal: 8.0),
                   child: Text(context.tr.savedConnections,
-                      style: Theme.of(context).textTheme.titleSmall),
+                      style: theme.textTheme.titleSmall),
                 ),
                 ..._savedCredentials.map(_buildSavedConnectionItem),
               ],
@@ -225,13 +226,14 @@ class _FTPBrowserScreenState extends State<FTPBrowserScreen>
 
   Widget _buildActiveConnectionItem(
       MapEntry<String, NetworkServiceBase> entry) {
+    final theme = Theme.of(context);
     String host = context.tr.unknown;
     try {
       host = Uri.parse(entry.value.basePath).host;
     } catch (_) {}
 
     return ListTile(
-      leading: const Icon(remix.Remix.computer_line, color: Colors.green),
+      leading: Icon(PhosphorIconsLight.desktop, color: theme.colorScheme.tertiary),
       title: Text(host),
       subtitle: Text(context.tr.connecting),
       onTap: () => _openTabForConnection(entry.key, host),
@@ -240,9 +242,10 @@ class _FTPBrowserScreenState extends State<FTPBrowserScreen>
 
   Widget _buildSavedConnectionItem(NetworkCredentials credentials) {
     final isConnecting = _connectingCredentialIds.contains(credentials.id);
+    final theme = Theme.of(context);
 
     return ListTile(
-      leading: const Icon(remix.Remix.upload_cloud_2_line, color: Colors.blue),
+      leading: Icon(PhosphorIconsLight.cloudArrowUp, color: theme.colorScheme.primary),
       title: Text(credentials.host),
       subtitle: Text(credentials.username),
       trailing: IconButton(
@@ -251,8 +254,8 @@ class _FTPBrowserScreenState extends State<FTPBrowserScreen>
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(strokeWidth: 2.0))
-            : const Icon(remix.Remix.arrow_right_circle_line,
-                color: Colors.green),
+            : Icon(PhosphorIconsLight.arrowCircleRight,
+                color: theme.colorScheme.tertiary),
         onPressed: isConnecting
             ? null
             : () => _connectWithSavedCredentials(credentials),
@@ -263,3 +266,6 @@ class _FTPBrowserScreenState extends State<FTPBrowserScreen>
     );
   }
 }
+
+
+

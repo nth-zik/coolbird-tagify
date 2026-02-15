@@ -6,7 +6,7 @@ import 'package:cb_file_manager/helpers/core/user_preferences.dart';
 import 'package:cb_file_manager/ui/screens/media_gallery/video_player_full_screen.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:file_picker/file_picker.dart';
 
 class OpenWithDialog extends StatefulWidget {
@@ -75,7 +75,7 @@ class _OpenWithDialogState extends State<OpenWithDialog> {
           children: [
             Row(
               children: [
-                Icon(remix.Remix.external_link_line,
+                Icon(PhosphorIconsLight.arrowSquareOut,
                     color: isDarkMode ? Colors.white70 : Colors.black87),
                 const SizedBox(width: 8),
                 Text(
@@ -197,7 +197,7 @@ class _OpenWithDialogState extends State<OpenWithDialog> {
                       if ((Platform.isWindows || Platform.isAndroid) &&
                           FileTypeUtils.isVideoFile(widget.filePath))
                         ListTile(
-                          leading: const Icon(remix.Remix.video_line),
+                          leading: const Icon(PhosphorIconsLight.videoCamera),
                           title: Text(
                             AppLocalizations.of(context)!
                                 .setCoolBirdAsDefaultForVideos,
@@ -242,7 +242,7 @@ class _OpenWithDialogState extends State<OpenWithDialog> {
                           FileTypeUtils.isVideoFile(widget.filePath))
                         const Divider(),
                       ListTile(
-                        leading: const Icon(remix.Remix.more_line),
+                        leading: const Icon(PhosphorIconsLight.dotsThree),
                         title: Text(
                             AppLocalizations.of(context)!.chooseAnotherApp),
                         onTap: () async {
@@ -294,3 +294,7 @@ class _OpenWithDialogState extends State<OpenWithDialog> {
     );
   }
 }
+
+
+
+

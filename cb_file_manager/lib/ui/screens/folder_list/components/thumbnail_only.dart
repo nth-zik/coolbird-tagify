@@ -4,7 +4,7 @@ import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart';
 import 'package:cb_file_manager/helpers/files/file_type_registry.dart';
 import 'package:cb_file_manager/helpers/files/file_icon_helper.dart';
 import 'package:path/path.dart' as p;
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 /// A widget that displays only the thumbnail of a file item.
 /// This widget is designed to be constant and not rebuild on selection changes.
@@ -76,7 +76,7 @@ class _ThumbnailOnlyState extends State<ThumbnailOnly>
       return RepaintBoundary(
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8.0),
+            borderRadius: BorderRadius.circular(16.0),
             color: Theme.of(context)
                 .colorScheme
                 .surfaceContainerHighest
@@ -114,14 +114,14 @@ class _ThumbnailOnlyState extends State<ThumbnailOnly>
         fit: BoxFit.cover,
         isPriority:
             false, // Don't mark all as priority to reduce concurrent loads
-        borderRadius: BorderRadius.circular(8.0),
+        borderRadius: BorderRadius.circular(16.0),
         showLoadingIndicator: true,
         fallbackBuilder: () => isVideo
             ? Container(
                 color: Colors.black26,
-                child: const Center(
+                child: Center(
                   child: Icon(
-                    remix.Remix.play_circle_line,
+                    PhosphorIconsLight.playCircle,
                     size: 48,
                     color: Colors.white70,
                   ),
@@ -136,3 +136,7 @@ class _ThumbnailOnlyState extends State<ThumbnailOnly>
     );
   }
 }
+
+
+
+

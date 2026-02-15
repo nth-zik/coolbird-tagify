@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
@@ -211,7 +212,7 @@ class _WindowsPipOverlayWidgetState extends State<_WindowsPipOverlayWidget> {
             alignment: Alignment.centerLeft,
             child: Row(
               children: [
-                const Icon(Icons.picture_in_picture_alt,
+                const Icon(PhosphorIconsLight.pictureInpicture,
                     color: Colors.white70, size: 16),
                 const SizedBox(width: 6),
                 Expanded(
@@ -229,7 +230,7 @@ class _WindowsPipOverlayWidgetState extends State<_WindowsPipOverlayWidget> {
                   visualDensity: VisualDensity.compact,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
-                  icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow,
+                  icon: Icon(_isPlaying ? PhosphorIconsLight.pause : PhosphorIconsLight.play,
                       color: Colors.white, size: 16),
                   onPressed: () async {
                     if (_player == null) return;
@@ -247,7 +248,7 @@ class _WindowsPipOverlayWidgetState extends State<_WindowsPipOverlayWidget> {
                   visualDensity: VisualDensity.compact,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
-                  icon: const Icon(Icons.close, color: Colors.white, size: 16),
+                  icon: const Icon(PhosphorIconsLight.x, color: Colors.white, size: 16),
                   onPressed: () {
                     final pos = _position.inMilliseconds;
                     final vol = (_player?.state.volume ?? 100).toDouble();
@@ -306,7 +307,7 @@ class _WindowsPipOverlayWidgetState extends State<_WindowsPipOverlayWidget> {
             Text(VideoPlayerUtils.formatDuration(_duration),
                 style: const TextStyle(color: Colors.white70, fontSize: 11)),
             const SizedBox(width: 8),
-            const Icon(Icons.volume_up, color: Colors.white70, size: 14),
+            const Icon(PhosphorIconsLight.speakerHigh, color: Colors.white70, size: 14),
             SizedBox(
               width: 80,
               child: Slider(
@@ -363,7 +364,7 @@ class _WindowsPipOverlayWidgetState extends State<_WindowsPipOverlayWidget> {
             child: DecoratedBox(
               decoration: BoxDecoration(
                 color: Colors.black,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(16.0),
                 border: Border.all(color: Colors.white24, width: 1),
                 boxShadow: const [
                   BoxShadow(
@@ -371,7 +372,7 @@ class _WindowsPipOverlayWidgetState extends State<_WindowsPipOverlayWidget> {
                 ],
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(16.0),
                 child: Stack(children: innerChildren),
               ),
             ),
@@ -407,3 +408,9 @@ class _WindowsPipOverlayWidgetState extends State<_WindowsPipOverlayWidget> {
     }
   }
 }
+
+
+
+
+
+

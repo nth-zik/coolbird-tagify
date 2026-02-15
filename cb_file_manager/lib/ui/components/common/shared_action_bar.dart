@@ -3,8 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../screens/folder_list/folder_list_state.dart';
 import '../../../helpers/core/user_preferences.dart';
-import 'package:remixicon/remixicon.dart' as remix;
-import '../../../config/app_theme.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../config/languages/app_localizations.dart';
 import '../../utils/grid_zoom_constraints.dart';
 
@@ -24,7 +23,7 @@ class SharedActionBar {
           Icon(
             icon,
             size: 20,
-            color: option == currentOption ? Colors.blue : null,
+            color: option == currentOption ? Theme.of(context).colorScheme.primary : null,
           ),
           const SizedBox(width: 10),
           Text(
@@ -32,12 +31,12 @@ class SharedActionBar {
             style: TextStyle(
               fontWeight:
                   option == currentOption ? FontWeight.bold : FontWeight.normal,
-              color: option == currentOption ? Colors.blue : null,
+              color: option == currentOption ? Theme.of(context).colorScheme.primary : null,
             ),
           ),
           const Spacer(),
           if (option == currentOption)
-            const Icon(remix.Remix.check_line, color: Colors.blue, size: 20),
+            Icon(PhosphorIconsLight.check, color: Theme.of(context).colorScheme.primary, size: 20),
         ],
       ),
     );
@@ -99,9 +98,9 @@ class SharedActionBar {
                 ),
                 Text(
                   l10n.gridSizeInstructions,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -149,7 +148,7 @@ class SharedActionBar {
             return AlertDialog(
               title: Row(
                 children: [
-                  const Icon(remix.Remix.layout_column_line, size: 24),
+                  const Icon(PhosphorIconsLight.columns, size: 24),
                   const SizedBox(width: 8),
                   Text(l10n.columnVisibilityTitle),
                 ],
@@ -162,9 +161,8 @@ class SharedActionBar {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryBlue,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey.shade300),
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
                         l10n.columnVisibilityInstructions,
@@ -182,7 +180,7 @@ class SharedActionBar {
                           size = value ?? true;
                         });
                       },
-                      secondary: const Icon(remix.Remix.hard_drive_2_line),
+                      secondary: const Icon(PhosphorIconsLight.hardDrives),
                       dense: true,
                     ),
                     const Divider(height: 1),
@@ -195,7 +193,7 @@ class SharedActionBar {
                           type = value ?? true;
                         });
                       },
-                      secondary: const Icon(remix.Remix.file_text_line),
+                      secondary: const Icon(PhosphorIconsLight.fileText),
                       dense: true,
                     ),
                     const Divider(height: 1),
@@ -208,7 +206,7 @@ class SharedActionBar {
                           dateModified = value ?? true;
                         });
                       },
-                      secondary: const Icon(remix.Remix.refresh_line),
+                      secondary: const Icon(PhosphorIconsLight.arrowsClockwise),
                       dense: true,
                     ),
                     const Divider(height: 1),
@@ -221,7 +219,7 @@ class SharedActionBar {
                           dateCreated = value ?? false;
                         });
                       },
-                      secondary: const Icon(remix.Remix.calendar_line),
+                      secondary: const Icon(PhosphorIconsLight.calendar),
                       dense: true,
                     ),
                     const Divider(height: 1),
@@ -234,7 +232,7 @@ class SharedActionBar {
                           attributes = value ?? false;
                         });
                       },
-                      secondary: const Icon(remix.Remix.information_line),
+                      secondary: const Icon(PhosphorIconsLight.info),
                       dense: true,
                     ),
                   ],
@@ -248,7 +246,7 @@ class SharedActionBar {
                   child: Text(l10n.cancel.toUpperCase()),
                 ),
                 ElevatedButton.icon(
-                  icon: const Icon(remix.Remix.check_line),
+                  icon: const Icon(PhosphorIconsLight.check),
                   label: Text(l10n.apply),
                   onPressed: () {
                     final newVisibility = ColumnVisibility(
@@ -280,7 +278,7 @@ class SharedActionBar {
       builder: (context) {
         final l10n = AppLocalizations.of(context)!;
         return PopupMenuButton<String>(
-          icon: const Icon(remix.Remix.more_2_line),
+          icon: const Icon(PhosphorIconsLight.dotsThreeVertical),
           tooltip: l10n.moreOptionsTooltip,
           offset: const Offset(0, 50),
           itemBuilder: (context) {
@@ -289,7 +287,7 @@ class SharedActionBar {
                 value: 'selection_mode',
                 child: Row(
                   children: [
-                    const Icon(remix.Remix.checkbox_line, size: 20),
+                    const Icon(PhosphorIconsLight.checkSquare, size: 20),
                     const SizedBox(width: 10),
                     Text(l10n.selectMultipleFiles),
                   ],
@@ -304,7 +302,7 @@ class SharedActionBar {
                   value: 'manage_tags',
                   child: Row(
                     children: [
-                      const Icon(remix.Remix.bookmark_line, size: 20),
+                      const Icon(PhosphorIconsLight.bookmark, size: 20),
                       const SizedBox(width: 10),
                       Text(l10n.manageTags),
                     ],
@@ -357,7 +355,7 @@ class SharedActionBar {
     // Add search button
     actions.add(
       IconButton(
-        icon: const Icon(remix.Remix.search_line),
+        icon: const Icon(PhosphorIconsLight.magnifyingGlass),
         tooltip: l10n.searchTooltip,
         onPressed: onSearchPressed,
       ),
@@ -366,76 +364,76 @@ class SharedActionBar {
     // Add sort button
     actions.add(
       PopupMenuButton<SortOption>(
-        icon: const Icon(remix.Remix.settings_3_line),
+        icon: const Icon(PhosphorIconsLight.funnelSimple),
         tooltip: l10n.sortByTooltip,
         offset: const Offset(0, 50),
         initialValue: currentSortOption,
         onSelected: onSortOptionSelected,
         itemBuilder: (context) => [
           buildSortMenuItem(context, SortOption.nameAsc, l10n.sortNameAsc,
-              remix.Remix.file_text_line, currentSortOption),
+              PhosphorIconsLight.fileText, currentSortOption),
           buildSortMenuItem(context, SortOption.nameDesc, l10n.sortNameDesc,
-              remix.Remix.file_text_line, currentSortOption),
+              PhosphorIconsLight.fileText, currentSortOption),
           const PopupMenuDivider(),
           buildSortMenuItem(
               context,
               SortOption.dateAsc,
               l10n.sortDateModifiedOldest,
-              remix.Remix.calendar_line,
+              PhosphorIconsLight.calendar,
               currentSortOption),
           buildSortMenuItem(
               context,
               SortOption.dateDesc,
               l10n.sortDateModifiedNewest,
-              remix.Remix.calendar_line,
+              PhosphorIconsLight.calendar,
               currentSortOption),
           const PopupMenuDivider(),
           buildSortMenuItem(
               context,
               SortOption.dateCreatedAsc,
               l10n.sortDateCreatedOldest,
-              remix.Remix.time_line,
+              PhosphorIconsLight.clock,
               currentSortOption),
           buildSortMenuItem(
               context,
               SortOption.dateCreatedDesc,
               l10n.sortDateCreatedNewest,
-              remix.Remix.time_line,
+              PhosphorIconsLight.clock,
               currentSortOption),
           buildSortMenuItem(
               context,
               SortOption.sizeAsc,
               l10n.sortSizeSmallest,
-              remix.Remix.pulse_line,
+              PhosphorIconsLight.chartBar,
               currentSortOption),
           buildSortMenuItem(
               context,
               SortOption.sizeDesc,
               l10n.sortSizeLargest,
-              remix.Remix.pulse_line,
+              PhosphorIconsLight.chartBar,
               currentSortOption),
           const PopupMenuDivider(),
           buildSortMenuItem(context, SortOption.typeAsc, l10n.sortTypeAsc,
-              remix.Remix.file_3_line, currentSortOption),
+              PhosphorIconsLight.file, currentSortOption),
           buildSortMenuItem(context, SortOption.typeDesc, l10n.sortTypeDesc,
-              remix.Remix.file_3_line, currentSortOption),
+              PhosphorIconsLight.file, currentSortOption),
           const PopupMenuDivider(),
           buildSortMenuItem(context, SortOption.extensionAsc,
-              l10n.sortExtensionAsc, remix.Remix.at_line, currentSortOption),
+              l10n.sortExtensionAsc, PhosphorIconsLight.at, currentSortOption),
           buildSortMenuItem(context, SortOption.extensionDesc,
-              l10n.sortExtensionDesc, remix.Remix.at_line, currentSortOption),
+              l10n.sortExtensionDesc, PhosphorIconsLight.at, currentSortOption),
           const PopupMenuDivider(),
           buildSortMenuItem(
               context,
               SortOption.attributesAsc,
               l10n.sortAttributesAsc,
-              remix.Remix.information_line,
+              PhosphorIconsLight.info,
               currentSortOption),
           buildSortMenuItem(
               context,
               SortOption.attributesDesc,
               l10n.sortAttributesDesc,
-              remix.Remix.information_line,
+              PhosphorIconsLight.info,
               currentSortOption),
         ],
       ),
@@ -446,7 +444,7 @@ class SharedActionBar {
         onGridSizePressed != null) {
       actions.add(
         IconButton(
-          icon: const Icon(remix.Remix.grid_line),
+          icon: const Icon(PhosphorIconsLight.squaresFour),
           tooltip: l10n.adjustGridSizeTooltip,
           onPressed: onGridSizePressed,
         ),
@@ -456,7 +454,7 @@ class SharedActionBar {
     if (viewMode == ViewMode.gridPreview && onPreviewPaneToggled != null) {
       actions.add(
         IconButton(
-          icon: const Icon(Icons.vertical_split),
+          icon: const Icon(PhosphorIconsLight.splitVertical),
           tooltip:
               isPreviewPaneVisible ? l10n.hidePreview : l10n.showPreview,
           onPressed: onPreviewPaneToggled,
@@ -468,7 +466,7 @@ class SharedActionBar {
     if (viewMode == ViewMode.details && onColumnSettingsPressed != null) {
       actions.add(
         IconButton(
-          icon: const Icon(remix.Remix.layout_line),
+          icon: const Icon(PhosphorIconsLight.layout),
           tooltip: l10n.columnSettingsTooltip,
           onPressed: onColumnSettingsPressed,
         ),
@@ -478,7 +476,7 @@ class SharedActionBar {
     // Add view mode toggle button
     actions.add(
       PopupMenuButton<ViewMode>(
-        icon: const Icon(remix.Remix.eye_line),
+        icon: const Icon(PhosphorIconsLight.eye),
         tooltip: l10n.viewModeTooltip,
         offset: const Offset(0, 50),
         initialValue: viewMode,
@@ -488,9 +486,9 @@ class SharedActionBar {
             child: Row(
               children: [
                 Icon(
-                  remix.Remix.menu_2_line,
+                  PhosphorIconsLight.list,
                   size: 20,
-                  color: viewMode == ViewMode.list ? Colors.blue : null,
+                  color: viewMode == ViewMode.list ? Theme.of(context).colorScheme.primary : null,
                 ),
                 const SizedBox(width: 10),
                 Text(
@@ -499,13 +497,13 @@ class SharedActionBar {
                     fontWeight: viewMode == ViewMode.list
                         ? FontWeight.bold
                         : FontWeight.normal,
-                    color: viewMode == ViewMode.list ? Colors.blue : null,
+                    color: viewMode == ViewMode.list ? Theme.of(context).colorScheme.primary : null,
                   ),
                 ),
                 const Spacer(),
                 if (viewMode == ViewMode.list)
-                  const Icon(remix.Remix.check_line,
-                      color: Colors.blue, size: 20),
+                  Icon(PhosphorIconsLight.check,
+                      color: Theme.of(context).colorScheme.primary, size: 20),
               ],
             ),
           ),
@@ -514,9 +512,9 @@ class SharedActionBar {
             child: Row(
               children: [
                 Icon(
-                  remix.Remix.grid_line,
+                  PhosphorIconsLight.squaresFour,
                   size: 20,
-                  color: viewMode == ViewMode.grid ? Colors.blue : null,
+                  color: viewMode == ViewMode.grid ? Theme.of(context).colorScheme.primary : null,
                 ),
                 const SizedBox(width: 10),
                 Text(
@@ -525,13 +523,13 @@ class SharedActionBar {
                     fontWeight: viewMode == ViewMode.grid
                         ? FontWeight.bold
                         : FontWeight.normal,
-                    color: viewMode == ViewMode.grid ? Colors.blue : null,
+                    color: viewMode == ViewMode.grid ? Theme.of(context).colorScheme.primary : null,
                   ),
                 ),
                 const Spacer(),
                 if (viewMode == ViewMode.grid)
-                  const Icon(remix.Remix.check_line,
-                      color: Colors.blue, size: 20),
+                  Icon(PhosphorIconsLight.check,
+                      color: Theme.of(context).colorScheme.primary, size: 20),
               ],
             ),
           ),
@@ -541,10 +539,10 @@ class SharedActionBar {
               child: Row(
                 children: [
                   Icon(
-                    Icons.vertical_split,
+                    PhosphorIconsLight.splitVertical,
                     size: 20,
                     color:
-                        viewMode == ViewMode.gridPreview ? Colors.blue : null,
+                        viewMode == ViewMode.gridPreview ? Theme.of(context).colorScheme.primary : null,
                   ),
                   const SizedBox(width: 10),
                   Text(
@@ -554,13 +552,13 @@ class SharedActionBar {
                           ? FontWeight.bold
                           : FontWeight.normal,
                       color:
-                          viewMode == ViewMode.gridPreview ? Colors.blue : null,
+                          viewMode == ViewMode.gridPreview ? Theme.of(context).colorScheme.primary : null,
                     ),
                   ),
                   const Spacer(),
                   if (viewMode == ViewMode.gridPreview)
-                    const Icon(remix.Remix.check_line,
-                        color: Colors.blue, size: 20),
+                    Icon(PhosphorIconsLight.check,
+                        color: Theme.of(context).colorScheme.primary, size: 20),
                 ],
               ),
             ),
@@ -569,9 +567,9 @@ class SharedActionBar {
             child: Row(
               children: [
                 Icon(
-                  remix.Remix.list_unordered,
+                  PhosphorIconsLight.listBullets,
                   size: 20,
-                  color: viewMode == ViewMode.details ? Colors.blue : null,
+                  color: viewMode == ViewMode.details ? Theme.of(context).colorScheme.primary : null,
                 ),
                 const SizedBox(width: 10),
                 Text(
@@ -580,13 +578,13 @@ class SharedActionBar {
                     fontWeight: viewMode == ViewMode.details
                         ? FontWeight.bold
                         : FontWeight.normal,
-                    color: viewMode == ViewMode.details ? Colors.blue : null,
+                    color: viewMode == ViewMode.details ? Theme.of(context).colorScheme.primary : null,
                   ),
                 ),
                 const Spacer(),
                 if (viewMode == ViewMode.details)
-                  const Icon(remix.Remix.check_line,
-                      color: Colors.blue, size: 20),
+                  Icon(PhosphorIconsLight.check,
+                      color: Theme.of(context).colorScheme.primary, size: 20),
               ],
             ),
           ),
@@ -606,7 +604,7 @@ class SharedActionBar {
     // Add refresh button
     actions.add(
       IconButton(
-        icon: const Icon(remix.Remix.refresh_line),
+        icon: const Icon(PhosphorIconsLight.arrowsClockwise),
         tooltip: l10n.refreshTooltip,
         onPressed: onRefresh,
       ),
@@ -623,3 +621,6 @@ class SharedActionBar {
     return actions;
   }
 }
+
+
+

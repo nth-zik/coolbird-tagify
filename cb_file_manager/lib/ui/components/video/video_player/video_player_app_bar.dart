@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../utils/fluent_background.dart';
 import '../../common/window_caption_buttons.dart';
 import 'package:window_manager/window_manager.dart';
@@ -61,7 +61,7 @@ class _VideoPlayerAppBarState extends State<VideoPlayerAppBar> {
       title: _buildTitle(),
       leading: _isDesktopPlatform
           ? IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              icon: const Icon(PhosphorIconsLight.arrowLeft, color: Colors.white),
               onPressed: onClose,
             )
           : null,
@@ -74,7 +74,7 @@ class _VideoPlayerAppBarState extends State<VideoPlayerAppBar> {
   Widget _buildTitle() {
     final content = Row(
       children: [
-        const Icon(remix.Remix.video_line, color: Colors.white70, size: 20),
+        const Icon(PhosphorIconsLight.videoCamera, color: Colors.white70, size: 20),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
@@ -116,3 +116,8 @@ class _VideoPlayerAppBarState extends State<VideoPlayerAppBar> {
     return actions;
   }
 }
+
+
+
+
+

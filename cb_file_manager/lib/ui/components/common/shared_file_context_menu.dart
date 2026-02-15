@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../controllers/file_operations_handler.dart';
 import '../../screens/folder_list/file_details_screen.dart';
 import '../../screens/media_gallery/image_viewer_screen.dart';
@@ -50,7 +50,7 @@ class SharedFileContextMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
     final currentService = StreamingHelper.instance.currentNetworkService;
     String? webDavSize;
     String? webDavModified;
@@ -92,7 +92,7 @@ class SharedFileContextMenu extends StatelessWidget {
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!,
+                color: theme.dividerColor,
               ),
             ),
           ),
@@ -100,15 +100,15 @@ class SharedFileContextMenu extends StatelessWidget {
             children: [
               Icon(
                 isVideo
-                    ? remix.Remix.video_line
+                    ? PhosphorIconsLight.videoCamera
                     : isImage
-                        ? remix.Remix.image_line
-                        : remix.Remix.file_3_line,
+                        ? PhosphorIconsLight.image
+                        : PhosphorIconsLight.file,
                 color: isVideo
-                    ? Colors.red
+                    ? theme.colorScheme.error
                     : isImage
-                        ? Colors.blue
-                        : Colors.grey,
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurfaceVariant,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -120,7 +120,7 @@ class SharedFileContextMenu extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: isDarkMode ? Colors.white : Colors.black87,
+                        color: theme.colorScheme.onSurface,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -130,26 +130,24 @@ class SharedFileContextMenu extends StatelessWidget {
                       Row(
                         children: [
                           if (webDavSize != null) ...[
-                            const Icon(remix.Remix.hard_drive_2_line, size: 14),
+                            Icon(PhosphorIconsLight.hardDrives, size: 14,
+                                color: theme.colorScheme.onSurfaceVariant),
                             const SizedBox(width: 4),
                             Text(webDavSize,
                                 style: TextStyle(
                                     fontSize: 12,
-                                    color: isDarkMode
-                                        ? Colors.white70
-                                        : Colors.black54)),
+                                    color: theme.colorScheme.onSurfaceVariant)),
                           ],
                           if (webDavModified != null) ...[
                             const SizedBox(width: 12),
-                            const Icon(remix.Remix.calendar_event_line,
-                                size: 14),
+                            Icon(PhosphorIconsLight.calendarBlank,
+                                size: 14,
+                                color: theme.colorScheme.onSurfaceVariant),
                             const SizedBox(width: 4),
                             Text(webDavModified,
                                 style: TextStyle(
                                     fontSize: 12,
-                                    color: isDarkMode
-                                        ? Colors.white70
-                                        : Colors.black54)),
+                                    color: theme.colorScheme.onSurfaceVariant)),
                           ],
                         ],
                       ),
@@ -158,7 +156,8 @@ class SharedFileContextMenu extends StatelessWidget {
                 ),
               ),
               IconButton(
-                icon: const Icon(remix.Remix.close_line),
+                icon: Icon(PhosphorIconsLight.x,
+                    color: theme.colorScheme.onSurfaceVariant),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
@@ -169,11 +168,11 @@ class SharedFileContextMenu extends StatelessWidget {
         if (isVideo)
           ListTile(
             leading:
-                const Icon(remix.Remix.play_circle_line, color: Colors.red),
+                Icon(PhosphorIconsLight.playCircle, color: theme.colorScheme.error),
             title: Text(
               AppLocalizations.of(context)!.playVideo,
               style:
-                  TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+                  TextStyle(color: theme.colorScheme.onSurface),
             ),
             onTap: () async {
               Navigator.pop(context);
@@ -183,11 +182,11 @@ class SharedFileContextMenu extends StatelessWidget {
 
         if (isImage)
           ListTile(
-            leading: const Icon(remix.Remix.image_line, color: Colors.blue),
+            leading: Icon(PhosphorIconsLight.image, color: theme.colorScheme.primary),
             title: Text(
               AppLocalizations.of(context)!.viewImage,
               style:
-                  TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+                  TextStyle(color: theme.colorScheme.onSurface),
             ),
             onTap: () {
               Navigator.pop(context);
@@ -201,10 +200,11 @@ class SharedFileContextMenu extends StatelessWidget {
           ),
 
         ListTile(
-          leading: const Icon(remix.Remix.eye_line),
+          leading: Icon(PhosphorIconsLight.eye,
+              color: theme.colorScheme.onSurfaceVariant),
           title: Text(
             AppLocalizations.of(context)!.openFile,
-            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+            style: TextStyle(color: theme.colorScheme.onSurface),
           ),
           onTap: () {
             Navigator.pop(context);
@@ -213,10 +213,11 @@ class SharedFileContextMenu extends StatelessWidget {
         ),
 
         ListTile(
-          leading: const Icon(remix.Remix.external_link_line),
+          leading: Icon(PhosphorIconsLight.arrowSquareOut,
+              color: theme.colorScheme.onSurfaceVariant),
           title: Text(
             AppLocalizations.of(context)!.openWith,
-            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+            style: TextStyle(color: theme.colorScheme.onSurface),
           ),
           onTap: () {
             Navigator.pop(context);
@@ -227,10 +228,11 @@ class SharedFileContextMenu extends StatelessWidget {
           },
         ),
         ListTile(
-          leading: const Icon(remix.Remix.apps_line),
+          leading: Icon(PhosphorIconsLight.appWindow,
+              color: theme.colorScheme.onSurfaceVariant),
           title: Text(
             AppLocalizations.of(context)!.chooseDefaultApp,
-            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+            style: TextStyle(color: theme.colorScheme.onSurface),
           ),
           onTap: () {
             Navigator.pop(context);
@@ -247,11 +249,11 @@ class SharedFileContextMenu extends StatelessWidget {
         if ((currentService is WebDAVService || currentService is FTPService) &&
             remotePath != null)
           ListTile(
-            leading: const Icon(remix.Remix.download_line, color: Colors.blue),
+            leading: Icon(PhosphorIconsLight.downloadSimple, color: theme.colorScheme.primary),
             title: Text(
               AppLocalizations.of(context)!.download,
               style:
-                  TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+                  TextStyle(color: theme.colorScheme.onSurface),
             ),
             onTap: () async {
               Navigator.pop(context);
@@ -277,7 +279,7 @@ class SharedFileContextMenu extends StatelessWidget {
                     SnackBar(
                         content: Text(AppLocalizations.of(context)!
                             .downloadFailed(e.toString())),
-                        backgroundColor: Colors.red),
+                        backgroundColor: Theme.of(context).colorScheme.error),
                   );
                 }
               }
@@ -286,10 +288,11 @@ class SharedFileContextMenu extends StatelessWidget {
 
         // Copy option
         ListTile(
-          leading: const Icon(remix.Remix.file_copy_line),
+          leading: Icon(PhosphorIconsLight.copy,
+              color: theme.colorScheme.onSurfaceVariant),
           title: Text(
             AppLocalizations.of(context)!.copy,
-            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+            style: TextStyle(color: theme.colorScheme.onSurface),
           ),
           onTap: () {
             Navigator.pop(context);
@@ -300,10 +303,11 @@ class SharedFileContextMenu extends StatelessWidget {
 
         // Cut option
         ListTile(
-          leading: const Icon(remix.Remix.scissors_cut_line),
+          leading: Icon(PhosphorIconsLight.scissors,
+              color: theme.colorScheme.onSurfaceVariant),
           title: Text(
             AppLocalizations.of(context)!.cut,
-            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+            style: TextStyle(color: theme.colorScheme.onSurface),
           ),
           onTap: () {
             Navigator.pop(context);
@@ -314,10 +318,11 @@ class SharedFileContextMenu extends StatelessWidget {
 
         // Rename option
         ListTile(
-          leading: const Icon(remix.Remix.edit_line),
+          leading: Icon(PhosphorIconsLight.pencilSimple,
+              color: theme.colorScheme.onSurfaceVariant),
           title: Text(
             AppLocalizations.of(context)!.rename,
-            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+            style: TextStyle(color: theme.colorScheme.onSurface),
           ),
           onTap: () async {
             Navigator.pop(context);
@@ -327,10 +332,10 @@ class SharedFileContextMenu extends StatelessWidget {
 
         // Tag management option - always show
         ListTile(
-          leading: const Icon(remix.Remix.bookmark_line, color: Colors.green),
+          leading: Icon(PhosphorIconsLight.tag, color: theme.colorScheme.primary),
           title: Text(
             AppLocalizations.of(context)!.manageTags,
-            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+            style: TextStyle(color: theme.colorScheme.onSurface),
           ),
           onTap: () {
             Navigator.pop(context);
@@ -344,10 +349,11 @@ class SharedFileContextMenu extends StatelessWidget {
 
         // File details
         ListTile(
-          leading: const Icon(remix.Remix.information_line),
+          leading: Icon(PhosphorIconsLight.info,
+              color: theme.colorScheme.onSurfaceVariant),
           title: Text(
             AppLocalizations.of(context)!.properties,
-            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+            style: TextStyle(color: theme.colorScheme.onSurface),
           ),
           onTap: () {
             Navigator.pop(context);
@@ -362,10 +368,10 @@ class SharedFileContextMenu extends StatelessWidget {
 
         // Move to trash
         ListTile(
-          leading: const Icon(remix.Remix.delete_bin_2_line, color: Colors.red),
+          leading: Icon(PhosphorIconsLight.trash, color: theme.colorScheme.error),
           title: Text(
             AppLocalizations.of(context)!.moveToTrash,
-            style: const TextStyle(color: Colors.red),
+            style: TextStyle(color: theme.colorScheme.error),
           ),
           onTap: () {
             Navigator.pop(context);
@@ -404,7 +410,7 @@ class SharedFileContextMenu extends StatelessWidget {
             },
             child: Text(
               AppLocalizations.of(context)!.moveToTrash.toUpperCase(),
-              style: const TextStyle(color: Colors.red),
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
           ),
         ],
@@ -465,8 +471,7 @@ class SharedFolderContextMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDarkMode ? Colors.white : Colors.black87;
+    final theme = Theme.of(context);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -477,13 +482,13 @@ class SharedFolderContextMenu extends StatelessWidget {
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!,
+                color: theme.dividerColor,
               ),
             ),
           ),
           child: Row(
             children: [
-              Icon(remix.Remix.folder_line, color: Colors.amber[700]),
+              Icon(PhosphorIconsLight.folder, color: theme.colorScheme.primary),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -491,13 +496,14 @@ class SharedFolderContextMenu extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: textColor,
+                    color: theme.colorScheme.onSurface,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
               IconButton(
-                icon: const Icon(remix.Remix.close_line),
+                icon: Icon(PhosphorIconsLight.x,
+                    color: theme.colorScheme.onSurfaceVariant),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
@@ -506,11 +512,11 @@ class SharedFolderContextMenu extends StatelessWidget {
 
         // Action items
         ListTile(
-          leading: Icon(remix.Remix.folder_open_line,
-              color: isDarkMode ? Colors.white70 : Colors.black87),
+          leading: Icon(PhosphorIconsLight.folderOpen,
+              color: theme.colorScheme.onSurface),
           title: Text(
             AppLocalizations.of(context)!.openFolder,
-            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+            style: TextStyle(color: theme.colorScheme.onSurface),
           ),
           onTap: () {
             Navigator.pop(context);
@@ -528,11 +534,11 @@ class SharedFolderContextMenu extends StatelessWidget {
 
         // Copy option for folder
         ListTile(
-          leading: Icon(remix.Remix.file_copy_line,
-              color: isDarkMode ? Colors.white70 : Colors.black87),
+          leading: Icon(PhosphorIconsLight.copy,
+              color: theme.colorScheme.onSurfaceVariant),
           title: Text(
             AppLocalizations.of(context)!.copy,
-            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+            style: TextStyle(color: theme.colorScheme.onSurface),
           ),
           onTap: () {
             Navigator.pop(context);
@@ -545,11 +551,11 @@ class SharedFolderContextMenu extends StatelessWidget {
 
         // Cut option for folder
         ListTile(
-          leading: Icon(remix.Remix.scissors_cut_line,
-              color: isDarkMode ? Colors.white70 : Colors.black87),
+          leading: Icon(PhosphorIconsLight.scissors,
+              color: theme.colorScheme.onSurfaceVariant),
           title: Text(
             AppLocalizations.of(context)!.cut,
-            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+            style: TextStyle(color: theme.colorScheme.onSurface),
           ),
           onTap: () {
             Navigator.pop(context);
@@ -562,11 +568,11 @@ class SharedFolderContextMenu extends StatelessWidget {
 
         // Paste option for folder (if there's something in clipboard)
         ListTile(
-          leading: Icon(remix.Remix.clipboard_line,
-              color: isDarkMode ? Colors.white70 : Colors.black87),
+          leading: Icon(PhosphorIconsLight.clipboard,
+              color: theme.colorScheme.onSurfaceVariant),
           title: Text(
             AppLocalizations.of(context)!.pasteHere,
-            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+            style: TextStyle(color: theme.colorScheme.onSurface),
           ),
           onTap: () {
             Navigator.pop(context);
@@ -579,11 +585,11 @@ class SharedFolderContextMenu extends StatelessWidget {
 
         // Rename option for folder
         ListTile(
-          leading: Icon(remix.Remix.edit_line,
-              color: isDarkMode ? Colors.white70 : Colors.black87),
+          leading: Icon(PhosphorIconsLight.pencilSimple,
+              color: theme.colorScheme.onSurfaceVariant),
           title: Text(
             AppLocalizations.of(context)!.rename,
-            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+            style: TextStyle(color: theme.colorScheme.onSurface),
           ),
           onTap: () async {
             Navigator.pop(context);
@@ -593,10 +599,10 @@ class SharedFolderContextMenu extends StatelessWidget {
 
         // Tag management option
         ListTile(
-          leading: const Icon(remix.Remix.bookmark_line, color: Colors.green),
+          leading: Icon(PhosphorIconsLight.tag, color: theme.colorScheme.primary),
           title: Text(
             AppLocalizations.of(context)!.manageTags,
-            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+            style: TextStyle(color: theme.colorScheme.onSurface),
           ),
           onTap: () {
             Navigator.pop(context);
@@ -606,11 +612,11 @@ class SharedFolderContextMenu extends StatelessWidget {
 
         // Properties
         ListTile(
-          leading: Icon(remix.Remix.information_line,
-              color: isDarkMode ? Colors.white70 : Colors.black87),
+          leading: Icon(PhosphorIconsLight.info,
+              color: theme.colorScheme.onSurfaceVariant),
           title: Text(
             AppLocalizations.of(context)!.properties,
-            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+            style: TextStyle(color: theme.colorScheme.onSurface),
           ),
           onTap: () {
             Navigator.pop(context);
@@ -760,68 +766,68 @@ void _showFileContextMenuDesktop({
         PopupMenuItem(
           value: 'play_video',
           child: _menuRow(AppLocalizations.of(context)!.playVideo,
-              remix.Remix.play_circle_line),
+              PhosphorIconsLight.playCircle),
         ),
       if (isImage)
         PopupMenuItem(
           value: 'view_image',
           child: _menuRow(
-              AppLocalizations.of(context)!.viewImage, remix.Remix.image_line),
+              AppLocalizations.of(context)!.viewImage, PhosphorIconsLight.image),
         ),
       PopupMenuItem(
         value: 'open',
         child: _menuRow(
-            AppLocalizations.of(context)!.open, remix.Remix.file_3_line),
+            AppLocalizations.of(context)!.open, PhosphorIconsLight.file),
       ),
       PopupMenuItem(
         value: 'open_with',
         child: _menuRow(AppLocalizations.of(context)!.openWith,
-            remix.Remix.external_link_line),
+            PhosphorIconsLight.arrowSquareOut),
       ),
       PopupMenuItem(
         value: 'choose_default_app',
         child: _menuRow(AppLocalizations.of(context)!.chooseDefaultApp,
-            remix.Remix.apps_line),
+            PhosphorIconsLight.appWindow),
       ),
       const PopupMenuDivider(),
       PopupMenuItem(
         value: 'copy',
         child: _menuRow(
-            AppLocalizations.of(context)!.copy, remix.Remix.file_copy_line),
+            AppLocalizations.of(context)!.copy, PhosphorIconsLight.copy),
       ),
       PopupMenuItem(
         value: 'cut',
         child: _menuRow(
-            AppLocalizations.of(context)!.cut, remix.Remix.scissors_cut_line),
+            AppLocalizations.of(context)!.cut, PhosphorIconsLight.scissors),
       ),
       PopupMenuItem(
         value: 'rename',
         child: _menuRow(
-            AppLocalizations.of(context)!.rename, remix.Remix.edit_line),
+            AppLocalizations.of(context)!.rename, PhosphorIconsLight.pencilSimple),
       ),
       PopupMenuItem(
         value: 'tags',
         child: _menuRow(AppLocalizations.of(context)!.manageTags,
-            remix.Remix.bookmark_line),
+            PhosphorIconsLight.tag),
       ),
       const PopupMenuDivider(),
       PopupMenuItem(
         value: 'properties',
         child: _menuRow(AppLocalizations.of(context)!.properties,
-            remix.Remix.information_line),
+            PhosphorIconsLight.info),
       ),
       PopupMenuItem(
         value: 'delete',
         child: _menuRow(AppLocalizations.of(context)!.moveToTrash,
-            remix.Remix.delete_bin_2_line,
-            color: Colors.red),
+            PhosphorIconsLight.trash,
+            color: Theme.of(context).colorScheme.error),
       ),
       if (canShowShellMenu) ...[
         const PopupMenuDivider(),
         PopupMenuItem(
           value: 'more_options',
           child: _menuRow(AppLocalizations.of(context)!.moreOptions,
-              remix.Remix.more_2_line),
+              PhosphorIconsLight.dotsThreeVertical),
         ),
       ],
     ],
@@ -923,7 +929,7 @@ Future<void> _moveToTrashStandalone(BuildContext context, File file) async {
   } catch (e) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+        SnackBar(content: Text('Error: $e'), backgroundColor: Theme.of(context).colorScheme.error),
       );
     }
   }
@@ -1065,39 +1071,39 @@ void _showFolderContextMenuDesktop({
     items: [
       PopupMenuItem(
         value: 'open',
-        child: _menuRow(l10n.openFolder, remix.Remix.folder_open_line),
+        child: _menuRow(l10n.openFolder, PhosphorIconsLight.folderOpen),
       ),
       const PopupMenuDivider(),
       PopupMenuItem(
         value: 'copy',
-        child: _menuRow(l10n.copy, remix.Remix.file_copy_line),
+        child: _menuRow(l10n.copy, PhosphorIconsLight.copy),
       ),
       PopupMenuItem(
         value: 'cut',
-        child: _menuRow(l10n.cut, remix.Remix.scissors_cut_line),
+        child: _menuRow(l10n.cut, PhosphorIconsLight.scissors),
       ),
       PopupMenuItem(
         value: 'paste',
-        child: _menuRow(l10n.pasteHere, remix.Remix.clipboard_line),
+        child: _menuRow(l10n.pasteHere, PhosphorIconsLight.clipboard),
       ),
       PopupMenuItem(
         value: 'rename',
-        child: _menuRow(l10n.rename, remix.Remix.edit_line),
+        child: _menuRow(l10n.rename, PhosphorIconsLight.pencilSimple),
       ),
       PopupMenuItem(
         value: 'tags',
-        child: _menuRow(l10n.manageTags, remix.Remix.bookmark_line),
+        child: _menuRow(l10n.manageTags, PhosphorIconsLight.tag),
       ),
       const PopupMenuDivider(),
       PopupMenuItem(
         value: 'properties',
-        child: _menuRow(l10n.properties, remix.Remix.information_line),
+        child: _menuRow(l10n.properties, PhosphorIconsLight.info),
       ),
       if (canShowShellMenu) ...[
         const PopupMenuDivider(),
         PopupMenuItem(
           value: 'more_options',
-          child: _menuRow(l10n.moreOptions, remix.Remix.more_2_line),
+          child: _menuRow(l10n.moreOptions, PhosphorIconsLight.dotsThreeVertical),
         ),
       ],
     ],
@@ -1350,26 +1356,26 @@ void showMultipleFilesContextMenu({
       const PopupMenuDivider(),
       PopupMenuItem(
         value: 'copy',
-        child: _menuRow(l10n.copy, remix.Remix.file_copy_line),
+        child: _menuRow(l10n.copy, PhosphorIconsLight.copy),
       ),
       PopupMenuItem(
         value: 'cut',
-        child: _menuRow(l10n.cut, remix.Remix.scissors_cut_line),
+        child: _menuRow(l10n.cut, PhosphorIconsLight.scissors),
       ),
       PopupMenuItem(
         value: 'tags',
-        child: _menuRow(l10n.manageTags, remix.Remix.bookmark_line),
+        child: _menuRow(l10n.manageTags, PhosphorIconsLight.tag),
       ),
       PopupMenuItem(
         value: 'delete',
-        child: _menuRow(l10n.deleteTitle, remix.Remix.delete_bin_2_line,
-            color: Colors.red),
+        child: _menuRow(l10n.deleteTitle, PhosphorIconsLight.trash,
+            color: Theme.of(context).colorScheme.error),
       ),
       if (canShowShellMenu) ...[
         const PopupMenuDivider(),
         PopupMenuItem(
           value: 'more_options',
-          child: _menuRow(l10n.moreOptions, remix.Remix.more_2_line),
+          child: _menuRow(l10n.moreOptions, PhosphorIconsLight.dotsThreeVertical),
         ),
       ],
     ],
@@ -1436,3 +1442,6 @@ void showMultipleFilesContextMenu({
     }
   });
 }
+
+
+

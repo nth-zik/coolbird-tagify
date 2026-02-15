@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:cb_file_manager/services/album_service.dart';
 
@@ -100,14 +101,14 @@ class _BatchAddDialogState extends State<BatchAddDialog> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 ListTile(
-                  leading: const Icon(Icons.folder_open),
+                  leading: const Icon(PhosphorIconsLight.folderOpen),
                   title: const Text('Add from a folder'),
                   subtitle: const Text('Add all images from a selected folder'),
                   onTap: _addFromFolder,
                 ),
                 const Divider(),
                 ListTile(
-                  leading: const Icon(Icons.photo_library),
+                  leading: const Icon(PhosphorIconsLight.images),
                   title: const Text('Add selected photos'),
                   subtitle: const Text('Choose specific image files to add'),
                   onTap: _addSelectedFiles,
@@ -125,3 +126,7 @@ class _BatchAddDialogState extends State<BatchAddDialog> {
     );
   }
 }
+
+
+
+

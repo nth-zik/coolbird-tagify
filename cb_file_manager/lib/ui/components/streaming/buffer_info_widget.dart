@@ -127,13 +127,7 @@ class _BufferInfoWidgetState extends State<BufferInfoWidget>
               : Colors.grey.withValues(alpha: 0.3),
           width: 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -189,7 +183,7 @@ class _BufferInfoWidgetState extends State<BufferInfoWidget>
                   color: _isActive
                       ? Colors.purple.withValues(alpha: 0.2)
                       : Colors.grey.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16.0),
                 ),
                 child: Text(
                   _isActive ? 'BUFFERING' : 'READY',
@@ -294,3 +288,5 @@ class _BufferInfoWidgetState extends State<BufferInfoWidget>
     );
   }
 }
+
+

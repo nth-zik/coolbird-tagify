@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter/services.dart';
 import 'windows_app_icon.dart';
 import 'dart:ui' as ui;
@@ -114,7 +115,7 @@ class ExternalAppHelper {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Icon(
-                  isInstalled ? Icons.android : Icons.install_mobile,
+                  isInstalled ? PhosphorIconsLight.androidLogo : PhosphorIconsLight.deviceMobile,
                   size: 24,
                   color: Colors.white,
                 ),
@@ -132,7 +133,7 @@ class ExternalAppHelper {
               borderRadius: BorderRadius.circular(4),
             ),
             child: Icon(
-              isInstalled ? Icons.android : Icons.install_mobile,
+              isInstalled ? PhosphorIconsLight.androidLogo : PhosphorIconsLight.deviceMobile,
               size: 24,
               color: Colors.white,
             ),
@@ -149,7 +150,7 @@ class ExternalAppHelper {
             borderRadius: BorderRadius.circular(4),
           ),
           child: Icon(
-            isInstalled ? Icons.android : Icons.install_mobile,
+            isInstalled ? PhosphorIconsLight.androidLogo : PhosphorIconsLight.deviceMobile,
             size: 24,
             color: Colors.white,
           ),
@@ -206,7 +207,7 @@ class ExternalAppHelper {
         apps.add(AppInfo(
           packageName: '__cb_video_player__',
           appName: 'CoolBird Tagify Video Player',
-          icon: const Icon(Icons.play_circle_outline, size: 36),
+          icon: const Icon(PhosphorIconsLight.playCircle, size: 36),
         ));
       }
       final extension = filePath.split('.').last.toLowerCase();
@@ -222,7 +223,7 @@ class ExternalAppHelper {
           appName: app['appName'],
           icon: app['iconBytes'] != null
               ? Image.memory(app['iconBytes'], width: 36, height: 36)
-              : const Icon(Icons.android, size: 36),
+              : const Icon(PhosphorIconsLight.androidLogo, size: 36),
         );
       }));
       return apps;
@@ -245,7 +246,7 @@ class ExternalAppHelper {
         apps.add(AppInfo(
           packageName: '__cb_video_player__',
           appName: 'CoolBird Tagify Video Player',
-          icon: const Icon(Icons.play_circle_outline, size: 36),
+          icon: const Icon(PhosphorIconsLight.playCircle, size: 36),
         ));
       }
 
@@ -267,7 +268,7 @@ class ExternalAppHelper {
         apps.add(AppInfo(
           packageName: 'shell_open',
           appName: 'Default Program',
-          icon: const Icon(Icons.open_in_new, size: 36),
+          icon: const Icon(PhosphorIconsLight.arrowSquareOut, size: 36),
         ));
         return apps;
       }
@@ -289,7 +290,7 @@ class ExternalAppHelper {
       apps.add(AppInfo(
         packageName: 'shell_open',
         appName: 'Default Program',
-        icon: const Icon(Icons.open_in_new, size: 36),
+        icon: const Icon(PhosphorIconsLight.arrowSquareOut, size: 36),
       ));
 
       return apps;
@@ -330,19 +331,19 @@ class ExternalAppHelper {
     final String filename = execPath.split('\\').last.toLowerCase();
 
     if (filename.contains('paint')) {
-      iconData = Icons.brush;
+      iconData = PhosphorIconsLight.paintBrush;
     } else if (filename.contains('word')) {
-      iconData = Icons.description;
+      iconData = PhosphorIconsLight.fileText;
     } else if (filename.contains('excel')) {
-      iconData = Icons.table_chart;
+      iconData = PhosphorIconsLight.table;
     } else if (filename.contains('powerpnt')) {
-      iconData = Icons.slideshow;
+      iconData = PhosphorIconsLight.presentationChart;
     } else if (filename.contains('vlc') || filename.contains('wmplayer')) {
-      iconData = Icons.video_library;
+      iconData = PhosphorIconsLight.videoCamera;
     } else if (filename.contains('acrobat') || filename.contains('reader')) {
-      iconData = Icons.picture_as_pdf;
+      iconData = PhosphorIconsLight.filePdf;
     } else {
-      iconData = Icons.app_shortcut;
+      iconData = PhosphorIconsLight.appWindow;
     }
 
     final Widget iconWidget = Icon(iconData, size: 36);
@@ -461,3 +462,7 @@ class ExternalAppHelper {
     }
   }
 }
+
+
+
+

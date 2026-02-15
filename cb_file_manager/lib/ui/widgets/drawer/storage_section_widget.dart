@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/helpers/core/io_extensions.dart';
 import 'package:cb_file_manager/config/translation_helper.dart';
 import 'package:cb_file_manager/ui/widgets/drawer/cubit/drawer_cubit.dart';
@@ -35,30 +35,37 @@ class _StorageSectionWidgetState extends State<StorageSectionWidget> {
             dividerColor: Colors.transparent,
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
             child: Material(
-              color: _isExpanded
-                  ? theme.colorScheme.surface.withValues(alpha: 0.7)
-                  : Colors.transparent,
+              color: Colors.transparent,
               child: ExpansionTile(
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                trailing: AnimatedRotation(
+                  duration: const Duration(milliseconds: 180),
+                  turns: _isExpanded ? 0.5 : 0.0,
+                  child: Icon(
+                    PhosphorIconsLight.caretDown,
+                    size: 18,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 leading: Icon(
-                  remix.Remix.hard_drive_2_line,
+                  PhosphorIconsLight.hardDrives,
                   size: 22,
                   color: theme.colorScheme.primary,
                 ),
                 title: Text(
-                  'Storage',
+                  context.tr.drivesTab,
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: theme.textTheme.titleMedium?.color,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
                   ),
                 ),
                 collapsedBackgroundColor: Colors.transparent,
-                backgroundColor: theme.colorScheme.surface.withValues(alpha: 0.7),
+                backgroundColor: Colors.transparent,
                 childrenPadding: const EdgeInsets.only(bottom: 8),
                 initiallyExpanded: _isExpanded,
                 onExpansionChanged: (isExpanded) {
@@ -80,10 +87,10 @@ class _StorageSectionWidgetState extends State<StorageSectionWidget> {
                     )
                   else if (state.storageLocations.isEmpty)
                     ListTile(
-                      contentPadding: const EdgeInsets.only(left: 56, right: 16),
+                      contentPadding: const EdgeInsets.only(left: 52, right: 14),
                       title: Text(context.tr.noStorageLocationsFound),
                       trailing: IconButton(
-                        icon: const Icon(remix.Remix.refresh_line),
+                        icon: const Icon(PhosphorIconsLight.arrowsClockwise),
                         onPressed: () {
                           context.read<DrawerCubit>().loadStorageLocations();
                         },
@@ -92,14 +99,14 @@ class _StorageSectionWidgetState extends State<StorageSectionWidget> {
                   else
                     ...state.storageLocations.map((storage) {
                       return _buildStorageItem(context, storage);
-                    }).toList(),
-                  
+                    }),
+
                   // Trash Bin
                   _buildItem(
                     context,
-                    icon: remix.Remix.delete_bin_2_line,
+                    icon: PhosphorIconsLight.trash,
                     title: context.tr.trashBin,
-                    iconColor: Colors.red[400],
+                    iconColor: theme.colorScheme.error,
                     onTap: widget.onTrashTap,
                   ),
                 ],
@@ -112,6 +119,7 @@ class _StorageSectionWidgetState extends State<StorageSectionWidget> {
   }
 
   Widget _buildStorageItem(BuildContext context, Directory storage) {
+    final theme = Theme.of(context);
     String displayName = _getStorageDisplayName(storage);
     IconData icon = _getStorageIcon(storage);
     bool requiresAdmin = storage.requiresAdmin;
@@ -121,7 +129,7 @@ class _StorageSectionWidgetState extends State<StorageSectionWidget> {
       icon: icon,
       title: displayName,
       subtitle: requiresAdmin ? context.tr.requiresAdminPrivileges : null,
-      iconColor: requiresAdmin ? Colors.orange : null,
+      iconColor: requiresAdmin ? theme.colorScheme.tertiary : null,
       onTap: () {
         if (requiresAdmin) {
           _showAdminAccessDialog(context, storage);
@@ -143,7 +151,7 @@ class _StorageSectionWidgetState extends State<StorageSectionWidget> {
     final theme = Theme.of(context);
 
     return ListTile(
-      contentPadding: const EdgeInsets.only(left: 56, right: 16),
+      contentPadding: const EdgeInsets.only(left: 52, right: 14),
       dense: true,
       leading: Icon(
         icon,
@@ -153,8 +161,8 @@ class _StorageSectionWidgetState extends State<StorageSectionWidget> {
       title: Text(
         title,
         style: const TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w500,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
         ),
       ),
       subtitle: subtitle != null
@@ -222,11 +230,11 @@ class _StorageSectionWidgetState extends State<StorageSectionWidget> {
   }
 
   IconData _getStorageIcon(Directory drive) {
-    // Logic to determine icon based on drive type
-    // Simplified for now
     if (Platform.isWindows && drive.path.startsWith('C:')) {
-      return remix.Remix.computer_line;
+      return PhosphorIconsLight.desktop;
     }
-    return remix.Remix.hard_drive_2_line;
+    return PhosphorIconsLight.hardDrives;
   }
 }
+
+

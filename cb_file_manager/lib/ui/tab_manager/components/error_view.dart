@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../config/languages/app_localizations.dart';
 
@@ -26,7 +26,7 @@ class ErrorView extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            isNetworkPath ? remix.Remix.wifi_off_line : remix.Remix.error_warning_line,
+            isNetworkPath ? PhosphorIconsLight.wifiX : PhosphorIconsLight.warningCircle,
             size: 72,
             color: Colors.grey,
           ),
@@ -67,3 +67,7 @@ class ErrorView extends StatelessWidget {
     );
   }
 }
+
+
+
+

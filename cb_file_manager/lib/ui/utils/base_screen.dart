@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:cb_file_manager/ui/drawer.dart';
 import 'package:cb_file_manager/helpers/core/user_preferences.dart'; // Add UserPreferences import
 // Import translation helper
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 // Import RouteUtils
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
@@ -169,13 +169,13 @@ class _BaseScreenState extends State<BaseScreen> {
                 actions: <Widget>[
                   // // Always add the menu button as the first action
                   // IconButton(
-                  //   icon: const Icon(remix.Remix.menu_2_line),
+                  //   icon: const Icon(PhosphorIconsLight.list),
                   //   onPressed: () => _scaffoldKey.currentState?.openDrawer(),
                   // ),
 
                   // // Home button for emergency navigation
                   // IconButton(
-                  //   icon: const Icon(remix.Remix.home_3_line),
+                  //   icon: const Icon(PhosphorIconsLight.house),
                   //   tooltip: context.tr.home,
                   //   onPressed: () => goHome(context),
                   // ),
@@ -204,7 +204,7 @@ class _BaseScreenState extends State<BaseScreen> {
   /// Build the leading icon based on the navigation state
   Widget _buildLeadingIcon(BuildContext context) {
     return IconButton(
-      icon: const Icon(remix.Remix.arrow_left_line),
+      icon: const Icon(PhosphorIconsLight.arrowLeft),
       onPressed: () {
         // 1) Try to pop the local navigator stack if possible
         final navigator = Navigator.of(context);
@@ -248,3 +248,7 @@ class _BaseScreenState extends State<BaseScreen> {
     );
   }
 }
+
+
+
+

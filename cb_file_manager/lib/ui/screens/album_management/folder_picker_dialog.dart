@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/services/album_service.dart';
 import 'package:cb_file_manager/ui/utils/route.dart';
 import 'package:path/path.dart' as path;
@@ -182,7 +183,7 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: ListTile(
-        leading: const Icon(Icons.folder, color: Colors.amber),
+        leading: const Icon(PhosphorIconsLight.folder, color: Colors.amber),
         title: Text(
           dirName,
           maxLines: 1,
@@ -198,14 +199,14 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
                     ? '$count ${count == 1 ? 'image' : 'images'}'
                     : 'No images',
                 style: TextStyle(
-                  color: count > 0 ? Colors.grey[600] : Colors.grey[400],
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               );
             }
             return const Text('Counting...');
           },
         ),
-        trailing: const Icon(Icons.chevron_right),
+        trailing: Icon(PhosphorIconsLight.caretRight),
         onTap: () => _navigateToDirectory(directory.path),
       ),
     );
@@ -232,15 +233,15 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor,
+                color: Theme.of(context).colorScheme.primary,
                 borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(4),
-                  topRight: Radius.circular(4),
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
                 ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.folder_open, color: Colors.white),
+                  Icon(PhosphorIconsLight.folderOpen, color: Colors.white),
                   const SizedBox(width: 8),
                   const Expanded(
                     child: Text(
@@ -253,7 +254,7 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
+                    icon: Icon(PhosphorIconsLight.x, color: Colors.white),
                     onPressed: () => RouteUtils.safePopDialog(context),
                   ),
                 ],
@@ -263,9 +264,9 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 border: Border(
-                  bottom: BorderSide(color: Colors.grey[300]!),
+                  bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
                 ),
               ),
               child: Column(
@@ -273,7 +274,7 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
                   Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.arrow_back),
+                        icon: Icon(PhosphorIconsLight.arrowLeft),
                         onPressed: path.dirname(_currentPath) != _currentPath
                             ? _navigateUp
                             : null,
@@ -320,16 +321,16 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
-                                Icons.folder_open,
+                                PhosphorIconsLight.folderOpen,
                                 size: 64,
-                                color: Colors.grey[400],
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
                               const SizedBox(height: 16),
                               Text(
                                 'No folders found',
                                 style: TextStyle(
                                   fontSize: 16,
-                                  color: Colors.grey[600],
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ],
@@ -347,7 +348,7 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 border: Border(
-                  top: BorderSide(color: Colors.grey[300]!),
+                  top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
                 ),
               ),
               child: Row(
@@ -356,7 +357,7 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
                   Text(
                     'Current: ${path.basename(_currentPath)}',
                     style: TextStyle(
-                      color: Colors.grey[600],
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 14,
                     ),
                   ),
@@ -382,3 +383,6 @@ class _FolderPickerDialogState extends State<FolderPickerDialog> {
     );
   }
 }
+
+
+

@@ -5,7 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/helpers/core/filesystem_utils.dart';
 import 'package:win32/win32.dart' as win32;
 import 'package:ffi/ffi.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../core/tab_manager.dart';
 import '../../screens/folder_list/folder_list_bloc.dart';
@@ -92,7 +92,7 @@ class DriveView extends StatelessWidget {
                   return Card(
                     margin: const EdgeInsets.only(bottom: 16.0),
                     color: isDarkMode ? Colors.grey[850] : Colors.white,
-                    elevation: 2,
+                    elevation: 0,
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: FutureBuilder<Map<String, dynamic>>(
@@ -156,7 +156,7 @@ class DriveView extends StatelessWidget {
                                 // Drive title and icon
                                 Row(
                                   children: [
-                                    const Icon(remix.Remix.hard_drive_2_line,
+                                    const Icon(PhosphorIconsLight.hardDrives,
                                         size: 36),
                                     const SizedBox(width: 12),
                                     FutureBuilder<String>(
@@ -182,7 +182,7 @@ class DriveView extends StatelessWidget {
                                         );
                                       },
                                     ),
-                                    const Icon(remix.Remix.arrow_right_s_line,
+                                    const Icon(PhosphorIconsLight.caretRight,
                                         size: 16),
                                   ],
                                 ),
@@ -308,3 +308,8 @@ class DriveView extends StatelessWidget {
     return '${size.toStringAsFixed(2)} ${suffixes[i]}';
   }
 }
+
+
+
+
+

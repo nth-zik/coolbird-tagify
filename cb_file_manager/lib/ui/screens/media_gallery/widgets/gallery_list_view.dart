@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:path/path.dart' as pathlib;
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 // For formatFileSize
@@ -41,17 +42,17 @@ class GalleryListView extends StatelessWidget {
             width: 60,
             height: 60,
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(16),
               child: Image.file(
                 file,
                 fit: BoxFit.cover,
                 filterQuality: FilterQuality.high,
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
-                    color: Colors.grey[300],
-                    child: const Icon(
-                      Icons.broken_image,
-                      color: Colors.grey,
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                    child: Icon(
+                      PhosphorIconsLight.imageBroken,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   );
                 },
@@ -135,3 +136,7 @@ class GalleryListView extends StatelessWidget {
     }
   }
 }
+
+
+
+

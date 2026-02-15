@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../config/languages/app_localizations.dart';
@@ -190,13 +191,13 @@ class _PermissionExplainerScreenState extends State<PermissionExplainerScreen> {
                               height: 16,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Icon(Icons.security),
+                          : const Icon(PhosphorIconsLight.shieldCheck),
                       label: Text(_checking
                           ? l10n.grantingPermissions
                           : l10n.grantAllPermissions),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Theme.of(context).colorScheme.onPrimary,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
@@ -252,8 +253,8 @@ class _PermissionCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(
-              granted ? Icons.check_circle : Icons.error_outline,
-              color: granted ? Colors.green : Colors.orange,
+              granted ? PhosphorIconsLight.checkCircle : PhosphorIconsLight.warningCircle,
+              color: granted ? Theme.of(context).colorScheme.tertiary : Theme.of(context).colorScheme.secondary,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -277,3 +278,6 @@ class _PermissionCard extends StatelessWidget {
     );
   }
 }
+
+
+

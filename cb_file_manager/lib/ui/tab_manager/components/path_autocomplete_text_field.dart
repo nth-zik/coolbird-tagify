@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:cb_file_manager/helpers/core/user_preferences.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:path/path.dart' as p;
 
 enum PathSuggestionType { recent, filesystem }
@@ -262,15 +263,15 @@ class _PathAutocompleteTextFieldState extends State<PathAutocompleteTextField> {
             showWhenUnlinked: false,
             offset: Offset(0, size.height + 6),
             child: Material(
-              elevation: 8,
-              borderRadius: BorderRadius.circular(12),
+              elevation: 0,
+              borderRadius: BorderRadius.circular(16.0),
               color: theme.colorScheme.surface,
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxHeight: 320),
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     border: Border.all(color: borderColor),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16.0),
                   ),
                   child: ListView.builder(
                     padding: const EdgeInsets.symmetric(vertical: 6),
@@ -281,8 +282,8 @@ class _PathAutocompleteTextFieldState extends State<PathAutocompleteTextField> {
                       final bool selected = index == _selectedIndex;
 
                       final icon = s.type == PathSuggestionType.filesystem
-                          ? Icons.folder_outlined
-                          : Icons.history;
+                          ? PhosphorIconsLight.folder
+                          : PhosphorIconsLight.clockCounterClockwise;
 
                       return Material(
                         color: selected
@@ -373,3 +374,9 @@ class _PathAutocompleteTextFieldState extends State<PathAutocompleteTextField> {
     );
   }
 }
+
+
+
+
+
+

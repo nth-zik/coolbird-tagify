@@ -672,7 +672,7 @@ class FileListViewBuilder {
                                       .primaryContainer
                                       .withValues(alpha: 0.6)
                                   : Colors.transparent,
-                              borderRadius: BorderRadius.circular(8.0),
+                              borderRadius: BorderRadius.circular(16.0),
                               child: RepaintBoundary(
                                 child: folder_list_components.FolderItem(
                                   key: ValueKey("folder-item-${folder.path}"),
@@ -702,7 +702,7 @@ class FileListViewBuilder {
                                       .primaryContainer
                                       .withValues(alpha: 0.6)
                                   : Colors.transparent,
-                              borderRadius: BorderRadius.circular(8.0),
+                              borderRadius: BorderRadius.circular(16.0),
                               child: RepaintBoundary(
                                 child: folder_list_components.FileItem(
                                   key: ValueKey("file-item-${file.path}"),
@@ -997,16 +997,7 @@ class _GridPreviewLayoutState extends State<_GridPreviewLayout> {
                                 Colors.transparent,
                               ],
                             ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .primary
-                                    .withValues(alpha: 0.35),
-                                blurRadius: 6,
-                                spreadRadius: 1,
-                              ),
-                            ],
+                            boxShadow: [],
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -1026,15 +1017,7 @@ class _GridPreviewLayoutState extends State<_GridPreviewLayout> {
                                   .primary
                                   .withValues(alpha: 0.85),
                               borderRadius: BorderRadius.circular(999),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .primary
-                                      .withValues(alpha: 0.4),
-                                  blurRadius: 6,
-                                ),
-                              ],
+                              boxShadow: [],
                             ),
                           ),
                         ),
@@ -1093,3 +1076,5 @@ class _PreviewResizeHandle extends StatelessWidget {
     );
   }
 }
+
+

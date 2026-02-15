@@ -6,7 +6,7 @@ import 'package:cb_file_manager/helpers/media/video_thumbnail_helper.dart';
 import 'package:cb_file_manager/ui/components/common/skeleton.dart';
 import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart';
 import 'package:flutter/material.dart';
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 /// Widget for displaying folder thumbnail
 class FolderThumbnail extends StatefulWidget {
@@ -202,14 +202,6 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
     try {
       final path =
           await _thumbnailService.getFolderThumbnail(widget.folder.path);
-      String? videoPath;
-      String? cachedVideoThumbnailPath;
-
-      if (path != null && _isVideoPath(path)) {
-        videoPath = _getVideoPath(path);
-        cachedVideoThumbnailPath =
-            await VideoThumbnailHelper.getFromCache(videoPath);
-      }
 
       if (_disposed) return;
 
@@ -262,11 +254,13 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
     // Use a RepaintBoundary with a key based on the folder path to prevent repainting
     return RepaintBoundary(
       key: ValueKey('folder-thumbnail-${widget.folder.path}'),
-      child: _buildThumbnailContent(),
+      child: _buildThumbnailContent(context),
     );
   }
 
-  Widget _buildThumbnailContent() {
+  Widget _buildThumbnailContent(BuildContext context) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
     if (_isLoading) {
       return _buildLoadingPlaceholder();
     }
@@ -275,9 +269,9 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
     if (_thumbnailPath == null || _loadFailed) {
       return Center(
         child: Icon(
-          remix.Remix.folder_3_line,
+          PhosphorIconsLight.folder,
           size: widget.size * 0.7,
-          color: Colors.amber[700],
+          color: primaryColor,
         ),
       );
     }
@@ -291,10 +285,9 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
         if (!File(videoPath).existsSync()) {
           debugPrint('Video file does not exist: $videoPath');
           _reloadThumbnailAfterInvalidCache();
-          return _buildFolderIcon();
+          return _buildFolderIcon(context);
         }
 
-        final bool isMobile = Platform.isAndroid || Platform.isIOS;
         final cachedPath = _cachedVideoThumbnailPath;
         final hasCached = cachedPath != null && File(cachedPath).existsSync();
         if (cachedPath != null && !hasCached && !_videoThumbnailRequested) {
@@ -313,15 +306,6 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
           width: double.infinity,
           height: double.infinity,
           margin: const EdgeInsets.all(1),
-          decoration: BoxDecoration(
-            // Only show border on desktop
-            border: isMobile
-                ? null
-                : Border.all(
-                    color: Colors.amber[600]!,
-                    width: 1.5,
-                  ),
-          ),
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -339,17 +323,17 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
                         _reloadThumbnailAfterInvalidCache();
                       }
                     });
-                    return _buildFolderIcon();
+                    return _buildFolderIcon(context);
                   },
                 )
               else if (_isVideoThumbnailLoading)
                 ShimmerBox(
                   width: double.infinity,
                   height: double.infinity,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(16.0),
                 )
               else
-                _buildFolderIcon(),
+                _buildFolderIcon(context),
               Positioned(
                 right: 4,
                 bottom: 4,
@@ -357,10 +341,10 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
                   padding: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
                     color: Colors.black87,
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(16.0),
                   ),
                   child: Icon(
-                    Icons.play_arrow,
+                    PhosphorIconsLight.play,
                     color: Colors.white,
                     size: widget.size * 0.25 < 16 ? widget.size * 0.25 : 16,
                   ),
@@ -374,24 +358,13 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
         if (!file.existsSync()) {
           debugPrint('Image file does not exist: $thumbnailPath');
           _reloadThumbnailAfterInvalidCache();
-          return _buildFolderIcon();
+          return _buildFolderIcon(context);
         }
-
-        final bool isMobile = Platform.isAndroid || Platform.isIOS;
 
         return Container(
           width: double.infinity,
           height: double.infinity,
           margin: const EdgeInsets.all(1),
-          decoration: BoxDecoration(
-            // Only show border on desktop
-            border: isMobile
-                ? null
-                : Border.all(
-                    color: Colors.amber[600]!,
-                    width: 1.5,
-                  ),
-          ),
           child: ThumbnailLoader(
             filePath: thumbnailPath,
             isVideo: false,
@@ -400,22 +373,22 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
             height: double.infinity,
             borderRadius: BorderRadius.circular(1),
             fit: BoxFit.contain,
-            fallbackBuilder: () => _buildFolderIcon(),
+            fallbackBuilder: () => _buildFolderIcon(context),
           ),
         );
       }
     } catch (e) {
       debugPrint('Error rendering folder thumbnail: $e');
-      return _buildFolderIcon();
+      return _buildFolderIcon(context);
     }
   }
 
-  Widget _buildFolderIcon() {
+  Widget _buildFolderIcon(BuildContext context) {
     return Center(
       child: Icon(
-        remix.Remix.folder_3_line,
+        PhosphorIconsLight.folder,
         size: widget.size * 0.7,
-        color: Colors.amber[700],
+        color: Theme.of(context).colorScheme.primary,
       ),
     );
   }
@@ -497,7 +470,7 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
     return ShimmerBox(
       width: double.infinity,
       height: double.infinity,
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: BorderRadius.circular(16.0),
     );
   }
 }
@@ -505,3 +478,7 @@ class _FolderThumbnailState extends State<FolderThumbnail> {
 // Helper function to determine if we're on desktop
 bool get isDesktopPlatform =>
     Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+
+
+
+

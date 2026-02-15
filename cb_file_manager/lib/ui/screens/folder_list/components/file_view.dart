@@ -6,7 +6,7 @@ import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/helpers/ui/frame_timing_optimizer.dart';
 import 'package:flutter/gestures.dart'; // Import for PointerSignalEvent
 import 'package:flutter/services.dart'; // Import for HardwareKeyboard
-import 'package:remixicon/remixicon.dart' as remix;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/helpers/core/user_preferences.dart';
 import 'package:cb_file_manager/ui/utils/grid_zoom_constraints.dart';
 import 'package:cb_file_manager/ui/utils/scroll_velocity_notifier.dart';
@@ -91,7 +91,7 @@ class FileView extends StatelessWidget {
     if (isGridView) {
       return _buildGridView();
     } else if (state.viewMode == ViewMode.details) {
-      return _buildDetailsView();
+      return _buildDetailsView(context);
     } else {
       return _buildListView();
     }
@@ -169,7 +169,7 @@ class FileView extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailsView() {
+  Widget _buildDetailsView(BuildContext context) {
     // Optimize scrolling with frame timing
     FrameTimingOptimizer().optimizeScrolling();
     final bool isMobile = Platform.isAndroid || Platform.isIOS;
@@ -177,9 +177,9 @@ class FileView extends StatelessWidget {
         Platform.isWindows || Platform.isMacOS || Platform.isLinux;
 
     // Define text style for headers once to be reused
-    const TextStyle headerStyle = TextStyle(
+    final TextStyle headerStyle = TextStyle(
       fontWeight: FontWeight.bold,
-      color: Colors.black87,
+      color: Theme.of(context).colorScheme.onSurface,
     );
 
     // Debug selection count
@@ -194,7 +194,7 @@ class FileView extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12.0),
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
               ),
               child: Row(
                 children: [
@@ -204,15 +204,15 @@ class FileView extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                           vertical: 10.0, horizontal: 12.0),
-                      child: const Row(
+                      child: Row(
                         children: [
                           Text(
                             'Tên',
                             style: headerStyle,
                           ),
-                          SizedBox(width: 4),
-                          Icon(remix.Remix.arrow_down_line,
-                              size: 16, color: Colors.black87),
+                          const SizedBox(width: 4),
+                          Icon(PhosphorIconsLight.arrowDown,
+                              size: 16, color: Theme.of(context).colorScheme.onSurface),
                         ],
                       ),
                     ),
@@ -225,7 +225,7 @@ class FileView extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             vertical: 10.0, horizontal: 12.0),
-                        child: const Text(
+                        child: Text(
                           'Loại',
                           style: headerStyle,
                         ),
@@ -239,7 +239,7 @@ class FileView extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             vertical: 10.0, horizontal: 12.0),
-                        child: const Text(
+                        child: Text(
                           'Kích thước',
                           style: headerStyle,
                         ),
@@ -253,7 +253,7 @@ class FileView extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             vertical: 10.0, horizontal: 12.0),
-                        child: const Text(
+                        child: Text(
                           'Ngày sửa đổi',
                           style: headerStyle,
                         ),
@@ -267,7 +267,7 @@ class FileView extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             vertical: 10.0, horizontal: 12.0),
-                        child: const Text(
+                        child: Text(
                           'Ngày tạo',
                           style: headerStyle,
                         ),
@@ -281,7 +281,7 @@ class FileView extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             vertical: 10.0, horizontal: 12.0),
-                        child: const Text(
+                        child: Text(
                           'Thuộc tính',
                           style: headerStyle,
                         ),
@@ -299,9 +299,9 @@ class FileView extends StatelessWidget {
                 message:
                     'Nhấn nút cài đặt cột ở thanh công cụ trên cùng để tùy chỉnh các cột hiển thị',
                 child: Icon(
-                  remix.Remix.information_line,
+                  PhosphorIconsLight.info,
                   size: 16,
-                  color: Colors.grey.shade600,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
             ),
@@ -628,3 +628,6 @@ class _FolderDetailsItemWrapper extends StatelessWidget {
     );
   }
 }
+
+
+

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
 
@@ -149,13 +150,13 @@ class _MobileSearchDialogState extends State<MobileSearchDialog> {
                 color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
               ),
               prefixIcon: Icon(
-                Icons.search,
+                PhosphorIconsLight.magnifyingGlass,
                 color: theme.colorScheme.primary,
                 size: 24,
               ),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
-                      icon: const Icon(Icons.clear, size: 20),
+                      icon: const Icon(PhosphorIconsLight.x, size: 20),
                       onPressed: () {
                         _searchController.clear();
                       },
@@ -165,11 +166,11 @@ class _MobileSearchDialogState extends State<MobileSearchDialog> {
               fillColor:
                   theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16.0),
                 borderSide: BorderSide.none,
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16.0),
                 borderSide: BorderSide(
                   color: theme.colorScheme.primary,
                   width: 1.5,
@@ -192,7 +193,7 @@ class _MobileSearchDialogState extends State<MobileSearchDialog> {
                 _isGlobalSearch = !_isGlobalSearch;
               });
             },
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(16.0),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
               child: Row(
@@ -264,7 +265,7 @@ class _MobileSearchDialogState extends State<MobileSearchDialog> {
                     backgroundColor: theme.colorScheme.surfaceContainerHighest
                         .withValues(alpha: 0.5),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16.0),
                     ),
                   ),
                   child: Text(
@@ -288,7 +289,7 @@ class _MobileSearchDialogState extends State<MobileSearchDialog> {
                   backgroundColor: theme.colorScheme.surfaceContainerHighest
                       .withValues(alpha: 0.5),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16.0),
                   ),
                 ),
                 child: Text(
@@ -310,7 +311,7 @@ class _MobileSearchDialogState extends State<MobileSearchDialog> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16.0),
                   ),
                 ),
                 child: Text(
@@ -332,3 +333,8 @@ class _MobileSearchDialogState extends State<MobileSearchDialog> {
 
   // _buildTip helper removed as current UI doesn't render tips
 }
+
+
+
+
+

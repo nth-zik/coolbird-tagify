@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import 'dart:async';
@@ -31,7 +32,7 @@ class _InstantAlbumDemoState extends State<InstantAlbumDemo> {
               children: [
                 ElevatedButton.icon(
                   onPressed: _selectDirectory,
-                  icon: const Icon(Icons.folder_open),
+                  icon: const Icon(PhosphorIconsLight.folderOpen),
                   label: const Text('Chọn thư mục ảnh'),
                 ),
                 if (_currentDirectory != null) ...[
@@ -54,7 +55,7 @@ class _InstantAlbumDemoState extends State<InstantAlbumDemo> {
               child: Row(
                 children: [
                   const Icon(
-                    Icons.photo_library,
+                    PhosphorIconsLight.images,
                     size: 16,
                     color: Colors.blue,
                   ),
@@ -77,7 +78,7 @@ class _InstantAlbumDemoState extends State<InstantAlbumDemo> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.photo_library_outlined,
+                        Icon(PhosphorIconsLight.imagesSquare,
                             size: 64, color: Colors.grey),
                         SizedBox(height: 16),
                         Text('Chọn thư mục để xem ảnh ngay lập tức'),
@@ -119,14 +120,14 @@ class _InstantAlbumDemoState extends State<InstantAlbumDemo> {
               errorBuilder: (context, error, stackTrace) {
                 return Container(
                   color: Colors.grey[200],
-                  child: const Icon(Icons.broken_image, color: Colors.grey),
+                  child: const Icon(PhosphorIconsLight.imageBroken, color: Colors.grey),
                 );
               },
             )
           else
             Container(
               color: Colors.grey[200],
-              child: const Icon(Icons.insert_drive_file, color: Colors.grey),
+              child: const Icon(PhosphorIconsLight.file, color: Colors.grey),
             ),
 
           // File name overlay
@@ -171,7 +172,7 @@ class _InstantAlbumDemoState extends State<InstantAlbumDemo> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child:
-                    const Icon(Icons.fiber_new, color: Colors.white, size: 12),
+                    const Icon(PhosphorIconsLight.sparkle, color: Colors.white, size: 12),
               ),
             ),
         ],
@@ -293,3 +294,7 @@ class FileInfo {
     required this.isImage,
   });
 }
+
+
+
+
