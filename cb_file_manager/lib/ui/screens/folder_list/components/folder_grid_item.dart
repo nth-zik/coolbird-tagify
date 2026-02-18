@@ -12,6 +12,7 @@ import '../../../../bloc/selection/selection_event.dart';
 import 'folder_thumbnail.dart';
 import '../../../components/common/optimized_interaction_handler.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
 import '../../../utils/item_interaction_style.dart';
 
 class FolderGridItem extends StatefulWidget {
@@ -195,7 +196,9 @@ class _FolderGridItemState extends State<FolderGridItem> {
                                             child: Icon(
                                               PhosphorIconsLight.folder,
                                               size: badgeIconSize,
-                                              color: Theme.of(context).colorScheme.primary,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
                                             ),
                                           ),
                                         ),
@@ -238,6 +241,11 @@ class _FolderGridItemState extends State<FolderGridItem> {
                           },
                           onLongPress: () =>
                               _showFolderContextMenu(context, null),
+                          onTertiaryTapUp: (_) {
+                            context
+                                .read<TabManagerBloc>()
+                                .add(AddTab(path: widget.folder.path));
+                          },
                         ),
                       ),
 
@@ -368,6 +376,11 @@ class _FolderGridItemState extends State<FolderGridItem> {
                       widget.onNavigate(widget.folder.path);
                     },
                     onLongPress: () => _showFolderContextMenu(context, null),
+                    onTertiaryTapUp: (_) {
+                      context
+                          .read<TabManagerBloc>()
+                          .add(AddTab(path: widget.folder.path));
+                    },
                   ),
                 ),
               ],
@@ -459,8 +472,3 @@ class _FolderGridItemState extends State<FolderGridItem> {
     return textWidget;
   }
 }
-
-
-
-
-

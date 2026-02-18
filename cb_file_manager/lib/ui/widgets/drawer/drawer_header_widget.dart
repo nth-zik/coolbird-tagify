@@ -82,7 +82,7 @@ class DrawerHeaderWidget extends StatelessWidget {
                     color: cs.onSurfaceVariant,
                     size: 20,
                   ),
-                  tooltip: isPinned ? 'Unpin menu' : 'Pin menu',
+                  tooltip: isPinned ? context.tr.unpinMenu : context.tr.pinMenu,
                   style: IconButton.styleFrom(
                     backgroundColor: cs.surface.withValues(alpha: 0.7),
                     shape: RoundedRectangleBorder(
@@ -111,6 +111,3 @@ class DrawerHeaderWidget extends StatelessWidget {
     );
   }
 }
-
-
-

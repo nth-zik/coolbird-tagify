@@ -10,11 +10,15 @@ import 'package:cb_file_manager/ui/utils/route.dart';
 class StorageSectionWidget extends StatefulWidget {
   final Function(String path, String name) onNavigate;
   final VoidCallback onTrashTap;
+  final bool initialExpanded;
+  final ValueChanged<bool>? onExpansionChanged;
 
   const StorageSectionWidget({
     Key? key,
     required this.onNavigate,
     required this.onTrashTap,
+    this.initialExpanded = false,
+    this.onExpansionChanged,
   }) : super(key: key);
 
   @override
@@ -23,6 +27,23 @@ class StorageSectionWidget extends StatefulWidget {
 
 class _StorageSectionWidgetState extends State<StorageSectionWidget> {
   bool _isExpanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _isExpanded = widget.initialExpanded;
+  }
+
+  @override
+  void didUpdateWidget(covariant StorageSectionWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialExpanded != widget.initialExpanded &&
+        _isExpanded != widget.initialExpanded) {
+      setState(() {
+        _isExpanded = widget.initialExpanded;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,6 +93,7 @@ class _StorageSectionWidgetState extends State<StorageSectionWidget> {
                   setState(() {
                     _isExpanded = isExpanded;
                   });
+                  widget.onExpansionChanged?.call(isExpanded);
                 },
                 children: <Widget>[
                   if (state.isLoading)
@@ -87,7 +109,8 @@ class _StorageSectionWidgetState extends State<StorageSectionWidget> {
                     )
                   else if (state.storageLocations.isEmpty)
                     ListTile(
-                      contentPadding: const EdgeInsets.only(left: 52, right: 14),
+                      contentPadding:
+                          const EdgeInsets.only(left: 52, right: 14),
                       title: Text(context.tr.noStorageLocationsFound),
                       trailing: IconButton(
                         icon: const Icon(PhosphorIconsLight.arrowsClockwise),
@@ -146,6 +169,7 @@ class _StorageSectionWidgetState extends State<StorageSectionWidget> {
     required String title,
     String? subtitle,
     Color? iconColor,
+    Widget? trailing,
     required VoidCallback onTap,
   }) {
     final theme = Theme.of(context);
@@ -174,6 +198,7 @@ class _StorageSectionWidgetState extends State<StorageSectionWidget> {
               ),
             )
           : null,
+      trailing: trailing,
       onTap: onTap,
     );
   }
@@ -236,5 +261,3 @@ class _StorageSectionWidgetState extends State<StorageSectionWidget> {
     return PhosphorIconsLight.hardDrives;
   }
 }
-
-

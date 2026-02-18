@@ -13,6 +13,8 @@ extension _TabbedFolderListMobileActions on _TabbedFolderListScreenState {
       saveSortSetting(option, _currentPath);
     };
     controller.onViewModeToggled = _setViewMode;
+    controller.onBack = _handleMouseBackButton;
+    controller.onForward = _handleMouseForwardButton;
     controller.onRefresh = _refreshFileList;
     controller.onGridSizePressed = () => SharedActionBar.showGridSizeDialog(
           context,
@@ -33,13 +35,19 @@ extension _TabbedFolderListMobileActions on _TabbedFolderListScreenState {
     controller.currentViewMode = _folderListBloc.state.viewMode;
     controller.currentGridSize = _folderListBloc.state.gridZoomLevel;
     controller.currentPath = _currentPath;
+    controller.actionBarProfile = _isDrivesPathValue(_currentPath)
+        ? MobileActionBarProfile.drivesMinimal
+        : MobileActionBarProfile.full;
 
     // Update controller state when bloc state changes
     _folderListBloc.stream.listen((state) {
       controller.currentSortOption = state.sortOption;
       controller.currentViewMode = state.viewMode;
       controller.currentGridSize = state.gridZoomLevel;
-      controller.currentPath = state.currentPath.path;
+      controller.currentPath = _currentPath;
+      controller.actionBarProfile = _isDrivesPathValue(_currentPath)
+          ? MobileActionBarProfile.drivesMinimal
+          : MobileActionBarProfile.full;
     });
   }
 

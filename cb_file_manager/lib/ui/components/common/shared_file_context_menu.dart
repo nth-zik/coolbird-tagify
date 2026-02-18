@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../controllers/file_operations_handler.dart';
@@ -28,6 +29,7 @@ import '../../../helpers/files/windows_shell_context_menu.dart';
 import '../../controllers/inline_rename_controller.dart';
 import '../../../core/service_locator.dart';
 import '../../../helpers/core/user_preferences.dart';
+import '../../utils/entity_open_actions.dart';
 
 /// A shared context menu for files
 ///
@@ -51,6 +53,8 @@ class SharedFileContextMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDesktopPlatform =
+        Platform.isWindows || Platform.isLinux || Platform.isMacOS;
     final currentService = StreamingHelper.instance.currentNetworkService;
     String? webDavSize;
     String? webDavModified;
@@ -130,7 +134,8 @@ class SharedFileContextMenu extends StatelessWidget {
                       Row(
                         children: [
                           if (webDavSize != null) ...[
-                            Icon(PhosphorIconsLight.hardDrives, size: 14,
+                            Icon(PhosphorIconsLight.hardDrives,
+                                size: 14,
                                 color: theme.colorScheme.onSurfaceVariant),
                             const SizedBox(width: 4),
                             Text(webDavSize,
@@ -167,12 +172,11 @@ class SharedFileContextMenu extends StatelessWidget {
         // Actions
         if (isVideo)
           ListTile(
-            leading:
-                Icon(PhosphorIconsLight.playCircle, color: theme.colorScheme.error),
+            leading: Icon(PhosphorIconsLight.playCircle,
+                color: theme.colorScheme.error),
             title: Text(
               AppLocalizations.of(context)!.playVideo,
-              style:
-                  TextStyle(color: theme.colorScheme.onSurface),
+              style: TextStyle(color: theme.colorScheme.onSurface),
             ),
             onTap: () async {
               Navigator.pop(context);
@@ -182,11 +186,11 @@ class SharedFileContextMenu extends StatelessWidget {
 
         if (isImage)
           ListTile(
-            leading: Icon(PhosphorIconsLight.image, color: theme.colorScheme.primary),
+            leading: Icon(PhosphorIconsLight.image,
+                color: theme.colorScheme.primary),
             title: Text(
               AppLocalizations.of(context)!.viewImage,
-              style:
-                  TextStyle(color: theme.colorScheme.onSurface),
+              style: TextStyle(color: theme.colorScheme.onSurface),
             ),
             onTap: () {
               Navigator.pop(context);
@@ -211,6 +215,38 @@ class SharedFileContextMenu extends StatelessWidget {
             ExternalAppHelper.openFileWithApp(file.path, 'shell_open');
           },
         ),
+        if (isDesktopPlatform)
+          ListTile(
+            leading: Icon(PhosphorIconsLight.squaresFour,
+                color: theme.colorScheme.onSurfaceVariant),
+            title: Text(
+              AppLocalizations.of(context)!.openInNewTab,
+              style: TextStyle(color: theme.colorScheme.onSurface),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              EntityOpenActions.openInNewTab(
+                context,
+                sourcePath: file.path,
+              );
+            },
+          ),
+        if (isDesktopPlatform)
+          ListTile(
+            leading: Icon(PhosphorIconsLight.appWindow,
+                color: theme.colorScheme.onSurfaceVariant),
+            title: Text(
+              _openInNewWindowLabel(context),
+              style: TextStyle(color: theme.colorScheme.onSurface),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              EntityOpenActions.openInNewWindow(
+                context,
+                sourcePath: file.path,
+              );
+            },
+          ),
 
         ListTile(
           leading: Icon(PhosphorIconsLight.arrowSquareOut,
@@ -249,11 +285,11 @@ class SharedFileContextMenu extends StatelessWidget {
         if ((currentService is WebDAVService || currentService is FTPService) &&
             remotePath != null)
           ListTile(
-            leading: Icon(PhosphorIconsLight.downloadSimple, color: theme.colorScheme.primary),
+            leading: Icon(PhosphorIconsLight.downloadSimple,
+                color: theme.colorScheme.primary),
             title: Text(
               AppLocalizations.of(context)!.download,
-              style:
-                  TextStyle(color: theme.colorScheme.onSurface),
+              style: TextStyle(color: theme.colorScheme.onSurface),
             ),
             onTap: () async {
               Navigator.pop(context);
@@ -332,7 +368,8 @@ class SharedFileContextMenu extends StatelessWidget {
 
         // Tag management option - always show
         ListTile(
-          leading: Icon(PhosphorIconsLight.tag, color: theme.colorScheme.primary),
+          leading:
+              Icon(PhosphorIconsLight.tag, color: theme.colorScheme.primary),
           title: Text(
             AppLocalizations.of(context)!.manageTags,
             style: TextStyle(color: theme.colorScheme.onSurface),
@@ -368,7 +405,8 @@ class SharedFileContextMenu extends StatelessWidget {
 
         // Move to trash
         ListTile(
-          leading: Icon(PhosphorIconsLight.trash, color: theme.colorScheme.error),
+          leading:
+              Icon(PhosphorIconsLight.trash, color: theme.colorScheme.error),
           title: Text(
             AppLocalizations.of(context)!.moveToTrash,
             style: TextStyle(color: theme.colorScheme.error),
@@ -452,6 +490,36 @@ class SharedFileContextMenu extends StatelessWidget {
   String _basename(File file) {
     return file.path.split(Platform.pathSeparator).last;
   }
+
+  Widget _buildToggleSidebarPinTile({
+    required BuildContext context,
+    required ThemeData theme,
+    required String path,
+  }) {
+    return FutureBuilder<bool>(
+      future: _isPathPinnedToSidebar(path),
+      builder: (context, snapshot) {
+        final isPinned = snapshot.data ?? false;
+        final l10n = AppLocalizations.of(context)!;
+        return ListTile(
+          leading: Icon(
+            isPinned
+                ? PhosphorIconsLight.pushPinSlash
+                : PhosphorIconsLight.pushPin,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          title: Text(
+            isPinned ? l10n.unpinFromSidebar : l10n.pinToSidebar,
+            style: TextStyle(color: theme.colorScheme.onSurface),
+          ),
+          onTap: () async {
+            Navigator.pop(context);
+            await _toggleSidebarPinnedPathWithFeedback(context, path);
+          },
+        );
+      },
+    );
+  }
 }
 
 /// A shared context menu for folders
@@ -472,6 +540,8 @@ class SharedFolderContextMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDesktopPlatform =
+        Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -530,6 +600,59 @@ class SharedFolderContextMenu extends StatelessWidget {
               );
             }
           },
+        ),
+        if (isDesktopPlatform)
+          ListTile(
+            leading: Icon(PhosphorIconsLight.squaresFour,
+                color: theme.colorScheme.onSurfaceVariant),
+            title: Text(
+              AppLocalizations.of(context)!.openInNewTab,
+              style: TextStyle(color: theme.colorScheme.onSurface),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              EntityOpenActions.openInNewTab(
+                context,
+                sourcePath: folder.path,
+              );
+            },
+          ),
+        if (isDesktopPlatform)
+          ListTile(
+            leading: Icon(PhosphorIconsLight.columns,
+                color: theme.colorScheme.onSurfaceVariant),
+            title: Text(
+              AppLocalizations.of(context)!.openInSplitView,
+              style: TextStyle(color: theme.colorScheme.onSurface),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              EntityOpenActions.openInSplitView(
+                context,
+                sourcePath: folder.path,
+              );
+            },
+          ),
+        if (isDesktopPlatform)
+          ListTile(
+            leading: Icon(PhosphorIconsLight.appWindow,
+                color: theme.colorScheme.onSurfaceVariant),
+            title: Text(
+              _openInNewWindowLabel(context),
+              style: TextStyle(color: theme.colorScheme.onSurface),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              EntityOpenActions.openInNewWindow(
+                context,
+                sourcePath: folder.path,
+              );
+            },
+          ),
+        _buildToggleSidebarPinTile(
+          context: context,
+          theme: theme,
+          path: folder.path,
         ),
 
         // Copy option for folder
@@ -599,7 +722,8 @@ class SharedFolderContextMenu extends StatelessWidget {
 
         // Tag management option
         ListTile(
-          leading: Icon(PhosphorIconsLight.tag, color: theme.colorScheme.primary),
+          leading:
+              Icon(PhosphorIconsLight.tag, color: theme.colorScheme.primary),
           title: Text(
             AppLocalizations.of(context)!.manageTags,
             style: TextStyle(color: theme.colorScheme.onSurface),
@@ -715,6 +839,36 @@ class SharedFolderContextMenu extends StatelessWidget {
     }
     return path.split(Platform.pathSeparator).last;
   }
+
+  Widget _buildToggleSidebarPinTile({
+    required BuildContext context,
+    required ThemeData theme,
+    required String path,
+  }) {
+    return FutureBuilder<bool>(
+      future: _isPathPinnedToSidebar(path),
+      builder: (context, snapshot) {
+        final isPinned = snapshot.data ?? false;
+        final l10n = AppLocalizations.of(context)!;
+        return ListTile(
+          leading: Icon(
+            isPinned
+                ? PhosphorIconsLight.pushPinSlash
+                : PhosphorIconsLight.pushPin,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          title: Text(
+            isPinned ? l10n.unpinFromSidebar : l10n.pinToSidebar,
+            style: TextStyle(color: theme.colorScheme.onSurface),
+          ),
+          onTap: () async {
+            Navigator.pop(context);
+            await _toggleSidebarPinnedPathWithFeedback(context, path);
+          },
+        );
+      },
+    );
+  }
 }
 
 /// Helper function to show file context menu
@@ -748,155 +902,185 @@ void _showFileContextMenuDesktop({
   required bool isImage,
   Function(BuildContext, String)? showAddTagToFileDialog,
 }) {
-  final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
-  if (overlay == null) return;
-  final canShowShellMenu = Platform.isWindows &&
-      FileSystemEntity.typeSync(file.path) != FileSystemEntityType.notFound;
+  unawaited(() async {
+    final isDesktopPlatform =
+        Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox?;
+    if (overlay == null) return;
+    final canShowShellMenu = Platform.isWindows &&
+        FileSystemEntity.typeSync(file.path) != FileSystemEntityType.notFound;
+    if (!context.mounted) return;
 
-  final RelativeRect position = RelativeRect.fromRect(
-    Rect.fromPoints(globalPosition, globalPosition),
-    Offset.zero & overlay.size,
-  );
+    final RelativeRect position = RelativeRect.fromRect(
+      Rect.fromPoints(globalPosition, globalPosition),
+      Offset.zero & overlay.size,
+    );
 
-  showMenu<String>(
-    context: context,
-    position: position,
-    items: [
-      if (isVideo)
+    showMenu<String>(
+      context: context,
+      position: position,
+      items: [
+        if (isVideo)
+          PopupMenuItem(
+            value: 'play_video',
+            child: _menuRow(AppLocalizations.of(context)!.playVideo,
+                PhosphorIconsLight.playCircle),
+          ),
+        if (isImage)
+          PopupMenuItem(
+            value: 'view_image',
+            child: _menuRow(AppLocalizations.of(context)!.viewImage,
+                PhosphorIconsLight.image),
+          ),
         PopupMenuItem(
-          value: 'play_video',
-          child: _menuRow(AppLocalizations.of(context)!.playVideo,
-              PhosphorIconsLight.playCircle),
-        ),
-      if (isImage)
-        PopupMenuItem(
-          value: 'view_image',
+          value: 'open',
           child: _menuRow(
-              AppLocalizations.of(context)!.viewImage, PhosphorIconsLight.image),
+              AppLocalizations.of(context)!.open, PhosphorIconsLight.file),
         ),
-      PopupMenuItem(
-        value: 'open',
-        child: _menuRow(
-            AppLocalizations.of(context)!.open, PhosphorIconsLight.file),
-      ),
-      PopupMenuItem(
-        value: 'open_with',
-        child: _menuRow(AppLocalizations.of(context)!.openWith,
-            PhosphorIconsLight.arrowSquareOut),
-      ),
-      PopupMenuItem(
-        value: 'choose_default_app',
-        child: _menuRow(AppLocalizations.of(context)!.chooseDefaultApp,
-            PhosphorIconsLight.appWindow),
-      ),
-      const PopupMenuDivider(),
-      PopupMenuItem(
-        value: 'copy',
-        child: _menuRow(
-            AppLocalizations.of(context)!.copy, PhosphorIconsLight.copy),
-      ),
-      PopupMenuItem(
-        value: 'cut',
-        child: _menuRow(
-            AppLocalizations.of(context)!.cut, PhosphorIconsLight.scissors),
-      ),
-      PopupMenuItem(
-        value: 'rename',
-        child: _menuRow(
-            AppLocalizations.of(context)!.rename, PhosphorIconsLight.pencilSimple),
-      ),
-      PopupMenuItem(
-        value: 'tags',
-        child: _menuRow(AppLocalizations.of(context)!.manageTags,
-            PhosphorIconsLight.tag),
-      ),
-      const PopupMenuDivider(),
-      PopupMenuItem(
-        value: 'properties',
-        child: _menuRow(AppLocalizations.of(context)!.properties,
-            PhosphorIconsLight.info),
-      ),
-      PopupMenuItem(
-        value: 'delete',
-        child: _menuRow(AppLocalizations.of(context)!.moveToTrash,
-            PhosphorIconsLight.trash,
-            color: Theme.of(context).colorScheme.error),
-      ),
-      if (canShowShellMenu) ...[
+        if (isDesktopPlatform)
+          PopupMenuItem(
+            value: 'open_in_new_tab',
+            child: _menuRow(AppLocalizations.of(context)!.openInNewTab,
+                PhosphorIconsLight.squaresFour),
+          ),
+        if (isDesktopPlatform)
+          PopupMenuItem(
+            value: 'open_in_new_window',
+            child: _menuRow(
+                _openInNewWindowLabel(context), PhosphorIconsLight.appWindow),
+          ),
+        PopupMenuItem(
+          value: 'open_with',
+          child: _menuRow(AppLocalizations.of(context)!.openWith,
+              PhosphorIconsLight.arrowSquareOut),
+        ),
+        PopupMenuItem(
+          value: 'choose_default_app',
+          child: _menuRow(AppLocalizations.of(context)!.chooseDefaultApp,
+              PhosphorIconsLight.appWindow),
+        ),
         const PopupMenuDivider(),
         PopupMenuItem(
-          value: 'more_options',
-          child: _menuRow(AppLocalizations.of(context)!.moreOptions,
-              PhosphorIconsLight.dotsThreeVertical),
+          value: 'copy',
+          child: _menuRow(
+              AppLocalizations.of(context)!.copy, PhosphorIconsLight.copy),
         ),
-      ],
-    ],
-  ).then((value) async {
-    if (value == null) return;
-    switch (value) {
-      case 'play_video':
-        await _openVideoWithUserPreference(context, file);
-        break;
-      case 'view_image':
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => ImageViewerScreen(file: file)),
-        );
-        break;
-      case 'open':
-        ExternalAppHelper.openFileWithApp(file.path, 'shell_open');
-        break;
-      case 'open_with':
-        showDialog(
-          context: context,
-          builder: (context) => OpenWithDialog(filePath: file.path),
-        );
-        break;
-      case 'choose_default_app':
-        showDialog(
-          context: context,
-          builder: (context) => OpenWithDialog(
-            filePath: file.path,
-            saveAsDefaultOnSelect: value == 'choose_default_app',
+        PopupMenuItem(
+          value: 'cut',
+          child: _menuRow(
+              AppLocalizations.of(context)!.cut, PhosphorIconsLight.scissors),
+        ),
+        PopupMenuItem(
+          value: 'rename',
+          child: _menuRow(AppLocalizations.of(context)!.rename,
+              PhosphorIconsLight.pencilSimple),
+        ),
+        PopupMenuItem(
+          value: 'tags',
+          child: _menuRow(
+              AppLocalizations.of(context)!.manageTags, PhosphorIconsLight.tag),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: 'properties',
+          child: _menuRow(AppLocalizations.of(context)!.properties,
+              PhosphorIconsLight.info),
+        ),
+        PopupMenuItem(
+          value: 'delete',
+          child: _menuRow(AppLocalizations.of(context)!.moveToTrash,
+              PhosphorIconsLight.trash,
+              color: Theme.of(context).colorScheme.error),
+        ),
+        if (canShowShellMenu) ...[
+          const PopupMenuDivider(),
+          PopupMenuItem(
+            value: 'more_options',
+            child: _menuRow(AppLocalizations.of(context)!.moreOptions,
+                PhosphorIconsLight.dotsThreeVertical),
           ),
-        );
-        break;
-      case 'copy':
-        FileOperationsHandler.copyToClipboard(context: context, entity: file);
-        break;
-      case 'cut':
-        FileOperationsHandler.cutToClipboard(context: context, entity: file);
-        break;
-      case 'rename':
-        await _renameEntity(context: context, entity: file);
-        break;
-      case 'tags':
-        if (showAddTagToFileDialog != null) {
-          showAddTagToFileDialog(context, file.path);
-        } else {
-          tag_dialogs.showAddTagToFileDialog(context, file.path);
-        }
-        break;
-      case 'properties':
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => FileDetailsScreen(file: file)),
-        );
-        break;
-      case 'delete':
-        _moveToTrashStandalone(context, file);
-        break;
-      case 'more_options':
-        await WindowsShellContextMenu.showForPaths(
-          paths: [file.path],
-          globalPosition: globalPosition,
-          devicePixelRatio: MediaQuery.of(context).devicePixelRatio,
-        );
-        break;
-    }
-  });
+        ],
+      ],
+    ).then((value) async {
+      if (value == null) return;
+      switch (value) {
+        case 'play_video':
+          await _openVideoWithUserPreference(context, file);
+          break;
+        case 'view_image':
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => ImageViewerScreen(file: file)),
+          );
+          break;
+        case 'open':
+          ExternalAppHelper.openFileWithApp(file.path, 'shell_open');
+          break;
+        case 'open_in_new_tab':
+          EntityOpenActions.openInNewTab(
+            context,
+            sourcePath: file.path,
+          );
+          break;
+        case 'open_in_new_window':
+          EntityOpenActions.openInNewWindow(
+            context,
+            sourcePath: file.path,
+          );
+          break;
+        case 'open_with':
+          showDialog(
+            context: context,
+            builder: (context) => OpenWithDialog(filePath: file.path),
+          );
+          break;
+        case 'choose_default_app':
+          showDialog(
+            context: context,
+            builder: (context) => OpenWithDialog(
+              filePath: file.path,
+              saveAsDefaultOnSelect: value == 'choose_default_app',
+            ),
+          );
+          break;
+        case 'copy':
+          FileOperationsHandler.copyToClipboard(context: context, entity: file);
+          break;
+        case 'cut':
+          FileOperationsHandler.cutToClipboard(context: context, entity: file);
+          break;
+        case 'rename':
+          await _renameEntity(context: context, entity: file);
+          break;
+        case 'tags':
+          if (showAddTagToFileDialog != null) {
+            showAddTagToFileDialog(context, file.path);
+          } else {
+            tag_dialogs.showAddTagToFileDialog(context, file.path);
+          }
+          break;
+        case 'properties':
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => FileDetailsScreen(file: file)),
+          );
+          break;
+        case 'delete':
+          _moveToTrashStandalone(context, file);
+          break;
+        case 'more_options':
+          await WindowsShellContextMenu.showForPaths(
+            paths: [file.path],
+            globalPosition: globalPosition,
+            devicePixelRatio: MediaQuery.of(context).devicePixelRatio,
+          );
+          break;
+      }
+    });
+  }());
 }
 
 Widget _menuRow(String title, IconData icon, {Color? color}) {
@@ -907,6 +1091,40 @@ Widget _menuRow(String title, IconData icon, {Color? color}) {
       Text(title, style: TextStyle(color: color)),
     ],
   );
+}
+
+Future<bool> _isPathPinnedToSidebar(String path) async {
+  final prefs = UserPreferences.instance;
+  await prefs.init();
+  return prefs.isPathPinnedToSidebar(path);
+}
+
+Future<void> _toggleSidebarPinnedPathWithFeedback(
+  BuildContext context,
+  String path,
+) async {
+  final prefs = UserPreferences.instance;
+  await prefs.init();
+
+  final isPinned = await prefs.isPathPinnedToSidebar(path);
+  if (isPinned) {
+    await prefs.removeSidebarPinnedPath(path);
+  } else {
+    await prefs.addSidebarPinnedPath(path);
+  }
+
+  if (!context.mounted) return;
+
+  final l10n = AppLocalizations.of(context)!;
+  final message = isPinned ? l10n.removedFromSidebar : l10n.pinnedToSidebar;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(message)),
+  );
+}
+
+String _openInNewWindowLabel(BuildContext context) {
+  final l10n = AppLocalizations.of(context)!;
+  return '${l10n.open} ${l10n.newWindow.toLowerCase()}';
 }
 
 Future<void> _moveToTrashStandalone(BuildContext context, File file) async {
@@ -929,7 +1147,9 @@ Future<void> _moveToTrashStandalone(BuildContext context, File file) async {
   } catch (e) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Theme.of(context).colorScheme.error),
+        SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error),
       );
     }
   }
@@ -1054,101 +1274,157 @@ void _showFolderContextMenuDesktop({
   List<String> folderTags = const [],
   Function(BuildContext, String)? showAddTagToFileDialog,
 }) {
-  final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
-  if (overlay == null) return;
-  final canShowShellMenu = Platform.isWindows &&
-      FileSystemEntity.typeSync(folder.path) != FileSystemEntityType.notFound;
+  unawaited(() async {
+    final isDesktopPlatform =
+        Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox?;
+    if (overlay == null) return;
+    final canShowShellMenu = Platform.isWindows &&
+        FileSystemEntity.typeSync(folder.path) != FileSystemEntityType.notFound;
+    final isPinnedToSidebar = await _isPathPinnedToSidebar(folder.path);
+    if (!context.mounted) return;
 
-  final RelativeRect position = RelativeRect.fromRect(
-    Rect.fromPoints(globalPosition, globalPosition),
-    Offset.zero & overlay.size,
-  );
-  final l10n = AppLocalizations.of(context)!;
+    final RelativeRect position = RelativeRect.fromRect(
+      Rect.fromPoints(globalPosition, globalPosition),
+      Offset.zero & overlay.size,
+    );
+    final l10n = AppLocalizations.of(context)!;
 
-  showMenu<String>(
-    context: context,
-    position: position,
-    items: [
-      PopupMenuItem(
-        value: 'open',
-        child: _menuRow(l10n.openFolder, PhosphorIconsLight.folderOpen),
-      ),
-      const PopupMenuDivider(),
-      PopupMenuItem(
-        value: 'copy',
-        child: _menuRow(l10n.copy, PhosphorIconsLight.copy),
-      ),
-      PopupMenuItem(
-        value: 'cut',
-        child: _menuRow(l10n.cut, PhosphorIconsLight.scissors),
-      ),
-      PopupMenuItem(
-        value: 'paste',
-        child: _menuRow(l10n.pasteHere, PhosphorIconsLight.clipboard),
-      ),
-      PopupMenuItem(
-        value: 'rename',
-        child: _menuRow(l10n.rename, PhosphorIconsLight.pencilSimple),
-      ),
-      PopupMenuItem(
-        value: 'tags',
-        child: _menuRow(l10n.manageTags, PhosphorIconsLight.tag),
-      ),
-      const PopupMenuDivider(),
-      PopupMenuItem(
-        value: 'properties',
-        child: _menuRow(l10n.properties, PhosphorIconsLight.info),
-      ),
-      if (canShowShellMenu) ...[
+    showMenu<String>(
+      context: context,
+      position: position,
+      items: [
+        PopupMenuItem(
+          value: 'open',
+          child: _menuRow(l10n.openFolder, PhosphorIconsLight.folderOpen),
+        ),
+        if (isDesktopPlatform)
+          PopupMenuItem(
+            value: 'open_in_new_tab',
+            child: _menuRow(l10n.openInNewTab, PhosphorIconsLight.squaresFour),
+          ),
+        if (isDesktopPlatform)
+          PopupMenuItem(
+            value: 'open_in_split_view',
+            child: _menuRow(l10n.openInSplitView, PhosphorIconsLight.columns),
+          ),
+        if (isDesktopPlatform)
+          PopupMenuItem(
+            value: 'open_in_new_window',
+            child: _menuRow(
+                _openInNewWindowLabel(context), PhosphorIconsLight.appWindow),
+          ),
+        PopupMenuItem(
+          value: 'toggle_pin_sidebar',
+          child: _menuRow(
+            isPinnedToSidebar ? l10n.unpinFromSidebar : l10n.pinToSidebar,
+            isPinnedToSidebar
+                ? PhosphorIconsLight.pushPinSlash
+                : PhosphorIconsLight.pushPin,
+          ),
+        ),
         const PopupMenuDivider(),
         PopupMenuItem(
-          value: 'more_options',
-          child: _menuRow(l10n.moreOptions, PhosphorIconsLight.dotsThreeVertical),
+          value: 'copy',
+          child: _menuRow(l10n.copy, PhosphorIconsLight.copy),
         ),
+        PopupMenuItem(
+          value: 'cut',
+          child: _menuRow(l10n.cut, PhosphorIconsLight.scissors),
+        ),
+        PopupMenuItem(
+          value: 'paste',
+          child: _menuRow(l10n.pasteHere, PhosphorIconsLight.clipboard),
+        ),
+        PopupMenuItem(
+          value: 'rename',
+          child: _menuRow(l10n.rename, PhosphorIconsLight.pencilSimple),
+        ),
+        PopupMenuItem(
+          value: 'tags',
+          child: _menuRow(l10n.manageTags, PhosphorIconsLight.tag),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: 'properties',
+          child: _menuRow(l10n.properties, PhosphorIconsLight.info),
+        ),
+        if (canShowShellMenu) ...[
+          const PopupMenuDivider(),
+          PopupMenuItem(
+            value: 'more_options',
+            child: _menuRow(
+                l10n.moreOptions, PhosphorIconsLight.dotsThreeVertical),
+          ),
+        ],
       ],
-    ],
-  ).then((value) async {
-    if (value == null) return;
-    switch (value) {
-      case 'open':
-        if (onNavigate != null) {
-          onNavigate(folder.path);
-        }
-        break;
-      case 'copy':
-        FileOperationsHandler.copyToClipboard(context: context, entity: folder);
-        break;
-      case 'cut':
-        FileOperationsHandler.cutToClipboard(context: context, entity: folder);
-        break;
-      case 'paste':
-        FileOperationsHandler.pasteFromClipboard(
-          context: context,
-          destinationPath: folder.path,
-        );
-        break;
-      case 'rename':
-        await _renameEntity(context: context, entity: folder);
-        break;
-      case 'tags':
-        if (showAddTagToFileDialog != null) {
-          showAddTagToFileDialog(context, folder.path);
-        } else {
-          tag_dialogs.showAddTagToFileDialog(context, folder.path);
-        }
-        break;
-      case 'properties':
-        _showFolderPropertiesDialog(context, folder);
-        break;
-      case 'more_options':
-        await WindowsShellContextMenu.showForPaths(
-          paths: [folder.path],
-          globalPosition: globalPosition,
-          devicePixelRatio: MediaQuery.of(context).devicePixelRatio,
-        );
-        break;
-    }
-  });
+    ).then((value) async {
+      if (value == null) return;
+      switch (value) {
+        case 'open':
+          if (onNavigate != null) {
+            onNavigate(folder.path);
+          }
+          break;
+        case 'open_in_new_tab':
+          EntityOpenActions.openInNewTab(
+            context,
+            sourcePath: folder.path,
+          );
+          break;
+        case 'open_in_split_view':
+          EntityOpenActions.openInSplitView(
+            context,
+            sourcePath: folder.path,
+          );
+          break;
+        case 'open_in_new_window':
+          EntityOpenActions.openInNewWindow(
+            context,
+            sourcePath: folder.path,
+          );
+          break;
+        case 'toggle_pin_sidebar':
+          _toggleSidebarPinnedPathWithFeedback(context, folder.path);
+          break;
+        case 'copy':
+          FileOperationsHandler.copyToClipboard(
+              context: context, entity: folder);
+          break;
+        case 'cut':
+          FileOperationsHandler.cutToClipboard(
+              context: context, entity: folder);
+          break;
+        case 'paste':
+          FileOperationsHandler.pasteFromClipboard(
+            context: context,
+            destinationPath: folder.path,
+          );
+          break;
+        case 'rename':
+          await _renameEntity(context: context, entity: folder);
+          break;
+        case 'tags':
+          if (showAddTagToFileDialog != null) {
+            showAddTagToFileDialog(context, folder.path);
+          } else {
+            tag_dialogs.showAddTagToFileDialog(context, folder.path);
+          }
+          break;
+        case 'properties':
+          _showFolderPropertiesDialog(context, folder);
+          break;
+        case 'more_options':
+          await WindowsShellContextMenu.showForPaths(
+            paths: [folder.path],
+            globalPosition: globalPosition,
+            devicePixelRatio: MediaQuery.of(context).devicePixelRatio,
+          );
+          break;
+      }
+    });
+  }());
 }
 
 void _showFolderPropertiesDialog(BuildContext context, Directory folder) {
@@ -1331,6 +1607,8 @@ void showMultipleFilesContextMenu({
 }) {
   final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
   if (overlay == null) return;
+  final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
+  final bloc = context.read<FolderListBloc>();
   final canShowShellMenu = Platform.isWindows &&
       selectedPaths.isNotEmpty &&
       selectedPaths.every((path) =>
@@ -1375,7 +1653,8 @@ void showMultipleFilesContextMenu({
         const PopupMenuDivider(),
         PopupMenuItem(
           value: 'more_options',
-          child: _menuRow(l10n.moreOptions, PhosphorIconsLight.dotsThreeVertical),
+          child:
+              _menuRow(l10n.moreOptions, PhosphorIconsLight.dotsThreeVertical),
         ),
       ],
     ],
@@ -1385,12 +1664,11 @@ void showMultipleFilesContextMenu({
       WindowsShellContextMenu.showForPaths(
         paths: selectedPaths,
         globalPosition: globalPosition,
-        devicePixelRatio: MediaQuery.of(context).devicePixelRatio,
+        devicePixelRatio: devicePixelRatio,
       );
       return;
     }
 
-    final bloc = context.read<FolderListBloc>();
     List<FileSystemEntity> entitiesList = [];
     List<String> files = [];
     List<String> folders = [];
@@ -1442,6 +1720,3 @@ void showMultipleFilesContextMenu({
     }
   });
 }
-
-
-

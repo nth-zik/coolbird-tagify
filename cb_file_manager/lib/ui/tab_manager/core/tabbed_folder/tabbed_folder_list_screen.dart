@@ -1,15 +1,18 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:cb_file_manager/helpers/ui/frame_timing_optimizer.dart';
 import 'package:cb_file_manager/ui/components/common/shared_action_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/helpers/core/user_preferences.dart';
 import 'package:cb_file_manager/ui/widgets/thumbnail_loader.dart';
 import 'package:cb_file_manager/ui/widgets/app_progress_indicator.dart';
 import 'package:cb_file_manager/ui/utils/file_type_utils.dart';
 import 'package:cb_file_manager/ui/components/common/skeleton_helper.dart';
 import '../tab_manager.dart';
+import '../tab_paths.dart';
 import 'package:cb_file_manager/ui/utils/fluent_background.dart';
 import 'package:path/path.dart' as path;
 
@@ -46,6 +49,7 @@ import 'package:cb_file_manager/ui/controllers/tag_search_initializer.dart';
 import 'package:cb_file_manager/ui/controllers/app_bar_actions_builder.dart';
 import 'package:cb_file_manager/ui/utils/grid_zoom_constraints.dart';
 import 'package:cb_file_manager/ui/controllers/inline_rename_controller.dart';
+import 'package:cb_file_manager/ui/widgets/selection_summary_tooltip.dart';
 
 // Import extracted view layer components
 import 'package:cb_file_manager/ui/widgets/file_list_view_builder.dart';
@@ -56,6 +60,21 @@ import 'package:cb_file_manager/ui/widgets/refreshable_file_list_view.dart';
 part 'tabbed_folder_list_screen.mobile_actions.dart';
 part 'tabbed_folder_list_screen.refresh.dart';
 
+/// Data class carrying the widgets needed to render the shared appbar in split-pane mode.
+class SplitPaneAppBarData {
+  final Widget titleWidget;
+  final List<Widget> actions;
+  final bool isSelectionMode;
+  final Widget? selectionAppBar;
+
+  const SplitPaneAppBarData({
+    required this.titleWidget,
+    required this.actions,
+    this.isSelectionMode = false,
+    this.selectionAppBar,
+  });
+}
+
 /// A modified version of FolderListScreen that works with the tab system
 class TabbedFolderListScreen extends StatefulWidget {
   final String path;
@@ -64,6 +83,11 @@ class TabbedFolderListScreen extends StatefulWidget {
   final String? searchTag; // Add parameter for tag search
   final bool globalTagSearch; // Add parameter to control global vs local search
 
+  /// When non-null, the screen will NOT render its own appbar. Instead it will
+  /// push appbar data into this notifier so the parent (e.g. SplitPaneView)
+  /// can render a shared bar.
+  final ValueNotifier<SplitPaneAppBarData?>? appBarDataNotifier;
+
   const TabbedFolderListScreen({
     Key? key,
     required this.path,
@@ -71,6 +95,7 @@ class TabbedFolderListScreen extends StatefulWidget {
     this.showAppBar = true, // Mặc định là hiển thị AppBar
     this.searchTag, // Optional tag to search for
     this.globalTagSearch = false, // Default to local search
+    this.appBarDataNotifier,
   }) : super(key: key);
 
   @override
@@ -139,6 +164,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
 
   // Flag to track if there are background thumbnail tasks
   bool _hasPendingThumbnails = false;
+  StreamSubscription<int>? _pendingTasksSubscription;
 
   // Add a method to check if there are any video/image files in the current state
   bool _hasVideoOrImageFiles(FolderListState state) {
@@ -166,19 +192,31 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
     return rect.contains(event.position);
   }
 
+  bool _isDrivesPathValue(String path) {
+    return isDrivesPath(path) || path.isEmpty;
+  }
+
+  bool _isDrivesMode() => _isDrivesPathValue(_currentPath);
+
+  String _displayPathForInput(String path) {
+    return _isDrivesPathValue(path) ? '' : path;
+  }
+
   @override
   void initState() {
     super.initState();
     _currentPath = widget.path;
     _searchController = TextEditingController();
     _tagController = TextEditingController();
-    _pathController = TextEditingController(text: _currentPath);
+    _pathController = TextEditingController(
+      text: _displayPathForInput(_currentPath),
+    );
     _keyboardController = TabbedFolderKeyboardController();
     _previewPaneWidthNotifier = ValueNotifier<double>(previewPaneWidth);
     _inlineRenameController = InlineRenameController();
 
     // If this is a new tab with empty path (drive view), enable lazy loading
-    if (_currentPath.isEmpty && Platform.isWindows) {
+    if (_isDrivesPathValue(_currentPath)) {
       _isLazyLoadingDrives = true;
       // Schedule drive loading after UI is built
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -187,7 +225,8 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
     }
 
     // Listen for thumbnail loading changes
-    ThumbnailLoader.onPendingTasksChanged.listen((count) {
+    _pendingTasksSubscription =
+        ThumbnailLoader.onPendingTasksChanged.listen((count) {
       final hasBackgroundTasks = count > 0;
       if (_hasPendingThumbnails != hasBackgroundTasks) {
         setState(() {
@@ -195,10 +234,6 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
         });
       }
     });
-
-    // Enable hardware acceleration for smoother animations
-    WidgetsBinding.instance.renderView.automaticSystemUiAdjustment = false;
-    // Avoid forcing semantics here to prevent render/semantics assertions on mobile
 
     // Initialize the blocs
     _folderListBloc = FolderListBloc();
@@ -246,6 +281,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
       onPathChanged: (String path) {
         setState(() {
           _currentPath = path;
+          _pathController.text = _displayPathForInput(path);
         });
       },
       onSaveLastAccessedFolder: _saveLastAccessedFolder,
@@ -305,9 +341,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
     _keyboardController.dispose();
     _previewPaneWidthNotifier.dispose();
     _inlineRenameController.dispose();
-
-    // Restore default settings
-    WidgetsBinding.instance.renderView.automaticSystemUiAdjustment = true;
+    _pendingTasksSubscription?.cancel();
 
     // Remove mobile actions controller
     if (Platform.isAndroid || Platform.isIOS) {
@@ -380,6 +414,15 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
 
   // View mode methods are now provided by PreferencesManagerMixin
   void _toggleViewMode() => toggleViewMode();
+
+  void _toggleDrivesViewMode() {
+    final currentMode = _folderListBloc.state.viewMode;
+    final nextMode =
+        (currentMode == ViewMode.grid || currentMode == ViewMode.gridPreview)
+            ? ViewMode.list
+            : ViewMode.grid;
+    _setViewMode(nextMode);
+  }
 
   void _setViewMode(ViewMode mode) {
     setViewMode(mode, tabId: widget.tabId);
@@ -611,13 +654,28 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
   void _updatePath(String newPath) {
     if (_isHandlingPathUpdate) return;
     _isHandlingPathUpdate = true;
-    _navigationController.updatePath(
-      newPath,
-      _pathController,
-      _currentFilter,
-      _currentSearchTag,
-    );
-    _isHandlingPathUpdate = false;
+    // Defer the actual update to avoid setState-during-build when this is
+    // triggered synchronously from didUpdateWidget (e.g. split-pane path change).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        _isHandlingPathUpdate = false;
+        return;
+      }
+      _navigationController.updatePath(
+        newPath,
+        _pathController,
+        _currentFilter,
+        _currentSearchTag,
+      );
+      if (Platform.isAndroid || Platform.isIOS) {
+        final controller = MobileFileActionsController.forTab(widget.tabId);
+        controller.currentPath = newPath;
+        controller.actionBarProfile = _isDrivesPathValue(newPath)
+            ? MobileActionBarProfile.drivesMinimal
+            : MobileActionBarProfile.full;
+      }
+      _isHandlingPathUpdate = false;
+    });
   }
 
   // New method to handle lazy loading of drives
@@ -649,7 +707,7 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
   }
 
   bool _isPathMismatch(FolderListState state) {
-    if (_currentPath.isEmpty) {
+    if (_isDrivesMode()) {
       return false;
     }
     return _normalizePath(state.currentPath.path) !=
@@ -682,26 +740,10 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
   // Build appropriate content depending on current path. This keeps the tab listening
   // active even when showing system screens like #tags.
   Widget _buildContentForCurrentPath(BuildContext context) {
-    // Drive view (Windows only)
-    if (_currentPath.isEmpty && Platform.isWindows) {
-      return tab_components.DriveView(
-        tabId: widget.tabId,
-        folderListBloc: _folderListBloc,
-        onPathChanged: (String path) {
-          setState(() {
-            _currentPath = path;
-            _pathController.text = path;
-          });
-        },
-        onBackButtonPressed: () => _handleMouseBackButton(),
-        onForwardButtonPressed: () => _handleMouseForwardButton(),
-        isLazyLoading: _isLazyLoadingDrives,
-      );
-    }
-
     // Route system paths except the special inline tag-search variant
     if (_currentPath.startsWith('#') &&
-        !_currentPath.startsWith('#search?tag=')) {
+        !_currentPath.startsWith('#search?tag=') &&
+        !isDrivesPath(_currentPath)) {
       final systemWidget = SystemScreenRouter.routeSystemPath(
           context, _currentPath, widget.tabId);
       if (systemWidget != null) {
@@ -835,37 +877,94 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
       FolderListState folderListState, bool isNetworkPath) {
     return BlocBuilder<SelectionBloc, SelectionState>(
         builder: (context, selectionState) {
-      return ScreenScaffold(
-        selectionState: selectionState,
-        body:
-            _buildBody(context, folderListState, selectionState, isNetworkPath),
-        isNetworkPath: isNetworkPath,
-        onClearSelection: _clearSelection,
-        showRemoveTagsDialog: _showRemoveTagsDialog,
-        showManageAllTagsDialog: (context) => _showManageAllTagsDialog(context),
-        showDeleteConfirmationDialog: (context) =>
-            _showDeleteConfirmationDialog(context),
-        isDesktop: isDesktopPlatform,
-        selectionModeFloatingActionButton: null,
-        showAppBar: widget.showAppBar,
-        showSearchBar: _showSearchBar,
-        searchBar: tab_components.SearchBar(
-          currentPath: _currentPath,
-          tabId: widget.tabId,
-          onCloseSearch: () {
-            setState(() {
-              _showSearchBar = false;
-            });
-          },
-        ),
-        pathNavigationBar: tab_components.PathNavigationBar(
-          tabId: widget.tabId,
-          pathController: _pathController,
-          onPathSubmitted: _handlePathSubmit,
-          currentPath: _currentPath,
-          isNetworkPath: isNetworkPath, // Pass network flag
-        ),
-        actions: _getAppBarActions(),
+      // When a parent (e.g. SplitPaneView) owns the bar, push bar data into
+      // the notifier instead of rendering our own appbar.
+      final notifier = widget.appBarDataNotifier;
+      if (notifier != null) {
+        // In split mode the SearchBar is rendered in the shared top bar
+        // (outside the pane's BlocProvider subtree), so we pass the pane's
+        // FolderListBloc directly to avoid a context lookup failure.
+        final titleWidget = _showSearchBar
+            ? tab_components.SearchBar(
+                currentPath: _currentPath,
+                tabId: widget.tabId,
+                folderListBloc: _folderListBloc,
+                onCloseSearch: () {
+                  setState(() {
+                    _showSearchBar = false;
+                  });
+                },
+              )
+            : tab_components.PathNavigationBar(
+                tabId: widget.tabId,
+                pathController: _pathController,
+                onPathSubmitted: _handlePathSubmit,
+                currentPath: _displayPathForInput(_currentPath),
+                isNetworkPath: isNetworkPath,
+              );
+        final newData = SplitPaneAppBarData(
+          titleWidget: titleWidget,
+          actions: _getAppBarActions(),
+          isSelectionMode: selectionState.isSelectionMode && !isDesktopPlatform,
+        );
+        // Schedule notifier update after build to avoid setState-in-build errors.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) notifier.value = newData;
+        });
+      }
+
+      return Stack(
+        alignment: Alignment.bottomCenter,
+        children: [
+          ScreenScaffold(
+            selectionState: selectionState,
+            body: _buildBody(
+                context, folderListState, selectionState, isNetworkPath),
+            isNetworkPath: isNetworkPath,
+            onClearSelection: _clearSelection,
+            showRemoveTagsDialog: _showRemoveTagsDialog,
+            showManageAllTagsDialog: (context) =>
+                _showManageAllTagsDialog(context),
+            showDeleteConfirmationDialog: (context) =>
+                _showDeleteConfirmationDialog(context),
+            isDesktop: isDesktopPlatform,
+            selectionModeFloatingActionButton: null,
+            // When notifier is provided, suppress own appbar – parent renders it.
+            showAppBar: notifier != null ? false : widget.showAppBar,
+            // In split mode, search bar is shown in shared bar above; suppress it here.
+            showSearchBar: notifier != null ? false : _showSearchBar,
+            searchBar: tab_components.SearchBar(
+              currentPath: _currentPath,
+              tabId: widget.tabId,
+              onCloseSearch: () {
+                setState(() {
+                  _showSearchBar = false;
+                });
+              },
+            ),
+            pathNavigationBar: tab_components.PathNavigationBar(
+              tabId: widget.tabId,
+              pathController: _pathController,
+              onPathSubmitted: _handlePathSubmit,
+              currentPath: _displayPathForInput(_currentPath),
+              isNetworkPath: isNetworkPath, // Pass network flag
+            ),
+            actions: _getAppBarActions(),
+          ),
+          if (selectionState.isSelectionMode && isDesktopPlatform)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: SelectionSummaryTooltip(
+                selectedFileCount: selectionState.selectedFilePaths.length,
+                selectedFolderCount: selectionState.selectedFolderPaths.length,
+                selectedFilePaths: selectionState.selectedFilePaths.toList(),
+                selectedFolderPaths:
+                    selectionState.selectedFolderPaths.toList(),
+              ),
+            ),
+        ],
       );
     });
   }
@@ -879,13 +978,53 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
       _keyboardController.syncFromSelection(selectionState);
     }
 
+    if (_isDrivesMode()) {
+      return Column(
+        children: [
+          if (_isRefreshing)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 4.0),
+              child: AppProgressIndicatorBeautiful(),
+            ),
+          Expanded(
+            child: FluentBackground.container(
+              context: context,
+              enableBlur: isDesktopPlatform,
+              child: tab_components.DriveView(
+                tabId: widget.tabId,
+                folderListBloc: _folderListBloc,
+                onPathChanged: (String path) {
+                  setState(() {
+                    _currentPath = path;
+                    _pathController.text = _displayPathForInput(path);
+                  });
+                },
+                onBackButtonPressed: _handleMouseBackButton,
+                onForwardButtonPressed: _handleMouseForwardButton,
+                isLazyLoading: _isLazyLoadingDrives,
+                viewMode: state.viewMode,
+                gridZoomLevel: state.gridZoomLevel,
+                onZoomChanged: handleZoomLevelChange,
+                isRefreshing: _isRefreshing,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     // Show content as soon as we have any files/folders (lazy loading)
     // Only show skeleton when truly empty and loading
     final bool hasContent = state.folders.isNotEmpty || state.files.isNotEmpty;
     final bool isPathMismatch =
         !_currentPath.startsWith('#') && _isPathMismatch(state);
-    final bool showLoadingIndicator =
-        state.isLoading || _isRefreshing || isPathMismatch;
+    // When search results are displayed, SearchResults widget renders its own
+    // loading bar — suppress the top-level one to avoid showing two at once.
+    final bool searchResultsActive = state.searchResults.isNotEmpty ||
+        state.currentSearchQuery != null ||
+        state.currentSearchTag != null;
+    final bool showLoadingIndicator = !searchResultsActive &&
+        (state.isLoading || _isRefreshing || isPathMismatch);
     final bool shouldShowSkeleton = !hasContent &&
         (state.isLoading || isPathMismatch) &&
         state.error == null &&
@@ -1128,6 +1267,35 @@ class _TabbedFolderListScreenState extends State<TabbedFolderListScreen>
   }
 
   List<Widget> _getAppBarActions() {
+    if (_isDrivesMode()) {
+      final isGridView = _folderListBloc.state.viewMode == ViewMode.grid ||
+          _folderListBloc.state.viewMode == ViewMode.gridPreview;
+
+      return [
+        if (isGridView)
+          IconButton(
+            icon: const Icon(PhosphorIconsLight.squaresFour),
+            tooltip: 'Adjust grid size',
+            onPressed: () => SharedActionBar.showGridSizeDialog(
+              context,
+              currentGridSize: _folderListBloc.state.gridZoomLevel,
+              onApply: handleGridZoomChange,
+              sizeMode: GridSizeMode.referenceWidth,
+            ),
+          ),
+        IconButton(
+          icon: const Icon(PhosphorIconsLight.eye),
+          tooltip: 'Toggle view',
+          onPressed: _toggleDrivesViewMode,
+        ),
+        IconButton(
+          icon: const Icon(PhosphorIconsLight.arrowsClockwise),
+          tooltip: 'Refresh',
+          onPressed: _refreshFileList,
+        ),
+      ];
+    }
+
     // Use AppBarActionsBuilder to build actions based on selection state
     final selectionState = _selectionBloc.state;
     final folderListState = _folderListBloc.state;

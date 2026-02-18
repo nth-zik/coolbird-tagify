@@ -1063,7 +1063,7 @@ class _ModernTabState extends State<_ModernTab>
                 // Close button - positioned on top of tab
                 if (widget.onClose != null)
                   Positioned(
-                    top: (tabHeight - 22) / 2,
+                    top: 6 + (tabHeight - 22) / 2,
                     right: 12, // Position from right edge
                     child: AnimatedOpacity(
                       opacity: (_isHovered || widget.isActive) ? 1.0 : 0.5,

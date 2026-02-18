@@ -12,6 +12,8 @@ A powerful cross-platform file manager built with Flutter, supporting local and 
 - 🌐 **Network Support**: Access files via SMB/CIFS network shares
 - 🎥 **Media Playback**: Built-in video player with advanced controls
 - 🖼️ **Thumbnail Generation**: Fast thumbnail generation for images and videos
+- 📌 **Sidebar Pinning**: Pin drives, folders, or files into a dedicated `Pinned` drawer section
+- 🧠 **Workspace Restore**: Optionally restore last opened tab and per-tab drawer expansion state
 - 🌍 **Multi-language**: Support for multiple languages including Vietnamese
 - 🎨 **Modern UI**: Clean and intuitive user interface
 - 💾 **Local Database**: Fast file indexing with ObjectBox

@@ -15,11 +15,17 @@ class SearchBar extends StatefulWidget {
   final VoidCallback onCloseSearch;
   final String tabId; // Add tabId property
 
+  /// Optional: provide the [FolderListBloc] directly so the widget works
+  /// even when rendered outside its normal [BlocProvider] subtree
+  /// (e.g. in the shared app bar of the split-pane view).
+  final FolderListBloc? folderListBloc;
+
   const SearchBar({
     Key? key,
     required this.currentPath,
     required this.onCloseSearch,
     required this.tabId, // Include tabId in constructor
+    this.folderListBloc,
   }) : super(key: key);
 
   @override
@@ -323,7 +329,8 @@ class _SearchBarState extends State<SearchBar> {
     // Cập nhật text input với tag đã chọn
     final text = _searchController.text;
     final hashIndex = text.lastIndexOf('#');
-    final newText = '${text.substring(0, hashIndex + 1)}$tag '; // Thêm khoảng trắng để chuẩn bị nhập tag tiếp theo
+    final newText =
+        '${text.substring(0, hashIndex + 1)}$tag '; // Thêm khoảng trắng để chuẩn bị nhập tag tiếp theo
 
     // Cập nhật văn bản và vị trí con trỏ
     setState(() {
@@ -381,7 +388,8 @@ class _SearchBarState extends State<SearchBar> {
     final currentPath = widget.currentPath;
 
     final query = _searchController.text;
-    final folderListBloc = BlocProvider.of<FolderListBloc>(context);
+    final folderListBloc =
+        widget.folderListBloc ?? BlocProvider.of<FolderListBloc>(context);
     final tabBloc = BlocProvider.of<TabManagerBloc>(context);
     final localizations = AppLocalizations.of(context)!;
 
@@ -563,7 +571,8 @@ class _SearchBarState extends State<SearchBar> {
                       ? localizations.searchHintTextTags
                       : localizations.searchHintText,
                   hintStyle: TextStyle(
-                    color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                    color: theme.colorScheme.onSurfaceVariant
+                        .withValues(alpha: 0.7),
                     fontSize: 14,
                   ),
                   border: InputBorder.none,
@@ -717,10 +726,3 @@ class _SearchBarState extends State<SearchBar> {
     );
   }
 }
-
-
-
-
-
-
-

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cb_file_manager/ui/drawer.dart';
+import 'package:cb_file_manager/ui/widgets/drawer/cubit/drawer_cubit.dart';
 import 'package:cb_file_manager/helpers/core/user_preferences.dart'; // Add UserPreferences import
 // Import translation helper
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -156,9 +157,11 @@ class _BaseScreenState extends State<BaseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: true,
-      child: Scaffold(
+    return BlocProvider(
+      create: (_) => DrawerCubit()..loadStorageLocations(),
+      child: PopScope(
+        canPop: true,
+        child: Scaffold(
         key: _scaffoldKey, // Use instance-specific key
         appBar: (widget.showAppBar && !_inAndroidPip)
             ? AppBar(
@@ -198,6 +201,7 @@ class _BaseScreenState extends State<BaseScreen> {
         bottomNavigationBar: widget.bottomNavigationBar,
         resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
       ),
+    ),
     );
   }
 

@@ -14,6 +14,7 @@ class OptimizedInteractionLayer extends StatefulWidget {
   final void Function(LongPressStartDetails)? onLongPressStart;
   final VoidCallback? onSecondaryTap;
   final void Function(TapUpDetails)? onSecondaryTapUp;
+  final void Function(TapUpDetails)? onTertiaryTapUp;
 
   const OptimizedInteractionLayer({
     Key? key,
@@ -23,6 +24,7 @@ class OptimizedInteractionLayer extends StatefulWidget {
     this.onLongPressStart,
     this.onSecondaryTap,
     this.onSecondaryTapUp,
+    this.onTertiaryTapUp,
   }) : super(key: key);
 
   @override
@@ -59,7 +61,8 @@ class OptimizedInteractionLayerState extends State<OptimizedInteractionLayer> {
       }
     }
 
-    final hasLongPressHandler = widget.onLongPress != null || widget.onLongPressStart != null;
+    final hasLongPressHandler =
+        widget.onLongPress != null || widget.onLongPressStart != null;
     if (!hasLongPressHandler) {
       widget.onTap();
       _skipNextTap = true;
@@ -99,9 +102,11 @@ class OptimizedInteractionLayerState extends State<OptimizedInteractionLayer> {
       onTap: _handleTap,
       onTapCancel: _handleTapCancel,
       onLongPress: widget.onLongPress,
-      onLongPressStart: widget.onLongPressStart != null ? _handleLongPressStart : null,
+      onLongPressStart:
+          widget.onLongPressStart != null ? _handleLongPressStart : null,
       onSecondaryTap: widget.onSecondaryTap,
       onSecondaryTapUp: widget.onSecondaryTapUp,
+      onTertiaryTapUp: widget.onTertiaryTapUp,
     );
   }
 }
@@ -242,6 +247,3 @@ class FileUtils {
     }
   }
 }
-
-
-

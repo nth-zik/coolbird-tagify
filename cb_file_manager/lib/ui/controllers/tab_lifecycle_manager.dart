@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../screens/folder_list/folder_list_bloc.dart';
 import '../screens/folder_list/folder_list_event.dart';
 import '../tab_manager/core/tab_manager.dart';
+import '../tab_manager/core/tab_paths.dart';
 
 /// Manages lifecycle events for tabbed folder screens
 ///
@@ -52,7 +53,9 @@ class TabLifecycleManager {
               currentState.files.isEmpty &&
               currentState.searchResults.isEmpty &&
               !currentState.isLoading &&
-              !currentPath.startsWith('#search?tag='));
+              currentPath.isNotEmpty &&
+              !currentPath.startsWith('#search?tag=') &&
+              !isDrivesPath(currentPath));
 
       debugPrint('🟡 [TabLifecycleManager] Should reload: $shouldReload');
       debugPrint(
@@ -71,10 +74,10 @@ class TabLifecycleManager {
             debugPrint(
                 '🟡 [TabLifecycleManager] Tab $tabId became active, reloading content for path: $currentPath');
 
-            // Don't try to load search paths as directories
-            if (currentPath.startsWith('#search?tag=')) {
+            // Don't try to load virtual paths as directories.
+            if (currentPath.startsWith('#') || currentPath.isEmpty) {
               debugPrint(
-                  '🟡 [TabLifecycleManager] Skipping directory load for search path: $currentPath');
+                  '🟡 [TabLifecycleManager] Skipping directory load for virtual path: $currentPath');
               return;
             }
 

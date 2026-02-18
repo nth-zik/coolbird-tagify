@@ -8,6 +8,7 @@ import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_bloc.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_event.dart';
 import 'package:cb_file_manager/ui/tab_manager/core/tab_data.dart';
+import 'package:cb_file_manager/ui/tab_manager/core/tab_paths.dart';
 import 'package:cb_file_manager/helpers/core/uri_utils.dart';
 
 /// Controller for handling navigation operations in tabbed folder screens
@@ -29,6 +30,7 @@ class NavigationController {
   void _recordRecentPath(String value) {
     final trimmed = value.trim();
     if (trimmed.isEmpty) return;
+    if (isDrivesPath(trimmed)) return;
     if (trimmed.startsWith('#')) return;
     unawaited(UserPreferences.instance.addRecentPath(trimmed));
   }
@@ -97,9 +99,21 @@ class NavigationController {
     String currentPath,
     TextEditingController pathController,
   ) {
-    // Handle empty path as drive selection view
-    if (path.isEmpty && Platform.isWindows) {
-      onPathChanged('');
+    // Handle empty path as drives view.
+    if (path.isEmpty) {
+      final l10n = AppLocalizations.of(context)!;
+      tabManagerBloc.add(UpdateTabPath(tabId, kDrivesPath));
+      tabManagerBloc.add(UpdateTabName(tabId, l10n.drivesTab));
+      onPathChanged(kDrivesPath);
+      pathController.text = '';
+      return;
+    }
+
+    if (isDrivesPath(path)) {
+      final l10n = AppLocalizations.of(context)!;
+      tabManagerBloc.add(UpdateTabPath(tabId, kDrivesPath));
+      tabManagerBloc.add(UpdateTabName(tabId, l10n.drivesTab));
+      onPathChanged(kDrivesPath);
       pathController.text = '';
       return;
     }
@@ -126,7 +140,9 @@ class NavigationController {
           );
         }
         // Revert to current path
-        pathController.text = currentPath;
+        pathController.text = (isDrivesPath(currentPath) || currentPath.isEmpty)
+            ? ''
+            : currentPath;
       }
     });
   }
@@ -172,45 +188,38 @@ class NavigationController {
           'Can navigate back: ${tabManagerBloc.canTabNavigateBack(tabId)}');
 
       if (tabManagerBloc.canTabNavigateBack(tabId)) {
-        final previousPath = tabManagerBloc.getTabPreviousPath(tabId);
-        debugPrint('Previous path: $previousPath');
-        if (previousPath != null) {
-          // Handle empty path case for Windows drive view
-          if (previousPath.isEmpty && Platform.isWindows) {
-            onPathChanged('');
+        final newPath = tabManagerBloc.backNavigationToPath(tabId);
+        debugPrint('Back navigation result: $newPath');
+        if (newPath != null) {
+          debugPrint('Successfully navigating back to: $newPath');
+          if (newPath.isEmpty || isDrivesPath(newPath)) {
+            onPathChanged(newPath);
             pathController.text = '';
-            // Update the tab name to indicate we're showing drives
             tabManagerBloc.add(
                 UpdateTabName(tabId, AppLocalizations.of(context)!.drivesTab));
-            return false; // Don't exit app, we're navigating to drives view
+            return false;
           }
-
-          // Regular path navigation - use the bloc method
-          final newPath = tabManagerBloc.backNavigationToPath(tabId);
-          debugPrint('Back navigation result: $newPath');
-          if (newPath != null) {
-            debugPrint('Successfully navigating back to: $newPath');
-            onPathChanged(newPath);
-            pathController.text = newPath;
-            if (newPath.startsWith('#search?tag=')) {
-              final tag = UriUtils.extractTagFromSearchPath(newPath) ??
-                  newPath.substring('#search?tag='.length);
-              folderListBloc.add(SearchByTagGlobally(tag));
-            } else {
-              folderListBloc.add(FolderListLoad(newPath));
-              _recordRecentPath(newPath);
-            }
-            debugPrint('=== Back navigation completed successfully ===');
-            return false; // Don't exit app, we navigated back
+          onPathChanged(newPath);
+          pathController.text = newPath;
+          if (newPath.startsWith('#search?tag=')) {
+            final tag = UriUtils.extractTagFromSearchPath(newPath) ??
+                newPath.substring('#search?tag='.length);
+            folderListBloc.add(SearchByTagGlobally(tag));
           } else {
-            debugPrint('Back navigation failed - newPath is null');
+            folderListBloc.add(FolderListLoad(newPath));
+            _recordRecentPath(newPath);
           }
+          debugPrint('=== Back navigation completed successfully ===');
+          return false; // Don't exit app, we navigated back
+        } else {
+          debugPrint('Back navigation failed - newPath is null');
         }
       }
 
       // For mobile, if we're at root directory, show exit confirmation
       if (Platform.isAndroid || Platform.isIOS) {
         if (currentPath.isEmpty ||
+            isDrivesPath(currentPath) ||
             currentPath == '/storage/emulated/0' ||
             currentPath == '/storage/self/primary') {
           // Show exit confirmation dialog
@@ -273,7 +282,16 @@ class NavigationController {
     // Stop any ongoing thumbnail processing to prevent UI lag
     VideoThumbnailHelper.stopAllProcessing();
 
-    pathController.text = newPath;
+    pathController.text =
+        (isDrivesPath(newPath) || newPath.isEmpty) ? '' : newPath;
+
+    if (isDrivesPath(newPath) || newPath.isEmpty) {
+      if (currentFilter != null || currentSearchTag != null) {
+        folderListBloc.add(const ClearSearchAndFilters());
+      }
+      onPathChanged(newPath);
+      return;
+    }
 
     if (newPath.startsWith('#search?tag=')) {
       final tag = UriUtils.extractTagFromSearchPath(newPath) ??
@@ -346,8 +364,13 @@ class NavigationController {
       final actualPath = tabManagerBloc.backNavigationToPath(tabId);
       if (actualPath == null) return;
 
-      if (actualPath.isEmpty && Platform.isWindows) {
-        onPathChanged('');
+      if (actualPath.isEmpty) {
+        onPathChanged(actualPath);
+        pathController.text = '';
+        tabManagerBloc
+            .add(UpdateTabName(tabId, AppLocalizations.of(context)!.drivesTab));
+      } else if (isDrivesPath(actualPath)) {
+        onPathChanged(actualPath);
         pathController.text = '';
         tabManagerBloc
             .add(UpdateTabName(tabId, AppLocalizations.of(context)!.drivesTab));
@@ -377,8 +400,8 @@ class NavigationController {
       final String? actualPath = tabManagerBloc.forwardNavigationToPath(tabId);
       if (actualPath == null) return;
 
-      if (actualPath.isEmpty && Platform.isWindows) {
-        onPathChanged('');
+      if (actualPath.isEmpty || isDrivesPath(actualPath)) {
+        onPathChanged(actualPath);
         pathController.text = '';
         tabManagerBloc
             .add(UpdateTabName(tabId, AppLocalizations.of(context)!.drivesTab));

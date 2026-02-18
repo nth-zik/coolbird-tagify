@@ -140,4 +140,26 @@ class WindowsShellContextMenu {
       return const WindowsCombinedMenuResult(shown: false, action: null);
     }
   }
+
+  static Future<bool> invokeVerb({
+    required List<String> paths,
+    required String verb,
+  }) async {
+    if (!Platform.isWindows || paths.isEmpty || verb.trim().isEmpty) {
+      return false;
+    }
+
+    try {
+      final result = await _channel.invokeMethod<Object?>(
+        'invokeVerb',
+        <String, Object?>{
+          'paths': paths,
+          'verb': verb.trim(),
+        },
+      );
+      return result == true;
+    } catch (_) {
+      return false;
+    }
+  }
 }

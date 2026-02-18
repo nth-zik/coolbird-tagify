@@ -3,6 +3,11 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cb_file_manager/ui/screens/folder_list/folder_list_state.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 
+enum MobileActionBarProfile {
+  full,
+  drivesMinimal,
+}
+
 /// Controller to manage file actions from mobile action bar
 /// This allows the mobile action buttons to communicate with TabbedFolderListScreen
 class MobileFileActionsController {
@@ -21,6 +26,8 @@ class MobileFileActionsController {
   VoidCallback? onSelectionModeToggled;
   VoidCallback? onManageTagsPressed;
   Function(String)? onGallerySelected;
+  VoidCallback? onBack;
+  VoidCallback? onForward;
   // Masonry (Pinterest-like) layout toggle
   VoidCallback? onMasonryToggled;
 
@@ -32,6 +39,7 @@ class MobileFileActionsController {
   String? currentSearchQuery;
   bool isRecursiveSearch = true; // Default to recursive search
   bool isMasonryLayout = false; // Current masonry layout state
+  MobileActionBarProfile actionBarProfile = MobileActionBarProfile.full;
 
   MobileFileActionsController(this.tabId);
 
@@ -58,6 +66,7 @@ class MobileFileActionsController {
     if (currentSortOption == null || onSortOptionSelected == null) return;
 
     final theme = Theme.of(context);
+    final localizations = AppLocalizations.of(context)!;
 
     showModalBottomSheet(
       context: context,
@@ -88,7 +97,7 @@ class MobileFileActionsController {
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Text(
-                    'Sắp xếp theo',
+                    localizations.sort,
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -106,24 +115,24 @@ class MobileFileActionsController {
                   physics: const NeverScrollableScrollPhysics(),
                   children: [
                     _buildSortOption(
-                        context, SortOption.nameAsc, 'Tên (A → Z)'),
-                    _buildSortOption(
-                        context, SortOption.nameDesc, 'Tên (Z → A)'),
+                        context, SortOption.nameAsc, localizations.sortNameAsc),
+                    _buildSortOption(context, SortOption.nameDesc,
+                        localizations.sortNameDesc),
+                    const Divider(),
+                    _buildSortOption(context, SortOption.dateDesc,
+                        localizations.sortDateModifiedNewest),
+                    _buildSortOption(context, SortOption.dateAsc,
+                        localizations.sortDateModifiedOldest),
+                    const Divider(),
+                    _buildSortOption(context, SortOption.sizeDesc,
+                        localizations.sortSizeLargest),
+                    _buildSortOption(context, SortOption.sizeAsc,
+                        localizations.sortSizeSmallest),
                     const Divider(),
                     _buildSortOption(
-                        context, SortOption.dateDesc, 'Ngày sửa (Mới nhất)'),
-                    _buildSortOption(
-                        context, SortOption.dateAsc, 'Ngày sửa (Cũ nhất)'),
-                    const Divider(),
-                    _buildSortOption(
-                        context, SortOption.sizeDesc, 'Kích thước (Lớn nhất)'),
-                    _buildSortOption(
-                        context, SortOption.sizeAsc, 'Kích thước (Nhỏ nhất)'),
-                    const Divider(),
-                    _buildSortOption(
-                        context, SortOption.typeAsc, 'Loại (A → Z)'),
-                    _buildSortOption(
-                        context, SortOption.typeDesc, 'Loại (Z → A)'),
+                        context, SortOption.typeAsc, localizations.sortTypeAsc),
+                    _buildSortOption(context, SortOption.typeDesc,
+                        localizations.sortTypeDesc),
                   ],
                 ),
 
@@ -164,6 +173,7 @@ class MobileFileActionsController {
     if (currentViewMode == null) return;
 
     final theme = Theme.of(context);
+    final localizations = AppLocalizations.of(context)!;
 
     showModalBottomSheet(
       context: context,
@@ -194,7 +204,7 @@ class MobileFileActionsController {
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Text(
-                    'Chế độ xem',
+                    localizations.viewMode,
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -206,10 +216,10 @@ class MobileFileActionsController {
                 const Divider(height: 1),
 
                 // View mode options (mobile only: list & grid)
-                _buildViewModeOption(
-                    context, ViewMode.list, 'Danh sách', PhosphorIconsLight.listBullets),
-                _buildViewModeOption(
-                    context, ViewMode.grid, 'Lưới', PhosphorIconsLight.squaresFour),
+                _buildViewModeOption(context, ViewMode.list,
+                    localizations.viewModeList, PhosphorIconsLight.listBullets),
+                _buildViewModeOption(context, ViewMode.grid,
+                    localizations.viewModeGrid, PhosphorIconsLight.squaresFour),
 
                 const SizedBox(height: 16),
               ],
@@ -331,9 +341,10 @@ class MobileFileActionsController {
                     ? theme.colorScheme.primary
                     : theme.iconTheme.color,
               ),
-              title: const Text('Masonry layout (Pinterest)'),
+              title: Text(localizations.masonryLayout),
               trailing: isMasonryLayout
-                  ? Icon(PhosphorIconsLight.check, color: theme.colorScheme.primary)
+                  ? Icon(PhosphorIconsLight.check,
+                      color: theme.colorScheme.primary)
                   : null,
               onTap: () {
                 Navigator.pop(context);
@@ -364,6 +375,9 @@ class MobileFileActionsController {
       effectiveViewMode = ViewMode.grid;
     }
 
+    final isDrivesMinimal =
+        actionBarProfile == MobileActionBarProfile.drivesMinimal;
+
     return Container(
       height: 44,
       padding: const EdgeInsets.symmetric(horizontal: 2.0),
@@ -373,83 +387,137 @@ class MobileFileActionsController {
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          // Search button - opens simple inline search
-          IconButton(
-            icon: const Icon(PhosphorIconsLight.magnifyingGlass, size: 20),
-            tooltip: localizations.search,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-            onPressed: () => showInlineSearch(context),
-          ),
+        children: isDrivesMinimal
+            ? [
+                IconButton(
+                  icon: const Icon(PhosphorIconsLight.arrowLeft, size: 20),
+                  tooltip: localizations.back,
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 40, minHeight: 40),
+                  onPressed: onBack,
+                ),
+                IconButton(
+                  icon: const Icon(PhosphorIconsLight.arrowRight, size: 20),
+                  tooltip: localizations.forward,
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 40, minHeight: 40),
+                  onPressed: onForward,
+                ),
+                IconButton(
+                  icon: Icon(
+                    effectiveViewMode == ViewMode.grid
+                        ? PhosphorIconsLight.listBullets
+                        : PhosphorIconsLight.squaresFour,
+                    size: 20,
+                  ),
+                  tooltip: localizations.listViewMode,
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 40, minHeight: 40),
+                  onPressed: () {
+                    showViewModeDialog(context);
+                  },
+                ),
+                IconButton(
+                  icon:
+                      const Icon(PhosphorIconsLight.arrowsClockwise, size: 20),
+                  tooltip: localizations.refresh,
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 40, minHeight: 40),
+                  onPressed: () {
+                    onRefresh?.call();
+                  },
+                ),
+              ]
+            : [
+                // Search button - opens simple inline search
+                IconButton(
+                  icon:
+                      const Icon(PhosphorIconsLight.magnifyingGlass, size: 20),
+                  tooltip: localizations.search,
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 40, minHeight: 40),
+                  onPressed: () => showInlineSearch(context),
+                ),
 
-          // Sort button
-          IconButton(
-            icon: const Icon(PhosphorIconsLight.sortAscending, size: 20),
-            tooltip: localizations.sort,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-            onPressed: () {
-              showSortDialog(context);
-            },
-          ),
+                // Sort button
+                IconButton(
+                  icon: const Icon(PhosphorIconsLight.sortAscending, size: 20),
+                  tooltip: localizations.sort,
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 40, minHeight: 40),
+                  onPressed: () {
+                    showSortDialog(context);
+                  },
+                ),
 
-          // View mode button
-          IconButton(
-            icon: Icon(
-              effectiveViewMode == ViewMode.grid
-                  ? PhosphorIconsLight.listBullets
-                  : PhosphorIconsLight.squaresFour,
-              size: 20,
-            ),
-            tooltip: localizations.listViewMode,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-            onPressed: () {
-              showViewModeDialog(context);
-            },
-          ),
+                // View mode button
+                IconButton(
+                  icon: Icon(
+                    effectiveViewMode == ViewMode.grid
+                        ? PhosphorIconsLight.listBullets
+                        : PhosphorIconsLight.squaresFour,
+                    size: 20,
+                  ),
+                  tooltip: localizations.listViewMode,
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 40, minHeight: 40),
+                  onPressed: () {
+                    showViewModeDialog(context);
+                  },
+                ),
 
-          // Masonry layout toggle
-          IconButton(
-            icon: Icon(
-              PhosphorIconsLight.gridFour,
-              size: 20,
-              color: isMasonryLayout
-                  ? theme.colorScheme.primary
-                  : theme.iconTheme.color,
-            ),
-            tooltip: 'Masonry',
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-            onPressed: () {
-              isMasonryLayout = !isMasonryLayout;
-              onMasonryToggled?.call();
-            },
-          ),
+                // Masonry layout toggle
+                IconButton(
+                  icon: Icon(
+                    PhosphorIconsLight.gridFour,
+                    size: 20,
+                    color: isMasonryLayout
+                        ? theme.colorScheme.primary
+                        : theme.iconTheme.color,
+                  ),
+                  tooltip: localizations.masonryLayout,
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 40, minHeight: 40),
+                  onPressed: () {
+                    isMasonryLayout = !isMasonryLayout;
+                    onMasonryToggled?.call();
+                  },
+                ),
 
-          // Refresh button
-          IconButton(
-            icon: const Icon(PhosphorIconsLight.arrowsClockwise, size: 20),
-            tooltip: localizations.refresh,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-            onPressed: () {
-              onRefresh?.call();
-            },
-          ),
+                // Refresh button
+                IconButton(
+                  icon:
+                      const Icon(PhosphorIconsLight.arrowsClockwise, size: 20),
+                  tooltip: localizations.refresh,
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 40, minHeight: 40),
+                  onPressed: () {
+                    onRefresh?.call();
+                  },
+                ),
 
-          // More options button
-          IconButton(
-            icon: const Icon(PhosphorIconsLight.dotsThreeVertical, size: 20),
-            tooltip: localizations.moreOptions,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-            onPressed: () {
-              showMoreOptionsMenu(context);
-            },
-          ),
-        ],
+                // More options button
+                IconButton(
+                  icon: const Icon(PhosphorIconsLight.dotsThreeVertical,
+                      size: 20),
+                  tooltip: localizations.moreOptions,
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 40, minHeight: 40),
+                  onPressed: () {
+                    showMoreOptionsMenu(context);
+                  },
+                ),
+              ],
       ),
     );
   }
@@ -485,7 +553,8 @@ class MobileFileActionsController {
                       children: [
                         // Back button to close search
                         IconButton(
-                          icon: const Icon(PhosphorIconsLight.arrowLeft, size: 20),
+                          icon: const Icon(PhosphorIconsLight.arrowLeft,
+                              size: 20),
                           padding: EdgeInsets.zero,
                           constraints:
                               const BoxConstraints(minWidth: 40, minHeight: 40),
@@ -551,8 +620,3 @@ class MobileFileActionsController {
     );
   }
 }
-
-
-
-
-

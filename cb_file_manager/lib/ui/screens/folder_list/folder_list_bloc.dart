@@ -17,6 +17,7 @@ import 'package:cb_file_manager/helpers/core/filesystem_sorter.dart';
 import 'package:cb_file_manager/utils/app_logger.dart';
 import 'package:cb_file_manager/core/service_locator.dart';
 import 'package:cb_file_manager/ui/controllers/operation_progress_controller.dart';
+import 'package:cb_file_manager/ui/tab_manager/core/tab_paths.dart';
 
 import 'folder_list_event.dart';
 import 'folder_list_state.dart';
@@ -34,36 +35,38 @@ class SearchErrorMessages {
   // Currently defaults to English as BLoC doesn't have context
   static final _defaultLocalizations = EnglishLocalizations();
 
+  static AppLocalizations _getL10n() => _l10nNoContext();
+
   static String noFilesFoundTag(String tag) {
-    return _defaultLocalizations.noFilesFoundTag({'tag': tag});
+    return _getL10n().noFilesFoundTag({'tag': tag});
   }
 
   static String noFilesFoundTagGlobal(String tag) {
-    return _defaultLocalizations.noFilesFoundTagGlobal({'tag': tag});
+    return _getL10n().noFilesFoundTagGlobal({'tag': tag});
   }
 
   static String noFilesFoundTags(String tags) {
-    return _defaultLocalizations.noFilesFoundTags({'tags': tags});
+    return _getL10n().noFilesFoundTags({'tags': tags});
   }
 
   static String noFilesFoundTagsGlobal(String tags) {
-    return _defaultLocalizations.noFilesFoundTagsGlobal({'tags': tags});
+    return _getL10n().noFilesFoundTagsGlobal({'tags': tags});
   }
 
   static String errorSearchTag(String error) {
-    return _defaultLocalizations.errorSearchTag({'error': error});
+    return _getL10n().errorSearchTag({'error': error});
   }
 
   static String errorSearchTagGlobal(String error) {
-    return _defaultLocalizations.errorSearchTagGlobal({'error': error});
+    return _getL10n().errorSearchTagGlobal({'error': error});
   }
 
   static String errorSearchTags(String error) {
-    return _defaultLocalizations.errorSearchTags({'error': error});
+    return _getL10n().errorSearchTags({'error': error});
   }
 
   static String errorSearchTagsGlobal(String error) {
-    return _defaultLocalizations.errorSearchTagsGlobal({'error': error});
+    return _getL10n().errorSearchTagsGlobal({'error': error});
   }
 }
 
@@ -251,6 +254,15 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
       return;
     }
 
+    if (isDrivesPath(event.path)) {
+      emit(
+        state.copyWith(isLoading: false, folders: [], files: [], error: null),
+      );
+      AppLogger.perf(
+          '⏱️ [PERF] Drives path - total time: ${totalStopwatch.elapsedMilliseconds}ms');
+      return;
+    }
+
     // Special case for mobile - add retry mechanism for folder loading
     if (Platform.isAndroid || Platform.isIOS) {
       // Add a small delay to ensure directory is ready
@@ -288,8 +300,7 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
             if (!granted) {
               emit(state.copyWith(
                 isLoading: false,
-                error:
-                    'Cần cấp quyền truy cập tất cả files để xem đầy đủ nội dung thư mục. Vui lòng vào Settings > Apps > CoolBird Tagify > Permissions và bật "All files access".',
+                error: _l10nNoContext().storagePermissionRequiredMessage,
               ));
               return;
             }
@@ -487,8 +498,7 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
             emit(
               state.copyWith(
                 isLoading: false,
-                error:
-                    "Access denied: Administrator privileges required to access ${event.path}",
+                error: _l10nNoContext().accessDeniedAdminMessage(event.path),
                 folders: [],
                 files: [],
               ),
@@ -497,7 +507,8 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
             emit(
               state.copyWith(
                 isLoading: false,
-                error: "Error accessing directory: ${e.toString()}",
+                error: _l10nNoContext()
+                    .errorAccessingDirectoryWithError(e.toString()),
                 folders: [],
                 files: [],
               ),
@@ -508,7 +519,9 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
         debugPrint(
             '🔴 [FolderListBloc] Directory does not exist: ${event.path}');
         emit(
-          state.copyWith(isLoading: false, error: "Directory does not exist"),
+          state.copyWith(
+              isLoading: false,
+              error: _l10nNoContext().directoryDoesNotExist(event.path)),
         );
       }
     } catch (e) {
@@ -521,8 +534,7 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
         emit(
           state.copyWith(
             isLoading: false,
-            error:
-                "Access denied: Administrator privileges required to access ${event.path}",
+            error: _l10nNoContext().accessDeniedAdminMessage(event.path),
             folders: [],
             files: [],
           ),
@@ -531,7 +543,7 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
         emit(
           state.copyWith(
             isLoading: false,
-            error: "Error: ${e.toString()}",
+            error: _l10nNoContext().errorWithMessage(e.toString()),
             folders: [],
             files: [],
           ),
@@ -576,6 +588,18 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
     emit(state.copyWith(isLoading: true));
 
     try {
+      if (isDrivesPath(event.path)) {
+        emit(
+          state.copyWith(
+            isLoading: false,
+            folders: [],
+            files: [],
+            error: null,
+          ),
+        );
+        return;
+      }
+
       // Check if this is a system path (starts with #)
       if (event.path.startsWith('#')) {
         // For system paths, we need special handling
@@ -704,7 +728,7 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
         emit(
           state.copyWith(
             isLoading: false,
-            error: 'Directory does not exist: ${event.path}',
+            error: _l10nNoContext().directoryDoesNotExist(event.path),
           ),
         );
       }
@@ -712,7 +736,8 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
       emit(
         state.copyWith(
           isLoading: false,
-          error: 'Error loading directory: ${e.toString()}',
+          error:
+              _l10nNoContext().errorAccessingDirectoryWithError(e.toString()),
         ),
       );
     } finally {
@@ -1064,11 +1089,10 @@ class FolderListBloc extends Bloc<FolderListEvent, FolderListState> {
       if (isStaleSort()) return;
 
       // Rebase to latest state if folder load finished while sort was running.
-      final bool hasNewerContent =
-          state.currentPath.path == targetPath &&
-              (state.folders.isNotEmpty || state.files.isNotEmpty) &&
-              sortedFolders.isEmpty &&
-              sortedFiles.isEmpty;
+      final bool hasNewerContent = state.currentPath.path == targetPath &&
+          (state.folders.isNotEmpty || state.files.isNotEmpty) &&
+          sortedFolders.isEmpty &&
+          sortedFiles.isEmpty;
       if (hasNewerContent) {
         sortedFolders = List<FileSystemEntity>.from(state.folders);
         sortedFiles = List<FileSystemEntity>.from(state.files);

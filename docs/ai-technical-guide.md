@@ -33,6 +33,9 @@ lib/
 ## Navigation & State Management
 - **TabShell** `ui/tab_manager/core/tab_main_screen.dart` hosts the tabbed experience via `TabManagerBloc` and `NetworkBrowsingBloc`.
 - **TabLifecycle** `TabMainScreen.openPath(context, path)` dispatches `AddTab` events; tabs render through `TabScreen` composables.
+- **Workspace Restore** `ui/tab_manager/core/tab_screen.dart` restores and persists the last active tab path when `remember_tab_workspace` is enabled.
+- **Sidebar Pinning** Context menus in `ui/components/common/shared_file_context_menu.dart` and `ui/tab_manager/components/drive_view.dart` can pin/unpin any filesystem path.
+- **Drawer Model** `ui/widgets/drawer/cubit/drawer_cubit.dart` owns pinned paths and per-tab expansion state for drawer sections.
 - **PermissionsGate** On first frame, `PermissionStateService` checks storage/network permissions and pushes `PermissionExplainerScreen` if needed.
 - **Mobile Actions** `ui/tab_manager/mobile/mobile_file_actions_controller.dart` coordinates action bars shared across file list and media galleries.
 - **Selection Logic** `bloc/selection/` tracks multi-select state and exposes BLoC events for UI components.
@@ -51,7 +54,9 @@ lib/
 
 ## Data & Persistence
 - **Database** ObjectBox (`objectbox.dart`, `objectbox.g.dart`) stores tags, metadata, user preferences.
-- **Preferences** `helpers/core/user_preferences.dart` exposes async singleton used during app boot to provide theme, grid size, language defaults.
+- **Preferences** `helpers/core/user_preferences.dart` exposes async singleton used during app boot to provide theme, grid size, language defaults, sidebar pinning, and workspace restore state.
+- **Workspace Keys** `remember_tab_workspace`, `last_opened_tab_path`, and `drawer_section_states_by_tab` are used for restoring tab and drawer state.
+- **Pinned Paths** `sidebar_pinned_paths` stores ordered pinned filesystem paths for the drawer `Pinned` section.
 - **Credential Vault** `services/network_credentials_service.dart` initializes with ObjectBox store to manage SMB/FTP auth.
 - **Caching** `helpers/media/video_thumbnail_helper.dart` and `helpers/media/folder_thumbnail_service.dart` handle disk + memory caches for previews.
 
@@ -111,4 +116,4 @@ lib/
 - **Documentation** Update both this guide and feature-specific docs under `docs/features/` for substantial changes.
 
 ---
-_Last reviewed: 2025-10-25_
+_Last reviewed: 2026-02-15_

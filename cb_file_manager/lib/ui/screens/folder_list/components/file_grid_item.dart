@@ -243,7 +243,7 @@ class _FileGridItemState extends State<FileGridItem> {
                                 : null,
                           ),
                         ),
-                        if (widget.isSelected && !widget.isDesktopMode)
+                        if (showAsSelected && !widget.isDesktopMode)
                           IgnorePointer(
                             child: Align(
                               alignment: Alignment.topRight,
@@ -347,7 +347,8 @@ class _FileGridItemState extends State<FileGridItem> {
           (tag) => Container(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+              color:
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(16.0),
             ),
             child: Text(
@@ -366,7 +367,8 @@ class _FileGridItemState extends State<FileGridItem> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+              color:
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(16.0),
             ),
             child: Text(
@@ -382,7 +384,3 @@ class _FileGridItemState extends State<FileGridItem> {
     );
   }
 }
-
-
-
-

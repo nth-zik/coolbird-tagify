@@ -5,6 +5,7 @@ import 'dart:io'; // Thêm import cho Platform
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../core/tab_manager.dart';
 import '../core/tab_data.dart';
+import '../core/tab_paths.dart';
 import '../core/tab_thumbnail_service.dart';
 import '../../screens/home/home_screen.dart';
 import '../core/tabbed_folder/tabbed_folder_list_screen.dart';
@@ -70,7 +71,10 @@ class MobileTabView extends StatelessWidget {
                             state.activeTab != null &&
                             _shouldShowMobileActionBar(state.activeTab!.path))
                           _buildMobileActionButtons(
-                              context, state.activeTab!.id),
+                            context,
+                            state.activeTab!.id,
+                            state.activeTab!.path,
+                          ),
                       ],
                     );
                   },
@@ -108,6 +112,7 @@ class MobileTabView extends StatelessWidget {
     final isDarkMode = theme.brightness == Brightness.dark;
     final textColor = theme.colorScheme.onSurface;
     final backgroundColor = theme.scaffoldBackgroundColor;
+    final localizations = AppLocalizations.of(context)!;
 
     // Lấy state hiện tại để hiển thị nút đếm tab (0)
     final tState = context.read<TabManagerBloc>().state;
@@ -127,12 +132,12 @@ class MobileTabView extends StatelessWidget {
           Expanded(
             child: AddressBarWidget(
               path: '',
-              name: 'Search or enter path',
+              name: localizations.searchOrEnterPath,
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Vui lòng tạo một tab trước khi điều hướng'),
-                    duration: Duration(seconds: 2),
+                  SnackBar(
+                    content: Text(localizations.pleaseCreateTabFirst),
+                    duration: const Duration(seconds: 2),
                   ),
                 );
               },
@@ -143,7 +148,7 @@ class MobileTabView extends StatelessWidget {
           // Nút tạo tab mới nhanh (đặt trước nút số lượng tab)
           IconButton(
             icon: Icon(PhosphorIconsLight.plus, color: textColor),
-            tooltip: 'New tab',
+            tooltip: localizations.newTab,
             onPressed: onAddNewTab,
           ),
 
@@ -168,6 +173,7 @@ class MobileTabView extends StatelessWidget {
     // Màu nền rõ ràng để dễ nhìn toàn thanh
     final backgroundColor = theme.scaffoldBackgroundColor;
     final textColor = theme.colorScheme.onSurface;
+    final localizations = AppLocalizations.of(context)!;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 8.0),
@@ -198,7 +204,7 @@ class MobileTabView extends StatelessWidget {
           // Nút thêm tab mới nhanh (đặt trước nút số lượng tab)
           IconButton(
             icon: Icon(PhosphorIconsLight.plus, color: textColor),
-            tooltip: 'New tab',
+            tooltip: localizations.newTab,
             onPressed: onAddNewTab,
           ),
 
@@ -222,7 +228,8 @@ class MobileTabView extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
         margin: const EdgeInsets.only(left: 8.0),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          color:
+              theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
@@ -394,7 +401,8 @@ class MobileTabView extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(32.0),
               decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withValues(alpha: 0.2),
+                color:
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -577,7 +585,7 @@ class MobileTabView extends StatelessWidget {
               const SizedBox(height: 12),
               // Path
               Text(
-                tab.path.isEmpty
+                tab.path.isEmpty || isDrivesPath(tab.path)
                     ? localizations.drives
                     : _shortenPath(tab.path),
                 maxLines: 1,
@@ -603,6 +611,8 @@ class MobileTabView extends StatelessWidget {
   }
 
   IconData _getPreviewIcon(String path) {
+    if (isDrivesPath(path)) return PhosphorIconsLight.hardDrives;
+
     // System paths
     if (path.startsWith('#')) {
       if (path == '#home') return PhosphorIconsLight.house;
@@ -623,7 +633,8 @@ class MobileTabView extends StatelessWidget {
 
     // Check for common folders
     final lowerPath = path.toLowerCase();
-    if (lowerPath.contains('download')) return PhosphorIconsLight.downloadSimple;
+    if (lowerPath.contains('download'))
+      return PhosphorIconsLight.downloadSimple;
     if (lowerPath.contains('picture') ||
         lowerPath.contains('photo') ||
         lowerPath.contains('dcim')) {
@@ -663,7 +674,7 @@ class MobileTabView extends StatelessWidget {
 
   Widget _buildTabContentInner(BuildContext context, TabData activeTab) {
     // Check if this is a system path (starting with #)
-    if (activeTab.path.startsWith('#')) {
+    if (activeTab.path.startsWith('#') && !isDrivesPath(activeTab.path)) {
       // Handle network-specific paths
       if (activeTab.path == '#network') {
         // Path for displaying connection manager
@@ -691,12 +702,13 @@ class MobileTabView extends StatelessWidget {
           return BlocProvider<NetworkBrowsingBloc>.value(
             key: ValueKey(
                 '${activeTab.id}_network_connection_fallback_incomplete_path'),
-              value: context.read<NetworkBrowsingBloc>(),
-              child: const NetworkConnectionScreen(),
-            );
+            value: context.read<NetworkBrowsingBloc>(),
+            child: const NetworkConnectionScreen(),
+          );
         }
 
-        if (NetworkServiceRegistry().getServiceForPath(activeTab.path) == null) {
+        if (NetworkServiceRegistry().getServiceForPath(activeTab.path) ==
+            null) {
           return BlocProvider<NetworkBrowsingBloc>.value(
             key: ValueKey(
                 '${activeTab.id}_network_connection_fallback_no_service'),
@@ -777,7 +789,7 @@ class MobileTabView extends StatelessWidget {
         Platform.pathSeparator,
         ...pathParts.where((part) => part.isNotEmpty)
       ];
-    } else if (tab.path.isEmpty) {
+    } else if (tab.path.isEmpty || isDrivesPath(tab.path)) {
       pathParts = ["Drives"];
     }
 
@@ -850,7 +862,9 @@ class MobileTabView extends StatelessWidget {
                       borderRadius: BorderRadius.circular(16.0),
                     ),
                     child: Text(
-                      tab.path.isEmpty ? 'Drives' : tab.path,
+                      tab.path.isEmpty || isDrivesPath(tab.path)
+                          ? 'Drives'
+                          : tab.path,
                       style: TextStyle(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -868,7 +882,7 @@ class MobileTabView extends StatelessWidget {
                       String currentPath;
                       if (pathParts[0] == "Drives") {
                         currentPath = index == 0
-                            ? ""
+                            ? kDrivesPath
                             : pathParts
                                 .sublist(1, index + 1)
                                 .join(Platform.pathSeparator);
@@ -889,7 +903,9 @@ class MobileTabView extends StatelessWidget {
 
                       return ListTile(
                         leading: Icon(
-                          index == 0 ? PhosphorIconsLight.desktop : PhosphorIconsLight.folder,
+                          index == 0
+                              ? PhosphorIconsLight.desktop
+                              : PhosphorIconsLight.folder,
                           color: theme.colorScheme.primary,
                         ),
                         title: Text(
@@ -914,10 +930,15 @@ class MobileTabView extends StatelessWidget {
                               currentPath.split(Platform.pathSeparator);
                           final lastPart = pathParts.lastWhere(
                               (part) => part.isNotEmpty,
-                              orElse: () =>
-                                  currentPath.isEmpty ? 'Drives' : 'Root');
+                              orElse: () => (currentPath.isEmpty ||
+                                      isDrivesPath(currentPath))
+                                  ? 'Drives'
+                                  : 'Root');
                           final tabName = lastPart.isEmpty
-                              ? (currentPath.isEmpty ? 'Drives' : 'Root')
+                              ? ((currentPath.isEmpty ||
+                                      isDrivesPath(currentPath))
+                                  ? 'Drives'
+                                  : 'Root')
                               : lastPart;
                           tabBloc.add(UpdateTabName(tab.id, tabName));
                         },
@@ -972,14 +993,16 @@ class MobileTabView extends StatelessWidget {
                                   horizontal: 12, vertical: 8),
                               decoration: BoxDecoration(
                                 color: isCurrentPath
-                                    ? theme.colorScheme.primary.withValues(alpha: 0.2)
+                                    ? theme.colorScheme.primary
+                                        .withValues(alpha: 0.2)
                                     : theme.colorScheme.surfaceContainerHighest
                                         .withValues(alpha: 0.5),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Center(
                                 child: Text(
-                                  historyPath.isEmpty
+                                  historyPath.isEmpty ||
+                                          isDrivesPath(historyPath)
                                       ? 'Drives'
                                       : historyPath
                                               .split(Platform.pathSeparator)
@@ -1019,8 +1042,12 @@ class MobileTabView extends StatelessWidget {
 extension MobileTabViewDynamicMenu on MobileTabView {
   /// Build mobile action buttons row for file management tools
   /// Now uses shared buildMobileActionBar from controller for consistency
-  Widget _buildMobileActionButtons(BuildContext context, String tabId) {
+  Widget _buildMobileActionButtons(
+      BuildContext context, String tabId, String path) {
     final controller = MobileFileActionsController.forTab(tabId);
+    controller.actionBarProfile = isDrivesPath(path)
+        ? MobileActionBarProfile.drivesMinimal
+        : MobileActionBarProfile.full;
     return controller.buildMobileActionBar(context);
   }
 
@@ -1028,6 +1055,10 @@ extension MobileTabViewDynamicMenu on MobileTabView {
   /// Returns true for local paths and network paths (#network/, smb://, ftp://, etc.)
   /// Returns false for other system paths (#home, #gallery, #video, #tags, etc.)
   bool _shouldShowMobileActionBar(String path) {
+    if (isDrivesPath(path)) {
+      return true;
+    }
+
     // Allow network browsing paths
     if (path.startsWith('#network/')) {
       return true;
@@ -1098,7 +1129,8 @@ class AddressBarWidget extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12.0),
         decoration: BoxDecoration(
           // Nền rõ ràng cho thanh địa chỉ (đồng nhất dark)
-          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          color:
+              theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(16.0),
         ),
         child: Row(
@@ -1129,9 +1161,3 @@ class AddressBarWidget extends StatelessWidget {
     );
   }
 }
-
-
-
-
-
-

@@ -66,6 +66,16 @@ class UserPreferences {
   static const String _preferredVideoPlayerAppKey =
       'preferred_video_player_app';
   static const String _recentPathsKey = 'recent_paths';
+  static const String _sidebarPinnedPathsKey = 'sidebar_pinned_paths';
+  static const String _rememberTabWorkspaceKey = 'remember_tab_workspace';
+  static const String _lastOpenedTabPathKey = 'last_opened_tab_path';
+  static const String _lastOpenedTabsListKey = 'last_opened_tabs_list';
+  static const String _drawerSectionStatesByTabKey =
+      'drawer_section_states_by_tab';
+  static const String _lastDrawerStorageExpandedKey =
+      'last_drawer_storage_expanded';
+  static const String _lastDrawerPinnedExpandedKey =
+      'last_drawer_pinned_expanded';
 
   // Constants for grid zoom level
   static const int minGridZoomLevel = 2; // Largest thumbnails (2 per row)
@@ -503,7 +513,11 @@ class UserPreferences {
       bool changed = false;
       for (final p in rawPaths) {
         try {
-          if (Directory(p).existsSync()) {
+          final entityType = FileSystemEntity.typeSync(
+            p,
+            followLinks: false,
+          );
+          if (entityType != FileSystemEntityType.notFound) {
             validPaths.add(p);
           } else {
             changed = true;
@@ -550,6 +564,297 @@ class UserPreferences {
   /// Clear all stored recent paths.
   Future<bool> clearRecentPaths() async {
     return await _deletePreference(_recentPathsKey);
+  }
+
+  /// Get pinned sidebar paths.
+  ///
+  /// When [validateDirectories] is true, stored paths are validated against
+  /// existing filesystem entities (file or directory).
+  Future<List<String>> getSidebarPinnedPaths({
+    bool validateDirectories = true,
+  }) async {
+    final jsonString = await _getPreference<String>(_sidebarPinnedPathsKey);
+    if (jsonString == null || jsonString.trim().isEmpty) return <String>[];
+
+    try {
+      final decoded = json.decode(jsonString);
+      if (decoded is! List) return <String>[];
+
+      final rawPaths = decoded
+          .whereType<String>()
+          .map((p) => p.trim())
+          .where((p) => p.isNotEmpty && !_isVirtualPath(p))
+          .toList(growable: false);
+
+      if (!validateDirectories) {
+        return rawPaths;
+      }
+
+      final List<String> validPaths = <String>[];
+      bool changed = false;
+      for (final p in rawPaths) {
+        try {
+          if (Directory(p).existsSync()) {
+            validPaths.add(p);
+          } else {
+            changed = true;
+          }
+        } catch (_) {
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        await _savePreference<String>(
+          _sidebarPinnedPathsKey,
+          json.encode(validPaths),
+        );
+      }
+
+      return validPaths;
+    } catch (_) {
+      return <String>[];
+    }
+  }
+
+  Future<bool> isPathPinnedToSidebar(String path) async {
+    final target = path.trim();
+    if (target.isEmpty || _isVirtualPath(target)) return false;
+    final existing = await getSidebarPinnedPaths(validateDirectories: false);
+    return existing.any((p) => _pathsEqual(p, target));
+  }
+
+  Future<bool> addSidebarPinnedPath(String path) async {
+    final target = path.trim();
+    if (target.isEmpty || _isVirtualPath(target)) return false;
+
+    final existing = await getSidebarPinnedPaths(validateDirectories: false);
+    if (existing.any((p) => _pathsEqual(p, target))) return true;
+
+    final updated = <String>[target, ...existing];
+    return await _savePreference<String>(
+      _sidebarPinnedPathsKey,
+      json.encode(updated),
+    );
+  }
+
+  Future<bool> removeSidebarPinnedPath(String path) async {
+    final target = path.trim();
+    if (target.isEmpty) return false;
+
+    final existing = await getSidebarPinnedPaths(validateDirectories: false);
+    final updated = existing.where((p) => !_pathsEqual(p, target)).toList();
+
+    return await _savePreference<String>(
+      _sidebarPinnedPathsKey,
+      json.encode(updated),
+    );
+  }
+
+  /// Whether tab workspace persistence is enabled.
+  ///
+  /// When enabled, the app remembers the last active tab path and
+  /// per-tab drawer section expansion states.
+  Future<bool> getRememberTabWorkspaceEnabled() async {
+    return await _getPreference<bool>(
+          _rememberTabWorkspaceKey,
+          defaultValue: true,
+        ) ??
+        true;
+  }
+
+  Future<bool> setRememberTabWorkspaceEnabled(bool enabled) async {
+    return await _savePreference<bool>(_rememberTabWorkspaceKey, enabled);
+  }
+
+  /// Get last opened tab path.
+  ///
+  /// Returns null when no path exists or when a stored filesystem path
+  /// is no longer valid.
+  Future<String?> getLastOpenedTabPath({bool validatePath = true}) async {
+    final stored = await _getPreference<String>(_lastOpenedTabPathKey);
+    if (stored == null) return null;
+
+    final normalized = stored.trim();
+    if (normalized.isEmpty) {
+      await _deletePreference(_lastOpenedTabPathKey);
+      return null;
+    }
+
+    if (_isVirtualPath(normalized) || !validatePath) {
+      return normalized;
+    }
+
+    try {
+      if (Directory(normalized).existsSync()) {
+        return normalized;
+      }
+    } catch (_) {}
+
+    await _deletePreference(_lastOpenedTabPathKey);
+    return null;
+  }
+
+  /// Save last opened tab path.
+  ///
+  /// Virtual paths (e.g. "#home") are allowed.
+  /// Filesystem paths are validated before persisting.
+  Future<bool> setLastOpenedTabPath(String path) async {
+    final normalized = path.trim();
+    if (normalized.isEmpty) return false;
+
+    if (_isVirtualPath(normalized)) {
+      return await _savePreference<String>(_lastOpenedTabPathKey, normalized);
+    }
+
+    try {
+      final directory = Directory(normalized);
+      if (await directory.exists()) {
+        return await _savePreference<String>(_lastOpenedTabPathKey, normalized);
+      }
+    } catch (_) {}
+
+    return false;
+  }
+
+  Future<bool> clearLastOpenedTabPath() async {
+    return await _deletePreference(_lastOpenedTabPathKey);
+  }
+
+  Map<String, dynamic> _decodeJsonObject(String? jsonString) {
+    if (jsonString == null || jsonString.trim().isEmpty) {
+      return <String, dynamic>{};
+    }
+
+    try {
+      final decoded = json.decode(jsonString);
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      }
+      if (decoded is Map) {
+        return decoded.map((key, value) => MapEntry('$key', value));
+      }
+    } catch (_) {}
+
+    return <String, dynamic>{};
+  }
+
+  /// Get last opened tabs list
+  Future<List<String>> getLastOpenedTabsList() async {
+    final raw = await _getPreference<String>(_lastOpenedTabsListKey);
+    if (raw == null) return [];
+    try {
+      final List<dynamic> list = json.decode(raw);
+      return list.map((e) => e.toString()).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Save last opened tabs list
+  Future<bool> setLastOpenedTabsList(List<String> paths) async {
+    final jsonString = json.encode(paths);
+    return await _savePreference<String>(_lastOpenedTabsListKey, jsonString);
+  }
+
+  /// Get drawer section expansion state
+  Future<bool?> getDrawerSectionExpanded({
+    required String tabId,
+    required String sectionKey,
+  }) async {
+    final normalizedTabId = tabId.trim();
+    final normalizedSection = sectionKey.trim();
+    if (normalizedTabId.isEmpty || normalizedSection.isEmpty) {
+      return null;
+    }
+
+    final raw = await _getPreference<String>(_drawerSectionStatesByTabKey);
+    final root = _decodeJsonObject(raw);
+    final tabStateRaw = root[normalizedTabId];
+    if (tabStateRaw is! Map) {
+      return null;
+    }
+
+    final sectionValue = tabStateRaw[normalizedSection];
+    if (sectionValue is bool) {
+      return sectionValue;
+    }
+    if (sectionValue is String) {
+      final value = sectionValue.toLowerCase();
+      if (value == 'true') return true;
+      if (value == 'false') return false;
+    }
+    return null;
+  }
+
+  Future<bool> setDrawerSectionExpanded({
+    required String tabId,
+    required String sectionKey,
+    required bool isExpanded,
+  }) async {
+    final normalizedTabId = tabId.trim();
+    final normalizedSection = sectionKey.trim();
+    if (normalizedTabId.isEmpty || normalizedSection.isEmpty) {
+      return false;
+    }
+
+    final raw = await _getPreference<String>(_drawerSectionStatesByTabKey);
+    final root = _decodeJsonObject(raw);
+    final tabStateRaw = root[normalizedTabId];
+    final tabState = tabStateRaw is Map
+        ? tabStateRaw.map((key, value) => MapEntry('$key', value))
+        : <String, dynamic>{};
+
+    tabState[normalizedSection] = isExpanded;
+    root[normalizedTabId] = tabState;
+
+    return await _savePreference<String>(
+      _drawerSectionStatesByTabKey,
+      json.encode(root),
+    );
+  }
+
+  /// Get the last drawer section expansion state (global/last session)
+  Future<bool?> getLastDrawerSectionExpanded({
+    required String sectionKey,
+  }) async {
+    final normalizedSection = sectionKey.trim().toLowerCase();
+    if (normalizedSection.isEmpty) return null;
+
+    String key;
+    if (normalizedSection == 'storage') {
+      key = _lastDrawerStorageExpandedKey;
+    } else if (normalizedSection == 'pinned') {
+      key = _lastDrawerPinnedExpandedKey;
+    } else {
+      return null;
+    }
+
+    return await _getPreference<bool>(key);
+  }
+
+  /// Set the last drawer section expansion state (global/last session)
+  Future<bool> setLastDrawerSectionExpanded({
+    required String sectionKey,
+    required bool isExpanded,
+  }) async {
+    final normalizedSection = sectionKey.trim().toLowerCase();
+    if (normalizedSection.isEmpty) return false;
+
+    String key;
+    if (normalizedSection == 'storage') {
+      key = _lastDrawerStorageExpandedKey;
+    } else if (normalizedSection == 'pinned') {
+      key = _lastDrawerPinnedExpandedKey;
+    } else {
+      return false;
+    }
+
+    return await _savePreference<bool>(key, isExpanded);
+  }
+
+  Future<bool> clearDrawerSectionStates() async {
+    return await _deletePreference(_drawerSectionStatesByTabKey);
   }
 
   /// Get current view mode preference (list or grid)

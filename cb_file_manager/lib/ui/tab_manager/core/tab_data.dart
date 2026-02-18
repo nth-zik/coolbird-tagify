@@ -42,6 +42,14 @@ class TabData {
   /// File name to highlight/scroll to when tab opens
   final String? highlightedFileName;
 
+  /// Path shown in the right-hand pane when split view is active.
+  /// null means single-pane mode.
+  final String? splitPanePath;
+
+  /// Full navigation state for the right-hand split pane.
+  /// Kept in sync with [splitPanePath] — set when split opens, cleared on close.
+  final TabData? splitPaneTabData;
+
   TabData({
     required this.id,
     required this.name,
@@ -56,6 +64,8 @@ class TabData {
     this.thumbnail,
     this.thumbnailCapturedAt,
     this.highlightedFileName,
+    this.splitPanePath,
+    this.splitPaneTabData,
   })  : navigationHistory = navigationHistory ?? [path],
         forwardHistory = forwardHistory ?? <String>[],
         navigatorKey = navigatorKey ?? GlobalKey<NavigatorState>(),
@@ -77,6 +87,9 @@ class TabData {
     bool clearThumbnail = false,
     String? highlightedFileName,
     bool clearHighlightedFile = false,
+    String? splitPanePath,
+    bool clearSplitPane = false,
+    TabData? splitPaneTabData,
   }) {
     return TabData(
       id: id,
@@ -90,8 +103,16 @@ class TabData {
       navigatorKey: navigatorKey ?? this.navigatorKey,
       repaintBoundaryKey: repaintBoundaryKey ?? this.repaintBoundaryKey,
       thumbnail: clearThumbnail ? null : (thumbnail ?? this.thumbnail),
-      thumbnailCapturedAt: clearThumbnail ? null : (thumbnailCapturedAt ?? this.thumbnailCapturedAt),
-      highlightedFileName: clearHighlightedFile ? null : (highlightedFileName ?? this.highlightedFileName),
+      thumbnailCapturedAt: clearThumbnail
+          ? null
+          : (thumbnailCapturedAt ?? this.thumbnailCapturedAt),
+      highlightedFileName: clearHighlightedFile
+          ? null
+          : (highlightedFileName ?? this.highlightedFileName),
+      splitPanePath:
+          clearSplitPane ? null : (splitPanePath ?? this.splitPanePath),
+      splitPaneTabData:
+          clearSplitPane ? null : (splitPaneTabData ?? this.splitPaneTabData),
     );
   }
 

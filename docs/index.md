@@ -7,6 +7,7 @@
 - **Features** 
   - `features/01-file-browser-grid-preview.md`
   - `features/02-keyboard-shortcuts.md` - Keyboard shortcuts guide
+  - `features/03-sidebar-pinning-and-workspace.md` - Sidebar pinning and workspace restore
 - **Testing** `testing-strategy.md`
 - **Troubleshooting** `troubleshooting.md`
 - **UI Patterns**

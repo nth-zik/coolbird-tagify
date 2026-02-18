@@ -346,6 +346,54 @@ bool InvokeShellCommand(HWND hwnd, IContextMenu* context_menu, UINT cmd,
       reinterpret_cast<LPCMINVOKECOMMANDINFO>(&invoke)));
 }
 
+bool InvokeShellVerb(HWND hwnd,
+                     const std::vector<std::wstring>& paths,
+                     const std::wstring& target_verb) {
+  if (!hwnd || paths.empty() || target_verb.empty()) {
+    return false;
+  }
+
+  ShellMenuContext shell{};
+  if (!CreateShellMenuContext(hwnd, paths, shell)) {
+    return false;
+  }
+
+  HMENU menu = CreatePopupMenu();
+  if (!menu) {
+    FreePidls(shell.pidls);
+    return false;
+  }
+
+  UINT flags = CMF_NORMAL | CMF_EXPLORE | CMF_EXTENDEDVERBS;
+  constexpr UINT kCmdFirst = 1;
+  constexpr UINT kCmdLast = 0x7FFF;
+
+  HRESULT hr =
+      shell.context_menu->QueryContextMenu(menu, 0, kCmdFirst, kCmdLast, flags);
+  if (FAILED(hr)) {
+    DestroyMenu(menu);
+    FreePidls(shell.pidls);
+    return false;
+  }
+
+  const UINT command_count = HRESULT_CODE(hr);
+  bool invoked = false;
+
+  for (UINT cmd_offset = 0; cmd_offset < command_count; ++cmd_offset) {
+    const std::wstring verb =
+        GetCommandVerbW(shell.context_menu.Get(), cmd_offset);
+    if (!verb.empty() && EqualsIgnoreCase(verb, target_verb)) {
+      invoked = InvokeShellCommand(hwnd, shell.context_menu.Get(),
+                                   kCmdFirst + cmd_offset, kCmdFirst);
+      break;
+    }
+  }
+
+  DestroyMenu(menu);
+  FreePidls(shell.pidls);
+  return invoked;
+}
+
 bool ShowShellContextMenu(HWND hwnd,
                           const std::vector<std::wstring>& paths,
                           std::optional<POINT> screen_point) {
@@ -652,8 +700,11 @@ void ShellContextMenuPlugin::HandleMethodCall(
       method_call.method_name().compare("showMergedMenu") == 0;
   const bool is_show_combined_menu =
       method_call.method_name().compare("showCombinedMenu") == 0;
+  const bool is_invoke_verb =
+      method_call.method_name().compare("invokeVerb") == 0;
 
-  if (!is_show_shell_menu && !is_show_merged_menu && !is_show_combined_menu) {
+  if (!is_show_shell_menu && !is_show_merged_menu && !is_show_combined_menu &&
+      !is_invoke_verb) {
     result->NotImplemented();
     return;
   }
@@ -694,6 +745,24 @@ void ShellContextMenuPlugin::HandleMethodCall(
   }
 
   std::optional<POINT> screen_point = GetScreenPointFromArgs(hwnd, *arguments);
+
+  if (is_invoke_verb) {
+    auto verb_it = arguments->find(flutter::EncodableValue("verb"));
+    if (verb_it == arguments->end()) {
+      result->Error("INVALID_ARGUMENTS", "Missing 'verb'.");
+      return;
+    }
+
+    const auto* verb = std::get_if<std::string>(&verb_it->second);
+    if (!verb || verb->empty()) {
+      result->Error("INVALID_ARGUMENTS", "'verb' must be a non-empty string.");
+      return;
+    }
+
+    const bool ok = InvokeShellVerb(hwnd, paths, Utf8ToWide(*verb));
+    result->Success(flutter::EncodableValue(ok));
+    return;
+  }
 
   if (is_show_shell_menu) {
     bool ok = ShowShellContextMenu(hwnd, paths, screen_point);

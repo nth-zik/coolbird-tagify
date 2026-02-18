@@ -699,7 +699,8 @@ class _FileItemContentState extends State<_FileItemContent> {
                 Text(sizeText, style: Theme.of(context).textTheme.bodySmall),
                 const SizedBox(width: 12),
                 Icon(PhosphorIconsLight.calendar,
-                    size: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    size: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
                 const SizedBox(width: 4),
                 Text(modifiedText,
                     style: Theme.of(context).textTheme.bodySmall),
@@ -720,7 +721,8 @@ class _FileItemContentState extends State<_FileItemContent> {
               Text(sizeText, style: Theme.of(context).textTheme.bodySmall),
               const SizedBox(width: 12),
               Icon(PhosphorIconsLight.calendar,
-                  size: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  size: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
               const SizedBox(width: 4),
               Text(modifiedText, style: Theme.of(context).textTheme.bodySmall),
             ],
@@ -860,7 +862,3 @@ class _FileItemContentState extends State<_FileItemContent> {
     return file.path.split(Platform.pathSeparator).last;
   }
 }
-
-
-
-

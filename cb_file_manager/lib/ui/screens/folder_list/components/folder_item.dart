@@ -8,6 +8,7 @@ import '../../../../bloc/selection/selection_bloc.dart';
 import '../../../../bloc/selection/selection_event.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../components/common/optimized_interaction_handler.dart';
+import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
 import '../../../utils/item_interaction_style.dart';
 
 class FolderItem extends StatefulWidget {
@@ -181,7 +182,10 @@ class _FolderItemState extends State<FolderItem> {
                             width: 48,
                             height: 48,
                             decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .primary
+                                  .withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(16.0),
                             ),
                             child: Center(
@@ -280,6 +284,11 @@ class _FolderItemState extends State<FolderItem> {
                             _handleFolderSelection();
                           }
                         },
+                        onTertiaryTapUp: (_) {
+                          context
+                              .read<TabManagerBloc>()
+                              .add(AddTab(path: widget.folder.path));
+                        },
                       ),
                     ),
                     // Interactive layer cho tên (navigate)
@@ -308,6 +317,11 @@ class _FolderItemState extends State<FolderItem> {
                                 widget.onTap?.call(widget.folder.path);
                               }
                             : null,
+                        onTertiaryTapUp: (_) {
+                          context
+                              .read<TabManagerBloc>()
+                              .add(AddTab(path: widget.folder.path));
+                        },
                       ),
                     ),
                     // Selection indicator
@@ -338,7 +352,3 @@ class _FolderItemState extends State<FolderItem> {
     );
   }
 }
-
-
-
-

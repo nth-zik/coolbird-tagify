@@ -68,7 +68,16 @@ class EnglishLocalizations implements AppLocalizations {
   String get moveToTrash => 'Move to Trash';
 
   @override
-  String get errorAccessingDirectory => 'Error accessing directory: ';
+  String get errorAccessingDirectory => 'Error accessing directory';
+  @override
+  String errorAccessingDirectoryWithError(String error) =>
+      'Error accessing directory: $error';
+  @override
+  String accessDeniedAdminMessage(String path) =>
+      'Access denied: Administrator privileges required to access $path';
+  @override
+  String directoryDoesNotExist(String path) =>
+      'Directory does not exist: $path';
 
   // Action bar tooltips
   @override
@@ -492,6 +501,8 @@ class EnglishLocalizations implements AppLocalizations {
   @override
   String get openInNewTab => 'Open in New Tab';
   @override
+  String get openInSplitView => 'Open in Split View';
+  @override
   String get changeColor => 'Change Color';
   @override
   String get noFilesWithTag => 'No files found with this tag';
@@ -844,6 +855,18 @@ class EnglishLocalizations implements AppLocalizations {
   @override
   String? get gridSize => 'Grid size';
 
+  @override
+  String get searchOrEnterPath => 'Search or enter path';
+
+  @override
+  String get pleaseCreateTabFirst => 'Please create a tab first';
+
+  @override
+  String get viewMode => 'View mode';
+
+  @override
+  String get masonryLayout => 'Masonry layout (Pinterest)';
+
   // Sorting
   @override
   String get sort => 'Sort';
@@ -1052,6 +1075,10 @@ class EnglishLocalizations implements AppLocalizations {
       'To use the app smoothly, please grant the following permissions. You can skip and grant them later in Settings.';
 
   @override
+  String get storagePermissionRequiredMessage =>
+      'Access to all files is required to view folder contents. Please go to Settings > Apps > CoolBird Tagify > Permissions and enable "All files access".';
+
+  @override
   String get storagePhotosPermission => 'Storage/Photos Permission';
 
   @override
@@ -1193,6 +1220,13 @@ class EnglishLocalizations implements AppLocalizations {
   @override
   String get showFileTagsToggleDescription =>
       'Enable/disable showing tags outside file list';
+
+  @override
+  String get rememberTabWorkspace => 'Remember tab workspace';
+
+  @override
+  String get rememberTabWorkspaceDescription =>
+      'Restore last opened tab and keep drawer collapse state per tab.';
 
   @override
   String get cacheManagement => 'Cache Management';
@@ -1445,6 +1479,28 @@ class EnglishLocalizations implements AppLocalizations {
   @override
   String get menuPinningOnlyLargeScreens =>
       'Menu pinning is only available on larger screens';
+
+  @override
+  String get pinMenu => 'Pin menu';
+
+  @override
+  String get unpinMenu => 'Unpin menu';
+
+  @override
+  String get pinnedSection => 'Pinned';
+
+  @override
+  String get pinToSidebar => 'Pin to Sidebar';
+
+  @override
+  String get unpinFromSidebar => 'Unpin from Sidebar';
+
+  @override
+  String get pinnedToSidebar => 'Pinned to sidebar';
+
+  @override
+  String get removedFromSidebar => 'Removed from sidebar';
+
   @override
   String get exitApplicationTitle => 'Exit Application?';
   @override

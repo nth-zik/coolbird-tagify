@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -13,44 +15,69 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:cb_file_manager/ui/widgets/drawer/drawer_header_widget.dart';
 import 'package:cb_file_manager/ui/widgets/drawer/drawer_navigation_item.dart';
 import 'package:cb_file_manager/ui/widgets/drawer/storage_section_widget.dart';
+import 'package:cb_file_manager/ui/widgets/drawer/pinned_section_widget.dart';
 import 'package:cb_file_manager/ui/widgets/drawer/cubit/drawer_cubit.dart';
 
 class CBDrawer extends StatelessWidget {
   final BuildContext parentContext;
+  final String? activeTabId;
   final bool isPinned;
   final Function(bool) onPinStateChanged;
 
   const CBDrawer(
     this.parentContext, {
     Key? key,
+    this.activeTabId,
     required this.isPinned,
     required this.onPinStateChanged,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => DrawerCubit()..loadStorageLocations(),
-      child: _CBDrawerContent(
-        parentContext: parentContext,
-        isPinned: isPinned,
-        onPinStateChanged: onPinStateChanged,
-      ),
+    return _CBDrawerContent(
+      parentContext: parentContext,
+      activeTabId: activeTabId,
+      isPinned: isPinned,
+      onPinStateChanged: onPinStateChanged,
     );
   }
 }
 
-class _CBDrawerContent extends StatelessWidget {
+class _CBDrawerContent extends StatefulWidget {
   final BuildContext parentContext;
+  final String? activeTabId;
   final bool isPinned;
   final Function(bool) onPinStateChanged;
 
   const _CBDrawerContent({
     Key? key,
     required this.parentContext,
+    this.activeTabId,
     required this.isPinned,
     required this.onPinStateChanged,
   }) : super(key: key);
+
+  @override
+  State<_CBDrawerContent> createState() => _CBDrawerContentState();
+}
+
+class _CBDrawerContentState extends State<_CBDrawerContent> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<DrawerCubit>().setActiveTab(widget.activeTabId);
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _CBDrawerContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.activeTabId != widget.activeTabId) {
+      context.read<DrawerCubit>().setActiveTab(widget.activeTabId);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,101 +104,142 @@ class _CBDrawerContent extends StatelessWidget {
               end: Alignment.bottomCenter,
               colors: [
                 theme.colorScheme.surface,
-                theme.colorScheme.surfaceContainerLowest.withValues(alpha: 0.85),
+                theme.colorScheme.surfaceContainerLowest
+                    .withValues(alpha: 0.85),
               ],
             ),
           ),
           child: Column(
             children: [
-                // Modern drawer header
-                DrawerHeaderWidget(
-                  isPinned: isPinned,
-                  onPinStateChanged: onPinStateChanged,
+              // Modern drawer header
+              DrawerHeaderWidget(
+                isPinned: widget.isPinned,
+                onPinStateChanged: widget.onPinStateChanged,
+              ),
+
+              // Scrollable menu items
+              Expanded(
+                child: ListView(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                  children: [
+                    // Main navigation items
+                    DrawerNavigationItem(
+                      icon: PhosphorIconsLight.house,
+                      title: context.tr.home,
+                      onTap: () => _navigateTo(context, '#home', 'Home'),
+                    ),
+
+                    BlocBuilder<DrawerCubit, DrawerState>(
+                      builder: (context, drawerState) {
+                        return PinnedSectionWidget(
+                          key: ValueKey<String>(
+                            'pinned-${drawerState.activeTabId}-${drawerState.isPinnedExpanded}',
+                          ),
+                          onNavigate: (path, name) => _navigateTo(
+                            context,
+                            path,
+                            name,
+                            isStorage: true,
+                          ),
+                          initialExpanded: drawerState.isPinnedExpanded,
+                          onExpansionChanged: (isExpanded) {
+                            context
+                                .read<DrawerCubit>()
+                                .setPinnedExpanded(isExpanded);
+                          },
+                        );
+                      },
+                    ),
+
+                    // Storage section with expansion
+                    BlocBuilder<DrawerCubit, DrawerState>(
+                      builder: (context, drawerState) {
+                        return StorageSectionWidget(
+                          key: ValueKey<String>(
+                            'storage-${drawerState.activeTabId}-${drawerState.isStorageExpanded}',
+                          ),
+                          onNavigate: (path, name) => _navigateTo(
+                            context,
+                            path,
+                            name,
+                            isStorage: true,
+                          ),
+                          onTrashTap: () =>
+                              _navigateTo(context, '#trash', 'Trash'),
+                          initialExpanded: drawerState.isStorageExpanded,
+                          onExpansionChanged: (isExpanded) {
+                            context
+                                .read<DrawerCubit>()
+                                .setStorageExpanded(isExpanded);
+                          },
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    DrawerNavigationItem(
+                      icon: PhosphorIconsLight.image,
+                      title: context.tr.imageGallery,
+                      onTap: () => _navigateTo(
+                        context,
+                        '#gallery',
+                        context.tr.imageGallery,
+                      ),
+                    ),
+
+                    DrawerNavigationItem(
+                      icon: PhosphorIconsLight.videoCamera,
+                      title: context.tr.videoGallery,
+                      onTap: () => _navigateTo(
+                        context,
+                        '#video',
+                        context.tr.videoGallery,
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // Tags section
+                    DrawerNavigationItem(
+                      icon: PhosphorIconsLight.tag,
+                      title: context.tr.tags,
+                      onTap: () => _navigateTo(context, '#tags', 'Tags'),
+                    ),
+
+                    DrawerNavigationItem(
+                      icon: PhosphorIconsLight.wifiHigh,
+                      title: context.tr.networksMenu,
+                      onTap: () => _navigateTo(
+                          context, '#network', context.tr.networkTab),
+                    ),
+
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      child: Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: theme.colorScheme.outlineVariant
+                            .withValues(alpha: 0.45),
+                      ),
+                    ),
+
+                    // Settings and info section
+                    DrawerNavigationItem(
+                      icon: PhosphorIconsLight.gear,
+                      title: context.tr.settings,
+                      onTap: () {
+                        if (!widget.isPinned) RouteUtils.safePopDialog(context);
+                        _showSettingsDialog(widget.parentContext);
+                      },
+                    ),
+                  ],
                 ),
+              ),
 
-                // Scrollable menu items
-                Expanded(
-                  child: ListView(
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                    children: [
-                      // Main navigation items
-                      DrawerNavigationItem(
-                        icon: PhosphorIconsLight.house,
-                        title: context.tr.home,
-                        onTap: () => _navigateTo(context, '#home', 'Home'),
-                      ),
-
-                      // Storage section with expansion
-                      StorageSectionWidget(
-                        onNavigate: (path, name) =>
-                            _navigateTo(context, path, name, isStorage: true),
-                        onTrashTap: () =>
-                            _navigateTo(context, '#trash', 'Trash'),
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      DrawerNavigationItem(
-                        icon: PhosphorIconsLight.image,
-                        title: context.tr.imageGallery,
-                        onTap: () => _navigateTo(
-                          context,
-                          '#gallery',
-                          context.tr.imageGallery,
-                        ),
-                      ),
-
-                      DrawerNavigationItem(
-                        icon: PhosphorIconsLight.videoCamera,
-                        title: context.tr.videoGallery,
-                        onTap: () => _navigateTo(
-                          context,
-                          '#video',
-                          context.tr.videoGallery,
-                        ),
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      // Tags section
-                      DrawerNavigationItem(
-                        icon: PhosphorIconsLight.tag,
-                        title: context.tr.tags,
-                        onTap: () => _navigateTo(context, '#tags', 'Tags'),
-                      ),
-
-                      DrawerNavigationItem(
-                        icon: PhosphorIconsLight.wifiHigh,
-                        title: context.tr.networksMenu,
-                        onTap: () => _navigateTo(
-                            context, '#network', context.tr.networkTab),
-                      ),
-
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        child: Divider(
-                          height: 1,
-                          thickness: 1,
-                          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
-                        ),
-                      ),
-
-                      // Settings and info section
-                      DrawerNavigationItem(
-                        icon: PhosphorIconsLight.gear,
-                        title: context.tr.settings,
-                        onTap: () {
-                          if (!isPinned) RouteUtils.safePopDialog(context);
-                          _showSettingsDialog(parentContext);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Footer with app info
-                _buildDrawerFooter(theme),
+              // Footer with app info
+              _buildDrawerFooter(theme),
             ],
           ),
         ),
@@ -181,7 +249,7 @@ class _CBDrawerContent extends StatelessWidget {
 
   void _navigateTo(BuildContext context, String path, String name,
       {bool isStorage = false}) {
-    if (!isPinned) {
+    if (!widget.isPinned) {
       RouteUtils.safePopDialog(context);
     }
 
@@ -221,6 +289,14 @@ class _CBDrawerContent extends StatelessWidget {
   }
 
   void _openInCurrentTab(BuildContext context, String path, String name) {
+    final navigationPath = _normalizePinnedNavigationPath(path);
+    final navigationName = navigationPath == path
+        ? name
+        : navigationPath.split(Platform.pathSeparator).lastWhere(
+              (part) => part.isNotEmpty,
+              orElse: () => name,
+            );
+
     TabManagerBloc? tabBloc;
     try {
       tabBloc = BlocProvider.of<TabManagerBloc>(context, listen: false);
@@ -231,10 +307,10 @@ class _CBDrawerContent extends StatelessWidget {
     if (tabBloc != null) {
       final activeTab = tabBloc.state.activeTab;
       if (activeTab != null) {
-        tabBloc.add(UpdateTabPath(activeTab.id, path));
-        tabBloc.add(UpdateTabName(activeTab.id, name));
+        tabBloc.add(UpdateTabPath(activeTab.id, navigationPath));
+        tabBloc.add(UpdateTabName(activeTab.id, navigationName));
       } else {
-        tabBloc.add(AddTab(path: path, name: name));
+        tabBloc.add(AddTab(path: navigationPath, name: navigationName));
       }
     } else {
       // Fallback navigation
@@ -250,6 +326,20 @@ class _CBDrawerContent extends StatelessWidget {
         });
       });
     }
+  }
+
+  String _normalizePinnedNavigationPath(String path) {
+    final trimmed = path.trim();
+    if (trimmed.isEmpty) return path;
+
+    try {
+      final type = FileSystemEntity.typeSync(trimmed, followLinks: false);
+      if (type == FileSystemEntityType.file) {
+        return File(trimmed).parent.path;
+      }
+    } catch (_) {}
+
+    return path;
   }
 
   Widget _buildDrawerFooter(ThemeData theme) {
@@ -311,5 +401,3 @@ class _CBDrawerContent extends StatelessWidget {
     return '$version.$build';
   }
 }
-
-

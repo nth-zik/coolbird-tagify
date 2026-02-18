@@ -108,6 +108,21 @@ class ToggleTabSelection extends TabEvent {
   ToggleTabSelection(this.tabId);
 }
 
+/// Event to open the right-hand pane of a split view inside a tab.
+class OpenSplitPane extends TabEvent {
+  final String tabId;
+  final String path;
+
+  OpenSplitPane({required this.tabId, required this.path});
+}
+
+/// Event to close the right-hand pane of a split view inside a tab.
+class CloseSplitPane extends TabEvent {
+  final String tabId;
+
+  CloseSplitPane({required this.tabId});
+}
+
 /// State for the TabManager
 class TabManagerState {
   final List<TabData> tabs;
@@ -142,6 +157,19 @@ class TabManagerState {
   }
 }
 
+/// Helper class used to resolve a split-pane tabId to its parent and nested tab.
+class _SplitTabResolution {
+  final TabData parent;
+  final TabData splitTab;
+  final int parentIndex;
+
+  const _SplitTabResolution({
+    required this.parent,
+    required this.splitTab,
+    required this.parentIndex,
+  });
+}
+
 /// BLoC for managing tabs
 class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
   TabManagerBloc() : super(TabManagerState(tabs: [])) {
@@ -158,6 +186,8 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
     on<ReorderTab>(_onReorderTab);
     on<ClearTabSelection>(_onClearTabSelection);
     on<ToggleTabSelection>(_onToggleTabSelection);
+    on<OpenSplitPane>(_onOpenSplitPane);
+    on<CloseSplitPane>(_onCloseSplitPane);
   }
 
   void _onAddTab(AddTab event, Emitter<TabManagerState> emit) {
@@ -248,9 +278,81 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
     emit(state.copyWith(selectedTabIds: selected));
   }
 
+  void _onOpenSplitPane(OpenSplitPane event, Emitter<TabManagerState> emit) {
+    final tabs = state.tabs.map((tab) {
+      if (tab.id == event.tabId) {
+        final splitId = '${event.tabId}_split';
+        final splitTab = TabData(
+          id: splitId,
+          name: '',
+          path: event.path,
+        );
+        return tab.copyWith(
+          splitPanePath: event.path,
+          splitPaneTabData: splitTab,
+        );
+      }
+      return tab;
+    }).toList();
+    emit(state.copyWith(tabs: tabs));
+  }
+
+  void _onCloseSplitPane(CloseSplitPane event, Emitter<TabManagerState> emit) {
+    final tabs = state.tabs.map((tab) {
+      if (tab.id == event.tabId) {
+        return tab.copyWith(clearSplitPane: true);
+      }
+      return tab;
+    }).toList();
+    emit(state.copyWith(tabs: tabs));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Split-pane routing helpers
+  // ---------------------------------------------------------------------------
+
+  /// If [tabId] ends with `_split`, returns the parent tab and the nested
+  /// [splitPaneTabData]. Otherwise returns null.
+  _SplitTabResolution? _resolveSplitTab(String tabId) {
+    if (!tabId.endsWith('_split')) return null;
+    final parentId = tabId.substring(0, tabId.length - '_split'.length);
+    final idx = state.tabs.indexWhere((t) => t.id == parentId);
+    if (idx == -1) return null;
+    final parent = state.tabs[idx];
+    final splitTab = parent.splitPaneTabData;
+    if (splitTab == null) return null;
+    return _SplitTabResolution(
+        parent: parent, splitTab: splitTab, parentIndex: idx);
+  }
+
+  /// Update the nested [splitPaneTabData] on [parent] and emit new state.
+  void _emitWithUpdatedSplitTab(
+    Emitter<TabManagerState> emit,
+    int parentIndex,
+    TabData updatedSplitTab,
+  ) {
+    final tabs = List<TabData>.from(state.tabs);
+    tabs[parentIndex] = tabs[parentIndex].copyWith(
+      splitPanePath: updatedSplitTab.path,
+      splitPaneTabData: updatedSplitTab,
+    );
+    emit(state.copyWith(tabs: tabs));
+  }
+
   void _onUpdateTabPath(UpdateTabPath event, Emitter<TabManagerState> emit) {
     debugPrint(
         'BLOC_DEBUG: _onUpdateTabPath called for tab ${event.tabId}, newPath: ${event.newPath}');
+
+    // Route to nested split-pane tab if applicable.
+    final split = _resolveSplitTab(event.tabId);
+    if (split != null) {
+      final st = split.splitTab;
+      if (st.path == event.newPath) return;
+      st.updatePath(event.newPath);
+      _emitWithUpdatedSplitTab(
+          emit, split.parentIndex, st.copyWith(path: event.newPath));
+      return;
+    }
 
     // Check if the path is actually changing
     final currentTab = state.tabs.firstWhere(
@@ -292,6 +394,9 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
   }
 
   void _onUpdateTabName(UpdateTabName event, Emitter<TabManagerState> emit) {
+    // Split-pane tab names are not shown in the tab bar — silently ignore.
+    if (_resolveSplitTab(event.tabId) != null) return;
+
     final tabs = state.tabs.map((tab) {
       if (tab.id == event.tabId) {
         return tab.copyWith(name: event.newName);
@@ -322,6 +427,19 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
 
   void _onAddToTabHistory(
       AddToTabHistory event, Emitter<TabManagerState> emit) {
+    // Route to nested split-pane tab if applicable.
+    final split = _resolveSplitTab(event.tabId);
+    if (split != null) {
+      final st = split.splitTab;
+      final List<String> updatedHistory = List.from(st.navigationHistory);
+      if (event.path != st.path && !updatedHistory.contains(event.path)) {
+        updatedHistory.add(event.path);
+      }
+      _emitWithUpdatedSplitTab(emit, split.parentIndex,
+          st.copyWith(navigationHistory: updatedHistory));
+      return;
+    }
+
     final tabs = state.tabs.map((tab) {
       if (tab.id == event.tabId) {
         final List<String> updatedHistory = List.from(tab.navigationHistory);
@@ -345,6 +463,9 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
 
   void _onUpdateTabLoading(
       UpdateTabLoading event, Emitter<TabManagerState> emit) {
+    // Ignore loading state updates for the split pane — they don’t affect the tab bar.
+    if (_resolveSplitTab(event.tabId) != null) return;
+
     final tabs = state.tabs.map((tab) {
       if (tab.id == event.tabId) {
         return tab.copyWith(isLoading: event.isLoading);
@@ -364,6 +485,9 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
 
   // Add methods for navigation history management
   bool canTabNavigateBack(String tabId) {
+    final split = _resolveSplitTab(tabId);
+    if (split != null) return split.splitTab.navigationHistory.length > 1;
+
     final tab = state.tabs.firstWhere(
       (tab) => tab.id == tabId,
       orElse: () => TabData(id: '', name: '', path: ''),
@@ -372,6 +496,9 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
   }
 
   String? getTabPreviousPath(String tabId) {
+    final split = _resolveSplitTab(tabId);
+    if (split != null) return split.splitTab.getPreviousPath();
+
     final tab = state.tabs.firstWhere(
       (tab) => tab.id == tabId,
       orElse: () => TabData(id: '', name: '', path: ''),
@@ -381,6 +508,25 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
 
   // Handle backwards navigation for a tab and return the new path
   String? backNavigationToPath(String tabId) {
+    // Route to nested split-pane tab if applicable.
+    final split = _resolveSplitTab(tabId);
+    if (split != null) {
+      final st = split.splitTab;
+      final previousPath = st.navigateBack();
+      if (previousPath != null) {
+        final updatedSplitTab = st.copyWith(path: previousPath);
+        final tabs = List<TabData>.from(state.tabs);
+        tabs[split.parentIndex] = tabs[split.parentIndex].copyWith(
+          splitPanePath: previousPath,
+          splitPaneTabData: updatedSplitTab,
+        );
+        // ignore: invalid_use_of_visible_for_testing_member
+        emit(state.copyWith(tabs: tabs));
+        return previousPath;
+      }
+      return null;
+    }
+
     // Find the tab with this ID
     final tabIndex = state.tabs.indexWhere((tab) => tab.id == tabId);
     if (tabIndex == -1) return null;
@@ -420,6 +566,25 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
 
   // Handle forwards navigation for a tab and return the new path
   String? forwardNavigationToPath(String tabId) {
+    // Route to nested split-pane tab if applicable.
+    final split = _resolveSplitTab(tabId);
+    if (split != null) {
+      final st = split.splitTab;
+      final nextPath = st.navigateForward();
+      if (nextPath != null) {
+        final updatedSplitTab = st.copyWith(path: nextPath);
+        final tabs = List<TabData>.from(state.tabs);
+        tabs[split.parentIndex] = tabs[split.parentIndex].copyWith(
+          splitPanePath: nextPath,
+          splitPaneTabData: updatedSplitTab,
+        );
+        // ignore: invalid_use_of_visible_for_testing_member
+        emit(state.copyWith(tabs: tabs));
+        return nextPath;
+      }
+      return null;
+    }
+
     // Find the tab with this ID
     final tabIndex = state.tabs.indexWhere((tab) => tab.id == tabId);
     if (tabIndex == -1) return null;
@@ -446,6 +611,9 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
 
   // Get the full navigation history for a tab
   List<String> getTabHistory(String tabId) {
+    final split = _resolveSplitTab(tabId);
+    if (split != null) return List.from(split.splitTab.navigationHistory);
+
     final tab = state.tabs.firstWhere(
       (tab) => tab.id == tabId,
       orElse: () => TabData(id: '', name: '', path: ''),
@@ -454,6 +622,9 @@ class TabManagerBloc extends Bloc<TabEvent, TabManagerState> {
   }
 
   bool canTabNavigateForward(String tabId) {
+    final split = _resolveSplitTab(tabId);
+    if (split != null) return split.splitTab.forwardHistory.isNotEmpty;
+
     final tab = state.tabs.firstWhere(
       (tab) => tab.id == tabId,
       orElse: () => TabData(id: '', name: '', path: ''),

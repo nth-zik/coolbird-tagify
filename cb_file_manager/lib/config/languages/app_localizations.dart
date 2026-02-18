@@ -40,6 +40,9 @@ abstract class AppLocalizations {
   String get manageTags;
   String get moveToTrash;
   String get errorAccessingDirectory;
+  String errorAccessingDirectoryWithError(String error);
+  String accessDeniedAdminMessage(String path);
+  String directoryDoesNotExist(String path);
 
   // Action bar tooltips
   String get searchTooltip;
@@ -254,6 +257,7 @@ abstract class AppLocalizations {
   String get changeTagColor;
   String get deleteTagFromAllFiles;
   String get openInNewTab;
+  String get openInSplitView;
   String get changeColor;
   String get noFilesWithTag;
   String debugInfo(String tag);
@@ -557,6 +561,13 @@ abstract class AppLocalizations {
   // UI labels
   String get noStorageLocationsFound;
   String get menuPinningOnlyLargeScreens;
+  String get pinMenu;
+  String get unpinMenu;
+  String get pinnedSection;
+  String get pinToSidebar;
+  String get unpinFromSidebar;
+  String get pinnedToSidebar;
+  String get removedFromSidebar;
   String get exitApplicationTitle;
   String get exitApplicationConfirm;
   String itemsSelected(int count);
@@ -600,6 +611,11 @@ abstract class AppLocalizations {
   String searchingTagGlobal(Map<String, String> args);
   String searchingTags(Map<String, String> args);
   String searchingTagsGlobal(Map<String, String> args);
+  String get searchOrEnterPath;
+  String get pleaseCreateTabFirst;
+
+  String get viewMode;
+  String get masonryLayout;
 
   // Tag list state
   String get tagListRefreshing;
@@ -642,6 +658,7 @@ abstract class AppLocalizations {
   // Permissions
   String get grantPermissionsToContinue;
   String get permissionsDescription;
+  String get storagePermissionRequiredMessage;
   String get storagePhotosPermission;
   String get storagePhotosDescription;
   String get allFilesAccessPermission;
@@ -690,6 +707,8 @@ abstract class AppLocalizations {
   String get showFileTagsDescription;
   String get showFileTagsToggle;
   String get showFileTagsToggleDescription;
+  String get rememberTabWorkspace;
+  String get rememberTabWorkspaceDescription;
   String get cacheManagement;
   String get cacheManagementDescription;
   String get cacheFolder;

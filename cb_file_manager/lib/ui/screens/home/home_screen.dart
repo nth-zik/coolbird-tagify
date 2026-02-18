@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
-import 'dart:io';
-import 'package:cb_file_manager/helpers/core/filesystem_utils.dart';
+import 'package:cb_file_manager/ui/tab_manager/core/tab_paths.dart';
 import 'package:cb_file_manager/config/languages/app_localizations.dart';
 import 'package:cb_file_manager/config/translation_helper.dart';
+import 'package:cb_file_manager/ui/widgets/drawer/cubit/drawer_cubit.dart';
+import 'dart:io';
 
 /// Simple home screen that doesn't scan file system to avoid performance issues
 class HomeScreen extends StatefulWidget {
@@ -82,8 +83,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ];
 
     return Scaffold(
-      backgroundColor:
-          isLightMode ? cs.surfaceContainerLowest : theme.scaffoldBackgroundColor,
+      backgroundColor: isLightMode
+          ? cs.surfaceContainerLowest
+          : theme.scaffoldBackgroundColor,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -115,8 +117,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       _buildQuickActions(theme, localizations),
                       const SizedBox(height: 40),
 
-                      // Features overview
-                      _buildFeaturesOverview(theme, localizations),
+                      // Pinned items
+                      _buildPinnedSection(theme, localizations),
                       const SizedBox(height: 32),
                     ],
                   ),
@@ -297,7 +299,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           builder: (context, constraints) {
             int crossAxis = 2;
             double aspectRatio = 1.2;
-            
+
             if (constraints.maxWidth > 1200) {
               crossAxis = 4;
               aspectRatio = 1.2;
@@ -328,7 +330,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   context.tr.newTabAction,
                   context.tr.newTabActionDesc,
                   PhosphorIconsLight.plusCircle,
-                  [theme.colorScheme.primary, theme.colorScheme.primary.withValues(alpha: 0.7)],
+                  [
+                    theme.colorScheme.primary,
+                    theme.colorScheme.primary.withValues(alpha: 0.7)
+                  ],
                   () => _openNewTab(),
                 ),
                 _buildActionCard(
@@ -336,7 +341,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   localizations.browseFiles,
                   localizations.browseFilesDescription,
                   PhosphorIconsLight.folder,
-                  [theme.colorScheme.primary, theme.colorScheme.primary.withValues(alpha: 0.7)],
+                  [
+                    theme.colorScheme.primary,
+                    theme.colorScheme.primary.withValues(alpha: 0.7)
+                  ],
                   () => _navigateToPath(''),
                 ),
                 _buildActionCard(
@@ -344,7 +352,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   localizations.imageGallery,
                   localizations.manageMediaDescription,
                   PhosphorIconsLight.image,
-                  [theme.colorScheme.tertiary, theme.colorScheme.tertiary.withValues(alpha: 0.7)],
+                  [
+                    theme.colorScheme.tertiary,
+                    theme.colorScheme.tertiary.withValues(alpha: 0.7)
+                  ],
                   () => _openImageGallery(),
                 ),
                 _buildActionCard(
@@ -352,7 +363,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   localizations.videoGallery,
                   localizations.manageMediaDescription,
                   PhosphorIconsLight.videoCamera,
-                  [theme.colorScheme.secondary, theme.colorScheme.secondary.withValues(alpha: 0.7)],
+                  [
+                    theme.colorScheme.secondary,
+                    theme.colorScheme.secondary.withValues(alpha: 0.7)
+                  ],
                   () => _openVideoGallery(),
                 ),
                 _buildActionCard(
@@ -360,7 +374,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   context.tr.tagsAction,
                   context.tr.tagsActionDesc,
                   PhosphorIconsLight.tag,
-                  [theme.colorScheme.primary, theme.colorScheme.primary.withValues(alpha: 0.7)],
+                  [
+                    theme.colorScheme.primary,
+                    theme.colorScheme.primary.withValues(alpha: 0.7)
+                  ],
                   () => _openTagsTab(),
                 ),
               ],
@@ -387,7 +404,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         final iconPadding = isMobile ? 10.0 : 12.0;
         final iconSize = isMobile ? 20.0 : 24.0;
         final spacing = isMobile ? 8.0 : 12.0;
-        
+
         return Material(
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(16),
@@ -438,7 +455,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     child: Text(
                       description,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.7),
                         fontSize: isMobile ? 11 : null,
                       ),
                       textAlign: TextAlign.center,
@@ -455,132 +473,195 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildFeaturesOverview(
-      ThemeData theme, AppLocalizations localizations) {
+  Widget _buildPinnedSection(ThemeData theme, AppLocalizations localizations) {
     final cs = theme.colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [cs.primary, cs.primary.withValues(alpha: 0.8)],
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(
-                  PhosphorIconsLight.star,
-                  color: cs.onPrimary,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Text(
-                localizations.keyFeatures,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.3,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          _buildFeatureItem(
-            theme,
-            PhosphorIconsLight.folder,
-            localizations.fileManagement,
-            localizations.fileManagementDescription,
-            theme.colorScheme.primary,
-          ),
-          _buildFeatureItem(
-            theme,
-            PhosphorIconsLight.tag,
-            localizations.smartTagging,
-            localizations.smartTaggingDescription,
-            theme.colorScheme.tertiary,
-          ),
-          _buildFeatureItem(
-            theme,
-            PhosphorIconsLight.image,
-            localizations.mediaGallery,
-            localizations.mediaGalleryDescription,
-            theme.colorScheme.secondary,
-          ),
-          _buildFeatureItem(
-            theme,
-            PhosphorIconsLight.wifiHigh,
-            localizations.networkSupport,
-            localizations.networkSupportDescription,
-            theme.colorScheme.primary,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeatureItem(
-    ThemeData theme,
-    IconData icon,
-    String title,
-    String description,
-    Color accentColor,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
+    return BlocBuilder<DrawerCubit, DrawerState>(
+      builder: (context, state) {
+        if (state.pinnedPaths.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: 0.1),
+              color: cs.surface,
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Icon(
-              icon,
-              color: accentColor,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                    fontWeight: FontWeight.w500,
+                _buildPinnedHeader(theme, localizations, cs),
+                const SizedBox(height: 24),
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      "No pinned items yet",
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
+          );
+        }
+
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(16),
           ),
-        ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildPinnedHeader(theme, localizations, cs),
+              const SizedBox(height: 24),
+              ...state.pinnedPaths.map((path) => _buildPinnedItem(
+                    theme,
+                    path,
+                    _iconForPinnedPath(path),
+                    _getPinnedDisplayName(path),
+                    () => _navigateToPath(path),
+                  )),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPinnedHeader(
+      ThemeData theme, AppLocalizations localizations, ColorScheme cs) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [cs.primary, cs.primary.withValues(alpha: 0.8)],
+            ),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Icon(
+            PhosphorIconsLight.pushPin,
+            color: cs.onPrimary,
+            size: 20,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Text(
+          localizations.pinnedSection,
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.3,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPinnedItem(
+    ThemeData theme,
+    String path,
+    IconData icon,
+    String title,
+    VoidCallback onTap,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: theme.colorScheme.primary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        path,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.7),
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(PhosphorIconsLight.pushPinSlash, size: 20),
+                  onPressed: () {
+                    context.read<DrawerCubit>().togglePinnedPath(path);
+                  },
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
+  }
+
+  IconData _iconForPinnedPath(String path) {
+    try {
+      final entityType = FileSystemEntity.typeSync(path, followLinks: false);
+      if (entityType == FileSystemEntityType.file) {
+        return PhosphorIconsLight.file;
+      }
+      if (entityType == FileSystemEntityType.directory) {
+        return PhosphorIconsLight.folder;
+      }
+    } catch (_) {}
+    return PhosphorIconsLight.pushPin;
+  }
+
+  String _getPinnedDisplayName(String path) {
+    var normalized = path;
+    if (normalized.endsWith(Platform.pathSeparator) && normalized.length > 1) {
+      normalized = normalized.substring(0, normalized.length - 1);
+    }
+    if (Platform.isWindows && RegExp(r'^[a-zA-Z]:$').hasMatch(normalized)) {
+      return normalized;
+    }
+    if (normalized == '/') return '/';
+    final parts = normalized.split(Platform.pathSeparator);
+    return parts.where((part) => part.isNotEmpty).isNotEmpty
+        ? parts.where((part) => part.isNotEmpty).last
+        : normalized;
   }
 
   void _openImageGallery() {
@@ -621,54 +702,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     tabBloc.add(AddTab(path: '#home', name: context.tr.homeTab));
   }
 
-  String _getStorageDisplayName(String path) {
-    if (path.isEmpty) return context.tr.drivesTab;
-
-    // For Android, try to extract meaningful name
-    if (Platform.isAndroid) {
-      if (path.contains('/storage/emulated/0')) {
-        return context.tr.internalStorage;
-      } else if (path.contains('/storage/')) {
-        final parts = path.split('/');
-        if (parts.length >= 3) {
-          final storageId = parts[2];
-          if (storageId.isNotEmpty && storageId != 'emulated') {
-            return '${context.tr.storagePrefix} $storageId';
-          }
-        }
-      }
-    }
-
-    // For iOS or other cases, use the last part of the path
-    final parts = path.split('/');
-    final lastPart =
-        parts.lastWhere((part) => part.isNotEmpty, orElse: () => '');
-    return lastPart.isEmpty ? context.tr.rootFolder : lastPart;
-  }
-
   void _navigateToPath(String path) async {
     final tabBloc = context.read<TabManagerBloc>();
     final activeTab = tabBloc.state.activeTab;
-    
-    // If path is empty and we're on mobile, get the first storage location
-    String targetPath = path;
-    String tabName = path.isEmpty ? 'Browse' : path.split('/').last;
-    
-    if (path.isEmpty && (Platform.isAndroid || Platform.isIOS)) {
-      try {
-        final storageLocations = await getAllStorageLocations();
-        if (storageLocations.isNotEmpty) {
-          targetPath = storageLocations.first.path;
-          tabName = _getStorageDisplayName(targetPath);
-        }
-      } catch (e) {
-        debugPrint('Error getting storage locations: $e');
-        // Fallback to empty path (will show drives on Windows)
-      }
-    }
-    
+
+    final targetPath = path.isEmpty ? kDrivesPath : path;
+    final tabName = isDrivesPath(targetPath)
+        ? context.tr.drivesTab
+        : targetPath.split('/').last;
+
     if (!mounted) return;
-    
+
     if (activeTab != null) {
       // Update existing tab path
       TabNavigator.updateTabPath(context, activeTab.id, targetPath);
@@ -686,7 +730,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void _openTagsTab() {
     final tabBloc = context.read<TabManagerBloc>();
     final activeTab = tabBloc.state.activeTab;
-    
+
     if (activeTab != null) {
       // Navigate within the current tab to maintain navigation history
       TabNavigator.updateTabPath(context, activeTab.id, '#tags');
@@ -703,6 +747,3 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 }
-
-
-

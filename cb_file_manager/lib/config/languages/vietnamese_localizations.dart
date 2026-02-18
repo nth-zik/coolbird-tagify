@@ -68,7 +68,15 @@ class VietnameseLocalizations implements AppLocalizations {
   String get moveToTrash => 'Chuyển vào thùng rác';
 
   @override
-  String get errorAccessingDirectory => 'Lỗi truy cập thư mục: ';
+  String get errorAccessingDirectory => 'Lỗi khi truy cập thư mục';
+  @override
+  String errorAccessingDirectoryWithError(String error) =>
+      'Lỗi khi truy cập thư mục: $error';
+  @override
+  String accessDeniedAdminMessage(String path) =>
+      'Truy cập bị từ chối: Cần quyền quản trị viên để truy cập $path';
+  @override
+  String directoryDoesNotExist(String path) => 'Thư mục không tồn tại: $path';
 
   // Action bar tooltips
   @override
@@ -489,6 +497,8 @@ class VietnameseLocalizations implements AppLocalizations {
   @override
   String get openInNewTab => 'Mở trong tab mới';
   @override
+  String get openInSplitView => 'Mở ở chế độ chia đôi';
+  @override
   String get changeColor => 'Thay đổi màu';
   @override
   String get noFilesWithTag => 'Không tìm thấy tệp nào có thẻ này';
@@ -856,6 +866,18 @@ class VietnameseLocalizations implements AppLocalizations {
   @override
   String? get gridSize => 'Kích thước lưới';
 
+  @override
+  String get searchOrEnterPath => 'Tìm kiếm hoặc nhập đường dẫn';
+
+  @override
+  String get pleaseCreateTabFirst => 'Vui lòng tạo một tab trước';
+
+  @override
+  String get viewMode => 'Chế độ xem';
+
+  @override
+  String get masonryLayout => 'Bố cục Masonry (Pinterest)';
+
   // File picker dialogs
   @override
   String get chooseBackupLocation => 'Chọn vị trí lưu bản sao lưu';
@@ -1056,6 +1078,10 @@ class VietnameseLocalizations implements AppLocalizations {
       'Để sử dụng ứng dụng mượt mà, vui lòng cấp các quyền sau đây. Bạn có thể bỏ qua và cấp sau trong Cài đặt.';
 
   @override
+  String get storagePermissionRequiredMessage =>
+      'Cần cấp quyền truy cập tất cả files để xem đầy đủ nội dung thư mục. Vui lòng vào Settings > Apps > CoolBird Tagify > Permissions và bật "All files access".';
+
+  @override
   String get storagePhotosPermission => 'Quyền lưu trữ/ảnh';
 
   @override
@@ -1197,6 +1223,13 @@ class VietnameseLocalizations implements AppLocalizations {
   @override
   String get showFileTagsToggleDescription =>
       'Bật/tắt hiển thị tag bên ngoài danh sách file';
+
+  @override
+  String get rememberTabWorkspace => 'Ghi nhớ không gian làm việc tab';
+
+  @override
+  String get rememberTabWorkspaceDescription =>
+      'Khôi phục tab mở gần nhất và ghi nhớ trạng thái thu gọn của drawer theo từng tab.';
 
   @override
   String get cacheManagement => 'Quản lý bộ nhớ cache';
@@ -1446,6 +1479,28 @@ class VietnameseLocalizations implements AppLocalizations {
   @override
   String get menuPinningOnlyLargeScreens =>
       'Ghim menu chỉ có trên màn hình lớn hơn';
+
+  @override
+  String get pinMenu => 'Ghim menu';
+
+  @override
+  String get unpinMenu => 'Bỏ ghim menu';
+
+  @override
+  String get pinnedSection => 'Đã ghim';
+
+  @override
+  String get pinToSidebar => 'Ghim vào thanh bên';
+
+  @override
+  String get unpinFromSidebar => 'Bỏ ghim khỏi thanh bên';
+
+  @override
+  String get pinnedToSidebar => 'Đã ghim vào thanh bên';
+
+  @override
+  String get removedFromSidebar => 'Đã bỏ ghim khỏi thanh bên';
+
   @override
   String get exitApplicationTitle => 'Thoát ứng dụng?';
   @override

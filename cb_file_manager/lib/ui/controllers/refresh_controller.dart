@@ -9,6 +9,7 @@ import 'package:cb_file_manager/helpers/tags/tag_manager.dart';
 import 'package:cb_file_manager/ui/screens/system_screen_router.dart';
 import 'package:cb_file_manager/helpers/media/video_thumbnail_helper.dart';
 import 'package:cb_file_manager/helpers/core/uri_utils.dart';
+import 'package:cb_file_manager/ui/tab_manager/core/tab_paths.dart';
 
 /// Controller for handling refresh operations in folder list screens
 ///
@@ -52,6 +53,12 @@ class RefreshController {
     // Clear Flutter's image cache
     PaintingBinding.instance.imageCache.clear();
     PaintingBinding.instance.imageCache.clearLiveImages();
+
+    if (isDrivesPath(currentPath)) {
+      folderListBloc.add(const FolderListLoadDrives());
+      Future.delayed(const Duration(milliseconds: 250), stopOnce);
+      return;
+    }
 
     // Check if this is a system path (starts with #)
     if (currentPath.startsWith('#')) {
@@ -139,6 +146,17 @@ class RefreshController {
         });
 
         // Check if this is a system path (starts with #)
+        if (isDrivesPath(currentPath)) {
+          folderListBloc.add(const FolderListLoadDrives());
+          Future.delayed(const Duration(milliseconds: 250), () {
+            if (completer.isCompleted) return;
+            onRefreshComplete();
+            completer.complete();
+            subscription.cancel();
+          });
+          return;
+        }
+
         if (currentPath.startsWith('#')) {
           // For system paths, we need special handling
           if (currentPath == '#tags') {

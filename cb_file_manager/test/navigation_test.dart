@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cb_file_manager/ui/screens/system_screen_router.dart';
+import 'package:cb_file_manager/ui/tab_manager/core/tab_manager.dart';
+import 'package:cb_file_manager/ui/tab_manager/core/tab_paths.dart';
 
 void main() {
   group('Navigation Fix Tests', () {
@@ -32,6 +34,25 @@ void main() {
       shouldClearCache =
           currentPath.startsWith('#') && !newPath.startsWith('#');
       expect(shouldClearCache, isFalse);
+    });
+
+    test('Tab history should include and navigate back to drives path',
+        () async {
+      final bloc = TabManagerBloc();
+      bloc.add(AddTab(path: kDrivesPath, name: 'Drives'));
+      await Future<void>.delayed(Duration.zero);
+
+      final tab = bloc.state.activeTab;
+      expect(tab, isNotNull);
+
+      final tabId = tab!.id;
+      bloc.add(UpdateTabPath(tabId, r'C:\'));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(bloc.canTabNavigateBack(tabId), isTrue);
+      final previousPath = bloc.backNavigationToPath(tabId);
+      expect(previousPath, equals(kDrivesPath));
+      expect(bloc.canTabNavigateForward(tabId), isTrue);
     });
   });
 }

@@ -51,7 +51,7 @@ class FileTypeHelper {
 
     // Delegate to registry
     final category = FileTypeRegistry.getCategory(extension);
-    
+
     // Map FileCategory to legacy FileType enum
     return _mapCategoryToFileType(category);
   }
@@ -60,18 +60,16 @@ class FileTypeHelper {
   static IconData getIconForFileType(FileType type) {
     // Convert FileType to FileCategory and use registry
     final category = _mapFileTypeToCategory(type);
-    return FileTypeRegistry.getIcon(
-      FileTypeRegistry.getExtensionsForCategory(category).firstOrNull ?? '',
-    );
+    final exts = FileTypeRegistry.getExtensionsForCategory(category);
+    return FileTypeRegistry.getIcon(exts.isEmpty ? '' : exts.first);
   }
 
   // Get color for file type (legacy method)
   static Color getColorForFileType(FileType type) {
     // Convert FileType to FileCategory and use registry
     final category = _mapFileTypeToCategory(type);
-    return FileTypeRegistry.getColor(
-      FileTypeRegistry.getExtensionsForCategory(category).firstOrNull ?? '',
-    );
+    final exts = FileTypeRegistry.getExtensionsForCategory(category);
+    return FileTypeRegistry.getColor(exts.isEmpty ? '' : exts.first);
   }
 
   // Get icon directly from extension (preferred method)

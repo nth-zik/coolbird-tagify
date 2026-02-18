@@ -5,8 +5,9 @@ import 'dart:async'; // Add this import for Completer
 import 'package:cb_file_manager/helpers/ui/frame_timing_optimizer.dart';
 import '../../components/common/shared_action_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/gestures.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-// Import for mouse buttons
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cb_file_manager/helpers/core/user_preferences.dart';
 // Import for keyboard keys
@@ -43,6 +44,7 @@ import 'package:cb_file_manager/ui/utils/platform_utils.dart';
 import 'package:cb_file_manager/ui/widgets/value_listenable_builders.dart';
 import 'package:cb_file_manager/ui/tab_manager/mobile/mobile_file_actions_controller.dart';
 import 'package:cb_file_manager/ui/utils/grid_zoom_constraints.dart';
+import 'package:cb_file_manager/ui/widgets/selection_summary_tooltip.dart';
 
 /// A screen for browsing network locations, with a UI consistent with TabbedFolderListScreen
 class NetworkBrowserScreen extends StatefulWidget {
@@ -594,6 +596,21 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
         child: WillPopScope(
           onWillPop: _handleBackButton,
           child: Listener(
+            onPointerSignal: (PointerSignalEvent event) {
+              if (_viewMode != ViewMode.grid) {
+                return;
+              }
+              if (event is PointerScrollEvent) {
+                if (HardwareKeyboard.instance.logicalKeysPressed
+                        .contains(LogicalKeyboardKey.controlLeft) ||
+                    HardwareKeyboard.instance.logicalKeysPressed
+                        .contains(LogicalKeyboardKey.controlRight)) {
+                  final direction = event.scrollDelta.dy > 0 ? 1 : -1;
+                  _handleGridZoomChange(_gridZoomLevel + direction);
+                  GestureBinding.instance.pointerSignalResolver.resolve(event);
+                }
+              }
+            },
             onPointerDown: (PointerDownEvent event) {
               if (event.buttons == 8) {
                 _handleMouseBackButton();
@@ -747,7 +764,8 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
             fillColor:
                 Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
             contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-            prefixIcon: const Icon(PhosphorIconsLight.magnifyingGlass, size: 20),
+            prefixIcon:
+                const Icon(PhosphorIconsLight.magnifyingGlass, size: 20),
             suffixIcon: IconButton(
               icon: const Icon(PhosphorIconsLight.x),
               onPressed: () {
@@ -862,7 +880,8 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(PhosphorIconsLight.folderOpen, size: 64, color: Colors.grey),
+                const Icon(PhosphorIconsLight.folderOpen,
+                    size: 64, color: Colors.grey),
                 const SizedBox(height: 16),
                 Text(
                   AppLocalizations.of(context)!.emptyFolder,
@@ -953,6 +972,7 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
         _isNavigationPending || state.isLoading || state.isLoadingMore;
 
     return Stack(
+      alignment: Alignment.bottomCenter,
       children: [
         content,
         if (showTopLoadingBar)
@@ -961,6 +981,18 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
             right: 0,
             top: 0,
             child: LinearProgressIndicator(minHeight: 2.0),
+          ),
+        if (selectionState.isSelectionMode && isDesktopPlatform)
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: SelectionSummaryTooltip(
+              selectedFileCount: selectionState.selectedFilePaths.length,
+              selectedFolderCount: selectionState.selectedFolderPaths.length,
+              selectedFilePaths: selectionState.selectedFilePaths.toList(),
+              selectedFolderPaths: selectionState.selectedFolderPaths.toList(),
+            ),
           ),
       ],
     );
@@ -1001,13 +1033,10 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
 
         return LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
-          // Use a GlobalKey to get the RenderBox from the actual item widget
-          final GlobalKey itemKey = GlobalKey();
-
           WidgetsBinding.instance.addPostFrameCallback((_) {
             try {
-              final RenderObject? renderObject =
-                  itemKey.currentContext?.findRenderObject();
+              if (!context.mounted) return;
+              final RenderObject? renderObject = context.findRenderObject();
               if (renderObject is RenderBox &&
                   renderObject.hasSize &&
                   renderObject.attached) {
@@ -1417,8 +1446,3 @@ class _NetworkBrowserScreenState extends State<NetworkBrowserScreen>
     );
   }
 }
-
-
-
-
-

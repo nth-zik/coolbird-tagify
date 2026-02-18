@@ -43,6 +43,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // Show file tags setting
   late bool _showFileTags;
+  late bool _rememberTabWorkspace;
 
   // Use system default app for video (false = in-app player by default)
   late bool _useSystemDefaultForVideo;
@@ -98,6 +99,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final thumbnailMode = await _preferences.getThumbnailMode();
       final maxConcurrency = await _preferences.getMaxThumbnailConcurrency();
       final showFileTags = await _preferences.getShowFileTags();
+      final rememberTabWorkspace =
+          await _preferences.getRememberTabWorkspaceEnabled();
       final useSystemDefaultForVideo =
           await _preferences.getUseSystemDefaultForVideo();
       _preferences.isUsingObjectBox();
@@ -109,6 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _thumbnailMode = thumbnailMode;
           _maxConcurrency = maxConcurrency;
           _showFileTags = showFileTags;
+          _rememberTabWorkspace = rememberTabWorkspace;
           _useSystemDefaultForVideo = useSystemDefaultForVideo;
           _isLoading = false;
         });
@@ -231,6 +235,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       );
     }
+  }
+
+  Future<void> _updateRememberTabWorkspace(bool enabled) async {
+    await _preferences.setRememberTabWorkspaceEnabled(enabled);
+    if (!enabled) {
+      await _preferences.clearLastOpenedTabPath();
+      await _preferences.clearDrawerSectionStates();
+    }
+
+    setState(() {
+      _rememberTabWorkspace = enabled;
+    });
   }
 
   Future<void> _updateUseSystemDefaultForVideo(bool value) async {
@@ -408,6 +424,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
         _buildCompactSettingTile(
+          title: AppLocalizations.of(context)!.rememberTabWorkspace,
+          subtitle:
+              AppLocalizations.of(context)!.rememberTabWorkspaceDescription,
+          icon: PhosphorIconsLight.clockCounterClockwise,
+          trailing: Switch(
+            value: _rememberTabWorkspace,
+            onChanged: _updateRememberTabWorkspace,
+          ),
+        ),
+        _buildCompactSettingTile(
           title: AppLocalizations.of(context)!.aboutApp,
           subtitle:
               '${AppLocalizations.of(context)!.appDescription} • v${_appVersion.isEmpty ? '-' : _appVersion} • $_appAuthor',
@@ -490,7 +516,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
                         color: Theme.of(context)
-                            .colorScheme.primary
+                            .colorScheme
+                            .primary
                             .withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(16),
                       ),
@@ -548,8 +575,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     decoration: BoxDecoration(
-                      color:
-                          Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
@@ -624,8 +653,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Icon(
                   icon,
                   size: 20,
-                  color:
-                      isSelected ? theme.colorScheme.primary : theme.iconTheme.color,
+                  color: isSelected
+                      ? theme.colorScheme.primary
+                      : theme.iconTheme.color,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -730,7 +760,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                             );
                           },
-                    icon: const Icon(PhosphorIconsLight.arrowsClockwise, size: 14),
+                    icon: const Icon(PhosphorIconsLight.arrowsClockwise,
+                        size: 14),
                     label: Text(
                       AppLocalizations.of(context)!.refreshCacheInfo,
                       style: const TextStyle(fontSize: 12),
@@ -833,7 +864,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 : const Icon(PhosphorIconsLight.trash),
             label: Text(AppLocalizations.of(context)!.clearAllCache),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
+              backgroundColor:
+                  Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
               foregroundColor: Theme.of(context).colorScheme.error,
               elevation: 0,
               padding: const EdgeInsets.symmetric(vertical: 12),
@@ -904,8 +936,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color:
-                        Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(
@@ -948,7 +982,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       subtitle: Text(
         subtitle,
-        style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+        style: TextStyle(
+            fontSize: 12,
+            color: Theme.of(context).colorScheme.onSurfaceVariant),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
@@ -998,7 +1034,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return Theme(
           data: theme.copyWith(dividerColor: Colors.transparent),
           child: ExpansionTile(
-            tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            tilePadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             childrenPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             initiallyExpanded: _isThemeExpanded,
@@ -1422,6 +1459,3 @@ class _DirectoryStats {
 
   const _DirectoryStats({required this.fileCount, required this.totalBytes});
 }
-
-
-
